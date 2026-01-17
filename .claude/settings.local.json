@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(echo $env:USERPROFILE)",
+      "mcp__mcp-registry__search_mcp_registry",
+      "Bash(dir:*)",
+      "Bash(powershell -Command \"Get-ChildItem -Recurse -Name\")",
+      "Bash(powershell -Command:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nUpdate all reference docs to implement user''s modified vision \\(V44-V47\\)\n\nCRITICAL CHANGES:\n- V30 spec now inherits from V44-V47 vision, NOT reference photo\n- Added USER_VISION_ELEMENTS.md as definitive vision reference\n- Updated master_specification_template.md with vision section\n- Updated QUICK_REFERENCE.md with vision checklist\n\nUSER''S VISION ELEMENTS \\(LOCKED\\):\n- Clock-style gear system \\(NO BELTS\\) - all gears mesh directly\n- Gear support plate \\(skeleton with bearing holes\\)\n- Four-bar linkage wave mechanism \\(5 layers, 30° phase offset\\)\n- Rice tube mechanism \\(functional L/R tilt\\)\n- Bird wire carrier system \\(NOT decorative flock\\)\n- Animation speeds: Moon VERY SLOW \\(0.1x\\), Lighthouse SLOW \\(0.3x\\)\n- Zone changes: Bottom gears moved to LEFT, specific bird wire Y range\n\nThis commit ensures all future versions properly implement the user''s\ncreative modifications rather than copying the Van Gogh reference photo.\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git commit:*)",
+      "Bash(git rm:*)"
+    ]
+  }
+}

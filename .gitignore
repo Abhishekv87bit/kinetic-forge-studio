@@ -1,0 +1,42 @@
+# OpenSCAD generated files
+*.stl
+*.off
+*.amf
+*.3mf
+*.dxf
+
+# Temporary files
+*.bak
+*.tmp
+*~
+nul
+
+# OS files
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# Editor files
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# Build outputs
+exports/
+renders/
+
+# Large binary files
+*.zip
+*.rar
+*.7z
+
+# Python cache (if using scripts)
+__pycache__/
+*.pyc
+
+# Node modules (if using JS tools)
+node_modules/
+
+# Keep these despite wildcards
+!.gitkeep
