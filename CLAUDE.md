@@ -25,12 +25,18 @@ This is a **PHYSICAL 3D PRINTED KINETIC AUTOMATON**. Every moving part is:
 |------|---------|------------|-------------|
 | 2025-01-16 | Suggested "software animation" for horizon band | All motion must be mechanical linkage | Physical automaton = mechanical only |
 | 2025-01-16 | Lost context that this is real-world build | Re-read project context before suggesting | Always think: "How does this physically work?" |
+| 2025-01-17 | V53 four-bar coupler rods not connected to waves | Animation showed motion, but rods were visual-only. Waves animated independently via sin(). | Verify physical connections BEFORE generating animation |
+| 2025-01-17 | Coupler rods animated as 360° rotation | Push-pull linkages oscillate, they cannot rotate fully around a shaft | Understand linkage kinematics: pin joints rotate, slider joints translate |
+| 2025-01-17 | Generated animation before validating mechanism | Created pretty animation of impossible physics | Run physical-linkage-check BEFORE any animation code |
+| 2025-01-17 | SVG wrapper polyhedrons at wrong scale | Wind path, cypress, cliff 100x too big (SVG coordinates not mm) | Use procedural shapes or calculate proper bounding box transforms |
 
 **Before suggesting ANY motion mechanism, ask yourself:**
 1. What physical part moves this?
 2. What is it connected to?
 3. How is it assembled?
 4. Can it be 3D printed?
+5. **NEW: Are the coupler endpoints connected to their targets?**
+6. **NEW: Is the motion type (rotation/translation) compatible with the joint type?**
 
 ## Design Philosophy - THINK OUTSIDE THE BOX
 
@@ -82,10 +88,27 @@ This is a **PHYSICAL 3D PRINTED KINETIC AUTOMATON**. Every moving part is:
 - `3d_design_agent/specs/*.md` - Design specifications and constraints
 - `3d_design_agent/versions/` - All versioned iterations
 
-### Extended Documentation
-- `3d_design_agent/docs/POLYMATH_LENS.md` - Design philosophy framework (Seven Masters: Van Gogh, Da Vinci, Tesla, Edison, Watt, Galileo, Archimedes)
-- `3d_design_agent/docs/STATE_MACHINES.md` - Workflow state diagrams (Agent, Design, Mechanism, Hooks)
-- `3d_design_agent/docs/XML_TAGS_REFERENCE.md` - Custom prompt tags for structured input/output
+### Extended Documentation (The Polymath System v2.0)
+
+**Core Engineering References:**
+- `3d_design_agent/docs/POLYMATH_LENS.md` - **START HERE** - Engineering DNA from seven masters: Van Gogh (turbulence physics), Da Vinci (friction science), Tesla (mental simulation limits), Edison (systematic experimentation), Watt (efficiency measurement), Galileo (experimental verification), Archimedes (first principles). Contains pre-design checklists, physics formulas, mechanism selection guide, and failure patterns.
+
+- `3d_design_agent/docs/KINETIC_SCULPTURE_COMPENDIUM.md` - **MASTER REFERENCE** - Comprehensive knowledge base covering 14 domains: History, Physics, Materials, Design Process, Motion Aesthetics, Sound, Site-Specific, Professional Practice, Tips & Tricks, Longevity Engineering, Assembly Science, Theatrical Kinetics, Scale Wisdom, Perceived Quality. Includes Quick Reference Cards and troubleshooting guide.
+
+- `3d_design_agent/docs/PHYSICS_REFERENCE.md` - Quick calculation reference: torque, gear math, four-bar analysis, center of gravity, friction, scaling laws, 3D printing constraints.
+
+- `3d_design_agent/docs/MECHANISM_DECISION_TREE.md` - Systematic selection flowcharts: motion type → mechanism, four-bar validation, gear mesh verification, printability check, balance analysis, physical connection validation.
+
+- `3d_design_agent/docs/FAILURE_PATTERNS.md` - What went wrong and why: Tesla Trap (material limits), Da Vinci Dream (power-to-weight), Edison Pivot (context change), Galileo Bias (confirmation bias), Watt Wait (manufacturing limits), V53 Disconnect (animation without connection).
+
+**Workflow References:**
+- `3d_design_agent/docs/STATE_MACHINES.md` - Workflow state diagrams (11 state machines), hook registry (15 hooks), sub-agent architecture (7 agents), skill definitions (12 skills).
+- `3d_design_agent/docs/XML_TAGS_REFERENCE.md` - Custom prompt tags for structured input/output. Includes Polymath tags, Quality tags, and Sub-Agent communication tags.
+
+**Agent Configuration:**
+- `3d_design_agent/skills.md` - 12 slash commands in 4 categories: Calculation, Verification, Export, Quality.
+- `3d_design_agent/hooks.md` - 15 hooks in 5 priority levels: Critical, Preservation, Verification, UX, Enhancement.
+- `3d_design_agent/sub_agents.md` - 7 specialized sub-agents: MechanismAnalyst, OpenSCADArchitect, MotionDesigner, MaterialsExpert, VersionController, VisualizationGuide, DecisionFacilitator.
 
 ### User Extensions
 - `User Skills/` - Custom slash commands and workflow overrides
@@ -94,123 +117,173 @@ This is a **PHYSICAL 3D PRINTED KINETIC AUTOMATON**. Every moving part is:
 
 ---
 
-## Hooks Configuration
+## Hooks Configuration v2.0
 
-### 1. pre-code-generation
+**15 Hooks in 5 Priority Levels** - See `3d_design_agent/hooks.md` for full documentation.
+
+### PRIORITY LEVEL 1: CRITICAL (Always Execute, Blocks Output)
+
+#### 1. pre-code-generation
 **Trigger:** Before any `.scad` file modification
-**Action:**
-- Read the existing file completely before making changes
-- Identify all module dependencies
-- Document current parameter values
-- Check for `// LOCKED` comments indicating frozen sections
+**Action:** Identify scope, declare changes and non-changes, impact analysis, breakage verification, request confirmation.
 
-### 2. user-frustration-detector
-**Trigger:** Regex patterns for frustration detection
-```regex
-/\b(ugh|argh|damn|dammit|frustrated|annoying|broken|wrong again|still (not |doesn't |won't )?work|this (is|keeps) (breaking|failing)|what the|come on|seriously\??|for the \d+(st|nd|rd|th) time)\b/i
-```
-**Action:**
-- Pause and acknowledge the difficulty
-- Summarize what has been tried
-- Propose a different approach or ask clarifying questions
-- Offer to step back and review the problem holistically
+#### 2. physical-linkage-check
+**Trigger:** BEFORE generating ANY animation code for linkages
+**Mandatory Verification:**
+- Coupler endpoints connected to driver/driven elements
+- Motion type matches joint type (pin→rotation, slider→translation)
+- Grashof condition verified for four-bar
+- No dead points in operating range
+**If ANY check fails:** DO NOT generate animation. Report issue first.
 
-### 3. post-version-delivery
-**Trigger:** After creating any new version file (e.g., `mechanism_v3.scad`)
-**Action:**
-- Run component survival check on all referenced components
-- Generate diff summary from previous version
-- Update version log in specs folder
-- Confirm all modules render without errors
+#### 3. polymath-pre-design-check
+**Trigger:** User requests new mechanism or significant change
+**Seven Masters Checklist:**
+- VAN GOGH: Motion pattern mathematically defined?
+- DA VINCI: Friction coefficients estimated?
+- TESLA: Full cycle mentally simulated?
+- EDISON: Test procedure defined?
+- WATT: Power path traced, efficiency acceptable?
+- GALILEO: How to verify in OpenSCAD?
+- ARCHIMEDES: Physics laws satisfied?
+**If ANY critical check fails:** STOP. Report to user.
 
-### 4. lock-in-detector
-**Trigger:** User phrases indicating finalization
-```regex
-/\b(lock (this|it)|final(ize)?|freeze|don't (touch|change|modify)|approved|ship it|done with this|keep (this|it) (exactly|as is))\b/i
-```
-**Action:**
-- Add `// LOCKED - [date] - [reason]` comment to relevant sections
-- Create a backup copy in versions folder
-- Confirm which specific elements are being locked
-- Warn before any future modifications to locked sections
+### PRIORITY LEVEL 2: PRESERVATION (Protect User Work)
 
-### 5. complexity-warning
-**Trigger:** When proposed changes affect more than 3 mechanisms or components
-**Action:**
-- List all affected components before making changes
-- Calculate cascading parameter impacts
-- Suggest incremental change strategy
-- Offer to create a test branch version first
+#### 4. lock-in-detector
+**Trigger:** User phrases: "lock", "finalize", "freeze", "approved", "ship it"
+**Action:** Add LOCKED comment, create backup, warn on future modifications.
 
-### 6. physical-reality-check
-**Trigger:** User asks "will this work?", "is this printable?", "can this move?", or similar
-```regex
-/\b(will (this|it) (work|print|move|function|fit)|is (this|it) (printable|possible|feasible|realistic)|can (this|it) (move|rotate|work|be (printed|built|made)))\b/i
-```
-**Action:**
-- Check minimum wall thicknesses (recommend ≥1.2mm for FDM)
-- Verify clearances between moving parts (recommend ≥0.3mm)
-- Confirm gear mesh geometry and tooth engagement
-- Validate axis alignments and bearing surfaces
-- Check for overhangs requiring supports
-- Assess structural weak points
+#### 5. component-survival-check
+**Trigger:** After every version delivery
+**Action:** Verify all components from previous version exist in new version.
+
+#### 6. version-backup
+**Trigger:** Before significant changes (>3 modules or >50 lines)
+**Action:** Auto-create backup with timestamp.
+
+### PRIORITY LEVEL 3: VERIFICATION (Quality Gates)
+
+#### 7. physical-reality-check
+**Trigger:** User asks "will this work?", "is this printable?"
+**Checks:** Wall thickness ≥1.2mm, clearances ≥0.3mm, gear mesh, overhangs, structural.
+
+#### 8. animation-validation
+**Trigger:** Animation code with sin($t) or cos($t)
+**Action:** Verify physical driver exists, formula matches kinematics, no orphan animations.
+
+#### 9. longevity-check
+**Trigger:** User asks about "final", "production", "will it last"
+**Checks:** Wear surfaces, lubrication, fatigue life, maintenance access.
+
+### PRIORITY LEVEL 4: USER EXPERIENCE
+
+#### 10. user-frustration-detector
+**Trigger:** "ugh", "going in circles", "where is my", "this is broken"
+**Action:** Pause, summarize attempts, propose different approach.
+
+#### 11. complexity-warning
+**Trigger:** Changes affect >3 components
+**Action:** List all affected components, suggest incremental approach.
+
+#### 12. post-version-delivery
+**Trigger:** After creating new version file
+**Action:** Survival check, diff summary, ASCII layout, TEST IT NOW instructions.
+
+### PRIORITY LEVEL 5: ENHANCEMENT (Optional Quality)
+
+#### 13. failure-pattern-detector
+**Trigger:** Phrases matching known failure modes
+**Patterns:**
+- "should work in theory" → Tesla Trap
+- "just scale it up" → Square-Cube Law
+- "it worked once" → Galileo Bias
+- sin($t) without connection → V53 Disconnect
+**Action:** Reference FAILURE_PATTERNS.md, require acknowledgment.
+
+#### 14. quality-assessment
+**Trigger:** User asks about "quality", "professional"
+**Action:** Grade mechanism (Motion A-D, Visual A-D, Craftsmanship A-D, Sound A-D).
+
+#### 15. compendium-reference
+**Trigger:** Topic keywords (gears, linkages, materials, longevity)
+**Action:** Reference relevant KINETIC_SCULPTURE_COMPENDIUM.md sections.
+
+**Full Hook Documentation:** See `3d_design_agent/hooks.md` for complete specifications, output formats, and implementation details.
 
 ---
 
-## Custom Commands
+## Custom Commands (12 Skills)
 
-### /gear-calc
+**Full Skill Documentation:** See `3d_design_agent/skills.md` for complete specifications.
+
+### CALCULATION SKILLS
+
+#### /gear-calc
 Calculate gear parameters for meshing gears.
 **Usage:** `/gear-calc [teeth1] [teeth2] [module]`
-**Outputs:**
-- Pitch diameters
-- Center distance
-- Recommended tooth profile
-- Contact ratio validation
+**Outputs:** Pitch diameters, center distance, contact ratio, 3D print recommendations.
 
-### /linkage-check
+#### /linkage-check
 Analyze linkage geometry and motion range.
 **Usage:** `/linkage-check [mechanism_file]`
-**Outputs:**
-- Degrees of freedom
-- Motion limits
-- Dead points
-- Transmission angle analysis
+**Outputs:** Grashof classification, transmission angles, dead points, ROM analysis.
 
-### /svg-extract
-Extract 2D profiles from 3D design for laser cutting.
-**Usage:** `/svg-extract [scad_file] [layer_height]`
-**Outputs:**
-- Separated layer SVGs
-- Kerf compensation recommendations
-- Material thickness annotations
+#### /torque-chain (NEW)
+Trace power flow from motor to output.
+**Usage:** `/torque-chain [mechanism_file]`
+**Outputs:** Stage-by-stage torque, efficiency, power budget, motor adequacy.
 
-### /component-survival
+#### /balance-check (NEW)
+Analyze center of gravity and balance.
+**Usage:** `/balance-check [mechanism_file]`
+**Outputs:** CG location, stability analysis, counterweight recommendations.
+
+### VERIFICATION SKILLS
+
+#### /component-survival
 Verify all components still function after changes.
 **Usage:** `/component-survival [scad_file]`
-**Checks:**
-- All modules compile without errors
-- Required parameters have values
-- Dependencies exist and are accessible
-- No orphaned or unreferenced components
+**Checks:** Module compilation, parameter values, dependencies, orphaned components.
 
-### /version-diff
+#### /version-diff
 Compare two versions and summarize changes.
 **Usage:** `/version-diff [v_old] [v_new]`
-**Outputs:**
-- Parameter changes with before/after values
-- Added/removed modules
-- Geometry modifications
-- Breaking changes warnings
+**Outputs:** Parameter changes, added/removed modules, breaking changes.
 
-### /z-stack
+#### /z-stack
 Analyze vertical layer stacking for assembly.
 **Usage:** `/z-stack [mechanism_file]`
-**Outputs:**
-- Layer order visualization
-- Clearance verification between layers
-- Fastener length calculations
-- Assembly sequence recommendation
+**Outputs:** Layer order, clearance verification, fastener lengths, assembly sequence.
+
+#### /animation-test (NEW)
+Validate animation at critical positions.
+**Usage:** `/animation-test [scad_file]`
+**Checks:** Physical connections at t=0, 0.25, 0.5, 0.75, motion continuity.
+
+### EXPORT SKILLS
+
+#### /svg-extract
+Extract 2D profiles for laser cutting.
+**Usage:** `/svg-extract [scad_file] [layer_height]`
+**Outputs:** Layer SVGs, kerf compensation, material annotations.
+
+#### /bom-generate (NEW)
+Generate bill of materials.
+**Usage:** `/bom-generate [mechanism_file]`
+**Outputs:** Parts list, quantities, materials, hardware, estimated costs.
+
+### QUALITY SKILLS
+
+#### /quality-audit (NEW)
+Comprehensive quality assessment.
+**Usage:** `/quality-audit [mechanism_file]`
+**Outputs:** Motion grade, visual grade, craftsmanship grade, recommendations.
+
+#### /longevity-report (NEW)
+Predict lifespan and maintenance needs.
+**Usage:** `/longevity-report [mechanism_file]`
+**Outputs:** Wear analysis, lubrication schedule, replaceable parts, maintenance plan.
 
 ---
 
