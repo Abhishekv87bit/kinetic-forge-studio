@@ -1,364 +1,154 @@
-# CLAUDE.md - 3D Mechanical Design Workspace Configuration
+# Kinetic Sculpture Design
 
-## Project Context
+Millimeters. Single motor unless impossible.
 
-This is a 3D mechanical design workspace for OpenSCAD kinetic art projects. The workspace focuses on creating precise, mathematically-defined mechanical assemblies including gears, linkages, cams, and interconnected motion systems.
+## Dual-Tool Strategy
+- **Fusion 360** = PRIMARY LEARNING tool — 3D design fundamentals, parametric modeling, motion analysis, assembly validation. This is where you build deep design skills.
+- **OpenSCAD** = AI EXECUTION tool — Claude generates code, you validate in OpenSCAD, then import into Fusion 360 projects. Operational resource, not a learning focus.
 
-Primary design tool: OpenSCAD (programmatic 3D CAD)
-Output formats: .scad source files, .stl for printing, .svg for laser cutting
+## Workflow
+1. You describe movement/feeling/idea (or an emotion — see Design Thinking Framework)
+2. I ask 1-3 questions (tempo, complexity, constraints)
+3. I suggest 2-3 mechanisms with tradeoffs (actual numbers)
+4. You pick, I code (OpenSCAD for rapid prototyping)
+5. You test in OpenSCAD, we iterate
+6. Validated design → Fusion 360 for assembly, motion study, and 3D print export
 
----
+## Your 3 Modes
+- **Experiment Mode** — Try different mechanisms, identify patterns for kinetic art
+- **Build Mode** — 6-stage gated pipeline (Discover → Animate → Mechanize → Simulate → Build → Iterate)
+- **Learn Mode** — Everything needed to become a professional kinetic sculptor
 
-## Critical Context - NEVER FORGET
+## Physics (Invisible)
+All verification happens silently. You only hear about physics when something's wrong:
+- Every animation traces to physical mechanism (no orphan sin($t))
+- Four-bar: Grashof verified, transmission angle 40°-140°
+- Coupler lengths constant (checked at 0°, 90°, 180°, 270°)
+- Power budget: required < available/2
+- Tolerance stack calculated for long chains
 
-This is a **PHYSICAL 3D PRINTED KINETIC AUTOMATON**. Every moving part is:
-- Mechanically driven (gears, linkages, cams, cranks)
-- 3D printed or laser cut
-- Assembled in the real world
-- Powered by a single motor
+## When I Push Back
+- Mechanism violates physics → I explain why and offer alternatives
+- Animation has no driver → I ask what should drive it
+- Coupler would need to stretch → I show why and redesign
+- Dead point in range → I add flywheel or parallel crank
 
-**There is NO software animation in the final product.** OpenSCAD $t animation is ONLY for design visualization/preview. The real sculpture has no computer, no code, no motors with controllers - just mechanical motion.
+## Component Isolation
+When a project has multiple mechanisms (wave + cypress + rice tube), I work on each in isolation:
+- Finish one component's math before starting another
+- Separate OpenSCAD modules with their own parameters
+- No shared variable names across mechanisms
+- Integration only after individual components verified
 
-## Mistake Log
+For complex projects, I explicitly call out transitions: "Wave mechanism done. Moving to cypress drive..."
 
-| Date | Mistake | Correction | Never Again |
-|------|---------|------------|-------------|
-| 2025-01-16 | Suggested "software animation" for horizon band | All motion must be mechanical linkage | Physical automaton = mechanical only |
-| 2025-01-16 | Lost context that this is real-world build | Re-read project context before suggesting | Always think: "How does this physically work?" |
-| 2025-01-17 | V53 four-bar coupler rods not connected to waves | Animation showed motion, but rods were visual-only. Waves animated independently via sin(). | Verify physical connections BEFORE generating animation |
-| 2025-01-17 | Coupler rods animated as 360° rotation | Push-pull linkages oscillate, they cannot rotate fully around a shaft | Understand linkage kinematics: pin joints rotate, slider joints translate |
-| 2025-01-17 | Generated animation before validating mechanism | Created pretty animation of impossible physics | Run physical-linkage-check BEFORE any animation code |
-| 2025-01-17 | SVG wrapper polyhedrons at wrong scale | Wind path, cypress, cliff 100x too big (SVG coordinates not mm) | Use procedural shapes or calculate proper bounding box transforms |
+## OpenSCAD Code Template
+Every .scad file follows this structure:
+1. **Header** — name, description, standards (ISO 128, DFAM), math verification summary
+2. **Quality & Animation** — `$fn`, `MANUAL_POSITION = -1` for $t animation, 0.0-1.0 for static debug
+3. **Tolerances** — `TOL_GENERAL=0.2`, `TOL_SLIDING=0.3`, `TOL_PRESS=0.1`, all named constants
+4. **Dimensions** — All parameters as named constants. Derived values COMPUTED from base params (never hardcoded)
+5. **Toggles** — `SHOW_xxx = true/false` per component, `SHOW_EXPLODED`, `SHOW_SECTION`
+6. **Colors** — Named constants: `C_HOUSING`, `C_SHUTTLE`, `C_STEEL`, `C_STRING`, etc.
+7. **Functions** — Pure functions for kinematics, position calculations
+8. **Primitives** — Individual part modules (pulley, shaft, bracket)
+9. **Assemblies** — Composed assemblies with animation parameters
+10. **Verification** — `include <validation_modules.scad>`, verify at 0°/90°/180°/270°
+11. **STL Export** — Commented-out single-part modules for F6 render
 
-**Before suggesting ANY motion mechanism, ask yourself:**
-1. What physical part moves this?
-2. What is it connected to?
-3. How is it assembled?
-4. Can it be 3D printed?
-5. **NEW: Are the coupler endpoints connected to their targets?**
-6. **NEW: Is the motion type (rotation/translation) compatible with the joint type?**
+Key patterns:
+- Strings/cables: `hull()` of two small spheres
+- V-groove: `rotate_extrude` a 45° rotated square at OD
+- Stadium cutout: `hull()` of two circles in 2D → `linear_extrude` → `difference()`
+- No vector addition: use `[v1[0]+v2[0], v1[1]+v2[1], v1[2]+v2[2]]`
+- Shafts spanning Y gap: `rotate([-90, 0, 0])` with `center=true`
+- Bearings pinching a slider: slider height = bearing-to-bearing distance (computed)
 
-## Design Philosophy - THINK OUTSIDE THE BOX
+## Execution Patterns
+**Parallel exploration** (use subagents or multiple tool calls):
+- Vague motion description → search 2-3 mechanism families simultaneously
+- Physics verification → check Grashof + transmission angle + coupler constancy in one pass
+- Reviewing existing .scad → read file + validation_modules + design history entry together
 
-**Always explore unconventional mechanisms first.** Don't default to:
-- Four-bar linkages for everything
-- Hinged segments for articulation
-- Sliders for linear motion
+**Sequential execution** (just do the work):
+- Clear parameters given → generate .scad directly
+- Single component with known math → calculate, code, verify in order
+- Iterating on existing file → read, identify issue, fix
 
-**Instead, consider techniques from kinetic art history:**
-- Gear-mounted elements (rotation = complex paths)
-- Cam followers for programmed motion
-- Escapements for intermittent motion
-- Counterweights for balance and rhythm
-- Geneva drives for indexed positioning
-- Parallel linkages for translation without rotation
-- Scotch yoke for pure sinusoidal motion
-- Cardan/universal joints for angle transmission
-- Maltese cross for intermittent rotation
-- Gravity-driven mechanisms (Marble machines, etc.)
+**Question budget:** 1-3 questions MAX before starting work. Infer when possible.
 
-**Historical kinetic art techniques to remember:**
-- Automata (18th century Europe): Cam-driven sequential motion
-- Karakuri (Japan): String-driven, gravity-powered, spring mechanisms
-- Whirligigs (American folk): Wind-driven, balanced lever arms
-- Kinetic sculpture (Calder, Tinguely): Balance, counterweight, chaos
-- Clockwork: Escapements, gear trains, maintaining power
+**Self-verification before delivering any .scad:**
+- Every animation parameter traces to a physical driver (no orphan `sin($t)`)
+- Coupler length checked at 0°, 90°, 180°, 270°
+- All derived dimensions computed from base parameters
+- `validation_modules.scad` checks included
+- Print orientation considered (no unsupported overhangs >45°)
+- **Run `python validate_geometry.py` after every compile** — zero FAILs required
+- **Render PNG and inspect** before delivering to user (use OpenSCAD MCP or CLI render)
 
-| Date | Mistake | Lesson |
-|------|---------|--------|
-| 2025-01-17 | Suggested complex four-bar for wave curl instead of simple gear-mounted foam | Rotation can simulate fluid motion elegantly |
+## Validation Pipeline (MANDATORY)
+Every code change follows this sequence. No exceptions.
 
----
+1. **Compile** — `openscad.com -o test.csg file.scad` — zero errors
+2. **Validate** — `python validate_geometry.py file.scad` — zero FAILs
+3. **Render** — `python validate_geometry.py --render file.scad` — visually inspect PNG
+4. **Deliver** — only after steps 1-3 pass
 
-## Key Files and Structure
+Tools installed:
+- `validate_geometry.py` — constraint checker (bearings on shaft axis, Z alignment, clearances, parametric chain)
+- `openscad-mcp` — MCP server at `D:\Claude local\openscad-mcp\` for render-in-loop
+- `BOSL2` — OpenSCAD library at `Documents\OpenSCAD\libraries\BOSL2\` for attachment-based positioning
 
+## Parametric Discipline (ZERO HARDCODED NUMBERS)
+Every dimension in a .scad file must be either:
+1. A **named constant** in the file header (e.g., `ARM_W = 20;`)
+2. **Derived** from other named constants (e.g., `PB_HOUSING_OD = BEARING_OD + 2 * MOUNT_WALL;`)
+3. A **config import** via `include <config_v4.scad>`
+
+**Never**:
+- Literal numbers in `translate()`, `rotate()`, `cylinder()` etc. (except 0, 1, -1, 2 for centering)
+- Duplicated values across files (single source of truth in config)
+- Magic tolerances (name them: `TOL_PRESS = 0.05`, `BORE_MARGIN = 1.0`)
+
+**Constraint-based placement** (learned from industry CAD tools):
+- Part positions derived from **what they connect to**, not absolute coordinates
+- Bearing position = cam_center + shaft_dir × journal_reach (parametric chain)
+- If the source parameter changes, ALL dependent positions must auto-update
+- Validate chains with `validate_geometry.py` after every change
+
+**Assembly order defines parameter flow**:
 ```
-3d_design_agent/
-├── components/          # Reusable mechanical components
-├── mechanisms/          # Complete mechanism assemblies
-├── versions/            # Version history of designs
-├── exports/             # Generated STL and SVG files
-├── specs/               # Design specifications (.md files)
-└── utils/               # Helper modules and libraries
-```
-
-### Important Files to Know
-- `3d_design_agent/components/*.scad` - Base component library
-- `3d_design_agent/mechanisms/*.scad` - Assembled mechanisms
-- `3d_design_agent/specs/*.md` - Design specifications and constraints
-- `3d_design_agent/versions/` - All versioned iterations
-
-### Extended Documentation (The Polymath System v2.0)
-
-**Core Engineering References:**
-- `3d_design_agent/docs/POLYMATH_LENS.md` - **START HERE** - Engineering DNA from seven masters: Van Gogh (turbulence physics), Da Vinci (friction science), Tesla (mental simulation limits), Edison (systematic experimentation), Watt (efficiency measurement), Galileo (experimental verification), Archimedes (first principles). Contains pre-design checklists, physics formulas, mechanism selection guide, and failure patterns.
-
-- `3d_design_agent/docs/KINETIC_SCULPTURE_COMPENDIUM.md` - **MASTER REFERENCE** - Comprehensive knowledge base covering 14 domains: History, Physics, Materials, Design Process, Motion Aesthetics, Sound, Site-Specific, Professional Practice, Tips & Tricks, Longevity Engineering, Assembly Science, Theatrical Kinetics, Scale Wisdom, Perceived Quality. Includes Quick Reference Cards and troubleshooting guide.
-
-- `3d_design_agent/docs/PHYSICS_REFERENCE.md` - Quick calculation reference: torque, gear math, four-bar analysis, center of gravity, friction, scaling laws, 3D printing constraints.
-
-- `3d_design_agent/docs/MECHANISM_DECISION_TREE.md` - Systematic selection flowcharts: motion type → mechanism, four-bar validation, gear mesh verification, printability check, balance analysis, physical connection validation.
-
-- `3d_design_agent/docs/FAILURE_PATTERNS.md` - What went wrong and why: Tesla Trap (material limits), Da Vinci Dream (power-to-weight), Edison Pivot (context change), Galileo Bias (confirmation bias), Watt Wait (manufacturing limits), V53 Disconnect (animation without connection).
-
-**Workflow References:**
-- `3d_design_agent/docs/STATE_MACHINES.md` - Workflow state diagrams (11 state machines), hook registry (15 hooks), sub-agent architecture (7 agents), skill definitions (12 skills).
-- `3d_design_agent/docs/XML_TAGS_REFERENCE.md` - Custom prompt tags for structured input/output. Includes Polymath tags, Quality tags, and Sub-Agent communication tags.
-
-**Agent Configuration:**
-- `3d_design_agent/skills.md` - 12 slash commands in 4 categories: Calculation, Verification, Export, Quality.
-- `3d_design_agent/hooks.md` - 15 hooks in 5 priority levels: Critical, Preservation, Verification, UX, Enhancement.
-- `3d_design_agent/sub_agents.md` - 7 specialized sub-agents: MechanismAnalyst, OpenSCADArchitect, MotionDesigner, MaterialsExpert, VersionController, VisualizationGuide, DecisionFacilitator.
-
-### User Extensions
-- `User Skills/` - Custom slash commands and workflow overrides
-- `User Skills/templates/` - Blank templates for creating new skills and hooks
-- `migrations/` - Version upgrade scripts and workspace schema
-
----
-
-## Hooks Configuration v2.0
-
-**15 Hooks in 5 Priority Levels** - See `3d_design_agent/hooks.md` for full documentation.
-
-### PRIORITY LEVEL 1: CRITICAL (Always Execute, Blocks Output)
-
-#### 1. pre-code-generation
-**Trigger:** Before any `.scad` file modification
-**Action:** Identify scope, declare changes and non-changes, impact analysis, breakage verification, request confirmation.
-
-#### 2. physical-linkage-check
-**Trigger:** BEFORE generating ANY animation code for linkages
-**Mandatory Verification:**
-- Coupler endpoints connected to driver/driven elements
-- Motion type matches joint type (pin→rotation, slider→translation)
-- Grashof condition verified for four-bar
-- No dead points in operating range
-**If ANY check fails:** DO NOT generate animation. Report issue first.
-
-#### 3. polymath-pre-design-check
-**Trigger:** User requests new mechanism or significant change
-**Seven Masters Checklist:**
-- VAN GOGH: Motion pattern mathematically defined?
-- DA VINCI: Friction coefficients estimated?
-- TESLA: Full cycle mentally simulated?
-- EDISON: Test procedure defined?
-- WATT: Power path traced, efficiency acceptable?
-- GALILEO: How to verify in OpenSCAD?
-- ARCHIMEDES: Physics laws satisfied?
-**If ANY critical check fails:** STOP. Report to user.
-
-### PRIORITY LEVEL 2: PRESERVATION (Protect User Work)
-
-#### 4. lock-in-detector
-**Trigger:** User phrases: "lock", "finalize", "freeze", "approved", "ship it"
-**Action:** Add LOCKED comment, create backup, warn on future modifications.
-
-#### 5. component-survival-check
-**Trigger:** After every version delivery
-**Action:** Verify all components from previous version exist in new version.
-
-#### 6. version-backup
-**Trigger:** Before significant changes (>3 modules or >50 lines)
-**Action:** Auto-create backup with timestamp.
-
-### PRIORITY LEVEL 3: VERIFICATION (Quality Gates)
-
-#### 7. physical-reality-check
-**Trigger:** User asks "will this work?", "is this printable?"
-**Checks:** Wall thickness ≥1.2mm, clearances ≥0.3mm, gear mesh, overhangs, structural.
-
-#### 8. animation-validation
-**Trigger:** Animation code with sin($t) or cos($t)
-**Action:** Verify physical driver exists, formula matches kinematics, no orphan animations.
-
-#### 9. longevity-check
-**Trigger:** User asks about "final", "production", "will it last"
-**Checks:** Wear surfaces, lubrication, fatigue life, maintenance access.
-
-### PRIORITY LEVEL 4: USER EXPERIENCE
-
-#### 10. user-frustration-detector
-**Trigger:** "ugh", "going in circles", "where is my", "this is broken"
-**Action:** Pause, summarize attempts, propose different approach.
-
-#### 11. complexity-warning
-**Trigger:** Changes affect >3 components
-**Action:** List all affected components, suggest incremental approach.
-
-#### 12. post-version-delivery
-**Trigger:** After creating new version file
-**Action:** Survival check, diff summary, ASCII layout, TEST IT NOW instructions.
-
-### PRIORITY LEVEL 5: ENHANCEMENT (Optional Quality)
-
-#### 13. failure-pattern-detector
-**Trigger:** Phrases matching known failure modes
-**Patterns:**
-- "should work in theory" → Tesla Trap
-- "just scale it up" → Square-Cube Law
-- "it worked once" → Galileo Bias
-- sin($t) without connection → V53 Disconnect
-**Action:** Reference FAILURE_PATTERNS.md, require acknowledgment.
-
-#### 14. quality-assessment
-**Trigger:** User asks about "quality", "professional"
-**Action:** Grade mechanism (Motion A-D, Visual A-D, Craftsmanship A-D, Sound A-D).
-
-#### 15. compendium-reference
-**Trigger:** Topic keywords (gears, linkages, materials, longevity)
-**Action:** Reference relevant KINETIC_SCULPTURE_COMPENDIUM.md sections.
-
-**Full Hook Documentation:** See `3d_design_agent/hooks.md` for complete specifications, output formats, and implementation details.
-
----
-
-## Custom Commands (12 Skills)
-
-**Full Skill Documentation:** See `3d_design_agent/skills.md` for complete specifications.
-
-### CALCULATION SKILLS
-
-#### /gear-calc
-Calculate gear parameters for meshing gears.
-**Usage:** `/gear-calc [teeth1] [teeth2] [module]`
-**Outputs:** Pitch diameters, center distance, contact ratio, 3D print recommendations.
-
-#### /linkage-check
-Analyze linkage geometry and motion range.
-**Usage:** `/linkage-check [mechanism_file]`
-**Outputs:** Grashof classification, transmission angles, dead points, ROM analysis.
-
-#### /torque-chain (NEW)
-Trace power flow from motor to output.
-**Usage:** `/torque-chain [mechanism_file]`
-**Outputs:** Stage-by-stage torque, efficiency, power budget, motor adequacy.
-
-#### /balance-check (NEW)
-Analyze center of gravity and balance.
-**Usage:** `/balance-check [mechanism_file]`
-**Outputs:** CG location, stability analysis, counterweight recommendations.
-
-### VERIFICATION SKILLS
-
-#### /component-survival
-Verify all components still function after changes.
-**Usage:** `/component-survival [scad_file]`
-**Checks:** Module compilation, parameter values, dependencies, orphaned components.
-
-#### /version-diff
-Compare two versions and summarize changes.
-**Usage:** `/version-diff [v_old] [v_new]`
-**Outputs:** Parameter changes, added/removed modules, breaking changes.
-
-#### /z-stack
-Analyze vertical layer stacking for assembly.
-**Usage:** `/z-stack [mechanism_file]`
-**Outputs:** Layer order, clearance verification, fastener lengths, assembly sequence.
-
-#### /animation-test (NEW)
-Validate animation at critical positions.
-**Usage:** `/animation-test [scad_file]`
-**Checks:** Physical connections at t=0, 0.25, 0.5, 0.75, motion continuity.
-
-### EXPORT SKILLS
-
-#### /svg-extract
-Extract 2D profiles for laser cutting.
-**Usage:** `/svg-extract [scad_file] [layer_height]`
-**Outputs:** Layer SVGs, kerf compensation, material annotations.
-
-#### /bom-generate (NEW)
-Generate bill of materials.
-**Usage:** `/bom-generate [mechanism_file]`
-**Outputs:** Parts list, quantities, materials, hardware, estimated costs.
-
-### QUALITY SKILLS
-
-#### /quality-audit (NEW)
-Comprehensive quality assessment.
-**Usage:** `/quality-audit [mechanism_file]`
-**Outputs:** Motion grade, visual grade, craftsmanship grade, recommendations.
-
-#### /longevity-report (NEW)
-Predict lifespan and maintenance needs.
-**Usage:** `/longevity-report [mechanism_file]`
-**Outputs:** Wear analysis, lubrication schedule, replaceable parts, maintenance plan.
-
----
-
-## Working Conventions
-
-### Code Modification Protocol
-1. **Always read existing code before modifying** - Never assume file contents; always read the current state
-2. **Run component survival after every change** - Verify nothing broke
-3. **Use mathematical calculations, never visual placement** - All positions derived from formulas
-4. **Preserve existing comments and documentation** - Especially `// LOCKED` markers
-
-### Version Control Formula
-```
-V[N] = V[N-1] + (changes) - (nothing)
-```
-- Every version must be additive from the previous version
-- Never delete functionality without explicit user approval
-- Changes are documented, nothing is silently removed
-- Version files are immutable once created
-
-### Mathematical Precision
-- All dimensions in millimeters
-- Angles in degrees
-- Use parametric relationships, not magic numbers
-- Document formulas in comments: `// center_distance = (d1 + d2) / 2`
-
-### Module Naming Convention
-```
-component_name_variant()     // e.g., gear_spur_20t()
-mechanism_name_version()     // e.g., escapement_anchor_v2()
-util_function_name()         // e.g., util_polar_array()
+config_v4.scad (source of truth)
+  → helix_cam_v4.scad (cam geometry, journal endpoints)
+    → hex_frame_v4.scad (frame wraps around cam assembly)
+      → bearing position = f(cam position, journal reach)
+      → PB position = f(bearing position)
+      → GT2 position = f(PB position, arm clearance)
+      → dampener position = f(arm position, tier Z)
 ```
 
----
+## Knowledge I Draw From
+Cam barrels, spiral cams, four-bar linkages, slider-crank, scotch yoke,
+eccentric drives, LaMSA springs, tendon systems, phase-coupled oscillators,
+living hinges, flexures, bistable mechanisms, breath cycles, polyrhythm,
+golden phase (137.5°), Disney's 12 principles.
 
-## File Patterns
+## Knowledge Routing (read on demand, not upfront)
+- New mechanism selection → `User Skills/design-knowledge-skills.md` (mechanism-selection-skill)
+- Wave sculpture / Margolin style → `archives/docs/MARGOLIN_KNOWLEDGE_BANK.md`
+- Multi-domain deep reference → `archives/docs/KINETIC_SCULPTURE_COMPENDIUM.md`
+- Troubleshooting binding/failure → `design-knowledge-skills.md` (failure-patterns-skill)
+- Triple Helix project → `TRIPLE_HELIX_MVP_MASTER_PROMPT.md` + `HELIX_CAM_DESIGN_AUDIT_V2.md`
+- Motion aesthetics / emotion → `learning/14_DESIGN_THINKING_FRAMEWORK.md`
+- String/cable routing → `ROPE_ROUTING_COMPLETE_ANALYSIS.md`
+- Design iteration history → `learning/16_DESIGN_HISTORY_INDEX.md`
+- Geometry/coordinate issues → `design-knowledge-skills.md` (geometry-gotchas-skill)
+- Learning curriculum → `3d_design_agent/learning/` (18-month plan, Fusion 360 guide, cheatsheets)
 
-### Recognized File Types
-| Pattern | Description | Treatment |
-|---------|-------------|-----------|
-| `*.scad` | OpenSCAD source files | Primary design files - read before modify |
-| `*.svg` | Vector graphics | Laser cutting profiles, import sources |
-| `*.md` | Specifications | Design requirements and documentation |
-| `*.stl` | Mesh exports | Generated output - do not edit directly |
-| `*_v[0-9]*.scad` | Versioned files | Immutable history - create new version instead |
+Rule: Read the specific file WHEN the context demands it. Never load all knowledge upfront.
 
-### File Naming Patterns
-```
-[component]_[type]_[variant].scad      # gear_spur_24t.scad
-[mechanism]_[name]_v[N].scad           # escapement_deadbeat_v3.scad
-[project]_assembly_v[N].scad           # clock_main_assembly_v5.scad
-[component]_[type].svg                 # gear_profile.svg
-[topic]_spec.md                        # gear_train_spec.md
-```
-
----
-
-## Safety Checks Before Rendering
-
-Before any `F5` (preview) or `F6` (render) equivalent operation:
-1. Verify `$fn` is set appropriately (recommend 32-64 for preview, 128+ for export)
-2. Check for `intersection()` or `difference()` with non-manifold geometry
-3. Confirm all `use` and `include` paths are valid
-4. Validate that animation variables (`$t`) have default values
-
----
-
-## Quick Reference: OpenSCAD Gotchas
-
-- `difference()` - First child is positive, rest are negative
-- `$fn` affects all child operations - set locally when needed
-- `use <file>` imports modules only; `include <file>` imports everything
-- Avoid `hull()` with complex children - breaks CGAL frequently
-- Always specify `center=true` or `center=false` explicitly
-
----
-
-*This configuration is automatically recognized by Claude Code for mechanical design assistance.*
+## KineticForge App
+Local web app at `kinetic-forge/`. Learn mode (playground, exercises) + Build mode (gated pipeline).
+Run: `cd kinetic-forge && npm run dev` → localhost:5173, API on port 3001.
+Gate validation in `src/gate.js` (Grashof, transmission angle, power budget).
+Focus session time on producing .scad designs — app development is secondary.

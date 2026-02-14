@@ -1,0 +1,426 @@
+{
+  "timestamp": "2026-02-12T22:19:06.566579",
+  "config_path": "D:\\Claude local\\3d_design_agent\\triple_helix_mvp\\pipeline\\config_v3.json",
+  "summary": {
+    "total": 45,
+    "passed": 39,
+    "failed": 1,
+    "info": 5
+  },
+  "results": [
+    {
+      "category": "Geometry",
+      "name": "HEX_FF (flat-to-flat)",
+      "computed": 204.382,
+      "expected": 204.3,
+      "diff": 0.082,
+      "tolerance": 0.2,
+      "status": "PASS",
+      "unit": "mm"
+    },
+    {
+      "category": "Geometry",
+      "name": "NUM_CHANNELS",
+      "computed": 13,
+      "expected": 13,
+      "diff": 0,
+      "tolerance": 0,
+      "status": "PASS",
+      "unit": "mm"
+    },
+    {
+      "category": "Geometry",
+      "name": "TWIST_PER_CAM",
+      "computed": 27.6923,
+      "expected": 27.69,
+      "diff": 0.0023,
+      "tolerance": 0.01,
+      "status": "PASS",
+      "unit": "deg"
+    },
+    {
+      "category": "Geometry",
+      "name": "AXIAL_PITCH",
+      "computed": 14.0,
+      "expected": 14.0,
+      "diff": 0.0,
+      "tolerance": 0.01,
+      "status": "PASS",
+      "unit": "mm"
+    },
+    {
+      "category": "Geometry",
+      "name": "HELIX_LENGTH",
+      "computed": 182.0,
+      "expected": 182.0,
+      "diff": 0.0,
+      "tolerance": 0.1,
+      "status": "PASS",
+      "unit": "mm"
+    },
+    {
+      "category": "Geometry",
+      "name": "CAM_STROKE",
+      "computed": 30.0,
+      "expected": 30.0,
+      "diff": 0.0,
+      "tolerance": 0,
+      "status": "PASS",
+      "unit": "mm"
+    },
+    {
+      "category": "Geometry",
+      "name": "STAR_TIP_R (1.5x hex dia)",
+      "computed": 354,
+      "expected": 354.0,
+      "diff": 0.0,
+      "tolerance": 1.0,
+      "status": "PASS",
+      "unit": "mm"
+    },
+    {
+      "category": "Geometry",
+      "name": "HEXAGRAM_INNER_R",
+      "computed": 204.382,
+      "expected": 204.4,
+      "diff": 0.018,
+      "tolerance": 0.2,
+      "status": "PASS",
+      "unit": "mm"
+    },
+    {
+      "category": "Geometry",
+      "name": "HELIX_R",
+      "computed": 271.932,
+      "expected": 271.9,
+      "diff": 0.032,
+      "tolerance": 0.5,
+      "status": "PASS",
+      "unit": "mm"
+    },
+    {
+      "category": "Geometry",
+      "name": "Helix gap",
+      "computed": 153.932,
+      "expected": 153.9,
+      "diff": 0.032,
+      "tolerance": 1.0,
+      "status": "PASS",
+      "unit": "mm"
+    },
+    {
+      "category": "Geometry",
+      "name": "Gap > budget (rib+dampener+cable)",
+      "computed": 153.932,
+      "expected": "> 50.0",
+      "status": "PASS",
+      "unit": "mm"
+    },
+    {
+      "category": "Geometry",
+      "name": "FRAME_RING_R_IN",
+      "computed": 120,
+      "expected": 120,
+      "diff": 0,
+      "tolerance": 0,
+      "status": "PASS",
+      "unit": "mm"
+    },
+    {
+      "category": "Geometry",
+      "name": "FRAME_RING_R_OUT",
+      "computed": 130,
+      "expected": 130,
+      "diff": 0,
+      "tolerance": 0,
+      "status": "PASS",
+      "unit": "mm"
+    },
+    {
+      "category": "Geometry",
+      "name": "HOUSING_HEIGHT",
+      "computed": 30.0,
+      "expected": 30.0,
+      "diff": 0.0,
+      "tolerance": 0.1,
+      "status": "PASS",
+      "unit": "mm"
+    },
+    {
+      "category": "Kinematics",
+      "name": "Max radial displacement",
+      "computed": 15.0,
+      "expected": 15.0,
+      "diff": 0.0,
+      "tolerance": 0,
+      "status": "PASS",
+      "unit": "mm"
+    },
+    {
+      "category": "Kinematics",
+      "name": "Phase span (should be ~360)",
+      "computed": 332.3077,
+      "expected": 332.3076923076923,
+      "diff": 0.0,
+      "tolerance": 0.01,
+      "status": "PASS",
+      "unit": "deg"
+    },
+    {
+      "category": "Kinematics",
+      "name": "Max center block displacement",
+      "computed": 15.0,
+      "expected": 15.0,
+      "diff": 0.0,
+      "tolerance": 0.1,
+      "status": "PASS",
+      "unit": "mm"
+    },
+    {
+      "category": "String",
+      "name": "Slider rest offset",
+      "computed": 12.0,
+      "expected": 12.0,
+      "diff": 0.0,
+      "tolerance": 0.1,
+      "status": "PASS",
+      "unit": "mm"
+    },
+    {
+      "category": "String",
+      "name": "Slider offset_max",
+      "computed": 27.0,
+      "expected": 27.0,
+      "diff": 0.0,
+      "tolerance": 0.1,
+      "status": "PASS",
+      "unit": "mm"
+    },
+    {
+      "category": "String",
+      "name": "Slider offset_min",
+      "computed": -3.0,
+      "expected": -3.0,
+      "diff": 0.0,
+      "tolerance": 0.1,
+      "status": "PASS",
+      "unit": "mm"
+    },
+    {
+      "category": "String",
+      "name": "L_max (at offset_max)",
+      "computed": 57.5847,
+      "expected": 57.6,
+      "diff": 0.0153,
+      "tolerance": 0.5,
+      "status": "PASS",
+      "unit": "mm"
+    },
+    {
+      "category": "String",
+      "name": "L_min (at offset_min)",
+      "computed": 20.8806,
+      "expected": 20.9,
+      "diff": 0.0194,
+      "tolerance": 0.5,
+      "status": "PASS",
+      "unit": "mm"
+    },
+    {
+      "category": "String",
+      "name": "delta_L (block travel/tier)",
+      "computed": 36.7041,
+      "expected": 36.7,
+      "diff": 0.0041,
+      "tolerance": 0.5,
+      "status": "PASS",
+      "unit": "mm"
+    },
+    {
+      "category": "String",
+      "name": "Max string angle from vertical",
+      "computed": 69.6769,
+      "expected": 69.7,
+      "diff": 0.0231,
+      "tolerance": 0.5,
+      "status": "PASS",
+      "unit": "deg"
+    },
+    {
+      "category": "String",
+      "name": "String angle < 75\u00b0 (acceptable)",
+      "computed": 69.6769,
+      "expected": "[0, 75]",
+      "status": "PASS",
+      "unit": "deg"
+    },
+    {
+      "category": "Force",
+      "name": "Friction efficiency",
+      "computed": 62.3963,
+      "expected": 61.8,
+      "diff": 0.5963,
+      "tolerance": 1.0,
+      "status": "PASS",
+      "unit": "%"
+    },
+    {
+      "category": "Force",
+      "name": "Block weight force",
+      "computed": 0.7848,
+      "expected": 0.785,
+      "diff": 0.0002,
+      "tolerance": 0.01,
+      "status": "PASS",
+      "unit": "N"
+    },
+    {
+      "category": "Force",
+      "name": "Return force at cam",
+      "computed": 0.4896859048777733,
+      "expected": null,
+      "status": "INFO",
+      "unit": "N"
+    },
+    {
+      "category": "Force",
+      "name": "Return SF (>1.5)",
+      "computed": 1.2479,
+      "expected": "> 1.5",
+      "status": "FAIL",
+      "unit": ""
+    },
+    {
+      "category": "Force",
+      "name": "Pull force per string (at cam)",
+      "computed": 1.2577675482689927,
+      "expected": null,
+      "status": "INFO",
+      "unit": "N"
+    },
+    {
+      "category": "Force",
+      "name": "Torque per helix (avg)",
+      "computed": 0.038034185287841006,
+      "expected": null,
+      "status": "INFO",
+      "unit": "Nm"
+    },
+    {
+      "category": "Force",
+      "name": "Total motor torque required",
+      "computed": 0.11410255586352303,
+      "expected": null,
+      "status": "INFO",
+      "unit": "Nm"
+    },
+    {
+      "category": "Force",
+      "name": "Motor safety factor (>1.5)",
+      "computed": 4.382,
+      "expected": "> 1.5",
+      "status": "PASS",
+      "unit": ""
+    },
+    {
+      "category": "Structural",
+      "name": "Shaft torsion",
+      "computed": 0.0277,
+      "expected": 0.025,
+      "diff": 0.0027,
+      "tolerance": 0.02,
+      "status": "PASS",
+      "unit": "deg/m"
+    },
+    {
+      "category": "Structural",
+      "name": "Shaft torsion < 1 deg/m",
+      "computed": 0.0277,
+      "expected": "[0, 1.0]",
+      "status": "PASS",
+      "unit": "deg/m"
+    },
+    {
+      "category": "Structural",
+      "name": "Arm slenderness (L/min_dim)",
+      "computed": 12.9643,
+      "expected": 13.9,
+      "diff": 0.9357,
+      "tolerance": 1.0,
+      "status": "PASS",
+      "unit": "ratio"
+    },
+    {
+      "category": "Structural",
+      "name": "Slenderness < 20:1",
+      "computed": 12.9643,
+      "expected": "[0, 20]",
+      "status": "PASS",
+      "unit": "ratio"
+    },
+    {
+      "category": "Structural",
+      "name": "Bearing load",
+      "computed": 2.5356123525227336,
+      "expected": null,
+      "status": "INFO",
+      "unit": "N"
+    },
+    {
+      "category": "Structural",
+      "name": "Bearing rated >> applied",
+      "computed": 1340.899,
+      "expected": "> 10",
+      "status": "PASS",
+      "unit": ""
+    },
+    {
+      "category": "Print",
+      "name": "Hex tier diameter vs bed",
+      "computed": 236,
+      "expected": "[0, 350]",
+      "status": "PASS",
+      "unit": "mm"
+    },
+    {
+      "category": "Print",
+      "name": "Frame ring diameter vs bed",
+      "computed": 260,
+      "expected": "[0, 350]",
+      "status": "PASS",
+      "unit": "mm"
+    },
+    {
+      "category": "Print",
+      "name": "Helix cam length vs bed Z",
+      "computed": 182.0,
+      "expected": "[0, 350]",
+      "status": "PASS",
+      "unit": "mm"
+    },
+    {
+      "category": "Print",
+      "name": "Channel wall >= min",
+      "computed": 2.5,
+      "expected": "> 1.2",
+      "status": "PASS",
+      "unit": "mm"
+    },
+    {
+      "category": "Print",
+      "name": "Rib thickness >= min",
+      "computed": 4.0,
+      "expected": "> 1.2",
+      "status": "PASS",
+      "unit": "mm"
+    },
+    {
+      "category": "Print",
+      "name": "End plate >= min",
+      "computed": 4.0,
+      "expected": "> 1.2",
+      "status": "PASS",
+      "unit": "mm"
+    }
+  ]
+}

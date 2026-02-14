@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>V5 Tier Overlap — 3 Rotations at 0°/120°/240°</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<style>
+body { margin: 0; background: #1a1a1a; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: monospace; }
+</style>
+</head>
+<body>
+<script>
+// ============================================================
+// V5 STRAIGHT-WALL TIER: eyelet positions at 0°/120°/240°
+//
+// LEFT:  All 3 tier grids overlaid (top view)
+// RIGHT: Only positions where ALL 3 tiers overlap = valid blocks
+//
+// Each tier has 5 channels with 3+4+5+4+3 = 19 eyelets.
+// Channels are straight, stacked along Y (in tier-local frame).
+// Tiers rotate 0°, 120°, 240° about Z.
+// ============================================================
+
+const N_CH = 5;
+const EYELET_COUNTS = [3, 4, 5, 4, 3];
+const EYELET_PITCH = 20;
+const STACK_OFFSET = 4.5;
+const SCALE = 2.5;  // pixels per mm
+const MATCH_TOL = 2.5; // mm tolerance for "overlap"
+
+// Channel Y centers
+const CH_YS = [];
+for (let i = 0; i < N_CH; i++) {
+  CH_YS.push((i - (N_CH - 1) / 2) * STACK_OFFSET);
+}
+
+// Hex
+const HEX_FTF = 116;
+const HEX_R = HEX_FTF / (2 * Math.cos(Math.PI / 6));
+
+// All eyelet positions in tier-local frame
+function getAllEyelets() {
+  let pts = [];
+  for (let ch = 0; ch < N_CH; ch++) {
+    let n = EYELET_COUNTS[ch];
+    for (let i = 0; i < n; i++) {
+      let ex = (i - (n - 1) / 2) * EYELET_PITCH;
+      pts.push({ x: ex, y: CH_YS[ch], ch: ch, idx: i });
+    }
+  }
+  return pts;
+}
+
+function rot2d(px, py, deg) {
+  let a = radians(deg);
+  return { x: px * cos(a) - py * sin(a), y: px * sin(a) + py * cos(a) };
+}
+
+function isInsideHex(px, py, r) {
+  let ftf = r * cos(PI / 6);
+  for (let i = 0; i < 6; i++) {
+    let a = radians(30 + i * 60);
+    if (cos(a) * px + sin(a) * py > ftf + 0.5) return false;
+  }
+  return true;
+}
+
+let allEyelets;
+let tier0, tier1, tier2;  // eyelets in global frame per tier
+let validBlocks;
+let tolSlider;
+
+function setup() {
+  createCanvas(1200, 700);
+  tolSlider = createSlider(0.5, 10, 2.5, 0.5);
+  tolSlider.position(width / 2 - 100, 28);
+  tolSlider.style('width', '200px');
+  tolSlider.input(recompute);
+
+  allEyelets = getAllEyelets();
+  recompute();
+}
+
+function recompute() {
+  let tol = tolSlider.value();
+
+  // Tier eyelets in global frame
+  tier0 = allEyelets.map(e => ({ ...e, gx: e.x, gy: e.y }));
+  tier1 = allEyelets.map(e => {
+    let r = rot2d(e.x, e.y, 120);
+    return { ...e, gx: r.x, gy: r.y };
+  });
+  tier2 = allEyelets.map(e => {
+    let r = rot2d(e.x, e.y, 240);
+    return { ...e, gx: r.x, gy: r.y };
+  });
+
+  // Find valid blocks: Tier 0 positions that match in Tier 1 AND Tier 2
+  validBlocks = [];
+  for (let e0 of tier0) {
+    // Check: does this position have a nearby eyelet in tier1 global?
+    let match1 = tier1.some(e1 =>
+      abs(e1.gx - e0.gx) < tol && abs(e1.gy - e0.gy) < tol);
+    let match2 = tier2.some(e2 =>
+      abs(e2.gx - e0.gx) < tol && abs(e2.gy - e0.gy) < tol);
+
+    if (match1 && match2 && isInsideHex(e0.gx, e0.gy, HEX_R - 2)) {
+      validBlocks.push(e0);
+    }
+  }
+
+  redraw();
+}
+
+function draw() {
+  background(25);
+  let tol = tolSlider.value();
+
+  // Title
+  fill(255); noStroke();
+  textAlign(CENTER, TOP);
+  textSize(16);
+  text("V5 Straight-Wall Tier — 3 Rotations Overlaid", width / 2, 5);
+  textSize(11);
+  fill(180);
+  text("Tolerance: " + tol.toFixed(1) + "mm", width / 2, 48);
+
+  // LEFT panel: all 3 tiers overlaid
+  let lx = 300, ly = 380;
+  drawPanel(lx, ly, "All 3 Tier Grids (top view)", true, false);
+
+  // RIGHT panel: valid blocks only
+  let rx = 900, ry = 380;
+  drawPanel(rx, ry, "Valid Blocks (" + validBlocks.length + " overlap all 3)", false, true);
+}
+
+function drawPanel(cx, cy, label, showAll, showValid) {
+  // Label
+  fill(220); noStroke();
+  textAlign(CENTER, TOP);
+  textSize(13);
+  text(label, cx, cy - HEX_R * SCALE - 30);
+
+  // Hex outline
+  stroke(100); strokeWeight(2); noFill();
+  drawHex(cx, cy, HEX_R * SCALE);
+
+  // Channel walls for Tier 0 (red, faint)
+  if (showAll) {
+    stroke(255, 60, 60, 60); strokeWeight(1);
+    for (let w = 0; w <= N_CH; w++) {
+      let wy = (w === 0) ? CH_YS[0] - 2.25 :
+               (w === N_CH) ? CH_YS[N_CH - 1] + 2.25 :
+               (CH_YS[w - 1] + CH_YS[w]) / 2;
+      let pts = clipLineToHex(cx, cy + wy * SCALE, 1, 0, cx, cy, HEX_R * SCALE);
+      if (pts) line(pts.x1, pts.y1, pts.x2, pts.y2);
+    }
+
+    // Channel walls for Tier 1 (green, faint)
+    push();
+    translate(cx, cy);
+    rotate(radians(120));
+    translate(-cx, -cy);
+    stroke(60, 200, 60, 60); strokeWeight(1);
+    for (let w = 0; w <= N_CH; w++) {
+      let wy = (w === 0) ? CH_YS[0] - 2.25 :
+               (w === N_CH) ? CH_YS[N_CH - 1] + 2.25 :
+               (CH_YS[w - 1] + CH_YS[w]) / 2;
+      let pts = clipLineToHex(cx, cy + wy * SCALE, 1, 0, cx, cy, HEX_R * SCALE);
+      if (pts) line(pts.x1, pts.y1, pts.x2, pts.y2);
+    }
+    pop();
+
+    // Channel walls for Tier 2 (blue, faint)
+    push();
+    translate(cx, cy);
+    rotate(radians(240));
+    translate(-cx, -cy);
+    stroke(60, 140, 255, 60); strokeWeight(1);
+    for (let w = 0; w <= N_CH; w++) {
+      let wy = (w === 0) ? CH_YS[0] - 2.25 :
+               (w === N_CH) ? CH_YS[N_CH - 1] + 2.25 :
+               (CH_YS[w - 1] + CH_YS[w]) / 2;
+      let pts = clipLineToHex(cx, cy + wy * SCALE, 1, 0, cx, cy, HEX_R * SCALE);
+      if (pts) line(pts.x1, pts.y1, pts.x2, pts.y2);
+    }
+    pop();
+  }
+
+  // Tier 0 eyelets (red)
+  if (showAll) {
+    noStroke();
+    fill(255, 80, 80, 150);
+    for (let e of tier0) {
+      ellipse(cx + e.gx * SCALE, cy + e.gy * SCALE, 8, 8);
+    }
+
+    // Tier 1 eyelets (green)
+    fill(80, 220, 80, 150);
+    for (let e of tier1) {
+      ellipse(cx + e.gx * SCALE, cy + e.gy * SCALE, 8, 8);
+    }
+
+    // Tier 2 eyelets (blue)
+    fill(80, 140, 255, 150);
+    for (let e of tier2) {
+      ellipse(cx + e.gx * SCALE, cy + e.gy * SCALE, 8, 8);
+    }
+  }
+
+  // Valid blocks (bright yellow)
+  if (showValid) {
+    // Show faint tier grids as context
+    noStroke();
+    fill(255, 80, 80, 40);
+    for (let e of tier0)
+      ellipse(cx + e.gx * SCALE, cy + e.gy * SCALE, 6, 6);
+    fill(80, 220, 80, 40);
+    for (let e of tier1)
+      ellipse(cx + e.gx * SCALE, cy + e.gy * SCALE, 6, 6);
+    fill(80, 140, 255, 40);
+    for (let e of tier2)
+      ellipse(cx + e.gx * SCALE, cy + e.gy * SCALE, 6, 6);
+
+    // Valid blocks
+    noStroke();
+    fill(255, 255, 100, 240);
+    for (let b of validBlocks) {
+      ellipse(cx + b.gx * SCALE, cy + b.gy * SCALE, 14, 14);
+    }
+    // Number them
+    fill(0); textAlign(CENTER, CENTER); textSize(8);
+    for (let i = 0; i < validBlocks.length; i++) {
+      let b = validBlocks[i];
+      text(i + 1, cx + b.gx * SCALE, cy + b.gy * SCALE);
+    }
+  }
+
+  // Legend
+  textAlign(LEFT, CENTER); textSize(10);
+  let ly0 = cy + HEX_R * SCALE + 15;
+  if (showAll) {
+    fill(255, 80, 80); noStroke();
+    ellipse(cx - 120, ly0, 8, 8);
+    fill(200); text("Tier 1 (0°) — " + allEyelets.length + " eyelets", cx - 110, ly0);
+
+    fill(80, 220, 80);
+    ellipse(cx - 120, ly0 + 16, 8, 8);
+    fill(200); text("Tier 2 (120°)", cx - 110, ly0 + 16);
+
+    fill(80, 140, 255);
+    ellipse(cx - 120, ly0 + 32, 8, 8);
+    fill(200); text("Tier 3 (240°)", cx - 110, ly0 + 32);
+  }
+  if (showValid) {
+    fill(255, 255, 100);
+    ellipse(cx - 120, ly0, 10, 10);
+    fill(200); text(validBlocks.length + " valid blocks (all 3 tiers overlap)", cx - 108, ly0);
+    fill(150); textSize(9);
+    text("Slide tolerance to see more/fewer matches", cx - 108, ly0 + 16);
+  }
+
+  // Count
+  textAlign(CENTER, TOP); textSize(12);
+  fill(validBlocks.length > 0 ? [80, 255, 80] : [255, 80, 80]);
+  text(validBlocks.length + " valid blocks", cx, cy + HEX_R * SCALE + 70);
+}
+
+function drawHex(cx, cy, r) {
+  beginShape();
+  for (let i = 0; i < 6; i++) {
+    let a = radians(30 + i * 60);
+    vertex(cx + r * cos(a), cy + r * sin(a));
+  }
+  endShape(CLOSE);
+}
+
+function clipLineToHex(mx, my, dx, dy, cx, cy, r) {
+  let tmin = -9999, tmax = 9999;
+  for (let i = 0; i < 6; i++) {
+    let a = radians(30 + i * 60);
+    let nx = cos(a), ny = sin(a);
+    let d = r * cos(PI / 6);
+    let num = d - (nx * (mx - cx) + ny * (my - cy));
+    let den = nx * dx + ny * dy;
+    if (abs(den) < 0.0001) {
+      if (num < 0) return null;
+    } else {
+      let t = num / den;
+      if (den > 0) tmax = min(tmax, t);
+      else tmin = max(tmin, t);
+    }
+  }
+  if (tmin > tmax) return null;
+  return { x1: mx + tmin * dx, y1: my + tmin * dy, x2: mx + tmax * dx, y2: my + tmax * dy };
+}
+</script>
+</body>
+</html>

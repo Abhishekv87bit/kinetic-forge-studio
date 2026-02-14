@@ -1,0 +1,196 @@
+{
+  "meta": {
+    "version": "3.0",
+    "units": "mm",
+    "project": "Triple Helix MVP",
+    "description": "Single source of truth for all Triple Helix parameters. Generated from V3 .scad files."
+  },
+
+  "hex": {
+    "HEX_R": 118,
+    "WALL_MARGIN": 8,
+    "COL_PITCH": 12,
+    "_doc": "HEX_FF = HEX_R * sqrt(3) = 204.3, HEX_C2C = 236, HEX_LONGEST_DIA = 236"
+  },
+
+  "channels": {
+    "STACK_OFFSET": 14.0,
+    "WALL_THICKNESS": 2.5,
+    "ECCENTRICITY": 15.0,
+    "SLIDER_BIAS": 0.80,
+    "_doc": "NUM_CHANNELS = 2*floor((HEX_FF/2 - SO/2) / SO) + 1 = 13, CH_GAP = SO - WT = 11.5"
+  },
+
+  "housing": {
+    "FP_OD": 8.0,
+    "SP_OD": 8.0,
+    "FP_AXLE_DIA": 3.0,
+    "SP_AXLE_DIA": 3.0,
+    "MIN_ROPE_GAP": 2.0,
+    "HOUSING_HEIGHT": 30.0,
+    "PIP_CLEARANCE": 0.3,
+    "PIP_Z_GAP": 0.3,
+    "_doc": "FP_ROW_Y = (FP_OD+SP_OD)/2 + MIN_ROPE_GAP = 10mm, HOUSING_HEIGHT = 2*FP_ROW_Y + FP_OD + 2 = 30mm"
+  },
+
+  "pulleys": {
+    "FP_WIDTH": 10.5,
+    "SP_WIDTH": 4.0,
+    "S_GAP": 5.0,
+    "SLIDER_PLATE_Y": 10.0,
+    "_doc": "FP_WIDTH = CH_GAP - 1.0 = 10.5mm, SP_WIDTH = S_GAP - 1.0 = 4.0mm"
+  },
+
+  "guide_rail": {
+    "RAIL_HEIGHT": 4.0,
+    "RAIL_DEPTH": 1.0,
+    "RAIL_TOLERANCE": 0.4,
+    "END_STOP_W": 5.0,
+    "WINDOW_WIDTH": 20.0,
+    "WINDOW_HEIGHT": 16.0
+  },
+
+  "bearing": {
+    "BEARING_ID": 10.0,
+    "BEARING_OD": 19.0,
+    "BEARING_W": 5.0,
+    "RATED_DYNAMIC_LOAD_N": 3400,
+    "_doc": "6800ZZ (10/19/5mm)"
+  },
+
+  "cam": {
+    "SHAFT_DIA": 10.0,
+    "CENTER_PIN_DIA": 5.0,
+    "SETSCREW_DIA": 3.0,
+    "COLLAR_THICK": 9.0,
+    "HUB_PRESS_FIT": 0.1,
+    "SOFT_STOP_ANGLE": 15,
+    "_doc": "AXIAL_PITCH = BEARING_W + COLLAR_THICK = 14mm = STACK_OFFSET"
+  },
+
+  "rib": {
+    "RIB_ARM_LENGTH": 20.0,
+    "RIB_THICK": 4.0,
+    "RIB_ARM_WIDTH": 5.0,
+    "RIB_TAPER_TIP": 3.0,
+    "RIB_EYELET_DIA": 1.5,
+    "RIB_RING_OD": 27.0,
+    "GUIDE_SLOT_W": 2.0,
+    "GUIDE_SLOT_H": 15.0
+  },
+
+  "end_plate": {
+    "END_PLATE_DIA": 22.0,
+    "END_PLATE_THICK": 4.0
+  },
+
+  "gt2": {
+    "GT2_TEETH": 20,
+    "GT2_BELT_W": 6,
+    "GT2_BOSS_H": 8,
+    "_doc": "GT2_PD = GT2_TEETH * 2 / PI = 12.73mm, GT2_OD = GT2_PD + 1.5 = 14.2mm"
+  },
+
+  "spacer": {
+    "COLLAR_OD": 12.0,
+    "COLLAR_BORE": 5.5
+  },
+
+  "frame": {
+    "FRAME_RING_H": 12,
+    "FRAME_RING_W": 10,
+    "HEX_LONGEST_DIA": 236,
+    "STAR_TIP_R": 354,
+    "V_ANGLE": 74,
+    "ARM_W": 20,
+    "ARM_H": 14,
+    "ARM_CHAMFER": 2,
+    "STUB_LENGTH": 30,
+    "STUB_INWARD": 8,
+    "STUB_W": 25,
+    "STUB_H": 12,
+    "CORRIDOR_GAP": 78,
+    "CONVERGE_PCT": 60,
+    "STUB_LINK_W": 8,
+    "STUB_LINK_H": 6,
+    "LEDGE_WIDTH": 6,
+    "LEDGE_THICK": 3,
+    "_doc": "FRAME_RING_R_IN = HEX_R+2 = 120, R_OUT = 130, HEXAGRAM_INNER_R = STAR_TIP_R/sqrt(3) = 204.4"
+  },
+
+  "helix": {
+    "HELIX_ANGLES": [180, 300, 60],
+    "_doc": "HELIX_R = HEXAGRAM_INNER_R + CORRIDOR_GAP/(2*tan(30)) = 271.9mm, HELIX_Z computed from convergence"
+  },
+
+  "drive": {
+    "MOTOR_TORQUE_NM": 0.5,
+    "MOTOR_ANGLE": 240,
+    "IDLER_DIA": 12,
+    "XFER_SHAFT_DIA": 10,
+    "BEVEL_GEAR_PD": 20,
+    "BEVEL_GEAR_H": 10,
+    "_doc": "MOTOR_R = HELIX_R + 60, MOTOR_Z = LOWER_RING_CENTER_Z, transfer shaft at LOWER_RING_CENTER_Z"
+  },
+
+  "dampener": {
+    "DAMPENER_LENGTH": 20,
+    "DAMPENER_DIA": 6,
+    "DAMPENER_BORE": 1.5,
+    "_doc": "DAMPENER_R = HEX_R + DAMPENER_LENGTH/2 + 5 = 133mm"
+  },
+
+  "mount": {
+    "MOUNT_WALL": 4,
+    "MOUNT_TAB_W": 15,
+    "MOUNT_TAB_BOLT": 4.2,
+    "SHAFT_CLEARANCE": 10.5,
+    "MOUNT_BRACKET_W": 40,
+    "MOUNT_BRACKET_H": 50,
+    "_doc": "MOUNT_OD = BEARING_OD + 2*MOUNT_WALL = 27mm, MOUNT_PLATE_T = BEARING_W + 1.5 = 6.5mm"
+  },
+
+  "tiers": {
+    "NUM_TIERS": 3,
+    "TIER_ANGLES": [0, 120, 240],
+    "ANCHOR_THICK": 5.0,
+    "GP1_THICK": 3.0,
+    "GP2_THICK": 5.0,
+    "GUIDE_PLATE_GAP": 15.0,
+    "_doc": "TIER_PITCH = HOUSING_HEIGHT = 30mm"
+  },
+
+  "string": {
+    "STRING_DIA": 0.5,
+    "FRICTION_PER_ROLLER": 0.95,
+    "FRICTION_PER_BUSHING": 0.995,
+    "NUM_ROLLERS": 9,
+    "NUM_BUSHINGS": 2,
+    "_doc": "Material: 0.5mm braided Dyneema. Breaking strength: 45-60N"
+  },
+
+  "block": {
+    "HEX_RINGS": 2,
+    "NUM_BLOCKS": 19,
+    "BLOCK_WEIGHT_G": 80,
+    "BLOCK_FF": 30,
+    "BLOCK_DROP": 100.0,
+    "_doc": "19 hex blocks (2 rings around center), 80g each (PLA shell filled with steel shot)"
+  },
+
+  "print": {
+    "BED_X": 350,
+    "BED_Y": 350,
+    "BED_Z": 350,
+    "MIN_WALL": 1.2,
+    "CLEARANCE": 0.3,
+    "LAYER_HEIGHT": 0.2,
+    "PERIMETERS": 4,
+    "_doc": "Creality K2 Plus print volume. PLA+ for mechanisms, PETG for frame."
+  },
+
+  "frame_post": {
+    "POST_DIA": 4.5,
+    "_doc": "M4 post clearance (4mm rod + 0.5mm gap)"
+  }
+}

@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Margolin Triple Helix — 3D Wave Sculpture</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<style>
+  body { margin: 0; background: #0a0a10; overflow: hidden; font-family: 'Courier New', monospace; }
+  canvas { display: block; }
+  #hud { position: fixed; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 10; }
+  #hud-top { position: absolute; top: 8px; left: 8px; background: rgba(10,10,15,0.85); padding: 8px 12px; border-radius: 4px; }
+  #hud-right { position: absolute; top: 8px; right: 8px; background: rgba(10,10,15,0.8); padding: 8px 12px; border-radius: 4px; width: 230px; }
+  #hud-bottom { position: absolute; bottom: 8px; left: 8px; background: rgba(10,10,15,0.85); padding: 5px 12px; border-radius: 4px; }
+  .hud-title { color: #d8b43a; font-size: 13px; font-weight: bold; margin-bottom: 4px; }
+  .hud-text { color: #82828e; font-size: 9px; line-height: 1.5; }
+  .hud-item { font-size: 9px; line-height: 1.6; }
+  .c-red { color: #d23732; } .c-green { color: #32aa4b; } .c-blue { color: #3769d7; }
+  .c-steel { color: #55555f; } .c-wood { color: #be9b69; } .c-gold { color: #d8b43a; }
+  .c-dim { color: #9b9baf; } .c-string { color: #2d2d37; }
+
+  /* Helix config panel */
+  #helix-config {
+    position: fixed; bottom: 40px; left: 8px;
+    background: rgba(10,10,15,0.92); padding: 10px 14px; border-radius: 6px;
+    z-index: 20; pointer-events: auto; min-width: 320px;
+    border: 1px solid rgba(216,180,58,0.3);
+    display: none;
+  }
+  #helix-config.visible { display: block; }
+  #helix-config .cfg-title { color: #d8b43a; font-size: 12px; font-weight: bold; margin-bottom: 8px; }
+  #helix-config .cfg-row { display: flex; align-items: center; margin: 4px 0; gap: 6px; }
+  #helix-config label { color: #9b9baf; font-size: 10px; min-width: 140px; font-family: 'Courier New', monospace; }
+  #helix-config input[type="range"] {
+    width: 120px; height: 4px; accent-color: #d8b43a; cursor: pointer;
+  }
+  #helix-config .val { color: #d8b43a; font-size: 10px; min-width: 45px; text-align: right; font-family: 'Courier New', monospace; }
+  #helix-config .helix-section { margin: 6px 0; padding: 4px 0; border-top: 1px solid rgba(255,255,255,0.06); }
+  #helix-config .helix-label-red { color: #d23732; font-size: 11px; font-weight: bold; }
+  #helix-config .helix-label-green { color: #32aa4b; font-size: 11px; font-weight: bold; }
+  #helix-config .helix-label-blue { color: #3769d7; font-size: 11px; font-weight: bold; }
+  #helix-config button {
+    background: rgba(216,180,58,0.15); border: 1px solid rgba(216,180,58,0.4);
+    color: #d8b43a; padding: 3px 10px; border-radius: 3px; cursor: pointer;
+    font-size: 10px; font-family: 'Courier New', monospace; margin-top: 6px;
+  }
+  #helix-config button:hover { background: rgba(216,180,58,0.3); }
+</style>
+</head>
+<body>
+<div id="hud">
+  <div id="hud-top">
+    <div class="hud-title">MARGOLIN TRIPLE HELIX — 3D WAVE SCULPTURE</div>
+    <div class="hud-text">[1]Full [2]Blocks [3]Helix | [SPACE]Pause [±]Speed | Drag orbit</div>
+    <div class="hud-text">[S]trings [F]rame [M]atrix [H]elix [B]locks [W]ave [E]xplode [C]onfig</div>
+  </div>
+  <div id="hud-right">
+    <div class="hud-title">ASSEMBLY (top → bottom)</div>
+    <div class="hud-item c-steel">─ Frame overhead structure</div>
+    <div class="hud-item c-red">─ Helix 1 (0°) → ribs → Tier 1 sliders</div>
+    <div class="hud-item c-green">─ Helix 2 (120°) → ribs → Tier 2 sliders</div>
+    <div class="hud-item c-blue">─ Helix 3 (240°) → ribs → Tier 3 sliders</div>
+    <div class="hud-item c-dim">─ Matrix: 3 hex plates, each at 120°</div>
+    <div class="hud-item c-dim" style="padding-left:10px">Each helix → 2 adjacent edges (vertex)</div>
+    <div class="hud-item" style="color:#2d2d37">─ Strings: 30×, 9 pulleys (3/tier)</div>
+    <div class="hud-item c-wood">─ Blocks: 30 basswood hex, 70g gravity</div>
+    <div class="hud-item" style="margin-top:6px"><span class="c-gold">WAVE:</span> <span class="c-dim">h = Σ A·sin(k·dᵢ - ωt + φᵢ)</span></div>
+    <div class="hud-item c-dim">30 discs × 12° = 360° twist</div>
+    <div class="hud-item c-dim">η = 0.95⁹ ≈ 63% efficiency</div>
+  </div>
+  <div id="hud-bottom">
+    <span id="status" class="hud-text">▶ RUNNING | View 1 | 30 blocks</span>
+    <span class="hud-text" style="margin-left: 12px; color: #d8b43a; cursor: pointer; pointer-events: auto;" onclick="toggleHelixConfig()">[C] HELIX CONFIG</span>
+  </div>
+</div>
+
+<!-- Helix Camshaft Configuration Panel -->
+<div id="helix-config">
+  <div class="cfg-title">⚙ HELIX CAMSHAFT CONFIGURATION</div>
+  <div style="color:#82828e; font-size:9px; margin-bottom:8px;">
+    Adjust shaft rotation & position. Screenshot when correct!<br>
+    Press [C] to toggle this panel.
+  </div>
+
+  <!-- Helix 0 (Red) -->
+  <div class="helix-section">
+    <span class="helix-label-red">HELIX 0 (Red)</span>
+    <div class="cfg-row">
+      <label>Normal angle (pos°):</label>
+      <input type="range" id="h0-normal" min="-180" max="180" value="114" step="1" oninput="updateHelixConfig()">
+      <span class="val" id="h0-normal-val">114°</span>
+    </div>
+    <div class="cfg-row">
+      <label>Shaft rotation (°):</label>
+      <input type="range" id="h0-shaft" min="-180" max="180" value="-80" step="1" oninput="updateHelixConfig()">
+      <span class="val" id="h0-shaft-val">-80°</span>
+    </div>
+    <div class="cfg-row">
+      <label>Rib direction (°):</label>
+      <input type="range" id="h0-rib" min="-180" max="180" value="10" step="1" oninput="updateHelixConfig()">
+      <span class="val" id="h0-rib-val">10°</span>
+    </div>
+  </div>
+
+  <!-- Helix 1 (Green) -->
+  <div class="helix-section">
+    <span class="helix-label-green">HELIX 1 (Green)</span>
+    <div class="cfg-row">
+      <label>Normal angle (pos°):</label>
+      <input type="range" id="h1-normal" min="-180" max="180" value="-121" step="1" oninput="updateHelixConfig()">
+      <span class="val" id="h1-normal-val">-121°</span>
+    </div>
+    <div class="cfg-row">
+      <label>Shaft rotation (°):</label>
+      <input type="range" id="h1-shaft" min="-180" max="180" value="-87" step="1" oninput="updateHelixConfig()">
+      <span class="val" id="h1-shaft-val">-87°</span>
+    </div>
+    <div class="cfg-row">
+      <label>Rib direction (°):</label>
+      <input type="range" id="h1-rib" min="-180" max="180" value="0" step="1" oninput="updateHelixConfig()">
+      <span class="val" id="h1-rib-val">0°</span>
+    </div>
+  </div>
+
+  <!-- Helix 2 (Blue) -->
+  <div class="helix-section">
+    <span class="helix-label-blue">HELIX 2 (Blue)</span>
+    <div class="cfg-row">
+      <label>Normal angle (pos°):</label>
+      <input type="range" id="h2-normal" min="-180" max="180" value="-3" step="1" oninput="updateHelixConfig()">
+      <span class="val" id="h2-normal-val">-3°</span>
+    </div>
+    <div class="cfg-row">
+      <label>Shaft rotation (°):</label>
+      <input type="range" id="h2-shaft" min="-180" max="180" value="-83" step="1" oninput="updateHelixConfig()">
+      <span class="val" id="h2-shaft-val">-83°</span>
+    </div>
+    <div class="cfg-row">
+      <label>Rib direction (°):</label>
+      <input type="range" id="h2-rib" min="-180" max="180" value="-3" step="1" oninput="updateHelixConfig()">
+      <span class="val" id="h2-rib-val">-3°</span>
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 8px;">
+    <button onclick="resetHelixConfig()">RESET TO DEFAULT</button>
+    <button onclick="copyHelixConfig()">COPY VALUES</button>
+  </div>
+  <div id="config-copied" style="color:#32aa4b; font-size:9px; margin-top:4px; display:none;">✓ Copied to clipboard!</div>
+</div>
+<script>
+// ============================================================
+// MARGOLIN TRIPLE HELIX — 3D WAVE SCULPTURE
+// ============================================================
+//
+// p5.js WEBGL: X+ right, Y+ DOWN (gravity), Z+ toward viewer
+//
+// ASSEMBLY (looking from front):
+//
+//   TOP OF FRAME (ceiling/overhead mount)
+//       |
+//   CENTRAL HEXAGONAL MATRIX — 3 tiers stacked vertically
+//       Each tier has its own helix camshaft AT THE SAME HEIGHT:
+//
+//       TIER 1 + HELIX 0 (Red)   — Y = MATRIX_TOP_Y
+//         Helix centered on a hex VERTEX, ribs fan across 2 adjacent edges
+//       TIER 2 + HELIX 1 (Green) — Y = MATRIX_TOP_Y + TIER_SPACING
+//         Same: vertex-centered, sliders across 2 edges from another vertex
+//       TIER 3 + HELIX 2 (Blue)  — Y = MATRIX_TOP_Y + 2*TIER_SPACING
+//         Same pattern, third vertex (120° apart)
+//
+//       Each tier: sliders poke IN from 2 adjacent hex edges (driven by its helix)
+//       |
+//   STRINGS thread down through all 3 tiers
+//       At each tier: redirect_in → slider U-turn → redirect_out
+//       9 pulleys per string (3 per tier)
+//       |
+//   BLOCKS hang at bottom by GRAVITY
+//       30 basswood hex blocks, ~70g each
+//       Wave surface = sum of 3 slider contributions
+//
+// CONTROLS:
+//   Mouse drag: orbit   Scroll: zoom
+//   [1-3] Camera presets   [SPACE] Pause   [+/-] Speed
+//   [S]trings [F]rame [M]atrix [H]elix [B]locks [W]ave [E]xplode
+// ============================================================
+
+let t = 0;
+let speed = 0.003;
+let paused = false;
+
+let viewMode = 1;
+let showStrings = true;
+let showFrame = true;
+let showMatrix = true;
+let showHelixes = true;
+let showBlocks = true;
+let showWaveSurface = true;
+let exploded = false;
+let explodeAmt = 0;
+
+// Camera
+let camAngle = Math.PI / 5;
+let camElev = -0.35;
+let camDist = 1000;
+
+// ---- Helix Camshaft Configuration (user-adjustable) ----
+// normalOffsetDeg: additional rotation to the edge normal angle (where helix sits around hex)
+// shaftOffsetDeg: additional rotation of the shaft about its own axis
+// ribOffsetDeg: additional rotation of rib direction
+var helixConfig = [
+  { normalDeg: 114,   shaftDeg: -80, ribDeg: 10 },  // Helix 0 (Red)   — user-tuned
+  { normalDeg: -121,  shaftDeg: -87, ribDeg: 0 },   // Helix 1 (Green) — user-tuned
+  { normalDeg: -3,    shaftDeg: -83, ribDeg: -3 },   // Helix 2 (Blue)  — user-tuned
+];
+
+function toggleHelixConfig() {
+  let panel = document.getElementById('helix-config');
+  panel.classList.toggle('visible');
+}
+
+function updateHelixConfig() {
+  for (let i = 0; i < 3; i++) {
+    let nEl = document.getElementById('h' + i + '-normal');
+    let sEl = document.getElementById('h' + i + '-shaft');
+    let rEl = document.getElementById('h' + i + '-rib');
+    helixConfig[i].normalDeg = parseInt(nEl.value);
+    helixConfig[i].shaftDeg = parseInt(sEl.value);
+    helixConfig[i].ribDeg = parseInt(rEl.value);
+    document.getElementById('h' + i + '-normal-val').textContent = nEl.value + '°';
+    document.getElementById('h' + i + '-shaft-val').textContent = sEl.value + '°';
+    document.getElementById('h' + i + '-rib-val').textContent = rEl.value + '°';
+  }
+}
+
+function resetHelixConfig() {
+  let defaults = [
+    { normalDeg: 114, shaftDeg: -80, ribDeg: 10 },
+    { normalDeg: -121, shaftDeg: -87, ribDeg: 0 },
+    { normalDeg: -3, shaftDeg: -83, ribDeg: -3 },
+  ];
+  for (let i = 0; i < 3; i++) {
+    helixConfig[i] = { ...defaults[i] };
+    document.getElementById('h' + i + '-normal').value = defaults[i].normalDeg;
+    document.getElementById('h' + i + '-shaft').value = defaults[i].shaftDeg;
+    document.getElementById('h' + i + '-rib').value = defaults[i].ribDeg;
+  }
+  updateHelixConfig();
+}
+
+function copyHelixConfig() {
+  let txt = 'HELIX CONFIG:\n';
+  let names = ['Red', 'Green', 'Blue'];
+  for (let i = 0; i < 3; i++) {
+    txt += '  Helix ' + i + ' (' + names[i] + '): normal=' + helixConfig[i].normalDeg +
+           '° shaft=' + helixConfig[i].shaftDeg +
+           '° rib=' + helixConfig[i].ribDeg + '°\n';
+  }
+  navigator.clipboard.writeText(txt).then(function() {
+    let el = document.getElementById('config-copied');
+    el.style.display = 'block';
+    setTimeout(function() { el.style.display = 'none'; }, 2000);
+  });
+}
+let isDragging = false;
+let prevMX, prevMY;
+
+// ---- Physical dimensions (mm as scene units) ----
+const NUM_DISCS = 30;
+const TWIST_DEG = 12;
+const ECCENTRIC = 12;        // cam throw ±12mm
+const DISC_PITCH = 8;
+const HELIX_LEN = NUM_DISCS * DISC_PITCH; // 240mm
+const BEARING_OD = 65;
+const RIB_LENGTH = 50;       // gravity rib length
+
+// Layout (Y+ = down)
+const FRAME_TOP_Y = -50;     // top beam
+const HELIX_RADIUS = 200;    // distance from center axis to each helix shaft
+
+const MATRIX_TOP_Y = 130;    // top of tier 1
+const TIER_SPACING = 50;     // between tier plates
+const MATRIX_HEX_R = 100;    // hex plate circumradius (center to vertex)
+const SLIDER_BASELINE = 20;  // rest offset of slider from plate edge
+
+// Each helix sits at its tier height — ribs push/pull sliders HORIZONTALLY
+function helixY(hi) { return MATRIX_TOP_Y + hi * TIER_SPACING; }
+
+const BLOCK_Y = 450;         // average block hang position
+const GROUND_Y = 600;        // floor
+
+const BLOCK_HEX_R = 9;
+const BLOCK_DEPTH = 7;
+
+// Colors
+const C_STEEL    = [85, 85, 95];
+const C_ALUMINUM = [165, 165, 180];
+const C_HELIX    = [[210, 55, 50], [50, 170, 75], [55, 105, 215]];
+const C_POLYCARB = [100, 110, 130, 45];
+const C_WOOD     = [190, 155, 105];
+const C_GOLD     = [215, 175, 55];
+const C_RIB      = [155, 155, 165];
+const C_STRING_COL = [35, 35, 40];
+
+// Block positions (hex grid in XZ)
+var blocks = [];
+var blockH = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight, WEBGL);
+  generateBlockGrid();
+}
+function windowResized() { resizeCanvas(windowWidth, windowHeight); }
+
+function generateBlockGrid() {
+  blocks = [];
+  let sp = 24;
+  let rings = 3;
+  for (let q = -rings; q <= rings; q++) {
+    for (let r = -rings; r <= rings; r++) {
+      if (abs(q + r) <= rings) {
+        blocks.push({
+          x: sp * (q + r * 0.5),
+          z: sp * (r * sqrt(3) / 2)
+        });
+      }
+    }
+  }
+  while (blocks.length > 30) {
+    let maxD = 0, maxI = 0;
+    for (let i = 0; i < blocks.length; i++) {
+      let d = blocks[i].x * blocks[i].x + blocks[i].z * blocks[i].z;
+      if (d > maxD) { maxD = d; maxI = i; }
+    }
+    blocks.splice(maxI, 1);
+  }
+  blockH = new Array(blocks.length).fill(0);
+}
+
+// ============================================================
+// DRAW
+// ============================================================
+function draw() {
+  background(10, 10, 14);
+  if (!paused) t += speed;
+  explodeAmt += ((exploded ? 1 : 0) - explodeAmt) * 0.06;
+
+  // Wave superposition: 3 helixes, each propagating along its config direction
+  for (let i = 0; i < blocks.length; i++) {
+    let h = 0;
+    for (let hi = 0; hi < 3; hi++) {
+      let dir = radians(helixConfig[hi].normalDeg);
+      let proj = blocks[i].x * cos(dir) + blocks[i].z * sin(dir);
+      h += ECCENTRIC * sin(0.04 * proj - t * TWO_PI + hi * TWO_PI / 3);
+    }
+    blockH[i] = h; // positive = UP (block Y decreases)
+  }
+
+  setupCamera();
+
+  ambientLight(55, 52, 58);
+  directionalLight(175, 170, 155, 0.3, 0.8, -0.3);
+  directionalLight(45, 60, 105, -0.4, -0.3, 0.6);
+  pointLight(140, 130, 95, 0, MATRIX_TOP_Y - 50, 0);
+
+  if (showFrame)       drawFrame();
+  if (showHelixes)     drawHelixes();
+  if (showMatrix)      drawMatrixTiers();
+  if (showStrings)     drawAllStrings();
+  if (showBlocks)      drawAllBlocks();
+  if (showWaveSurface) drawWaveMesh();
+
+  // Ground shadow
+  push();
+  translate(0, GROUND_Y + 5, 0);
+  rotateX(PI / 2);
+  noStroke(); fill(0, 0, 0, 20);
+  ellipse(0, 0, 500, 500);
+  pop();
+
+  // Update HTML HUD status
+  let statusEl = document.getElementById('status');
+  if (statusEl) {
+    statusEl.textContent = (paused ? '⏸ PAUSED' : '▶ RUNNING') +
+      '  |  View ' + viewMode +
+      '  |  ' + blocks.length + ' blocks' +
+      '  |  ' + (exploded ? 'EXPLODED' : 'ASSEMBLED');
+  }
+}
+
+// ============================================================
+// CAMERA
+// ============================================================
+function setupCamera() {
+  if (!isDragging) {
+    let rates = [0.002, 0.0015, 0.003];
+    camAngle += rates[viewMode - 1];
+  }
+
+  let lookY, dist;
+  switch (viewMode) {
+    case 1: lookY = 220; dist = camDist; break;       // full sculpture
+    case 2: lookY = 340; dist = camDist * 0.6; break;  // matrix + blocks
+    case 3: lookY = helixY(1); dist = camDist * 0.45; break; // helix detail (middle tier)
+  }
+
+  let cx = cos(camAngle) * dist;
+  let cz = sin(camAngle) * dist;
+  // Camera slightly above the look point
+  let cy = lookY - 150 + sin(camElev) * dist * 0.3;
+  // up = (0, 1, 0): standard up. With Y+ = down in world,
+  // this makes larger Y values appear at TOP of screen.
+  // We want frame top (small Y) at screen top, blocks (large Y) at screen bottom.
+  // So we NEGATE all Y coords in the scene instead.
+  camera(cx, cy, cz, 0, lookY, 0, 0, 1, 0);
+}
+
+function mousePressed()  { isDragging = true; prevMX = mouseX; prevMY = mouseY; }
+function mouseReleased() { isDragging = false; }
+function mouseDragged()  {
+  if (isDragging) {
+    camAngle += (mouseX - prevMX) * 0.005;
+    camElev = constrain(camElev + (mouseY - prevMY) * 0.003, -1.2, 0.8);
+    prevMX = mouseX; prevMY = mouseY;
+  }
+}
+function mouseWheel(e) { camDist = constrain(camDist + e.delta * 0.8, 300, 2200); return false; }
+
+// ============================================================
+// FRAME — Steel structure
+// ============================================================
+function drawFrame() {
+  push();
+  fill(C_STEEL); specularMaterial(C_STEEL[0], C_STEEL[1], C_STEEL[2]); shininess(40);
+  let legR = HELIX_RADIUS + 40;
+
+  // 6 legs (hex arrangement for the hex matrix)
+  for (let i = 0; i < 6; i++) {
+    let a = i * PI / 3 + PI / 6;
+    let lx = cos(a) * legR;
+    let lz = sin(a) * legR;
+    drawBoxAt(lx, (FRAME_TOP_Y + GROUND_Y) / 2, lz, 6, GROUND_Y - FRAME_TOP_Y, 6);
+  }
+
+  // Top hex ring
+  for (let i = 0; i < 6; i++) {
+    let a1 = i * PI / 3 + PI / 6;
+    let a2 = ((i + 1) % 6) * PI / 3 + PI / 6;
+    drawBeam(cos(a1)*legR, FRAME_TOP_Y, sin(a1)*legR, cos(a2)*legR, FRAME_TOP_Y, sin(a2)*legR, 5);
+  }
+
+  // Bottom hex ring
+  for (let i = 0; i < 6; i++) {
+    let a1 = i * PI / 3 + PI / 6;
+    let a2 = ((i + 1) % 6) * PI / 3 + PI / 6;
+    drawBeam(cos(a1)*legR, GROUND_Y, sin(a1)*legR, cos(a2)*legR, GROUND_Y, sin(a2)*legR, 5);
+  }
+
+  // 3 radial arms to helix mounts — each arm drops to its tier height
+  for (let hi = 0; hi < 3; hi++) {
+    let na = radians(helixConfig[hi].normalDeg);
+    let dist = MATRIX_HEX_R + 30; // vertex radius + clearance
+    let mx = cos(na) * dist;
+    let mz = sin(na) * dist;
+    let hY = helixY(hi);
+    drawBeam(0, FRAME_TOP_Y + 15, 0, mx, hY, mz, 4);
+    // Mount block at arm tip
+    push(); translate(mx, hY, mz); fill(C_ALUMINUM); box(20, 12, 24); pop();
+  }
+
+  // Central hub
+  push();
+  translate(0, FRAME_TOP_Y + 8, 0);
+  fill(80, 80, 90);
+  rotateX(PI / 2);
+  cylinder(12, 10, 8);
+  pop();
+
+  // Vertical hangers from frame to matrix support
+  for (let i = 0; i < 3; i++) {
+    let a = i * TWO_PI / 3 + PI / 3;
+    let hx = cos(a) * (MATRIX_HEX_R + 20);
+    let hz = sin(a) * (MATRIX_HEX_R + 20);
+    drawBeam(hx, FRAME_TOP_Y + 20, hz, hx, MATRIX_TOP_Y - 10, hz, 3);
+  }
+
+  pop();
+}
+
+// ============================================================
+// HELIXES — 3 horizontal camshafts, each centered on a hex VERTEX
+//
+// From user's annotated photo (overhead view):
+//   Each helix spans TWO ADJACENT hex sides, centered on the vertex between them.
+//   The cam followers fan out to push/pull sliders along both adjacent edges.
+//
+// Flat-top hex vertices at: 0°, 60°, 120°, 180°, 240°, 300°
+// With 120° spacing, helixes sit at alternating vertices (every other one).
+//
+// Assignment (from annotated photo):
+//   Helix 0 (Red):   top vertex area       — covers sides 3 & 4
+//   Helix 1 (Green): bottom-left vertex     — covers sides 5 & 6
+//   Helix 2 (Blue):  bottom-right vertex    — covers sides 1 & 2
+//
+// Positioning:
+//   normalDeg points FROM hex center TOWARD the vertex the helix straddles.
+//   Helix center = vertex direction × (hex_radius + clearance gap).
+//   Shaft runs TANGENT (perpendicular to the radial line to vertex).
+//   Ribs extend INWARD toward hex center.
+//   Each helix at SAME Y as its tier plate.
+//
+// Config panel fine-tuning:
+//   normalDeg  = radial direction to vertex (which vertex)
+//   shaftDeg   = extra rotation of shaft about Y axis
+//   ribDeg     = extra rotation of rib direction about shaft axis
+// ============================================================
+function drawHelixes() {
+  let expR = explodeAmt * 70;
+
+  for (let hi = 0; hi < 3; hi++) {
+    // Read from config panel (degrees → radians)
+    let normalAngle = radians(helixConfig[hi].normalDeg);
+    let shaftExtra = radians(helixConfig[hi].shaftDeg);
+    let ribExtra = radians(helixConfig[hi].ribDeg);
+
+    // Shaft direction: shaft runs TANGENT to the circle at the vertex
+    // (perpendicular to the radial direction from center to vertex)
+    let shaftAngle = normalAngle + PI / 2 + shaftExtra;
+
+    // Position: outside the hex VERTEX (along radial from center through vertex)
+    // Full hex radius (center to vertex), not apothem (center to edge midpoint)
+    let dist = MATRIX_HEX_R + 30 + expR; // vertex distance + clearance gap
+    let hx = cos(normalAngle) * dist;
+    let hz = sin(normalAngle) * dist;
+
+    // Each helix at same Y as its tier — ribs drive sliders horizontally
+    let hY = helixY(hi);
+
+    push();
+    translate(hx, hY, hz);
+
+    // Rotate so local Z axis aligns with shaft direction
+    rotateY(-shaftAngle);
+
+    // Shaft body (steel rod)
+    push();
+    fill(65, 65, 75); specularMaterial(65, 65, 75); shininess(60);
+    rotateX(PI / 2);
+    cylinder(4, HELIX_LEN + 30, 8);
+    pop();
+
+    for (let d = 0; d < NUM_DISCS; d++) {
+      let dz = (d - (NUM_DISCS - 1) / 2) * DISC_PITCH;
+      // Disc rotation: time + helix phase + disc twist
+      let phaseDeg = (t * 360 * 57.3) + hi * 120 + d * TWIST_DEG;
+      let phaseRad = radians(phaseDeg);
+
+      // Eccentric offset (in plane perpendicular to shaft = local XY)
+      let eccX = cos(phaseRad) * ECCENTRIC * 0.4;
+      let eccLocalY = sin(phaseRad) * ECCENTRIC * 0.4;
+
+      push();
+      translate(0, 0, dz);
+
+      // Disc body (colored)
+      push();
+      translate(eccX, eccLocalY, 0);
+      fill(C_HELIX[hi][0], C_HELIX[hi][1], C_HELIX[hi][2], 190);
+      specularMaterial(C_HELIX[hi][0]*0.6, C_HELIX[hi][1]*0.6, C_HELIX[hi][2]*0.6);
+      shininess(25);
+      cylinder(8, DISC_PITCH * 0.5, 10);
+      pop();
+
+      // Bearing ring
+      push();
+      translate(eccX, eccLocalY, 0);
+      fill(195, 195, 205, 65);
+      torus(6, 1, 10, 6);
+      pop();
+
+      // CAM FOLLOWER RIB — extends toward matrix
+      // ribExtra rotates the rib direction in the XY plane perpendicular to shaft
+      push();
+      fill(C_RIB); noStroke();
+
+      // Bearing collar
+      push();
+      translate(eccX, eccLocalY, 0);
+      rotateZ(PI / 2);
+      fill(220, 220, 230);
+      torus(BEARING_OD * 0.07, 1.2, 10, 6);
+      pop();
+
+      // Apply rib rotation offset (rotates rib direction around shaft axis = local Z)
+      let ribAngle = ribExtra;
+      let ribDirX = cos(ribAngle);
+      let ribDirY = sin(ribAngle);
+
+      // Rib extends INWARD (toward matrix): -X in local coords, modified by ribExtra
+      let ribTipX = eccX - RIB_LENGTH * ribDirX;
+      let ribTipY = eccLocalY - RIB_LENGTH * ribDirY;
+      let ribMidX = (eccX + ribTipX) / 2;
+      let ribMidY = (eccLocalY + ribTipY) / 2;
+
+      push();
+      translate(ribMidX, ribMidY, 0);
+      rotateZ(-ribAngle);
+      box(RIB_LENGTH, 3, 4);
+      pop();
+
+      // Cable eyelet at rib tip
+      push();
+      translate(ribTipX, ribTipY, 0);
+      fill(C_GOLD);
+      sphere(2);
+      pop();
+
+      pop(); // rib group
+
+      pop(); // disc position
+    }
+
+    // End plates (bearing mounts)
+    for (let end = -1; end <= 1; end += 2) {
+      push();
+      translate(0, 0, end * (HELIX_LEN / 2 + 10));
+      fill(C_ALUMINUM);
+      box(16, 12, 4);
+      pop();
+    }
+
+    // Shaft direction indicator line (for debugging orientation)
+    push();
+    stroke(C_HELIX[hi][0], C_HELIX[hi][1], C_HELIX[hi][2]);
+    strokeWeight(2);
+    line(0, 0, -HELIX_LEN/2 - 25, 0, 0, HELIX_LEN/2 + 25);
+    noStroke();
+    pop();
+
+    pop(); // helix group
+  }
+}
+
+// ============================================================
+// MATRIX TIERS — 3 hex polycarbonate plates stacked vertically
+// Each helix straddles a VERTEX → sliders fan across 2 adjacent edges
+// ============================================================
+function drawMatrixTiers() {
+  for (let ti = 0; ti < 3; ti++) {
+    let tierAngle = radians(helixConfig[ti].normalDeg); // sliders poke in from helix direction
+    let tierY = MATRIX_TOP_Y + ti * TIER_SPACING + explodeAmt * (ti - 1) * 55;
+
+    push();
+    translate(0, tierY, 0);
+
+    // Hex polycarbonate plate
+    push();
+    noStroke();
+    fill(C_POLYCARB);
+    drawHexPrism(MATRIX_HEX_R, 5);
+    pop();
+
+    // Plate edge outline
+    push();
+    stroke(90, 100, 120, 70);
+    strokeWeight(1);
+    noFill();
+    beginShape();
+    for (let v = 0; v <= 6; v++) {
+      vertex(cos(v * PI / 3) * MATRIX_HEX_R, -2.5, sin(v * PI / 3) * MATRIX_HEX_R);
+    }
+    endShape();
+    pop();
+
+    // Redirect rollers at string holes (2 per string per tier)
+    push();
+    noStroke();
+    fill(200, 210, 230, 90);
+    for (let bi = 0; bi < blocks.length; bi++) {
+      for (let side = -1; side <= 1; side += 2) {
+        push();
+        translate(
+          blocks[bi].x + cos(tierAngle) * side * 5,
+          0,
+          blocks[bi].z + sin(tierAngle) * side * 5
+        );
+        rotateX(PI / 2);
+        cylinder(1.8, 4, 6);
+        pop();
+      }
+    }
+    pop();
+
+    // 30 slider strips — fan across 2 ADJACENT hex edges from vertex
+    // Each helix straddles a vertex: 15 sliders per adjacent edge
+    push();
+    noStroke();
+
+    // The vertex the helix points toward (tierAngle = normalDeg direction)
+    // Two adjacent edges share this vertex.
+    // For flat-top hex, vertices are at 0°, 60°, 120°, 180°, 240°, 300°.
+    // Find the closest vertex to tierAngle:
+    let vertAngle = round(tierAngle / (PI / 3)) * (PI / 3);
+
+    // The two edges adjacent to this vertex:
+    //   Edge A: from vertex to vertex+60°  (midpoint normal = vertex + 30°)
+    //   Edge B: from vertex-60° to vertex  (midpoint normal = vertex - 30°)
+    let edgeNormals = [vertAngle + PI / 6, vertAngle - PI / 6]; // outward normals of adjacent edges
+
+    let halfDiscs = NUM_DISCS / 2; // 15 sliders per edge
+
+    for (let ei = 0; ei < 2; ei++) {
+      let eNorm = edgeNormals[ei]; // outward normal of this edge
+      let enx = cos(eNorm), enz = sin(eNorm);
+      let etx = -sin(eNorm), etz = cos(eNorm); // tangent along edge
+
+      for (let d = 0; d < halfDiscs; d++) {
+        // Global disc index for phase continuity
+        let globalD = ei * halfDiscs + d;
+        let phase = t * TWO_PI + ti * TWO_PI / 3 + globalD * radians(TWIST_DEG);
+        let delta = ECCENTRIC * sin(phase);
+        let sPos = SLIDER_BASELINE + delta;
+
+        // Spread 15 sliders along this edge
+        let edgeLen = MATRIX_HEX_R; // edge length = hex radius for flat-top
+        let span = edgeLen * 0.85;
+        let along = (d - (halfDiscs - 1) / 2) * (span / halfDiscs);
+
+        // Slider from edge inward
+        let edgeX = enx * MATRIX_HEX_R * 0.866 + etx * along; // apothem = edge midpoint distance
+        let edgeZ = enz * MATRIX_HEX_R * 0.866 + etz * along;
+        let tipX = enx * (MATRIX_HEX_R * 0.866 - sPos) + etx * along;
+        let tipZ = enz * (MATRIX_HEX_R * 0.866 - sPos) + etz * along;
+
+        let midX = (edgeX + tipX) / 2;
+        let midZ = (edgeZ + tipZ) / 2;
+
+        push();
+        translate(midX, 0, midZ);
+        rotateY(-eNorm);
+
+        fill(C_HELIX[ti][0], C_HELIX[ti][1], C_HELIX[ti][2], 170);
+        box(sPos, 3.5, 3.5);
+
+        // Roller at slider tip
+        push();
+        translate(-sPos / 2, 0, 0);
+        fill(215, 215, 225);
+        sphere(2);
+        pop();
+
+        pop();
+      }
+    }
+    pop();
+
+    // Tier label sphere at vertex position
+    let vlx = cos(vertAngle) * (MATRIX_HEX_R + 18);
+    let vlz = sin(vertAngle) * (MATRIX_HEX_R + 18);
+    push();
+    translate(vlx, 0, vlz);
+    noStroke();
+    fill(C_HELIX[ti]);
+    sphere(5);
+    pop();
+
+    pop(); // tier
+  }
+}
+
+// ============================================================
+// STRINGS — anchor → 3 tier U-detours → block
+// ============================================================
+function drawAllStrings() {
+  strokeWeight(0.8);
+
+  for (let bi = 0; bi < blocks.length; bi++) {
+    let bx = blocks[bi].x;
+    let bz = blocks[bi].z;
+    let h = blockH[bi];
+    let bY = BLOCK_Y - h * 1.8;
+
+    stroke(C_STRING_COL[0], C_STRING_COL[1], C_STRING_COL[2], 80);
+    noFill();
+
+    beginShape();
+    vertex(bx, MATRIX_TOP_Y - 20, bz); // top anchor
+
+    for (let ti = 0; ti < 3; ti++) {
+      let tierAngle = radians(helixConfig[ti].normalDeg);
+      let tierY = MATRIX_TOP_Y + ti * TIER_SPACING + explodeAmt * (ti - 1) * 55;
+      let nx = cos(tierAngle), nz = sin(tierAngle);
+      let tx = -sin(tierAngle), tz = cos(tierAngle);
+
+      // Redirect in
+      vertex(bx, tierY - 3, bz);
+
+      // U-detour to slider
+      let dIdx = bi % NUM_DISCS;
+      let phase = t * TWO_PI + ti * TWO_PI / 3 + dIdx * radians(TWIST_DEG);
+      let delta = ECCENTRIC * sin(phase);
+      let sPos = SLIDER_BASELINE + delta;
+      let edgeSpan = HELIX_LEN * 0.55;
+      let along = (dIdx - (NUM_DISCS - 1) / 2) * (edgeSpan / NUM_DISCS);
+
+      let tipX = nx * (MATRIX_HEX_R - sPos) + tx * along;
+      let tipZ = nz * (MATRIX_HEX_R - sPos) + tz * along;
+      vertex(tipX, tierY, tipZ);
+
+      // Redirect out
+      vertex(bx, tierY + 3, bz);
+    }
+
+    vertex(bx, bY - BLOCK_DEPTH / 2, bz);
+    endShape();
+  }
+  noStroke();
+}
+
+// ============================================================
+// BLOCKS — Hex basswood hanging by gravity
+// ============================================================
+function drawAllBlocks() {
+  let maxH = ECCENTRIC * 3;
+
+  for (let bi = 0; bi < blocks.length; bi++) {
+    let bx = blocks[bi].x;
+    let bz = blocks[bi].z;
+    let h = blockH[bi];
+    let bY = BLOCK_Y - h * 1.8;
+    let normH = h / maxH;
+
+    let r, g, b;
+    if (normH > 0) {
+      r = lerp(C_WOOD[0], 250, normH * 0.4);
+      g = lerp(C_WOOD[1], 215, normH * 0.3);
+      b = lerp(C_WOOD[2], 75, normH * 0.3);
+    } else {
+      r = lerp(C_WOOD[0], 85, -normH * 0.5);
+      g = lerp(C_WOOD[1], 95, -normH * 0.5);
+      b = lerp(C_WOOD[2], 145, -normH * 0.5);
+    }
+
+    push();
+    translate(bx, bY, bz);
+    fill(r, g, b);
+    specularMaterial(r * 0.55, g * 0.55, b * 0.55);
+    shininess(8);
+    drawHexPrism(BLOCK_HEX_R, BLOCK_DEPTH);
+
+    // Eyelet
+    push();
+    translate(0, -BLOCK_DEPTH / 2 - 1.5, 0);
+    fill(C_GOLD); noStroke();
+    sphere(1.3);
+    pop();
+
+    pop();
+  }
+}
+
+// ============================================================
+// WAVE MESH
+// ============================================================
+function drawWaveMesh() {
+  let res = 16;
+  let gridR = MATRIX_HEX_R * 0.65;
+  let maxH = ECCENTRIC * 3;
+
+  noFill();
+  strokeWeight(0.5);
+
+  for (let pass = 0; pass < 2; pass++) {
+    for (let i = 0; i <= res; i++) {
+      beginShape();
+      for (let j = 0; j <= res; j++) {
+        let gx = pass === 0 ? map(i, 0, res, -gridR, gridR) : map(j, 0, res, -gridR, gridR);
+        let gz = pass === 0 ? map(j, 0, res, -gridR, gridR) : map(i, 0, res, -gridR, gridR);
+        if (sqrt(gx * gx + gz * gz) > gridR) continue;
+
+        let h = 0;
+        for (let hi = 0; hi < 3; hi++) {
+          let dir = radians(helixConfig[hi].normalDeg);
+          h += ECCENTRIC * sin(0.04 * (gx * cos(dir) + gz * sin(dir)) - t * TWO_PI + hi * TWO_PI / 3);
+        }
+        let n = h / maxH;
+        stroke(
+          n > 0 ? lerp(140, 250, n) : lerp(140, 50, -n),
+          n > 0 ? lerp(130, 215, n) : lerp(130, 65, -n),
+          n > 0 ? lerp(110, 55, n) : lerp(110, 175, -n),
+          30
+        );
+        vertex(gx, BLOCK_Y - h * 1.8 - BLOCK_DEPTH, gz);
+      }
+      endShape();
+    }
+  }
+  noStroke();
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function drawHexPrism(r, h) {
+  // FLAT-TOP hex: vertices at 0°, 60°, 120°, 180°, 240°, 300°
+  // This gives flat edges at top (between 300° and 60°) and bottom (between 120° and 240°)
+  // In XZ plane: vertex 0 at (r, 0), vertex 1 at (r/2, r*√3/2), etc.
+  beginShape(); for (let v = 0; v < 6; v++) { let a = v*PI/3; vertex(cos(a)*r, -h/2, sin(a)*r); } endShape(CLOSE);
+  beginShape(); for (let v = 0; v < 6; v++) { let a = v*PI/3; vertex(cos(a)*r, h/2, sin(a)*r); } endShape(CLOSE);
+  for (let v = 0; v < 6; v++) {
+    let a1 = v*PI/3, a2 = (v+1)*PI/3;
+    beginShape();
+    vertex(cos(a1)*r, -h/2, sin(a1)*r); vertex(cos(a2)*r, -h/2, sin(a2)*r);
+    vertex(cos(a2)*r, h/2, sin(a2)*r); vertex(cos(a1)*r, h/2, sin(a1)*r);
+    endShape(CLOSE);
+  }
+}
+
+function drawBoxAt(x, y, z, w, h, d) { push(); translate(x, y, z); box(w, h, d); pop(); }
+
+function drawBeam(x1, y1, z1, x2, y2, z2, thick) {
+  push();
+  let mx = (x1+x2)/2, my = (y1+y2)/2, mz = (z1+z2)/2;
+  let dx = x2-x1, dy = y2-y1, dz = z2-z1;
+  let len = sqrt(dx*dx+dy*dy+dz*dz);
+  translate(mx, my, mz);
+
+  let v = createVector(dx, dy, dz).normalize();
+  let up = createVector(0, 1, 0);
+  if (abs(v.y) > 0.99) up = createVector(1, 0, 0);
+  let rt = p5.Vector.cross(up, v).normalize();
+  let fw = p5.Vector.cross(v, rt).normalize();
+
+  applyMatrix(rt.x, v.x, fw.x, 0, rt.y, v.y, fw.y, 0, rt.z, v.z, fw.z, 0, 0, 0, 0, 1);
+  box(thick, len, thick);
+  pop();
+}
+
+// ============================================================
+// HUD
+// ============================================================
+function drawHUD() {
+  noStroke();
+  fill(10, 10, 15, 200); rect(5, 5, 340, 55, 4);
+  fill(C_GOLD); textSize(13); textAlign(LEFT, TOP);
+  text("MARGOLIN TRIPLE HELIX \u2014 3D WAVE SCULPTURE", 12, 10);
+  fill(125, 125, 145); textSize(9);
+  text("[1]Full [2]Blocks [3]Helix | [SPACE]Pause [\u00b1]Speed | Drag orbit", 12, 28);
+  text("[S]trings [F]rame [M]atrix [H]elix [B]locks [W]ave [E]xplode", 12, 41);
+
+  fill(10, 10, 15, 185); rect(width - 240, 5, 235, 200, 4);
+  fill(C_GOLD); textSize(11); text("ASSEMBLY (top \u2192 bottom)", width - 230, 10);
+  textSize(9);
+  let items = [
+    [C_STEEL, "\u2500 Frame overhead structure"],
+    [C_HELIX[0], "\u2500 Helix 1 (0\u00b0) \u2192 ribs \u2192 Tier 1 sliders"],
+    [C_HELIX[1], "\u2500 Helix 2 (120\u00b0) \u2192 ribs \u2192 Tier 2 sliders"],
+    [C_HELIX[2], "\u2500 Helix 3 (240\u00b0) \u2192 ribs \u2192 Tier 3 sliders"],
+    [[170, 170, 190], "\u2500 Matrix: 3 hex plates, each at 120\u00b0"],
+    [[170, 170, 190], "  Sliders poke IN from each hex side"],
+    [[45, 45, 55], "\u2500 Strings: 30\u00d7, 9 pulleys (3/tier)"],
+    [C_WOOD, "\u2500 Blocks: 30 basswood hex, 70g gravity"],
+    [[170, 170, 190], ""],
+    [C_GOLD, "WAVE SUPERPOSITION:"],
+    [[155, 155, 175], "  h = \u03a3 A\u00b7sin(k\u00b7d\u1d62 - \u03c9t + \u03c6\u1d62)"],
+    [[155, 155, 175], "  30 discs \u00d7 12\u00b0 = 360\u00b0 twist"],
+    [[155, 155, 175], "  \u03b7 = 0.95\u2079 \u2248 63% efficiency"],
+  ];
+  for (let i = 0; i < items.length; i++) {
+    fill(items[i][0]); text(items[i][1], width - 230, 28 + i * 13);
+  }
+
+  fill(10, 10, 15, 200); rect(5, height - 28, 500, 23, 4);
+  fill(95, 95, 115); textSize(9); textAlign(LEFT, CENTER);
+  text((paused ? "\u23f8 PAUSED" : "\u25b6 RUNNING") +
+    "  |  View " + viewMode + "  |  " + blocks.length + " blocks  |  " +
+    (exploded ? "EXPLODED" : "ASSEMBLED"), 12, height - 17);
+}
+
+// ============================================================
+// INPUT
+// ============================================================
+function keyPressed() {
+  if (key === '1') viewMode = 1;
+  if (key === '2') viewMode = 2;
+  if (key === '3') viewMode = 3;
+  if (key === ' ') paused = !paused;
+  if (key === '+' || key === '=') speed = min(0.015, speed * 1.3);
+  if (key === '-') speed = max(0.0003, speed / 1.3);
+  if (key === 's' || key === 'S') showStrings = !showStrings;
+  if (key === 'f' || key === 'F') showFrame = !showFrame;
+  if (key === 'm' || key === 'M') showMatrix = !showMatrix;
+  if (key === 'h' || key === 'H') showHelixes = !showHelixes;
+  if (key === 'b' || key === 'B') showBlocks = !showBlocks;
+  if (key === 'w' || key === 'W') showWaveSurface = !showWaveSurface;
+  if (key === 'e' || key === 'E') exploded = !exploded;
+  if (key === 'c' || key === 'C') toggleHelixConfig();
+  return false;
+}
+</script>
+</body>
+</html>

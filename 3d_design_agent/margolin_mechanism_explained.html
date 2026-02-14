@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Margolin U-Detour Mechanism — How Lateral Sliders Move Blocks</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<style>
+  body { margin: 0; background: #0a0a0f; overflow: hidden; font-family: 'Courier New', monospace; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<script>
+// ============================================================
+// MARGOLIN U-DETOUR MECHANISM — EXPLAINED
+// ============================================================
+// Shows how lateral slider motion creates bidirectional
+// vertical block displacement through a simple string detour.
+//
+// VIEWS:
+// [1] Single String — The Core Mechanism (U-detour explained)
+// [2] One Tier — 8 sliders showing traveling wave
+// [3] Three Tiers — Full system at 0°/120°/240° with superposition
+// [4] 30-Block Array — Top-down wave pattern from all 3 helixes
+// [5] Side Profile — Z-displacement of all blocks over time
+//
+// CONTROLS:
+// [1-5] Switch view
+// [SPACE] Pause/Resume
+// [+/-] Speed
+// [E] Explode tiers (View 3)
+// [G] Show geometry annotations
+// [R] Reset
+// ============================================================
+
+let view = 1;
+let t = 0;
+let speed = 0.008;
+let paused = false;
+let showGeometry = true;
+let explodeTiers = false;
+let explodeAmt = 0;
+
+// Physics parameters (mm, mapped to pixels)
+const SCALE = 2.5; // px per mm
+const ECCENTRIC = 12; // mm cam eccentricity (±12mm slider travel)
+const BASELINE_OFFSET = 35; // mm — slider baseline distance from string vertical
+const REDIRECT_SPACING_Y = 20; // mm — vertical distance from redirect to slider
+const TIER_SPACING = 60; // mm between tiers
+const BLOCK_MASS = 70; // grams
+const NUM_DISCS = 30;
+const TWIST_PER_DISC = 12; // degrees
+
+// Colors
+const C_BG = [10, 10, 15];
+const C_STRING = [255, 220, 50];
+const C_STRING_DIM = [180, 150, 30, 120];
+const C_SLIDER = [220, 80, 60];
+const C_REDIRECT = [100, 180, 255];
+const C_BLOCK = [180, 140, 90];
+const C_BLOCK_DARK = [120, 90, 55];
+const C_FRAME = [60, 60, 80];
+const C_ANNOTATION = [150, 255, 150, 200];
+const C_HELIX = [[255, 80, 80], [80, 255, 120], [80, 150, 255]];
+const C_TIER_BG = [[40, 20, 20, 60], [20, 40, 20, 60], [20, 20, 40, 60]];
+const C_TEXT = [200, 200, 220];
+const C_DIM = [120, 120, 140];
+const C_GOLD = [255, 200, 50];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  textFont('Courier New');
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+
+function draw() {
+  background(C_BG);
+
+  if (!paused) t += speed;
+
+  // Smooth explode interpolation
+  let targetExplode = explodeTiers ? 1 : 0;
+  explodeAmt += (targetExplode - explodeAmt) * 0.08;
+
+  switch(view) {
+    case 1: drawView1_CoreMechanism(); break;
+    case 2: drawView2_OneTier(); break;
+    case 3: drawView3_ThreeTiers(); break;
+    case 4: drawView4_TopDown(); break;
+    case 5: drawView5_SideProfile(); break;
+  }
+
+  drawHUD();
+}
+
+// ============================================================
+// VIEW 1: THE CORE MECHANISM — Single string, single tier
+// ============================================================
+function drawView1_CoreMechanism() {
+  push();
+  translate(width * 0.38, height * 0.08);
+
+  let sliderPhase = sin(t * TWO_PI);
+  let sliderDelta = ECCENTRIC * sliderPhase; // ±12mm from baseline
+  let sliderX = (BASELINE_OFFSET + sliderDelta) * SCALE;
+
+  let anchorY = 0;
+  let redirectInY = 100;
+  let sliderY = 180;
+  let redirectOutY = 260;
+  let blockNominalY = 420;
+
+  // Calculate string path lengths
+  let redirectInX = 8 * SCALE; // slight offset for approach angle
+  let redirectOutX = 5 * SCALE;
+
+  // String segments
+  let anchorPos = {x: 0, y: anchorY};
+  let redInPos = {x: redirectInX, y: redirectInY};
+  let sliderPos = {x: sliderX, y: sliderY};
+  let redOutPos = {x: redirectOutX, y: redirectOutY};
+
+  // Calculate detour length
+  let seg1 = dist(redInPos.x, redInPos.y, sliderPos.x, sliderPos.y);
+  let seg2 = dist(sliderPos.x, sliderPos.y, redOutPos.x, redOutPos.y);
+  let detourLen = seg1 + seg2;
+
+  // Baseline detour (when slider at baseline, delta=0)
+  let baseSliderX = BASELINE_OFFSET * SCALE;
+  let baseSeg1 = dist(redInPos.x, redInPos.y, baseSliderX, sliderPos.y);
+  let baseSeg2 = dist(baseSliderX, sliderPos.y, redOutPos.x, redOutPos.y);
+  let baseDetour = baseSeg1 + baseSeg2;
+
+  // Straight path (no detour at all)
+  let straightLen = dist(redInPos.x, redInPos.y, redOutPos.x, redOutPos.y);
+
+  // Block displacement = detour change from baseline
+  let detourChange = detourLen - baseDetour;
+  let blockY = blockNominalY - detourChange;
+
+  // Title
+  fill(C_GOLD);
+  noStroke();
+  textAlign(LEFT, TOP);
+  textSize(18);
+  text("THE U-DETOUR MECHANISM", 0, -25);
+  textSize(11);
+  fill(C_DIM);
+  text("How a lateral slider creates bidirectional vertical block motion", 0, -5);
+
+  // Draw frame/housing
+  stroke(C_FRAME);
+  strokeWeight(1);
+  noFill();
+  // Stationary matrix outline
+  rect(-20, redirectInY - 20, width * 0.4, redirectOutY - redirectInY + 40, 4);
+  fill(C_FRAME[0], C_FRAME[1], C_FRAME[2], 20);
+  noStroke();
+  rect(-20, redirectInY - 20, width * 0.4, redirectOutY - redirectInY + 40, 4);
+
+  // Label: Stationary Matrix
+  fill(C_DIM);
+  textSize(9);
+  textAlign(LEFT, TOP);
+  text("STATIONARY MATRIX", -15, redirectInY - 15);
+
+  // Draw slider track (the slot)
+  stroke(C_FRAME[0], C_FRAME[1], C_FRAME[2], 80);
+  strokeWeight(2);
+  let trackMinX = (BASELINE_OFFSET - ECCENTRIC - 5) * SCALE;
+  let trackMaxX = (BASELINE_OFFSET + ECCENTRIC + 5) * SCALE;
+  line(trackMinX, sliderY, trackMaxX, sliderY);
+
+  // Slider travel range indicators
+  stroke(C_SLIDER[0], C_SLIDER[1], C_SLIDER[2], 40);
+  strokeWeight(1);
+  drawingContext.setLineDash([3, 3]);
+  line((BASELINE_OFFSET - ECCENTRIC) * SCALE, sliderY - 15, (BASELINE_OFFSET - ECCENTRIC) * SCALE, sliderY + 15);
+  line((BASELINE_OFFSET + ECCENTRIC) * SCALE, sliderY - 15, (BASELINE_OFFSET + ECCENTRIC) * SCALE, sliderY + 15);
+  // Baseline position
+  stroke(C_ANNOTATION[0], C_ANNOTATION[1], C_ANNOTATION[2], 60);
+  line(baseSliderX, sliderY - 15, baseSliderX, sliderY + 15);
+  drawingContext.setLineDash([]);
+
+  // Draw the STRING PATH (the key visual)
+  strokeWeight(2.5);
+  stroke(C_STRING);
+  // Anchor to redirect in
+  line(anchorPos.x, anchorPos.y, redInPos.x, redInPos.y);
+  // Redirect in to slider (the detour approach)
+  line(redInPos.x, redInPos.y, sliderPos.x, sliderPos.y);
+  // Slider to redirect out (the detour departure)
+  line(sliderPos.x, sliderPos.y, redOutPos.x, redOutPos.y);
+  // Redirect out to block
+  line(redOutPos.x, redOutPos.y, 0, blockY);
+
+  // Ghost: show baseline string path
+  strokeWeight(1);
+  stroke(C_STRING_DIM);
+  drawingContext.setLineDash([4, 4]);
+  line(redInPos.x, redInPos.y, baseSliderX, sliderPos.y);
+  line(baseSliderX, sliderPos.y, redOutPos.x, redOutPos.y);
+  drawingContext.setLineDash([]);
+
+  // Draw redirect pulleys
+  fill(C_REDIRECT);
+  noStroke();
+  ellipse(redInPos.x, redInPos.y, 14, 14);
+  ellipse(redOutPos.x, redOutPos.y, 14, 14);
+  // Pulley detail
+  fill(C_BG[0] + 20, C_BG[1] + 20, C_BG[2] + 20);
+  ellipse(redInPos.x, redInPos.y, 5, 5);
+  ellipse(redOutPos.x, redOutPos.y, 5, 5);
+
+  // Draw slider
+  fill(C_SLIDER);
+  noStroke();
+  rectMode(CENTER);
+  rect(sliderPos.x, sliderPos.y, 24, 20, 3);
+  // Slider pulley
+  fill(C_REDIRECT[0], C_REDIRECT[1], C_REDIRECT[2]);
+  ellipse(sliderPos.x, sliderPos.y, 12, 12);
+  fill(C_BG[0] + 20, C_BG[1] + 20, C_BG[2] + 20);
+  ellipse(sliderPos.x, sliderPos.y, 4, 4);
+  rectMode(CORNER);
+
+  // Draw anchor
+  fill(C_FRAME);
+  noStroke();
+  rect(anchorPos.x - 8, anchorPos.y - 4, 16, 8, 2);
+
+  // Draw block
+  let blockW = 30;
+  let blockH = 20;
+  // Shadow
+  fill(0, 0, 0, 40);
+  rect(-blockW/2 + 3, blockY + 3, blockW, blockH, 3);
+  // Block body
+  let blockBright = map(sliderPhase, -1, 1, 0.6, 1.0);
+  fill(C_BLOCK[0] * blockBright, C_BLOCK[1] * blockBright, C_BLOCK[2] * blockBright);
+  stroke(C_BLOCK_DARK);
+  strokeWeight(1);
+  rect(-blockW/2, blockY, blockW, blockH, 3);
+  // Wood grain
+  stroke(C_BLOCK_DARK[0], C_BLOCK_DARK[1], C_BLOCK_DARK[2], 40);
+  for (let g = 4; g < blockH - 2; g += 4) {
+    line(-blockW/2 + 3, blockY + g, blockW/2 - 3, blockY + g);
+  }
+
+  // String attachment to block
+  stroke(C_STRING);
+  strokeWeight(2);
+  line(0, blockY, 0, blockY);
+  noStroke();
+  fill(C_STRING);
+  ellipse(0, blockY, 5, 5);
+
+  // =====================
+  // GEOMETRY ANNOTATIONS
+  // =====================
+  if (showGeometry) {
+    textSize(10);
+
+    // Label: redirect pulleys
+    fill(C_REDIRECT);
+    textAlign(LEFT, CENTER);
+    text("redirect", redInPos.x + 12, redInPos.y - 8);
+    text("(fixed)", redInPos.x + 12, redInPos.y + 5);
+    text("redirect", redOutPos.x + 12, redOutPos.y - 8);
+    text("(fixed)", redOutPos.x + 12, redOutPos.y + 5);
+
+    // Label: slider
+    fill(C_SLIDER);
+    textAlign(CENTER, TOP);
+    text("SLIDER", sliderPos.x, sliderPos.y + 15);
+    textSize(8);
+    text("(on sliding strip)", sliderPos.x, sliderPos.y + 27);
+    text("driven by helix cam", sliderPos.x, sliderPos.y + 37);
+
+    // Dimension: slider displacement
+    let dimY = sliderY + 55;
+    stroke(C_ANNOTATION);
+    strokeWeight(1);
+    // Baseline to current
+    if (abs(sliderDelta) > 0.5) {
+      line(baseSliderX, dimY - 5, baseSliderX, dimY + 5);
+      line(sliderPos.x, dimY - 5, sliderPos.x, dimY + 5);
+      line(baseSliderX, dimY, sliderPos.x, dimY);
+      // Arrow heads
+      let dir = sliderDelta > 0 ? 1 : -1;
+      line(sliderPos.x, dimY, sliderPos.x - dir * 6, dimY - 3);
+      line(sliderPos.x, dimY, sliderPos.x - dir * 6, dimY + 3);
+
+      fill(C_ANNOTATION);
+      noStroke();
+      textAlign(CENTER, TOP);
+      textSize(10);
+      text((sliderDelta > 0 ? "+" : "") + nf(sliderDelta, 1, 1) + "mm",
+           (baseSliderX + sliderPos.x) / 2, dimY + 8);
+    }
+
+    // Block displacement readout
+    fill(C_GOLD);
+    textSize(13);
+    textAlign(LEFT, CENTER);
+    let blockDisp = -(detourChange / SCALE);
+    text("Block: " + (blockDisp > 0 ? "+" : "") + nf(blockDisp, 1, 1) + "mm",
+         blockW/2 + 15, blockY + blockH/2);
+
+    // Direction arrows on block
+    if (abs(blockDisp) > 0.3) {
+      let arrowDir = blockDisp > 0 ? -1 : 1;
+      stroke(C_GOLD);
+      strokeWeight(2);
+      let arrowX = -blockW/2 - 15;
+      let arrowCY = blockY + blockH/2;
+      line(arrowX, arrowCY - 10, arrowX, arrowCY + 10);
+      line(arrowX, arrowCY + arrowDir * 10, arrowX - 4, arrowCY + arrowDir * 5);
+      line(arrowX, arrowCY + arrowDir * 10, arrowX + 4, arrowCY + arrowDir * 5);
+    }
+
+    // Detour length annotation
+    noStroke();
+    fill(C_DIM);
+    textSize(9);
+    textAlign(RIGHT, CENTER);
+    let detourMM = detourLen / SCALE;
+    let baseDetourMM = baseDetour / SCALE;
+    text("Detour: " + nf(detourMM, 1, 1) + "mm", width * 0.35, redirectInY - 30);
+    text("Baseline: " + nf(baseDetourMM, 1, 1) + "mm", width * 0.35, redirectInY - 18);
+    text("\u0394 = " + nf(detourMM - baseDetourMM, 1, 1) + "mm", width * 0.35, redirectInY - 6);
+
+    // Straight line distance (what it would be with no detour)
+    stroke(C_DIM[0], C_DIM[1], C_DIM[2], 40);
+    strokeWeight(1);
+    drawingContext.setLineDash([2, 4]);
+    line(0, redInPos.y, 0, redOutPos.y);
+    drawingContext.setLineDash([]);
+    noStroke();
+    fill(C_DIM[0], C_DIM[1], C_DIM[2], 100);
+    textSize(8);
+    textAlign(RIGHT, CENTER);
+    text("straight path", -5, (redInPos.y + redOutPos.y) / 2);
+  }
+
+  // =====================
+  // EXPLANATION PANEL
+  // =====================
+  let panelX = width * 0.5;
+  let panelY = 20;
+  fill(C_BG[0] + 10, C_BG[1] + 10, C_BG[2] + 15);
+  stroke(C_FRAME);
+  strokeWeight(1);
+  rect(panelX, panelY, width * 0.42, height * 0.85, 6);
+
+  fill(C_GOLD);
+  noStroke();
+  textAlign(LEFT, TOP);
+  textSize(14);
+  text("HOW IT WORKS", panelX + 15, panelY + 15);
+
+  textSize(11);
+  fill(C_TEXT);
+  let lh = 17;
+  let ty = panelY + 45;
+  let tx = panelX + 15;
+  let tw = width * 0.40;
+
+  let lines = [
+    {c: C_GOLD, t: "THE STRING DETOUR"},
+    {c: C_TEXT, t: ""},
+    {c: C_TEXT, t: "A string goes straight down from anchor to"},
+    {c: C_TEXT, t: "block. A slider pulls it SIDEWAYS, creating"},
+    {c: C_TEXT, t: "a U-shaped detour. This consumes string."},
+    {c: C_TEXT, t: "Since string length is fixed, block RISES."},
+    {c: C_TEXT, t: ""},
+    {c: C_GOLD, t: "WHY IT'S BIDIRECTIONAL"},
+    {c: C_TEXT, t: ""},
+    {c: C_TEXT, t: "The slider doesn't start at zero \u2014 it starts"},
+    {c: C_TEXT, t: "at a BASELINE OFFSET (" + BASELINE_OFFSET + "mm from vertical)."},
+    {c: C_TEXT, t: "The cam oscillates it \u00b1" + ECCENTRIC + "mm around that."},
+    {c: C_TEXT, t: ""},
+    {c: C_ANNOTATION, t: "  Further OUT \u2192 wider U \u2192 block UP"},
+    {c: C_SLIDER, t: "  Closer IN  \u2192 narrower U \u2192 block DOWN"},
+    {c: C_TEXT, t: ""},
+    {c: C_TEXT, t: "No dead zone. No rectification."},
+    {c: C_TEXT, t: "Approximately linear for small displacements."},
+    {c: C_TEXT, t: ""},
+    {c: C_GOLD, t: "THE NUMBERS"},
+    {c: C_TEXT, t: ""},
+    {c: C_DIM, t: "  Cam eccentricity:    \u00b1" + ECCENTRIC + " mm"},
+    {c: C_DIM, t: "  Baseline offset:     " + BASELINE_OFFSET + " mm"},
+    {c: C_DIM, t: "  Pulleys this tier:   3 (2 redirect + 1 slider)"},
+    {c: C_DIM, t: "  Pulleys total path:  9 (3 tiers \u00d7 3)"},
+    {c: C_DIM, t: "  Friction (\u03b7):        0.95\u2079 \u2248 63%"},
+    {c: C_DIM, t: "  Min block weight:    40g"},
+    {c: C_DIM, t: "  Block weight (rec):  70g"},
+    {c: C_TEXT, t: ""},
+    {c: C_GOLD, t: "MARGOLIN'S WORDS"},
+    {c: C_TEXT, t: ""},
+    {c: [180, 180, 200], t: "  \"As the string passed through the"},
+    {c: [180, 180, 200], t: "   matrix it turned to loop around"},
+    {c: [180, 180, 200], t: "   each of the three sliders, and in"},
+    {c: [180, 180, 200], t: "   this way imparted motion from the"},
+    {c: [180, 180, 200], t: "   three helices to the wavescape.\""},
+  ];
+
+  for (let i = 0; i < lines.length; i++) {
+    fill(lines[i].c);
+    text(lines[i].t, tx, ty + i * lh);
+    if (ty + i * lh > panelY + height * 0.82) break;
+  }
+
+  // Sine wave indicator (shows where we are in the cycle)
+  let swY = height - 60;
+  let swX = panelX + 30;
+  let swW = width * 0.36;
+  stroke(C_FRAME);
+  strokeWeight(1);
+  line(swX, swY, swX + swW, swY);
+  // Draw sine
+  noFill();
+  stroke(C_STRING);
+  strokeWeight(2);
+  beginShape();
+  for (let i = 0; i <= swW; i += 2) {
+    let phase = (i / swW) * TWO_PI;
+    vertex(swX + i, swY - sin(phase) * 15);
+  }
+  endShape();
+  // Current position marker
+  let markerX = swX + ((t * TWO_PI) % TWO_PI) / TWO_PI * swW;
+  fill(C_GOLD);
+  noStroke();
+  ellipse(markerX, swY - sliderPhase * 15, 10, 10);
+  textSize(9);
+  fill(C_DIM);
+  textAlign(CENTER, TOP);
+  text("cam cycle", swX + swW/2, swY + 5);
+
+  pop();
+}
+
+// ============================================================
+// VIEW 2: ONE TIER — 8 sliders showing traveling wave
+// ============================================================
+function drawView2_OneTier() {
+  push();
+  translate(width/2, 80);
+
+  let numSliders = 8;
+  let spacing = min(100, (width - 100) / numSliders);
+
+  fill(C_GOLD);
+  noStroke();
+  textAlign(CENTER, TOP);
+  textSize(18);
+  text("ONE TIER \u2014 TRAVELING WAVE", 0, 0);
+  textSize(11);
+  fill(C_DIM);
+  text("8 cams, each 45\u00b0 phase offset (8 \u00d7 45\u00b0 = 360\u00b0)", 0, 25);
+  text("Watch the wave travel from left to right", 0, 40);
+
+  let anchorY = 80;
+  let tierTopY = 120;
+  let sliderY = 180;
+  let tierBotY = 240;
+  let blockBaseY = 380;
+
+  // Tier housing
+  fill(C_FRAME[0], C_FRAME[1], C_FRAME[2], 30);
+  stroke(C_FRAME);
+  strokeWeight(1);
+  let tierW = numSliders * spacing + 60;
+  rect(-tierW/2, tierTopY, tierW, tierBotY - tierTopY, 4);
+
+  fill(C_DIM);
+  noStroke();
+  textSize(9);
+  textAlign(LEFT, TOP);
+  text("TIER 1 (0\u00b0)", -tierW/2 + 5, tierTopY + 5);
+
+  // Draw each slider + string + block
+  for (let i = 0; i < numSliders; i++) {
+    let cx = (i - (numSliders - 1) / 2) * spacing;
+    let phase = t * TWO_PI + i * (TWO_PI / numSliders); // 45° offset
+    let sliderPhase = sin(phase);
+    let sliderDelta = ECCENTRIC * sliderPhase;
+
+    // Slider position (lateral, shown as vertical offset for clarity)
+    // In this view, "lateral" = out of screen, so we show it as displacement
+    // Actually let's show the U-detour from the side
+    let sliderOffset = (BASELINE_OFFSET + sliderDelta) * SCALE * 0.3; // scaled down
+
+    // Calculate block displacement
+    let detour = 2 * sqrt(pow(sliderOffset, 2) + pow((sliderY - tierTopY), 2));
+    let baseDetour = 2 * sqrt(pow(BASELINE_OFFSET * SCALE * 0.3, 2) + pow((sliderY - tierTopY), 2));
+    let blockDisp = -(detour - baseDetour);
+    let blockY = blockBaseY + blockDisp;
+
+    // Slider track
+    stroke(C_FRAME[0], C_FRAME[1], C_FRAME[2], 50);
+    strokeWeight(1);
+    line(cx + (BASELINE_OFFSET - ECCENTRIC) * SCALE * 0.3, sliderY,
+         cx + (BASELINE_OFFSET + ECCENTRIC) * SCALE * 0.3, sliderY);
+
+    // String path
+    strokeWeight(1.8);
+    stroke(C_STRING[0], C_STRING[1], C_STRING[2], 180);
+    // Anchor to redirect
+    line(cx, anchorY, cx, tierTopY);
+    // Redirect to slider (U-detour)
+    line(cx, tierTopY, cx + sliderOffset, sliderY);
+    line(cx + sliderOffset, sliderY, cx, tierBotY);
+    // Redirect to block
+    line(cx, tierBotY, cx, blockY);
+
+    // Redirect pulleys
+    fill(C_REDIRECT);
+    noStroke();
+    ellipse(cx, tierTopY, 8, 8);
+    ellipse(cx, tierBotY, 8, 8);
+
+    // Slider
+    fill(C_SLIDER);
+    rectMode(CENTER);
+    rect(cx + sliderOffset, sliderY, 14, 10, 2);
+    fill(C_REDIRECT);
+    ellipse(cx + sliderOffset, sliderY, 6, 6);
+    rectMode(CORNER);
+
+    // Block
+    let bw = 22;
+    let bh = 14;
+    let bright = map(sliderPhase, -1, 1, 0.5, 1.0);
+    fill(C_BLOCK[0] * bright, C_BLOCK[1] * bright, C_BLOCK[2] * bright);
+    stroke(C_BLOCK_DARK);
+    strokeWeight(0.8);
+    rectMode(CENTER);
+    rect(cx, blockY + bh/2, bw, bh, 2);
+    rectMode(CORNER);
+
+    // Anchor
+    fill(C_FRAME);
+    noStroke();
+    rectMode(CENTER);
+    rect(cx, anchorY, 10, 5, 1);
+    rectMode(CORNER);
+
+    // Phase label
+    fill(C_DIM);
+    textSize(8);
+    textAlign(CENTER, TOP);
+    text(i * 45 + "\u00b0", cx, blockY + bh + 8);
+  }
+
+  // Wave envelope (connect block bottoms)
+  noFill();
+  stroke(C_GOLD[0], C_GOLD[1], C_GOLD[2], 80);
+  strokeWeight(1.5);
+  beginShape();
+  for (let i = 0; i < numSliders; i++) {
+    let cx = (i - (numSliders - 1) / 2) * spacing;
+    let phase = t * TWO_PI + i * (TWO_PI / numSliders);
+    let sliderPhase = sin(phase);
+    let sliderDelta = ECCENTRIC * sliderPhase;
+    let sliderOffset = (BASELINE_OFFSET + sliderDelta) * SCALE * 0.3;
+    let detour = 2 * sqrt(pow(sliderOffset, 2) + pow((sliderY - tierTopY), 2));
+    let baseDetour = 2 * sqrt(pow(BASELINE_OFFSET * SCALE * 0.3, 2) + pow((sliderY - tierTopY), 2));
+    let blockDisp = -(detour - baseDetour);
+    let blockY = blockBaseY + blockDisp;
+    curveVertex(cx, blockY + 7);
+  }
+  endShape();
+
+  // Engineering panel
+  let panelX = -width/2 + 20;
+  let panelY2 = height - 220;
+  fill(C_BG[0] + 8, C_BG[1] + 8, C_BG[2] + 12);
+  stroke(C_FRAME);
+  strokeWeight(1);
+  rect(panelX, panelY2, 280, 170, 4);
+
+  fill(C_GOLD);
+  noStroke();
+  textSize(12);
+  textAlign(LEFT, TOP);
+  text("TRAVELING WAVE", panelX + 10, panelY2 + 10);
+
+  textSize(10);
+  let infoLines = [
+    {c: C_TEXT, t: "8 eccentric discs \u00d7 45\u00b0/disc = 360\u00b0"},
+    {c: C_TEXT, t: "One complete wave per shaft rotation"},
+    {c: C_TEXT, t: ""},
+    {c: C_DIM, t: "Phase of disc i: \u03c6\u1d62 = \u03b8 + i \u00d7 45\u00b0"},
+    {c: C_DIM, t: "Displacement: d\u1d62 = 12 \u00d7 sin(\u03c6\u1d62) mm"},
+    {c: C_TEXT, t: ""},
+    {c: C_TEXT, t: "Our design: 30 discs \u00d7 12\u00b0 = 360\u00b0"},
+    {c: C_TEXT, t: "Same principle, smoother resolution"},
+  ];
+  for (let i = 0; i < infoLines.length; i++) {
+    fill(infoLines[i].c);
+    text(infoLines[i].t, panelX + 10, panelY2 + 30 + i * 15);
+  }
+
+  pop();
+}
+
+// ============================================================
+// VIEW 3: THREE TIERS — Full 3-helix system with superposition
+// ============================================================
+function drawView3_ThreeTiers() {
+  push();
+  translate(width * 0.35, 50);
+
+  fill(C_GOLD);
+  noStroke();
+  textAlign(CENTER, TOP);
+  textSize(18);
+  text("THREE TIERS \u2014 WAVE SUPERPOSITION", 0, 0);
+  textSize(11);
+  fill(C_DIM);
+  text("One string visits 3 sliders (one per helix). Block height = sum of 3 contributions.", 0, 25);
+  text("[E] to explode tiers", 0, 40);
+
+  let numStrings = 5;
+  let strSpacing = 80;
+
+  let anchorY = 70;
+  let tierHeight = 50;
+  let tierGap = 30 + explodeAmt * 60;
+
+  // 3 tier positions
+  let tierTops = [];
+  for (let ti = 0; ti < 3; ti++) {
+    tierTops.push(anchorY + 30 + ti * (tierHeight + tierGap));
+  }
+  let blockBaseY = tierTops[2] + tierHeight + 80;
+
+  // Draw each tier
+  for (let ti = 0; ti < 3; ti++) {
+    let tierTop = tierTops[ti];
+    let tierBot = tierTop + tierHeight;
+    let tierSliderY = tierTop + tierHeight / 2;
+
+    // Tier background
+    fill(C_TIER_BG[ti]);
+    stroke(C_HELIX[ti][0], C_HELIX[ti][1], C_HELIX[ti][2], 60);
+    strokeWeight(1);
+    let tw = numStrings * strSpacing + 60;
+    rect(-tw/2, tierTop, tw, tierHeight, 4);
+
+    // Tier label
+    fill(C_HELIX[ti]);
+    noStroke();
+    textSize(10);
+    textAlign(LEFT, TOP);
+    text("TIER " + (ti + 1) + " (" + (ti * 120) + "\u00b0) \u2014 Helix " + (ti + 1), -tw/2 + 5, tierTop + 3);
+
+    // Draw strings through this tier
+    for (let si = 0; si < numStrings; si++) {
+      let cx = (si - (numStrings - 1) / 2) * strSpacing;
+      let phase = t * TWO_PI + si * (TWO_PI / 8) + ti * (TWO_PI / 3); // phase offset per helix
+      let sliderPhase = sin(phase);
+      let sliderDelta = ECCENTRIC * sliderPhase;
+      let sliderOffset = (BASELINE_OFFSET + sliderDelta) * SCALE * 0.25;
+
+      // Slider track
+      stroke(C_FRAME[0], C_FRAME[1], C_FRAME[2], 40);
+      strokeWeight(1);
+      let tMinX = cx + (BASELINE_OFFSET - ECCENTRIC) * SCALE * 0.25;
+      let tMaxX = cx + (BASELINE_OFFSET + ECCENTRIC) * SCALE * 0.25;
+      line(tMinX, tierSliderY, tMaxX, tierSliderY);
+
+      // String in this tier
+      stroke(C_STRING[0], C_STRING[1], C_STRING[2], 160);
+      strokeWeight(1.5);
+      line(cx, tierTop, cx + sliderOffset, tierSliderY);
+      line(cx + sliderOffset, tierSliderY, cx, tierBot);
+
+      // Redirect pulleys
+      fill(C_REDIRECT[0], C_REDIRECT[1], C_REDIRECT[2], 180);
+      noStroke();
+      ellipse(cx, tierTop, 6, 6);
+      ellipse(cx, tierBot, 6, 6);
+
+      // Slider
+      fill(C_HELIX[ti]);
+      rectMode(CENTER);
+      rect(cx + sliderOffset, tierSliderY, 10, 8, 2);
+      rectMode(CORNER);
+    }
+  }
+
+  // Draw string segments between tiers and to blocks
+  for (let si = 0; si < numStrings; si++) {
+    let cx = (si - (numStrings - 1) / 2) * strSpacing;
+
+    // Calculate total block displacement (sum of 3 tiers)
+    let totalDisp = 0;
+    for (let ti = 0; ti < 3; ti++) {
+      let phase = t * TWO_PI + si * (TWO_PI / 8) + ti * (TWO_PI / 3);
+      let sliderDelta = ECCENTRIC * sin(phase);
+      let offset = (BASELINE_OFFSET + sliderDelta) * SCALE * 0.25;
+      let baseOffset = BASELINE_OFFSET * SCALE * 0.25;
+      let halfH = tierHeight / 2;
+      let detour = 2 * sqrt(offset * offset + halfH * halfH);
+      let baseDetour = 2 * sqrt(baseOffset * baseOffset + halfH * halfH);
+      totalDisp += -(detour - baseDetour);
+    }
+    let blockY = blockBaseY + totalDisp;
+
+    // Anchor to tier 1
+    stroke(C_STRING[0], C_STRING[1], C_STRING[2], 100);
+    strokeWeight(1.5);
+    line(cx, anchorY, cx, tierTops[0]);
+
+    // Between tiers
+    for (let ti = 0; ti < 2; ti++) {
+      line(cx, tierTops[ti] + tierHeight, cx, tierTops[ti + 1]);
+    }
+
+    // Tier 3 to block
+    line(cx, tierTops[2] + tierHeight, cx, blockY);
+
+    // Anchor
+    fill(C_FRAME);
+    noStroke();
+    rectMode(CENTER);
+    rect(cx, anchorY, 8, 4, 1);
+    rectMode(CORNER);
+
+    // Block
+    let bw = 24;
+    let bh = 16;
+    let normDisp = totalDisp / (SCALE * 0.25 * 20); // normalize
+    let bright = map(normDisp, -1, 1, 0.4, 1.0);
+    fill(C_BLOCK[0] * bright, C_BLOCK[1] * bright, C_BLOCK[2] * bright);
+    stroke(C_BLOCK_DARK);
+    strokeWeight(0.8);
+    rectMode(CENTER);
+    rect(cx, blockY + bh/2, bw, bh, 2);
+    rectMode(CORNER);
+
+    // String connection
+    fill(C_STRING);
+    noStroke();
+    ellipse(cx, blockY, 4, 4);
+
+    // Phase annotations per string
+    if (showGeometry) {
+      fill(C_DIM);
+      textSize(8);
+      textAlign(CENTER, TOP);
+      text("d=" + nf(totalDisp / SCALE * 4, 1, 1), cx, blockY + bh + 4);
+    }
+  }
+
+  // Equation
+  let eqY = blockBaseY + 60;
+  fill(C_GOLD);
+  noStroke();
+  textSize(12);
+  textAlign(CENTER, TOP);
+  text("h(block) = d\u2081(Helix 1) + d\u2082(Helix 2) + d\u2083(Helix 3)", 0, eqY);
+  textSize(10);
+  fill(C_DIM);
+  text("= A\u00b7sin(\u03b8 + \u03c6\u2081) + A\u00b7sin(\u03b8 + 120\u00b0 + \u03c6\u2082) + A\u00b7sin(\u03b8 + 240\u00b0 + \u03c6\u2083)", 0, eqY + 20);
+
+  // Info panel (right side)
+  let panelX = width * 0.25;
+  let panelY = 70;
+  fill(C_BG[0] + 8, C_BG[1] + 8, C_BG[2] + 12);
+  stroke(C_FRAME);
+  strokeWeight(1);
+  rect(panelX, panelY, width * 0.3, height * 0.6, 4);
+
+  fill(C_GOLD);
+  noStroke();
+  textSize(13);
+  textAlign(LEFT, TOP);
+  text("3-TIER SUPERPOSITION", panelX + 10, panelY + 10);
+
+  let pLines = [
+    {c: C_TEXT, t: "Each string passes through ALL 3 tiers:"},
+    {c: C_TEXT, t: ""},
+    {c: C_HELIX[0], t: "  Tier 1 (0\u00b0):   driven by Helix 1"},
+    {c: C_HELIX[1], t: "  Tier 2 (120\u00b0): driven by Helix 2"},
+    {c: C_HELIX[2], t: "  Tier 3 (240\u00b0): driven by Helix 3"},
+    {c: C_TEXT, t: ""},
+    {c: C_TEXT, t: "At each tier, string makes a U-detour"},
+    {c: C_TEXT, t: "around one slider. Each detour adds"},
+    {c: C_TEXT, t: "or subtracts string length."},
+    {c: C_TEXT, t: ""},
+    {c: C_TEXT, t: "Block height = sum of all 3 detour"},
+    {c: C_TEXT, t: "changes. This IS wave superposition"},
+    {c: C_TEXT, t: "computed mechanically by geometry."},
+    {c: C_TEXT, t: ""},
+    {c: C_GOLD, t: "PULLEYS PER STRING PATH:"},
+    {c: C_DIM, t: "  3 per tier \u00d7 3 tiers = 9 total"},
+    {c: C_DIM, t: "  Friction: 0.95\u2079 \u2248 63%"},
+    {c: C_DIM, t: "  (Margolin's practical limit)"},
+    {c: C_TEXT, t: ""},
+    {c: C_GOLD, t: "TIER ORIENTATIONS:"},
+    {c: C_TEXT, t: "  In the real sculpture, each tier's"},
+    {c: C_TEXT, t: "  sliders move in a DIFFERENT direction"},
+    {c: C_TEXT, t: "  (0\u00b0, 120\u00b0, 240\u00b0). This creates 2D"},
+    {c: C_TEXT, t: "  wave interference, not just 1D."},
+    {c: C_TEXT, t: ""},
+    {c: C_TEXT, t: "  (Shown simplified here as 1D for"},
+    {c: C_TEXT, t: "   clarity \u2014 View 4 shows top-down)"},
+  ];
+
+  textSize(10);
+  for (let i = 0; i < pLines.length; i++) {
+    fill(pLines[i].c);
+    text(pLines[i].t, panelX + 10, panelY + 32 + i * 15);
+    if (panelY + 32 + i * 15 > panelY + height * 0.58) break;
+  }
+
+  pop();
+}
+
+// ============================================================
+// VIEW 4: TOP-DOWN — 30 blocks showing 2D wave interference
+// ============================================================
+function drawView4_TopDown() {
+  push();
+  translate(width/2, height/2 - 30);
+
+  fill(C_GOLD);
+  noStroke();
+  textAlign(CENTER, TOP);
+  textSize(18);
+  text("TOP-DOWN \u2014 30-BLOCK WAVE INTERFERENCE", 0, -height/2 + 20);
+  textSize(11);
+  fill(C_DIM);
+  text("Three plane waves at 120\u00b0 create complex interference pattern", 0, -height/2 + 44);
+  text("Block brightness = height. Watch the pattern evolve.", 0, -height/2 + 60);
+
+  // Generate hex grid for 30 blocks (or close to it)
+  // Using 3 rings = 37 positions (prime), we'll use 30 for our cam count
+  let hexSpacing = min(35, (width - 200) / 12);
+  let positions = [];
+  let rings = 3;
+  for (let q = -rings; q <= rings; q++) {
+    for (let r = -rings; r <= rings; r++) {
+      if (abs(q + r) <= rings) {
+        positions.push({
+          x: hexSpacing * (q + r * 0.5),
+          y: hexSpacing * (r * sqrt(3) / 2)
+        });
+      }
+    }
+  }
+  // Trim to 30 if needed (remove outer corners)
+  while (positions.length > 30) {
+    let maxDist = 0;
+    let maxIdx = 0;
+    for (let i = 0; i < positions.length; i++) {
+      let d = positions[i].x * positions[i].x + positions[i].y * positions[i].y;
+      if (d > maxDist) { maxDist = d; maxIdx = i; }
+    }
+    positions.splice(maxIdx, 1);
+  }
+
+  // Draw helix direction arrows
+  for (let hi = 0; hi < 3; hi++) {
+    let angle = hi * TWO_PI / 3;
+    let arrowLen = hexSpacing * (rings + 1.5);
+    stroke(C_HELIX[hi][0], C_HELIX[hi][1], C_HELIX[hi][2], 60);
+    strokeWeight(1.5);
+    drawingContext.setLineDash([5, 5]);
+    line(0, 0, cos(angle) * arrowLen, sin(angle) * arrowLen);
+    drawingContext.setLineDash([]);
+
+    // Arrow head
+    let ax = cos(angle) * arrowLen;
+    let ay = sin(angle) * arrowLen;
+    let perpA = angle + PI * 0.85;
+    let perpB = angle - PI * 0.85;
+    line(ax, ay, ax + cos(perpA) * 12, ay + sin(perpA) * 12);
+    line(ax, ay, ax + cos(perpB) * 12, ay + sin(perpB) * 12);
+
+    // Label
+    fill(C_HELIX[hi]);
+    noStroke();
+    textSize(10);
+    textAlign(CENTER, CENTER);
+    text("Helix " + (hi + 1) + " (" + (hi * 120) + "\u00b0)",
+         cos(angle) * (arrowLen + 20), sin(angle) * (arrowLen + 20));
+  }
+
+  // Calculate and draw each block
+  let maxH = ECCENTRIC * 3 * 0.7; // max possible displacement
+
+  for (let bi = 0; bi < positions.length; bi++) {
+    let bx = positions[bi].x;
+    let by = positions[bi].y;
+
+    // Wave superposition: sum of 3 plane waves at 120° directions
+    let totalH = 0;
+    for (let hi = 0; hi < 3; hi++) {
+      let waveDir = hi * TWO_PI / 3;
+      let projDist = bx * cos(waveDir) + by * sin(waveDir);
+      let waveK = 0.04; // spatial frequency
+      let contribution = ECCENTRIC * sin(waveK * projDist - t * TWO_PI + hi * TWO_PI / 3);
+      totalH += contribution;
+    }
+
+    // Map height to color and size
+    let normH = totalH / maxH;
+    let bright = map(normH, -1, 1, 0.15, 1.0);
+    let blockSize = map(abs(normH), 0, 1, hexSpacing * 0.5, hexSpacing * 0.8);
+
+    // Color: blue (low) → white (mid) → gold (high)
+    let r, g, b;
+    if (normH < 0) {
+      r = lerp(20, 150, 1 + normH);
+      g = lerp(40, 160, 1 + normH);
+      b = lerp(120, 180, 1 + normH);
+    } else {
+      r = lerp(150, 255, normH);
+      g = lerp(160, 220, normH);
+      b = lerp(180, 80, normH);
+    }
+
+    // Draw hex block
+    fill(r, g, b);
+    stroke(r * 0.6, g * 0.6, b * 0.6);
+    strokeWeight(0.8);
+    beginShape();
+    for (let v = 0; v < 6; v++) {
+      let va = v * PI / 3 + PI / 6;
+      vertex(bx + cos(va) * blockSize/2, by + sin(va) * blockSize/2);
+    }
+    endShape(CLOSE);
+
+    // Height indicator (small dot)
+    if (showGeometry) {
+      let dotY = -normH * 3;
+      fill(255, 255, 255, 80);
+      noStroke();
+      ellipse(bx, by + dotY, 3, 3);
+    }
+  }
+
+  // Color legend
+  let legX = -width/2 + 30;
+  let legY = height/2 - 110;
+  fill(C_BG[0] + 8, C_BG[1] + 8, C_BG[2] + 12);
+  stroke(C_FRAME);
+  strokeWeight(1);
+  rect(legX, legY, 150, 70, 4);
+
+  noStroke();
+  textSize(10);
+  textAlign(LEFT, TOP);
+  fill(C_GOLD);
+  text("HEIGHT MAP", legX + 10, legY + 8);
+  // Draw gradient bar
+  for (let i = 0; i < 120; i++) {
+    let n = map(i, 0, 120, -1, 1);
+    let cr, cg, cb;
+    if (n < 0) {
+      cr = lerp(20, 150, 1 + n); cg = lerp(40, 160, 1 + n); cb = lerp(120, 180, 1 + n);
+    } else {
+      cr = lerp(150, 255, n); cg = lerp(160, 220, n); cb = lerp(180, 80, n);
+    }
+    stroke(cr, cg, cb);
+    line(legX + 10 + i, legY + 30, legX + 10 + i, legY + 42);
+  }
+  noStroke();
+  fill(C_DIM);
+  textSize(8);
+  text("LOW", legX + 10, legY + 46);
+  textAlign(RIGHT, TOP);
+  text("HIGH", legX + 130, legY + 46);
+  textAlign(CENTER, TOP);
+  text("neutral", legX + 70, legY + 46);
+
+  // Info
+  let infoX = width/2 - 280;
+  let infoY = height/2 - 130;
+  fill(C_BG[0] + 8, C_BG[1] + 8, C_BG[2] + 12);
+  stroke(C_FRAME);
+  rect(infoX, infoY, 250, 100, 4);
+
+  noStroke();
+  fill(C_GOLD);
+  textSize(11);
+  textAlign(LEFT, TOP);
+  text("WAVE EQUATION", infoX + 10, infoY + 8);
+  fill(C_TEXT);
+  textSize(9);
+  text("h(x,y,t) = \u03a3 A\u00b7sin(k\u00b7d\u1d62(x,y) - \u03c9t + \u03c6\u1d62)", infoX + 10, infoY + 28);
+  text("i = 0,1,2 (three helixes at 120\u00b0)", infoX + 10, infoY + 44);
+  fill(C_DIM);
+  text("d\u1d62 = projected distance along helix i axis", infoX + 10, infoY + 62);
+  text("30 blocks, 3 helixes, 9 pulleys/string", infoX + 10, infoY + 78);
+
+  pop();
+}
+
+// ============================================================
+// VIEW 5: SIDE PROFILE — Z-displacement over time
+// ============================================================
+function drawView5_SideProfile() {
+  push();
+  translate(50, 50);
+
+  fill(C_GOLD);
+  noStroke();
+  textAlign(LEFT, TOP);
+  textSize(18);
+  text("SIDE PROFILE \u2014 BLOCK Z-DISPLACEMENT", 0, 0);
+  textSize(11);
+  fill(C_DIM);
+  text("30 blocks, single helix = traveling wave. Three helixes = interference.", 0, 25);
+
+  let graphW = width - 100;
+  let graphH = (height - 160) / 2 - 20;
+
+  // Graph 1: Single helix (traveling wave)
+  let g1Y = 70;
+  drawGraph("SINGLE HELIX \u2014 Pure Traveling Wave", 0, g1Y, graphW, graphH, 1);
+
+  // Graph 2: Three helixes (superposition)
+  let g2Y = g1Y + graphH + 50;
+  drawGraph("THREE HELIXES \u2014 Wave Superposition", 0, g2Y, graphW, graphH, 3);
+
+  pop();
+}
+
+function drawGraph(title, gx, gy, gw, gh, numHelixes) {
+  // Background
+  fill(C_BG[0] + 5, C_BG[1] + 5, C_BG[2] + 8);
+  stroke(C_FRAME);
+  strokeWeight(1);
+  rect(gx, gy, gw, gh, 4);
+
+  // Title
+  fill(C_GOLD);
+  noStroke();
+  textSize(12);
+  textAlign(LEFT, TOP);
+  text(title, gx + 10, gy + 8);
+
+  // Axes
+  let axisL = gx + 50;
+  let axisR = gx + gw - 20;
+  let axisT = gy + 35;
+  let axisB = gy + gh - 20;
+  let axisMid = (axisT + axisB) / 2;
+
+  stroke(C_FRAME);
+  strokeWeight(1);
+  line(axisL, axisT, axisL, axisB); // Y axis
+  line(axisL, axisMid, axisR, axisMid); // X axis (zero line)
+
+  // Y axis labels
+  fill(C_DIM);
+  textSize(8);
+  textAlign(RIGHT, CENTER);
+  text("+", axisL - 5, axisT + 10);
+  text("0", axisL - 5, axisMid);
+  text("-", axisL - 5, axisB - 10);
+
+  // X axis label
+  textAlign(CENTER, TOP);
+  text("Block index (0-29)", (axisL + axisR) / 2, axisB + 4);
+
+  // Draw zero line
+  stroke(C_FRAME[0], C_FRAME[1], C_FRAME[2], 40);
+  drawingContext.setLineDash([2, 4]);
+  line(axisL, axisMid, axisR, axisMid);
+  drawingContext.setLineDash([]);
+
+  // Calculate block heights
+  let numBlocks = 30;
+  let maxH = ECCENTRIC * numHelixes * 0.8;
+  let blockW = (axisR - axisL) / numBlocks;
+
+  let heights = [];
+  for (let i = 0; i < numBlocks; i++) {
+    let h = 0;
+    for (let hi = 0; hi < numHelixes; hi++) {
+      let phase = t * TWO_PI + i * (TWO_PI / numBlocks) + hi * (TWO_PI / 3);
+      h += ECCENTRIC * sin(phase);
+    }
+    heights.push(h);
+  }
+
+  // Draw wave line
+  noFill();
+  stroke(C_STRING);
+  strokeWeight(2);
+  beginShape();
+  for (let i = 0; i < numBlocks; i++) {
+    let x = axisL + (i + 0.5) * blockW;
+    let y = axisMid - (heights[i] / maxH) * (axisMid - axisT - 5);
+    curveVertex(x, y);
+  }
+  endShape();
+
+  // Draw blocks as bars
+  for (let i = 0; i < numBlocks; i++) {
+    let x = axisL + i * blockW + 2;
+    let normH = heights[i] / maxH;
+    let barH = normH * (axisMid - axisT - 5);
+
+    // Color based on height
+    let r, g, b;
+    if (normH < 0) {
+      r = lerp(40, 150, 1 + normH); g = lerp(60, 160, 1 + normH); b = lerp(140, 180, 1 + normH);
+    } else {
+      r = lerp(150, 255, normH); g = lerp(160, 220, normH); b = lerp(180, 80, normH);
+    }
+
+    fill(r, g, b, 180);
+    noStroke();
+    if (barH > 0) {
+      rect(x, axisMid - barH, blockW - 4, barH, 1);
+    } else {
+      rect(x, axisMid, blockW - 4, -barH, 1);
+    }
+  }
+
+  // Per-helix component lines (dimmed)
+  if (numHelixes > 1) {
+    for (let hi = 0; hi < numHelixes; hi++) {
+      noFill();
+      stroke(C_HELIX[hi][0], C_HELIX[hi][1], C_HELIX[hi][2], 60);
+      strokeWeight(1);
+      beginShape();
+      for (let i = 0; i < numBlocks; i++) {
+        let phase = t * TWO_PI + i * (TWO_PI / numBlocks) + hi * (TWO_PI / 3);
+        let h = ECCENTRIC * sin(phase);
+        let x = axisL + (i + 0.5) * blockW;
+        let y = axisMid - (h / maxH) * (axisMid - axisT - 5);
+        curveVertex(x, y);
+      }
+      endShape();
+    }
+
+    // Legend
+    for (let hi = 0; hi < 3; hi++) {
+      fill(C_HELIX[hi][0], C_HELIX[hi][1], C_HELIX[hi][2], 100);
+      noStroke();
+      textSize(8);
+      textAlign(LEFT, CENTER);
+      rect(axisR - 120, axisT + 5 + hi * 14, 10, 2);
+      text("Helix " + (hi + 1) + " (" + (hi * 120) + "\u00b0)", axisR - 105, axisT + 6 + hi * 14);
+    }
+    fill(C_STRING);
+    rect(axisR - 120, axisT + 5 + 3 * 14, 10, 2);
+    text("SUM", axisR - 105, axisT + 6 + 3 * 14);
+  }
+}
+
+// ============================================================
+// HUD
+// ============================================================
+function drawHUD() {
+  // View tabs
+  let tabW = 42;
+  let tabH = 22;
+  let tabY = height - 35;
+
+  for (let v = 1; v <= 5; v++) {
+    let tabX = 10 + (v - 1) * (tabW + 5);
+    fill(v === view ? C_GOLD : C_FRAME);
+    noStroke();
+    rect(tabX, tabY, tabW, tabH, 3);
+    fill(v === view ? [10, 10, 15] : C_DIM);
+    textSize(11);
+    textAlign(CENTER, CENTER);
+    text("[" + v + "]", tabX + tabW/2, tabY + tabH/2);
+  }
+
+  // View labels
+  let labels = ["Core", "Tier", "3-Tier", "Top", "Side"];
+  for (let v = 0; v < 5; v++) {
+    let tabX = 10 + v * (tabW + 5);
+    fill(C_DIM);
+    textSize(7);
+    textAlign(CENTER, TOP);
+    text(labels[v], tabX + tabW/2, tabY + tabH + 2);
+  }
+
+  // Status
+  fill(C_DIM);
+  textSize(9);
+  textAlign(RIGHT, BOTTOM);
+  let statusText = (paused ? "PAUSED" : "RUNNING") +
+                   " | Speed: " + nf(speed * 1000, 1, 1) +
+                   " | [G]eometry: " + (showGeometry ? "ON" : "OFF") +
+                   " | [SPACE] pause | [+/-] speed";
+  text(statusText, width - 10, height - 5);
+
+  // Title bar
+  fill(C_GOLD);
+  textSize(9);
+  textAlign(LEFT, BOTTOM);
+  text("MARGOLIN U-DETOUR MECHANISM", 10, 15);
+  fill(C_DIM);
+  text(" \u2014 Helix Cam Kinetic Sculpture", 230, 15);
+}
+
+// ============================================================
+// INPUT
+// ============================================================
+function keyPressed() {
+  if (key >= '1' && key <= '5') view = int(key);
+  if (key === ' ') paused = !paused;
+  if (key === '+' || key === '=') speed = min(0.05, speed * 1.3);
+  if (key === '-') speed = max(0.001, speed / 1.3);
+  if (key === 'g' || key === 'G') showGeometry = !showGeometry;
+  if (key === 'e' || key === 'E') explodeTiers = !explodeTiers;
+  if (key === 'r' || key === 'R') { t = 0; speed = 0.008; }
+  return false;
+}
+</script>
+</body>
+</html>

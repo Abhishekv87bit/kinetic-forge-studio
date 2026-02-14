@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Hex Frame Concept — Triple Helix Matrix</title>
+    <style>
+        body { margin: 0; background: #1a1a2e; overflow: hidden; font-family: monospace; }
+        canvas { display: block; cursor: grab; }
+        canvas:active { cursor: grabbing; }
+        #controls {
+            position: absolute; top: 10px; left: 10px; color: #ccc;
+            background: rgba(0,0,0,0.75); padding: 14px; border-radius: 8px;
+            font-size: 11px; line-height: 2.0; min-width: 220px;
+        }
+        #controls b { font-size: 13px; color: #ffd700; }
+        #controls label { display: block; }
+        #controls input[type=range] { width: 120px; vertical-align: middle; }
+        #controls .val { color: #ffd700; font-weight: bold; min-width: 30px; display: inline-block; }
+        #legend {
+            position: absolute; bottom: 10px; left: 10px; color: #ccc;
+            background: rgba(0,0,0,0.75); padding: 10px; border-radius: 8px;
+            font-size: 11px; line-height: 1.6;
+        }
+        .sw { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
+        #info {
+            position: absolute; top: 10px; right: 10px; color: #888;
+            background: rgba(0,0,0,0.6); padding: 10px; border-radius: 8px;
+            font-size: 10px; line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+<div id="controls">
+    <b>HEX FRAME CONCEPT</b><br>
+    <label>Frame ring width: <input type="range" id="ringW" min="3" max="20" value="8" step="1"><span class="val" id="vRingW">8</span>mm</label>
+    <label>Frame ring height: <input type="range" id="ringH" min="3" max="20" value="6" step="1"><span class="val" id="vRingH">6</span>mm</label>
+    <label>Post height: <input type="range" id="postH" min="20" max="160" value="100" step="5"><span class="val" id="vPostH">100</span>mm</label>
+    <label>Arm length: <input type="range" id="armLen" min="20" max="150" value="80" step="5"><span class="val" id="vArmLen">80</span>mm</label>
+    <label>Arm width: <input type="range" id="armW" min="5" max="30" value="14" step="1"><span class="val" id="vArmW">14</span>mm</label>
+    <hr style="border-color:#444">
+    <label>Frame Y offset: <input type="range" id="frameYOff" min="-60" max="60" value="0" step="2"><span class="val" id="vFrameYOff">0</span>mm</label>
+    <label>Ring Y offset: <input type="range" id="ringYOff" min="-60" max="60" value="0" step="2"><span class="val" id="vRingYOff">0</span>mm</label>
+    <hr style="border-color:#444">
+    <label><input type="checkbox" id="showSliders" checked> Sliders</label>
+    <label><input type="checkbox" id="showFrame" checked> Hex frame</label>
+    <label><input type="checkbox" id="showArms" checked> Arms</label>
+    <label><input type="checkbox" id="showBolts" checked> M4 bolts</label>
+    <label><input type="checkbox" id="showPlates" checked> Anchor/GP</label>
+    <label>Explode: <input type="range" id="explode" min="0" max="60" value="0" step="2"><span class="val" id="vExplode">0</span></label>
+    <label><input type="checkbox" id="animate"> Animate sliders</label>
+</div>
+<div id="legend">
+    <b>LEGEND</b><br>
+    <span class="sw" style="background:#6688cc"></span> Matrix walls<br>
+    <span class="sw" style="background:#cc4444"></span> Sliders<br>
+    <span class="sw" style="background:#e8d030"></span> Hex frame ring<br>
+    <span class="sw" style="background:#444"></span> Frame arms<br>
+    <span class="sw" style="background:#999"></span> M4 bolts<br>
+    <span class="sw" style="background:#66cc66"></span> Guide plates<br>
+    <span class="sw" style="background:#9977aa"></span> Anchor plate<br>
+    <span class="sw" style="background:#ddaa44"></span> Corner posts
+</div>
+<div id="info">
+    Drag: rotate | Scroll: zoom<br>
+    Ring sits below GP2 — supports<br>
+    entire stack from underneath
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// ============================================================
+// HEX FRAME CONCEPT — v2
+// ============================================================
+// Mouse orbit, frame below GP2, 4 arms on vertices, rounded
+
+// Dimensions (mm)
+const HEX_R = 100;
+const HOUSING_H = 30;
+const TIER_PITCH = 30;
+const NUM_CHANNELS = 11;
+const STACK_OFFSET = 14;
+const COL_PITCH = 12;
+const ECCENTRICITY = 12;
+const ANCHOR_THICK = 5;
+const GP1_THICK = 3;
+const GP2_THICK = 5;
+const GP_GAP = 15;
+const FLANGE_R = 110;
+const BOLT_R = 105;
+const WALL_MARGIN = 8;
+
+// Z-layout (display Y, +Y = up)
+const TIER1_Y = TIER_PITCH;           // +30
+const TIER3_Y = -TIER_PITCH;          // -30
+const ANCHOR_BOT_Y = TIER1_Y + HOUSING_H/2;  // +45
+const GP1_TOP_Y = TIER3_Y - HOUSING_H/2;     // -45
+const GP1_BOT_Y = GP1_TOP_Y - GP1_THICK;     // -48
+const GP2_TOP_Y = GP1_BOT_Y - GP_GAP;        // -63
+const GP2_BOT_Y = GP2_TOP_Y - GP2_THICK;     // -68
+
+// 4 arm vertex indices (skip top and bottom vertices for cleaner look)
+// Hex vertices at 0°,60°,120°,180°,240°,300°
+// Pick 4: indices 0,1,3,4 → angles 0°,60°,180°,240° (left-right symmetry)
+const ARM_VERTEX_IDX = [0, 2, 3, 5]; // 0°, 120°, 180°, 300°
+
+// Mouse orbit
+let orbitX = 25;   // elevation (degrees)
+let orbitY = -35;  // azimuth (degrees)
+let zoomLevel = 1.5;
+let isDragging = false;
+let prevMX, prevMY;
+let t = 0;
+
+function setup() {
+    createCanvas(windowWidth, windowHeight, WEBGL);
+    textFont('monospace');
+}
+
+function windowResized() {
+    resizeCanvas(windowWidth, windowHeight);
+}
+
+function mousePressed() {
+    if (mouseX > 230 && mouseX < width - 10) { // not over controls
+        isDragging = true;
+        prevMX = mouseX;
+        prevMY = mouseY;
+    }
+}
+function mouseReleased() { isDragging = false; }
+function mouseDragged() {
+    if (isDragging) {
+        orbitY -= (mouseX - prevMX) * 0.4;
+        orbitX += (mouseY - prevMY) * 0.4;
+        orbitX = constrain(orbitX, -89, 89);
+        prevMX = mouseX;
+        prevMY = mouseY;
+    }
+}
+function mouseWheel(e) {
+    zoomLevel *= (e.delta > 0) ? 0.93 : 1.07;
+    zoomLevel = constrain(zoomLevel, 0.4, 5);
+    return false;
+}
+
+function rv(id) { return float(document.getElementById(id).value); }
+function cb(id) { return document.getElementById(id).checked; }
+function updVal(id, vid) { document.getElementById(vid).textContent = document.getElementById(id).value; }
+
+function draw() {
+    // Read controls + update value displays
+    let ringW = rv('ringW');    updVal('ringW','vRingW');
+    let ringH = rv('ringH');    updVal('ringH','vRingH');
+    let postH = rv('postH');    updVal('postH','vPostH');
+    let armLen = rv('armLen');   updVal('armLen','vArmLen');
+    let armW = rv('armW');      updVal('armW','vArmW');
+    let frameYOff = rv('frameYOff'); updVal('frameYOff','vFrameYOff');
+    let ringYOff = rv('ringYOff');   updVal('ringYOff','vRingYOff');
+    let explode = rv('explode'); updVal('explode','vExplode');
+    let showSliders = cb('showSliders');
+    let showFrame = cb('showFrame');
+    let showArms = cb('showArms');
+    let showBolts = cb('showBolts');
+    let showPlates = cb('showPlates');
+    let anim = cb('animate');
+
+    if (anim) t += 0.004;
+
+    background(26, 26, 46);
+
+    // Camera via orbit
+    let camDist = 500 / zoomLevel;
+    let ex = radians(orbitX);
+    let ay = radians(orbitY);
+    let cx = camDist * cos(ex) * sin(ay);
+    let cy = -camDist * sin(ex);
+    let cz = camDist * cos(ex) * cos(ay);
+    camera(cx, cy, cz, 0, -10, 0, 0, -1, 0);
+
+    // Lighting
+    ambientLight(60);
+    directionalLight(180, 180, 190, -0.5, -1, -0.4);
+    directionalLight(80, 80, 100, 0.5, 0.3, -0.7);
+    specularMaterial(50);
+
+    // Frame radius — just outside flange ears
+    let frameR = FLANGE_R + 5;
+    // Frame Y = entire frame shift, Ring Y = ring-only shift
+    let frameBaseY = GP2_BOT_Y - ringH/2 - 2;  // default: just below GP2
+    let frameRingY = frameBaseY + ringYOff + frameYOff;
+    let framePostYOff = frameYOff;  // posts shift with frame, not ring-only
+
+    // ========== ANCHOR PLATE ==========
+    if (showPlates) {
+        push();
+        translate(0, ANCHOR_BOT_Y + ANCHOR_THICK/2 + explode * 1.5, 0);
+        fill(153, 119, 170, 200);
+        stroke(110, 85, 130);
+        strokeWeight(0.5);
+        drawFlatHexPlate(HEX_R, ANCHOR_THICK);
+        // Flange ears
+        noStroke();
+        fill(140, 110, 160, 180);
+        drawFlangeEars(ANCHOR_THICK);
+        pop();
+    }
+
+    // ========== 3 MATRIX TIERS ==========
+    for (let ti = 0; ti < 3; ti++) {
+        let tierY = (1 - ti) * TIER_PITCH;
+        let tierAngleDeg = ti * 120;
+        let ey = (1 - ti) * explode * 0.3;
+
+        push();
+        translate(0, tierY + ey, 0);
+        rotateY(radians(tierAngleDeg));
+        drawTier(ti, t, showSliders);
+        pop();
+    }
+
+    // ========== GUIDE PLATES ==========
+    if (showPlates) {
+        // GP1
+        push();
+        translate(0, GP1_TOP_Y - GP1_THICK/2 - explode * 0.5, 0);
+        fill(90, 190, 90, 180);
+        stroke(60, 140, 60);
+        strokeWeight(0.5);
+        drawFlatHexPlate(HEX_R, GP1_THICK);
+        noStroke();
+        fill(80, 170, 80, 160);
+        drawFlangeEars(GP1_THICK);
+        pop();
+
+        // GP2
+        push();
+        translate(0, GP2_TOP_Y - GP2_THICK/2 - explode * 0.8, 0);
+        fill(70, 170, 70, 180);
+        stroke(50, 130, 50);
+        strokeWeight(0.5);
+        drawFlatHexPlate(HEX_R, GP2_THICK);
+        noStroke();
+        fill(65, 155, 65, 160);
+        drawFlangeEars(GP2_THICK);
+        pop();
+    }
+
+    // ========== M4 BOLTS ==========
+    if (showBolts) {
+        let boltTop = ANCHOR_BOT_Y + ANCHOR_THICK + explode * 1.5;
+        let boltBot = GP2_BOT_Y - explode * 0.8;
+        let boltLen = boltTop - boltBot;
+        for (let i = 0; i < 6; i++) {
+            let a = radians(i * 60);
+            let bx = BOLT_R * cos(a);
+            let bz = BOLT_R * sin(a);
+            push();
+            noStroke();
+            // Shaft
+            fill(160, 160, 170);
+            translate(bx, (boltTop + boltBot) / 2, bz);
+            cylinder(1.8, boltLen, 8);
+            // Head (top)
+            push();
+            translate(0, -boltLen/2 + 2, 0);
+            fill(200, 200, 210);
+            cylinder(3.5, 4, 12);
+            pop();
+            // Nut (bottom)
+            push();
+            translate(0, boltLen/2 - 1.5, 0);
+            fill(200, 200, 210);
+            cylinder(3.5, 3.2, 6);
+            pop();
+            pop();
+        }
+    }
+
+    // ========== HEX SKELETON FRAME ==========
+    if (showFrame) {
+        // Ring — below GP2
+        drawHexRing(frameR, ringW, ringH, frameRingY - explode);
+
+        // Corner posts — from ring up to anchor level
+        let postTop = ANCHOR_BOT_Y + ANCHOR_THICK + 5 + explode * 1.5 + framePostYOff;
+        let postBot = frameRingY - ringH/2 - explode;
+        let actualPostH = postTop - postBot;
+        let postThick = ringW + 2;
+
+        for (let i = 0; i < 6; i++) {
+            let a = radians(i * 60);
+            let px = frameR * cos(a);
+            let pz = frameR * sin(a);
+
+            push();
+            translate(px, (postTop + postBot) / 2, pz);
+            noStroke();
+            fill(220, 170, 50, 220);
+            cylinder(postThick/2, actualPostH, 12);
+            pop();
+        }
+    }
+
+    // ========== FRAME ARMS ==========
+    if (showArms) {
+        for (let ai = 0; ai < ARM_VERTEX_IDX.length; ai++) {
+            let vi = ARM_VERTEX_IDX[ai];
+            let a = radians(vi * 60);
+
+            // Arm starts at frame corner post, extends outward
+            let sx = frameR * cos(a);
+            let sz = frameR * sin(a);
+            let ex2 = (frameR + armLen) * cos(a);
+            let ez2 = (frameR + armLen) * sin(a);
+            let mx = (sx + ex2) / 2;
+            let mz = (sz + ez2) / 2;
+            let armAngle = atan2(ez2 - sz, ex2 - sx);
+
+            push();
+            translate(mx, frameRingY, mz);
+            rotateY(-armAngle);
+            noStroke();
+            fill(70, 70, 75, 230);
+
+            // Rounded arm: series of overlapping cylinders (capsule shape)
+            let nSeg = 8;
+            for (let s = 0; s <= nSeg; s++) {
+                let frac = s / nSeg;
+                let lx = -armLen/2 + frac * armLen;
+                push();
+                translate(lx, 0, 0);
+                rotateX(HALF_PI);
+                cylinder(armW/2, ringH, 12);
+                pop();
+            }
+            pop();
+
+            // End mounting bracket (rounded)
+            push();
+            translate(ex2, frameRingY, ez2);
+            noStroke();
+            fill(90, 90, 95, 230);
+            sphere(armW * 0.7);
+            // Mounting hole indicator
+            fill(40, 40, 40);
+            cylinder(3, armW * 1.2, 8);
+            pop();
+        }
+    }
+}
+
+
+// ============================================================
+// FLAT HEX PLATE (Y-axis = up, plate lies in XZ plane)
+// ============================================================
+function drawFlatHexPlate(r, thick) {
+    push();
+    rotateX(HALF_PI); // cylinder default is Y-axis, rotate so plate lies flat
+    cylinder(r, thick, 6);
+    pop();
+}
+
+// ============================================================
+// FLANGE EARS at 6 vertices
+// ============================================================
+function drawFlangeEars(thick) {
+    for (let i = 0; i < 6; i++) {
+        let a = radians(i * 60);
+        let bx = BOLT_R * cos(a);
+        let bz = BOLT_R * sin(a);
+        push();
+        translate(bx, 0, bz);
+        rotateX(HALF_PI);
+        cylinder(5, thick, 12);
+        pop();
+
+        // Connecting tab from hex edge to bolt point
+        let ix = (HEX_R - 2) * cos(a);
+        let iz = (HEX_R - 2) * sin(a);
+        let mx = (ix + FLANGE_R * cos(a)) / 2;
+        let mz = (iz + FLANGE_R * sin(a)) / 2;
+        let tabLen = dist(ix, iz, FLANGE_R * cos(a), FLANGE_R * sin(a));
+
+        push();
+        translate(mx, 0, mz);
+        rotateY(-a);
+        box(tabLen, thick, 8);
+        pop();
+    }
+}
+
+
+// ============================================================
+// TIER — walls + sliders + flange ears
+// ============================================================
+function drawTier(tierIdx, t, showSliders) {
+    let halfCount = floor(NUM_CHANNELS / 2);
+
+    for (let ch = 0; ch < NUM_CHANNELS; ch++) {
+        let chOff = (ch - halfCount) * STACK_OFFSET;
+        let maxD = HEX_R * sqrt(3) / 2;
+        if (abs(chOff) > maxD) continue;
+        let hexW = 2 * (HEX_R - abs(chOff) / sqrt(3));
+        let wallLen = hexW - 2 * WALL_MARGIN;
+        if (wallLen <= 0) continue;
+
+        // Wall plate
+        push();
+        fill(102, 136, 204, 140);
+        stroke(80, 110, 170);
+        strokeWeight(0.3);
+        translate(0, 0, -chOff);
+        box(wallLen, HOUSING_H, 1.5);
+        pop();
+
+        // Sliders
+        if (showSliders) {
+            let phase = ch * (360 / NUM_CHANNELS);
+            let disp = ECCENTRICITY * sin(t * 360 + phase);
+            let numCols = max(1, floor((wallLen - WALL_MARGIN) / COL_PITCH));
+
+            for (let c = 0; c < numCols; c++) {
+                let cx = -((numCols-1)/2) * COL_PITCH + c * COL_PITCH;
+                if (abs(cx) + 5 > wallLen/2) continue;
+                push();
+                noStroke();
+                fill(204, 70, 70, 190);
+                translate(cx + disp, 0, -chOff);
+                box(7, 9, 7);
+                pop();
+            }
+        }
+    }
+
+    // Flange ears
+    noStroke();
+    fill(180, 180, 90, 100);
+    drawFlangeEars(HOUSING_H);
+}
+
+
+// ============================================================
+// HEX RING — 6 rounded edges forming hex frame below GP2
+// ============================================================
+function drawHexRing(r, w, h, centerY) {
+    fill(230, 210, 50, 210);
+    stroke(200, 180, 30);
+    strokeWeight(0.5);
+
+    for (let i = 0; i < 6; i++) {
+        let a1 = radians(i * 60);
+        let a2 = radians(((i + 1) % 6) * 60);
+
+        let x1 = r * cos(a1);
+        let z1 = r * sin(a1);
+        let x2 = r * cos(a2);
+        let z2 = r * sin(a2);
+
+        let mx = (x1 + x2) / 2;
+        let mz = (z1 + z2) / 2;
+        let edgeLen = dist(x1, z1, x2, z2);
+        let edgeAngle = atan2(z2 - z1, x2 - x1);
+
+        // Rounded beam: capsule shape (series of cylinders)
+        push();
+        translate(mx, centerY, mz);
+        rotateY(-edgeAngle);
+        noStroke();
+
+        let nSeg = 10;
+        for (let s = 0; s <= nSeg; s++) {
+            let frac = s / nSeg;
+            let lx = -edgeLen/2 + frac * edgeLen;
+            push();
+            translate(lx, 0, 0);
+            // Rounded cross-section
+            rotateX(HALF_PI);
+            rotateZ(HALF_PI);
+            cylinder(h/2, w, 10);
+            pop();
+        }
+        pop();
+    }
+}
+</script>
+</body>
+</html>

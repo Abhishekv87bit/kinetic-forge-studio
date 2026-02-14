@@ -1,0 +1,1805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Kinetic Wave Chandelier — Complete Design Visualization</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0d0d1a; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// =====================================================================
+// KINETIC WAVE CHANDELIER — COMPLETE DESIGN VISUALIZATION
+// =====================================================================
+// Comprehensive comparison of two matrix architectures:
+//   A) V5 Monolithic Matrix — our OpenSCAD design (5-channel box)
+//   B) Triangular Cell Modular — Margolin-inspired per-node cells
+//
+// CONTROLS:
+//   [1-6] Switch views    [SPACE] Pause    [+/-] Speed
+//   [E] Toggle Exploded   [R] Reset animation
+//   [W] Toggle wave overlay on full systems
+// =====================================================================
+
+let currentView = 1;
+let animSpeed = 0.015;
+let paused = false;
+let animTime = 0;
+let exploded = false;
+let showWaveOverlay = true;
+let explodeAmt = 0; // smoothly interpolates 0→1
+const PHI = 1.618033988749895;
+const GOLDEN_ANGLE = 137.508; // degrees
+
+// --- COLOR PALETTE ---
+const C = {
+  bg:          [13, 13, 26],
+  bgLight:     [20, 20, 38],
+  frame:       [70, 70, 80],
+  frameLt:     [100, 100, 115],
+  helix:       [170, 175, 185],
+  helixLt:     [200, 205, 215],
+  v5wall:      [80, 90, 200],
+  v5wallLt:    [110, 120, 230],
+  slider:      [220, 85, 85],
+  sliderLt:    [240, 110, 110],
+  fixedPulley: [140, 140, 150],
+  sliderPulley:[230, 230, 235],
+  rope:        [218, 175, 55],
+  ropeDim:     [180, 140, 40],
+  wood:        [196, 149, 106],
+  woodDark:    [156, 115, 76],
+  woodLt:      [216, 175, 136],
+  tier1:       [76, 175, 80],   // green 0°
+  tier2:       [50, 140, 230],  // blue 120°
+  tier3:       [255, 152, 0],   // orange 240°
+  bolt:        [90, 90, 100],
+  cradle:      [175, 175, 185],
+  cradleDk:    [130, 130, 145],
+  text:        [210, 210, 220],
+  textDim:     [140, 140, 155],
+  textBg:      [20, 22, 42, 210],
+  dimLine:     [100, 110, 170],
+  accent:      [255, 215, 0],
+  accentDim:   [200, 170, 30],
+  panelBg:     [16, 18, 35, 235],
+  bearing:     [65, 130, 210],
+  dampener:    [210, 200, 60],
+  belt:        [100, 100, 110],
+  waveGhost:   [255, 255, 255, 25],
+};
+
+const viewNames = [
+  '',
+  '1: FULL SYSTEM — V5 MONOLITHIC MATRIX',
+  '2: FULL SYSTEM — TRIANGULAR CELL MODULAR',
+  '3: MECHANISM BREAKDOWN — V5 UNIT',
+  '4: MECHANISM BREAKDOWN — TRIANGULAR CELL',
+  '5: HELIX CAM + DRIVE SYSTEM',
+  '6: SIDE-BY-SIDE COMPARISON'
+];
+
+const viewShort = [
+  '', 'V5 System', 'Tri-Cell System', 'V5 Mechanism', 'Tri-Cell Mechanism', 'Helix Detail', 'Comparison'
+];
+
+// =====================================================================
+// UTILITY FUNCTIONS
+// =====================================================================
+
+function labelBox(x, y, txt, sz, col, bgCol) {
+  push();
+  textSize(sz || 13);
+  textAlign(CENTER, CENTER);
+  let tw = textWidth(txt) + 16;
+  let th = (sz || 13) + 10;
+  fill(bgCol || C.textBg);
+  noStroke();
+  rect(x - tw/2, y - th/2, tw, th, 4);
+  fill(col || C.text);
+  text(txt, x, y);
+  pop();
+}
+
+function labelLeft(x, y, txt, sz, col) {
+  push();
+  textSize(sz || 11);
+  textAlign(LEFT, CENTER);
+  let tw = textWidth(txt) + 12;
+  let th = (sz || 11) + 6;
+  fill(C.textBg);
+  noStroke();
+  rect(x - 3, y - th/2, tw, th, 3);
+  fill(col || C.text);
+  text(txt, x + 3, y);
+  pop();
+}
+
+function dimLine(x1, y1, x2, y2, label, offset) {
+  push();
+  stroke(C.dimLine);
+  strokeWeight(0.8);
+  let dx = x2-x1, dy = y2-y1;
+  let len = Math.sqrt(dx*dx + dy*dy);
+  if (len < 1) { pop(); return; }
+  let nx = -dy/len * (offset||8);
+  let ny = dx/len * (offset||8);
+  line(x1+nx, y1+ny, x2+nx, y2+ny);
+  // ticks
+  line(x1+nx*0.4, y1+ny*0.4, x1+nx*1.6, y1+ny*1.6);
+  line(x2+nx*0.4, y2+ny*0.4, x2+nx*1.6, y2+ny*1.6);
+  let mx = (x1+x2)/2 + nx*2.2;
+  let my = (y1+y2)/2 + ny*2.2;
+  labelBox(mx, my, label, 9, C.dimLine);
+  pop();
+}
+
+// Wave displacement: 3 helixes at 120° offset
+function wave3(px, py, t) {
+  let d = 0;
+  for (let h = 0; h < 3; h++) {
+    let phase = h * TWO_PI / 3;
+    // Direction vector for each helix (120° apart in XY plane)
+    let dirX = cos(h * TWO_PI/3);
+    let dirY = sin(h * TWO_PI/3);
+    let projection = px * dirX + py * dirY;
+    d += sin(t + phase + projection * 0.05) * 10;
+  }
+  return d;
+}
+
+// Single wave component
+function waveSingle(helixIdx, pos, t) {
+  let phase = helixIdx * TWO_PI / 3;
+  return sin(t + phase + pos * 0.08) * 10;
+}
+
+// Vogel spiral (golden angle) positions
+function vogelPositions(n, spacing) {
+  let pts = [];
+  for (let i = 0; i < n; i++) {
+    let r = spacing * sqrt(i + 0.5);
+    let theta = i * GOLDEN_ANGLE * PI / 180;
+    pts.push({ x: r * cos(theta), y: r * sin(theta), idx: i, r: r, theta: theta });
+  }
+  return pts;
+}
+
+// Equilateral triangle
+function drawTri(cx, cy, size, rot, fillCol, strokeCol, alpha) {
+  push();
+  translate(cx, cy);
+  rotate(rot);
+  if (alpha !== undefined) fill(fillCol[0], fillCol[1], fillCol[2], alpha);
+  else fill(fillCol);
+  stroke(strokeCol || [200,200,200]);
+  strokeWeight(1.2);
+  beginShape();
+  for (let i = 0; i < 3; i++) {
+    let a = -PI/2 + i * TWO_PI/3;
+    vertex(cos(a) * size / sqrt(3), sin(a) * size / sqrt(3));
+  }
+  endShape(CLOSE);
+  pop();
+}
+
+// Hexagonal block — flat 2D (for small views)
+function drawHexBlock(cx, cy, r, fillCol, depth) {
+  push();
+  translate(cx, cy);
+  if (depth) {
+    fill(fillCol[0]-40, fillCol[1]-40, fillCol[2]-40, 120);
+    noStroke();
+    beginShape();
+    for (let i = 0; i < 6; i++) { let a = i*TWO_PI/6-PI/6; vertex(cos(a)*r+1.5, sin(a)*r*0.8+depth); }
+    endShape(CLOSE);
+  }
+  fill(fillCol);
+  stroke(fillCol[0]-30, fillCol[1]-30, fillCol[2]-30);
+  strokeWeight(0.8);
+  beginShape();
+  for (let i = 0; i < 6; i++) { let a = i*TWO_PI/6-PI/6; vertex(cos(a)*r, sin(a)*r*0.8); }
+  endShape(CLOSE);
+  fill(fillCol[0]+25, fillCol[1]+25, fillCol[2]+25, 80);
+  noStroke();
+  beginShape();
+  for (let i = 0; i < 3; i++) { let a = i*TWO_PI/6-PI/6; vertex(cos(a)*r*0.5, sin(a)*r*0.4-r*0.15); }
+  endShape(CLOSE);
+  pop();
+}
+
+// 3D ISOMETRIC WOODEN BLOCK — proper hanging block with top, front, side faces
+// x,y = isometric screen pos, h = block height in px, r = hex radius, zDrop = rope length
+function draw3DBlock(screenX, screenY, r, blockH, fillCol, ropeLen, ropeStartY) {
+  push();
+  // Rope from matrix down to block
+  if (ropeLen > 0) {
+    stroke(C.rope[0], C.rope[1], C.rope[2], 140);
+    strokeWeight(1);
+    // Rope is vertical line from ropeStartY to block top
+    line(screenX, ropeStartY, screenX, screenY - blockH/2);
+    // Rope attachment dot on block
+    fill(C.rope); noStroke();
+    ellipse(screenX, screenY - blockH/2, 3, 3);
+  }
+
+  // Isometric offsets for 3D effect
+  let isoX = r * 0.4;  // side face width
+  let isoY = r * 0.25; // depth foreshortening
+
+  // --- SIDE FACE (right side, darker) ---
+  fill(fillCol[0]-45, fillCol[1]-45, fillCol[2]-45);
+  stroke(fillCol[0]-55, fillCol[1]-55, fillCol[2]-55);
+  strokeWeight(0.6);
+  beginShape();
+  vertex(screenX + r, screenY - blockH/2);
+  vertex(screenX + r + isoX, screenY - blockH/2 - isoY);
+  vertex(screenX + r + isoX, screenY + blockH/2 - isoY);
+  vertex(screenX + r, screenY + blockH/2);
+  endShape(CLOSE);
+
+  // --- FRONT FACE (main face) ---
+  fill(fillCol);
+  stroke(fillCol[0]-30, fillCol[1]-30, fillCol[2]-30);
+  strokeWeight(0.8);
+  rect(screenX - r, screenY - blockH/2, r*2, blockH, 1);
+
+  // Wood grain lines on front face
+  stroke(fillCol[0]-15, fillCol[1]-18, fillCol[2]-20, 60);
+  strokeWeight(0.4);
+  for (let g = 0; g < 3; g++) {
+    let gy = screenY - blockH/2 + blockH * (0.25 + g*0.25);
+    line(screenX - r + 2, gy, screenX + r - 2, gy);
+  }
+
+  // --- TOP FACE (lighter, angled) ---
+  fill(fillCol[0]+20, fillCol[1]+18, fillCol[2]+10);
+  stroke(fillCol[0]-10, fillCol[1]-12, fillCol[2]-15);
+  strokeWeight(0.6);
+  beginShape();
+  vertex(screenX - r, screenY - blockH/2);
+  vertex(screenX - r + isoX, screenY - blockH/2 - isoY);
+  vertex(screenX + r + isoX, screenY - blockH/2 - isoY);
+  vertex(screenX + r, screenY - blockH/2);
+  endShape(CLOSE);
+
+  // Highlight on top face
+  fill(255, 255, 255, 25);
+  noStroke();
+  beginShape();
+  vertex(screenX - r + 2, screenY - blockH/2);
+  vertex(screenX - r + isoX + 2, screenY - blockH/2 - isoY);
+  vertex(screenX + isoX, screenY - blockH/2 - isoY);
+  vertex(screenX, screenY - blockH/2);
+  endShape(CLOSE);
+
+  pop();
+}
+
+// 3D ISOMETRIC HEX BLOCK — for Vogel spiral view
+function draw3DHexBlock(screenX, screenY, r, blockH, fillCol, ropeLen, ropeStartY) {
+  push();
+  // Rope
+  if (ropeLen > 0) {
+    stroke(C.rope[0], C.rope[1], C.rope[2], 120);
+    strokeWeight(0.8);
+    line(screenX, ropeStartY, screenX, screenY - blockH/2);
+    fill(C.rope); noStroke();
+    ellipse(screenX, screenY - blockH/2, 2.5, 2.5);
+  }
+
+  let isoX = r * 0.35;
+  let isoY = r * 0.22;
+
+  // Generate hex vertices for top and bottom faces
+  let topVerts = [];
+  let botVerts = [];
+  let topVertsIso = []; // offset for 3D top face
+  for (let i = 0; i < 6; i++) {
+    let a = i * TWO_PI/6 - PI/6;
+    let hx = cos(a) * r;
+    let hy = sin(a) * r * 0.65; // foreshorten Y
+    topVerts.push({x: screenX + hx, y: screenY - blockH/2 + hy});
+    botVerts.push({x: screenX + hx, y: screenY + blockH/2 + hy});
+    topVertsIso.push({x: screenX + hx + isoX, y: screenY - blockH/2 + hy - isoY});
+  }
+
+  // Side faces (only draw back-right sides for isometric illusion)
+  for (let i = 0; i < 6; i++) {
+    let ni = (i+1) % 6;
+    // Only draw sides facing right/down (indices 0,1,5 roughly)
+    if (i === 0 || i === 1 || i === 5) {
+      let shade = (i === 0) ? -35 : (i === 1 ? -50 : -25);
+      fill(fillCol[0]+shade, fillCol[1]+shade, fillCol[2]+shade);
+      stroke(fillCol[0]-55, fillCol[1]-55, fillCol[2]-55);
+      strokeWeight(0.5);
+      beginShape();
+      vertex(topVerts[i].x, topVerts[i].y);
+      vertex(topVerts[ni].x, topVerts[ni].y);
+      vertex(botVerts[ni].x, botVerts[ni].y);
+      vertex(botVerts[i].x, botVerts[i].y);
+      endShape(CLOSE);
+    }
+  }
+
+  // Front face (hex)
+  fill(fillCol);
+  stroke(fillCol[0]-30, fillCol[1]-30, fillCol[2]-30);
+  strokeWeight(0.6);
+  beginShape();
+  for (let v of topVerts) vertex(v.x, v.y);
+  endShape(CLOSE);
+
+  // Bottom face edge hint
+  stroke(fillCol[0]-40, fillCol[1]-40, fillCol[2]-40);
+  strokeWeight(0.4);
+  for (let i = 2; i <= 4; i++) {
+    let ni = (i+1) % 6;
+    line(botVerts[i].x, botVerts[i].y, botVerts[ni].x, botVerts[ni].y);
+  }
+
+  // Top face (lighter hex, offset)
+  fill(fillCol[0]+22, fillCol[1]+18, fillCol[2]+10);
+  stroke(fillCol[0]-10, fillCol[1]-12, fillCol[2]-15);
+  strokeWeight(0.5);
+  beginShape();
+  for (let v of topVertsIso) vertex(v.x, v.y);
+  endShape(CLOSE);
+
+  // Connecting edges between top face and front face
+  stroke(fillCol[0]-20, fillCol[1]-22, fillCol[2]-25);
+  strokeWeight(0.4);
+  for (let i = 0; i < 6; i++) {
+    if (i <= 2) { // only visible connecting edges
+      line(topVerts[i].x, topVerts[i].y, topVertsIso[i].x, topVertsIso[i].y);
+    }
+  }
+
+  pop();
+}
+
+// Draw helix camshaft icon (compact)
+function drawHelixIcon(cx, cy, sz, rotOffset, t) {
+  push();
+  translate(cx, cy);
+  // Shaft body
+  fill(C.helix);
+  stroke(C.frameLt);
+  strokeWeight(1);
+  rect(-sz*0.12, -sz*0.5, sz*0.24, sz, 2);
+  // Eccentric discs
+  for (let d = 0; d < 8; d++) {
+    let dy = -sz*0.4 + d * (sz*0.8/7);
+    let rot = t * 2 + d * 0.4 + rotOffset;
+    let ex = cos(rot) * sz*0.18;
+    let ey = sin(rot) * sz*0.06;
+    fill(C.helix[0], C.helix[1], C.helix[2], 200-d*15);
+    stroke(C.helixLt[0], C.helixLt[1], C.helixLt[2], 150-d*12);
+    strokeWeight(0.8);
+    ellipse(ex, dy+ey, sz*0.35, sz*0.14);
+  }
+  // Bearing at top
+  fill(C.bearing);
+  noStroke();
+  rect(-sz*0.2, -sz*0.55, sz*0.4, sz*0.08, 2);
+  pop();
+}
+
+// Pulley with groove detail
+function drawPulley(cx, cy, od, col, axleCol) {
+  push();
+  translate(cx, cy);
+  // Outer disc
+  fill(col || C.fixedPulley);
+  stroke(col ? [col[0]+20, col[1]+20, col[2]+20] : [160,160,170]);
+  strokeWeight(0.8);
+  ellipse(0, 0, od, od);
+  // V-groove
+  noFill();
+  stroke(col ? [col[0]-20, col[1]-20, col[2]-20] : [110,110,120]);
+  strokeWeight(0.6);
+  ellipse(0, 0, od*0.7, od*0.7);
+  // Axle
+  fill(axleCol || [60,60,65]);
+  noStroke();
+  ellipse(0, 0, od*0.22, od*0.22);
+  pop();
+}
+
+// Rope segment (bezier)
+function drawRope(x1, y1, cx1, cy1, cx2, cy2, x2, y2, col, w) {
+  push();
+  noFill();
+  stroke(col || C.rope);
+  strokeWeight(w || 1.8);
+  bezier(x1, y1, cx1, cy1, cx2, cy2, x2, y2);
+  pop();
+}
+
+// =====================================================================
+// VIEW 1: FULL SYSTEM — V5 MONOLITHIC MATRIX
+// =====================================================================
+function drawView1() {
+  push();
+  translate(width/2, 80);
+  let t = animTime;
+  let ex = explodeAmt; // 0=assembled, 1=exploded
+
+  // --- CEILING ---
+  let ceilY = 0;
+  fill(C.frame);
+  noStroke();
+  ellipse(0, ceilY, 14, 14);
+  fill(C.frameLt);
+  ellipse(0, ceilY, 8, 8);
+  labelBox(0, ceilY - 16, '12FT CEILING', 10, C.textDim);
+
+  // --- SUSPENSION CABLES ---
+  let frameY = 55 + ex*40;
+  let frameR = 180;
+  stroke(C.belt);
+  strokeWeight(1.2);
+  for (let i = 0; i < 3; i++) {
+    let a = -PI/2 + i * TWO_PI/3;
+    let vx = cos(a) * frameR;
+    let vy = frameY + sin(a)*25;
+    line(0, ceilY+7, vx, vy);
+  }
+
+  // --- TRIANGULAR FRAME ---
+  let frameVerts = [];
+  stroke(C.frame);
+  strokeWeight(4);
+  noFill();
+  beginShape();
+  for (let i = 0; i < 3; i++) {
+    let a = -PI/2 + i * TWO_PI/3;
+    let vx = cos(a) * frameR;
+    let vy = frameY + sin(a)*25;
+    vertex(vx, vy);
+    frameVerts.push({x: vx, y: vy});
+  }
+  endShape(CLOSE);
+  // Frame joints
+  for (let v of frameVerts) {
+    fill(C.frameLt);
+    noStroke();
+    ellipse(v.x, v.y, 10, 10);
+  }
+
+  // --- HELIX CAMSHAFTS at each vertex ---
+  for (let i = 0; i < 3; i++) {
+    let fv = frameVerts[i];
+    let helixY = fv.y + 15 + ex*30;
+    drawHelixIcon(fv.x, helixY, 55, i*TWO_PI/3, t);
+    // Belt from frame to helix
+    stroke(C.belt);
+    strokeWeight(1.5);
+    setLineDash([4,3]);
+    line(fv.x, fv.y+5, fv.x, helixY - 30);
+    setLineDash([]);
+    // Label
+    let tierC = [C.tier1, C.tier2, C.tier3][i];
+    labelBox(fv.x, helixY + 38, 'HELIX '+(i+1)+' ('+['0°','120°','240°'][i]+')', 9, tierC);
+  }
+
+  // --- DAMPENERS (yellow boxes between helix and matrix) ---
+  let matrixY = frameY + 130 + ex*80;
+  for (let i = 0; i < 3; i++) {
+    let fv = frameVerts[i];
+    let dampX = fv.x * 0.55;
+    let dampY = matrixY - 30 - ex*20;
+    fill(C.dampener[0], C.dampener[1], C.dampener[2], 180);
+    stroke(C.dampener);
+    strokeWeight(1);
+    rect(dampX-12, dampY-6, 24, 12, 3);
+    labelBox(dampX, dampY+14, 'DAMPENER', 7, C.dampener);
+    // Connection lines
+    stroke(C.belt);
+    strokeWeight(1);
+    setLineDash([3,3]);
+    line(fv.x, fv.y + 70 + ex*30, dampX, dampY-6);
+    setLineDash([]);
+  }
+
+  // --- V5 MATRIX BOX ---
+  let boxW = 360, boxH = 110;
+  push();
+  translate(0, matrixY);
+
+  // Main housing outline
+  fill(C.v5wall[0], C.v5wall[1], C.v5wall[2], 40);
+  stroke(C.v5wall);
+  strokeWeight(2);
+  rect(-boxW/2, -boxH/2, boxW, boxH, 6);
+
+  // 5 channel slots
+  let chCounts = [{f:3,s:3},{f:4,s:4},{f:5,s:5},{f:4,s:4},{f:3,s:3}];
+  let chHLens = [83, 111, 136, 112, 83];
+  for (let ch = 0; ch < 5; ch++) {
+    let cy = -boxH/2 + 11 + ch * 22;
+    let hw = chHLens[ch] * 1.2;
+
+    // Channel background
+    fill(C.v5wall[0], C.v5wall[1], C.v5wall[2], 25);
+    noStroke();
+    rect(-hw/2, cy-9, hw, 18, 2);
+
+    // Walls
+    stroke(C.v5wall[0], C.v5wall[1], C.v5wall[2], 80);
+    strokeWeight(1);
+    line(-hw/2, cy-9, hw/2, cy-9);
+    line(-hw/2, cy+9, hw/2, cy+9);
+
+    // Slider (animated)
+    let slOff = sin(t + ch*0.55) * 22;
+    fill(C.slider[0], C.slider[1], C.slider[2], 160);
+    noStroke();
+    let slW = hw * 0.85;
+    rect(slOff - slW/2, cy-3, slW, 6, 2);
+
+    // Slider pulleys
+    for (let sp = 0; sp < chCounts[ch].s; sp++) {
+      let spx = slOff + (sp - (chCounts[ch].s-1)/2) * 16;
+      drawPulley(spx, cy, 7, C.sliderPulley, [40,40,45]);
+    }
+
+    // Fixed pulleys (top & bottom row)
+    for (let fp = 0; fp < chCounts[ch].f; fp++) {
+      let fpx = (fp - (chCounts[ch].f-1)/2) * 14;
+      drawPulley(fpx, cy-7, 5, C.fixedPulley);
+      drawPulley(fpx, cy+7, 5, C.fixedPulley);
+    }
+
+    // Channel label
+    fill(C.textDim);
+    noStroke();
+    textSize(7);
+    textAlign(RIGHT, CENTER);
+    text('CH'+(ch+1)+' ('+chCounts[ch].f+'F/'+chCounts[ch].s+'S)', -hw/2-4, cy);
+  }
+
+  // Rope paths (3 sample ropes weaving through)
+  for (let r = 0; r < 5; r++) {
+    let rx = (r-2) * 50;
+    noFill();
+    stroke(C.rope[0], C.rope[1], C.rope[2], 120);
+    strokeWeight(1.3);
+    beginShape();
+    curveVertex(rx, -boxH/2 - 15);
+    curveVertex(rx, -boxH/2);
+    for (let ch = 0; ch < 5; ch++) {
+      let cy = -boxH/2 + 11 + ch * 22;
+      let slOff = sin(t + ch*0.55) * 22;
+      curveVertex(rx + slOff*0.25, cy - 5);
+      curveVertex(rx + slOff*0.35, cy);
+      curveVertex(rx + slOff*0.25, cy + 5);
+    }
+    curveVertex(rx, boxH/2);
+    curveVertex(rx, boxH/2 + 15);
+    endShape();
+  }
+
+  labelBox(0, -boxH/2 - 18, 'V5 MONOLITHIC MATRIX — 5 CHANNELS', 12, C.accent);
+  pop();
+
+  // --- 3D HANGING BLOCKS WITH WAVE MOTION ---
+  let blockBaseY = matrixY + boxH/2 + 25 + ex*40;
+  let numBlocks = 19;
+  let ropeAnchorY = matrixY + boxH/2; // where ropes exit the matrix
+  let baseHangLen = 100; // base rope length before wave displacement
+  let waveAmp = 28; // wave amplitude in pixels
+
+  // Wave surface ghost lines (individual waves + compound)
+  if (showWaveOverlay) {
+    noFill();
+    for (let w = 0; w < 3; w++) {
+      let tc = [C.tier1, C.tier2, C.tier3][w];
+      stroke(tc[0], tc[1], tc[2], 35);
+      strokeWeight(0.8);
+      beginShape();
+      for (let b = 0; b < numBlocks; b++) {
+        let bx = (b - (numBlocks-1)/2) * 30;
+        let dz = waveSingle(w, b * 8, t) * 2.5;
+        vertex(bx, ropeAnchorY + baseHangLen + dz);
+      }
+      endShape();
+    }
+    // Compound wave surface line
+    stroke(C.accent[0], C.accent[1], C.accent[2], 50);
+    strokeWeight(1.2);
+    beginShape();
+    for (let b = 0; b < numBlocks; b++) {
+      let bx = (b - (numBlocks-1)/2) * 30;
+      let dz = wave3(b*8, 0, t) * waveAmp/10;
+      vertex(bx, ropeAnchorY + baseHangLen + dz);
+    }
+    endShape();
+  }
+
+  // Sort blocks back-to-front not needed for linear row, just draw them
+  for (let b = 0; b < numBlocks; b++) {
+    let bx = (b - (numBlocks-1)/2) * 30;
+    // Compound wave: sum of 3 helix displacements (this is the Z motion)
+    let dz = wave3(b * 8, 0, t) * waveAmp/10;
+    let blockCenterY = ropeAnchorY + baseHangLen + dz;
+    let ropeLen = blockCenterY - ropeAnchorY;
+
+    // Wood color variation per block
+    let woodShift = (b % 3) * 8;
+    let col = [C.wood[0]+woodShift-10, C.wood[1]+woodShift-14, C.wood[2]+woodShift-18];
+
+    // Draw 3D block with rope
+    draw3DBlock(bx, blockCenterY, 10, 16, col, ropeLen, ropeAnchorY);
+  }
+
+  // Wave equation label
+  labelBox(0, ropeAnchorY + baseHangLen + waveAmp + 35,
+    'Z-AXIS: h(x,t) = Σ Aᵢ·sin(ωt + φᵢ + kᵢ·x)  |  3 HELIXES @ 120°', 10, C.text);
+  labelBox(0, ropeAnchorY + baseHangLen + waveAmp + 52,
+    numBlocks + ' WOODEN BLOCKS — ROPES HANG FROM MATRIX — COMPOUND WAVE SUPERPOSITION', 10, C.accent);
+
+  // Explode legend
+  if (exploded) {
+    labelBox(-width/2+120, -10, 'EXPLODED VIEW — Press [E] to collapse', 10, [255,100,100]);
+  }
+
+  pop();
+}
+
+// =====================================================================
+// VIEW 2: FULL SYSTEM — TRIANGULAR CELL MODULAR
+// =====================================================================
+function drawView2() {
+  push();
+  translate(width/2, 60);
+  let t = animTime;
+  let ex = explodeAmt;
+
+  // --- CEILING ---
+  fill(C.frame); noStroke();
+  ellipse(0, 0, 14, 14);
+  fill(C.frameLt);
+  ellipse(0, 0, 8, 8);
+  labelBox(0, -16, '12FT CEILING', 10, C.textDim);
+
+  // --- FRAME ---
+  let frameY = 50 + ex*35;
+  let frameR = 200;
+  let frameVerts = [];
+  stroke(C.frame); strokeWeight(4); noFill();
+  beginShape();
+  for (let i = 0; i < 3; i++) {
+    let a = -PI/2 + i*TWO_PI/3;
+    let vx = cos(a)*frameR;
+    let vy = frameY + sin(a)*28;
+    vertex(vx, vy);
+    frameVerts.push({x:vx, y:vy});
+    // Cables
+    stroke(C.belt); strokeWeight(1.2);
+    line(0, 7, vx, vy);
+    stroke(C.frame); strokeWeight(4);
+  }
+  endShape(CLOSE);
+  for (let v of frameVerts) {
+    fill(C.frameLt); noStroke(); ellipse(v.x, v.y, 10, 10);
+  }
+
+  // --- HELIX CAMSHAFTS ---
+  for (let i = 0; i < 3; i++) {
+    let fv = frameVerts[i];
+    let hy = fv.y + 15 + ex*25;
+    drawHelixIcon(fv.x, hy, 50, i*TWO_PI/3, t);
+    let tc = [C.tier1, C.tier2, C.tier3][i];
+    labelBox(fv.x, hy+35, ['HELIX 1 (0°)','HELIX 2 (120°)','HELIX 3 (240°)'][i], 8, tc);
+  }
+
+  // --- THREE TIERS OF TRIANGULAR CELLS ---
+  let vogel = vogelPositions(37, 14);
+  let spiralScale = 1.4;
+  let tierBaseY = frameY + 100 + ex*60;
+  let tierSpacing = 35 + ex*50;
+  let tierColors = [C.tier1, C.tier2, C.tier3];
+  let tierRots = [0, TWO_PI/3, 2*TWO_PI/3];
+
+  for (let tier = 0; tier < 3; tier++) {
+    let ty = tierBaseY + tier * tierSpacing;
+    let tc = tierColors[tier];
+    let tr = tierRots[tier];
+    let sliderOff = sin(t + tier * TWO_PI/3) * 5;
+
+    // Tier label (left side)
+    labelBox(-280, ty, 'TIER '+(tier+1)+' ('+['0°','120°','240°'][tier]+')', 9, tc);
+
+    // Slider bars (thin lines connecting cells)
+    stroke(tc[0], tc[1], tc[2], 50);
+    strokeWeight(0.8);
+    for (let s = -4; s <= 4; s++) {
+      let barAngle = tr;
+      let barY = ty + s * 8;
+      line(-220 + sliderOff, barY, 220 + sliderOff, barY);
+    }
+
+    // Triangular cells at Vogel positions
+    for (let v = 0; v < vogel.length; v++) {
+      let vp = vogel[v];
+      let cx = vp.x * spiralScale + sliderOff * 0.4;
+      let cy = ty + vp.y * spiralScale * 0.18;
+      drawTri(cx, cy, 11, tr, tc, [tc[0]+30, tc[1]+30, tc[2]+30], 70);
+      // Central pulley dot
+      fill(C.cradle); noStroke();
+      ellipse(cx + sliderOff*0.2, cy, 2.5, 2.5);
+    }
+  }
+
+  // --- 3D ROPES & HANGING BLOCKS WITH WAVE ---
+  let ropeAnchorY2 = tierBaseY + 2*tierSpacing + 15;
+  let baseHangLen2 = 70; // base rope length
+  let waveAmp2 = 22;
+
+  // Wave surface ghost (individual components)
+  if (showWaveOverlay) {
+    // Sort vogel by x for smooth line drawing
+    let sorted = [...vogel].sort((a,b) => a.x - b.x);
+    for (let w = 0; w < 3; w++) {
+      noFill();
+      stroke(tierColors[w][0], tierColors[w][1], tierColors[w][2], 30);
+      strokeWeight(0.6);
+      beginShape();
+      for (let sv of sorted) {
+        let bx = sv.x * spiralScale;
+        let dz = waveSingle(w, sv.r * 1.5, t) * 2;
+        vertex(bx, ropeAnchorY2 + baseHangLen2 + dz);
+      }
+      endShape();
+    }
+  }
+
+  // Collect block data and sort by Y (depth) for back-to-front rendering
+  let blockData = [];
+  for (let v = 0; v < vogel.length; v++) {
+    let vp = vogel[v];
+    let bx = vp.x * spiralScale;
+    let depthY = vp.y * spiralScale * 0.15; // isometric depth offset
+    let dz = wave3(vp.x * spiralScale, vp.y * spiralScale, t) * waveAmp2/10;
+    let blockCenterY = ropeAnchorY2 + baseHangLen2 + depthY + dz;
+    let tierBotY = ropeAnchorY2 + vp.y * spiralScale * 0.18;
+    blockData.push({bx, blockCenterY, tierBotY, v, depthY, vp});
+  }
+  // Sort: draw far blocks first (higher depthY = further back = draw first)
+  blockData.sort((a,b) => a.depthY - b.depthY);
+
+  for (let bd of blockData) {
+    let woodShift = (bd.v % 5) * 5;
+    let col = [C.wood[0]+woodShift-8, C.wood[1]+woodShift-10, C.wood[2]+woodShift-14];
+    let ropeLen = bd.blockCenterY - bd.tierBotY;
+
+    // Draw 3D hex block with rope
+    draw3DHexBlock(bd.bx, bd.blockCenterY, 8, 12, col, ropeLen, bd.tierBotY);
+  }
+
+  // Labels
+  let labelY2 = ropeAnchorY2 + baseHangLen2 + waveAmp2 + 45;
+  labelBox(0, labelY2,
+    'Z-AXIS: h(x,y,t) = Σ Aᵢ·sin(kᵢ·dᵢ(x,y) - ωᵢt + φᵢ)', 10, C.text);
+  labelBox(0, labelY2 + 17,
+    '37 WOODEN BLOCKS — VOGEL SPIRAL (GOLDEN ANGLE 137.508°) — 3D COMPOUND WAVE', 10, C.accent);
+
+  if (exploded) {
+    labelBox(-280, 0, 'EXPLODED VIEW', 10, [255,100,100]);
+  }
+
+  pop();
+}
+
+// =====================================================================
+// VIEW 3: MECHANISM BREAKDOWN — V5 UNIT (Cross-Section)
+// =====================================================================
+function drawView3() {
+  push();
+  translate(width/2, height/2 + 10);
+  let t = animTime;
+  let ex = explodeAmt;
+
+  labelBox(0, -400, 'V5 MATRIX — DETAILED CROSS-SECTION (X-Z PLANE)', 14, C.accent);
+  labelBox(0, -380, 'Matching OpenSCAD MATRIX SINGLE UNIT v5.scad parameters', 10, C.textDim);
+
+  let channels = [
+    { name:'CH1 (Top)',    fixed:3, slider:3, hLen:83,  sLen:166, hCx:-51 },
+    { name:'CH2',          fixed:4, slider:4, hLen:111, sLen:222, hCx:-51 },
+    { name:'CH3 (Center)', fixed:5, slider:5, hLen:136, sLen:272, hCx:-51 },
+    { name:'CH4',          fixed:4, slider:4, hLen:112, sLen:224, hCx:-53 },
+    { name:'CH5 (Bottom)', fixed:3, slider:3, hLen:83,  sLen:166, hCx:-53 },
+  ];
+
+  let sc = 2.2; // scale factor (mm to px)
+  let stackOff = 22 * sc; // 22mm stack offset
+  let wallT = 3 * sc;
+  let fpOD = 13 * sc;
+  let spOD = 10 * sc;
+  let fpPitch = 29 * sc;
+  let spPitch = 46 * sc;
+  let housingH = 85 * sc * 0.15; // height (Y) — flattened for cross-section
+  let gapH = 19 * sc; // housing gap
+  let fpRowOff = 22.5 * sc * 0.3; // FP_ROW_Y
+
+  let totalH = 5 * stackOff;
+  let startY = -totalH/2 - 20;
+
+  // Draw walls and channels
+  for (let ch = 0; ch < 5; ch++) {
+    let chn = channels[ch];
+    let cy = startY + ch * stackOff + stackOff/2 + ex * ch * 15;
+    let hw = chn.hLen * sc / 2; // housing half-width
+    let slHW = chn.sLen * sc / 2;
+    let sliderOffset = sin(t + ch * 0.65) * 30;
+
+    // Wall (top of channel)
+    fill(C.v5wall);
+    stroke(C.v5wallLt);
+    strokeWeight(1);
+    rect(-hw-2, cy - stackOff/2, hw*2+4, wallT, 1);
+
+    // Wall (bottom of channel) — only on last
+    if (ch === 4) {
+      rect(-hw-2, cy + stackOff/2 - wallT, hw*2+4, wallT, 1);
+    }
+
+    // Side walls
+    fill(C.v5wall[0], C.v5wall[1], C.v5wall[2], 120);
+    rect(-hw-2, cy - stackOff/2, wallT, stackOff);
+    rect(hw+2-wallT, cy - stackOff/2, wallT, stackOff);
+
+    // Windows (inspection openings)
+    fill(C.bg[0]+8, C.bg[1]+8, C.bg[2]+8);
+    noStroke();
+    let winW = 40 * sc * 0.4;
+    let winH = stackOff * 0.55;
+    rect(-winW/2 + chn.hCx*sc*0.15, cy - winH/2, winW, winH, 2);
+
+    // Guide rails (on top and bottom walls)
+    fill(C.v5wallLt);
+    noStroke();
+    let railH = 4 * sc * 0.3;
+    rect(-hw*0.9, cy - stackOff/2 + wallT, hw*1.8, railH, 1);
+    if (ch === 4) {
+      rect(-hw*0.9, cy + stackOff/2 - wallT - railH, hw*1.8, railH, 1);
+    }
+
+    // Fixed pulleys — top row
+    for (let fp = 0; fp < chn.fixed; fp++) {
+      let fpx = (fp - (chn.fixed-1)/2) * fpPitch * 0.45;
+      drawPulley(fpx, cy - fpRowOff, fpOD*0.5, C.fixedPulley);
+      // Axle through wall (line)
+      stroke(C.bolt); strokeWeight(1.5);
+      line(fpx, cy - stackOff/2, fpx, cy - fpRowOff + fpOD*0.3);
+      // Bottom row
+      drawPulley(fpx, cy + fpRowOff, fpOD*0.5, C.fixedPulley);
+      stroke(C.bolt); strokeWeight(1.5);
+      if (ch===4) line(fpx, cy + stackOff/2, fpx, cy + fpRowOff - fpOD*0.3);
+    }
+
+    // Slider plates (two plates sandwiching the slider pulleys)
+    fill(C.slider[0], C.slider[1], C.slider[2], 180);
+    stroke(C.sliderLt);
+    strokeWeight(0.8);
+    let plateW = slHW * 0.35;
+    let plateT = 3;
+    // Top plate
+    rect(sliderOffset - plateW, cy - gapH*0.09 - plateT, plateW*2, plateT, 1);
+    // Bottom plate
+    rect(sliderOffset - plateW, cy + gapH*0.09, plateW*2, plateT, 1);
+
+    // Slider pulleys (between the plates)
+    for (let sp = 0; sp < chn.slider; sp++) {
+      let spx = sliderOffset + (sp - (chn.slider-1)/2) * spPitch * 0.35;
+      drawPulley(spx, cy, spOD*0.45, C.sliderPulley, [50,50,55]);
+    }
+
+    // Channel label
+    let lx = hw + 20;
+    labelLeft(lx, cy, chn.name + '  ' + chn.hLen + 'mm × ' + chn.sLen + 'mm', 9, C.textDim);
+  }
+
+  // --- ROPE PATH (detailed weaving) ---
+  for (let r = 0; r < 2; r++) {
+    let rx = (r - 0.5) * 40;
+    noFill();
+    stroke(C.rope[0], C.rope[1], C.rope[2], 180);
+    strokeWeight(2);
+    beginShape();
+    curveVertex(rx, startY - 30);
+    curveVertex(rx, startY - 15);
+    for (let ch = 0; ch < 5; ch++) {
+      let cy = startY + ch * stackOff + stackOff/2 + ex*ch*15;
+      let sliderOffset = sin(t + ch*0.65) * 30;
+      // Top fixed → slider → bottom fixed
+      let fpIdx = min(r, channels[ch].fixed-1);
+      let spIdx = min(r, channels[ch].slider-1);
+      let fpx = (fpIdx - (channels[ch].fixed-1)/2) * fpPitch * 0.45;
+      let spx = sliderOffset + (spIdx - (channels[ch].slider-1)/2) * spPitch * 0.35;
+      curveVertex(fpx + rx*0.15, cy - fpRowOff);
+      curveVertex(spx, cy);
+      curveVertex(fpx + rx*0.15, cy + fpRowOff);
+    }
+    let lastCy = startY + 4*stackOff + stackOff/2 + ex*4*15;
+    curveVertex(rx, lastCy + 15);
+    curveVertex(rx, lastCy + 30);
+    endShape();
+  }
+
+  // Rope labels
+  labelLeft(-60, startY - 30, '← ROPE IN (from anchor)', 9, C.rope);
+  let lastCy = startY + 4*stackOff + stackOff/2 + ex*4*15;
+  labelLeft(-60, lastCy + 35, '← ROPE OUT (to block ↓)', 9, C.rope);
+
+  // Dimensions
+  let ch3cy = startY + 2 * stackOff + stackOff/2;
+  let ch3hw = channels[2].hLen * sc / 2;
+  dimLine(-ch3hw, ch3cy + stackOff/2 + 5, ch3hw, ch3cy + stackOff/2 + 5, '136mm (CH3 housing)', 12);
+  dimLine(ch3hw + 30, startY, ch3hw + 30, startY + stackOff, '22mm stack offset', 8);
+
+  // Legend
+  let legX = -width/2 + 30;
+  let legY = -height/2 + 60;
+  fill(C.panelBg); noStroke();
+  rect(legX, legY, 195, 115, 6);
+  labelBox(legX + 97, legY + 12, 'LEGEND', 10, C.accent);
+  let items = [
+    [C.fixedPulley, 'Fixed pulley (13mm OD, wall-mounted)'],
+    [C.sliderPulley, 'Slider pulley (10mm OD, on plate)'],
+    [C.slider, 'Slider plate (slides on rail)'],
+    [C.v5wall, 'Housing wall (3mm, shared)'],
+    [C.rope, 'Rope path (golden thread)'],
+    [C.bolt, 'Axle (5mm dia, wall-anchored)'],
+  ];
+  for (let i = 0; i < items.length; i++) {
+    fill(items[i][0]); noStroke();
+    ellipse(legX + 14, legY + 30 + i*14, 8, 8);
+    fill(C.textDim); textSize(8); textAlign(LEFT, CENTER);
+    text(items[i][1], legX + 22, legY + 30 + i*14);
+  }
+
+  // Parameter box
+  let pX = width/2 - 230;
+  let pY = -height/2 + 60;
+  fill(C.panelBg); noStroke();
+  rect(pX, pY, 210, 135, 6);
+  labelBox(pX + 105, pY + 12, 'OPENSCAD PARAMETERS', 10, C.accent);
+  let params = [
+    'STACK_OFFSET = 22mm',
+    'HOUSING_HEIGHT = 85mm',
+    'WALL_THICKNESS = 3mm',
+    'FP_ROW_Y = 22.5mm (was 31)',
+    'FP_PITCH = 29mm, FP_OD = 13mm',
+    'SP_PITCH = 46mm, SP_OD = 10mm',
+    'PIP_CLEARANCE = 0.3mm',
+    'RAIL_HEIGHT = 4mm',
+  ];
+  for (let i = 0; i < params.length; i++) {
+    fill(C.textDim); textSize(8); textAlign(LEFT, CENTER);
+    text(params[i], pX + 10, pY + 30 + i * 13);
+  }
+
+  pop();
+}
+
+// =====================================================================
+// VIEW 4: MECHANISM BREAKDOWN — TRIANGULAR CELL (Detailed)
+// =====================================================================
+function drawView4() {
+  push();
+  translate(width/2, height/2 - 20);
+  let t = animTime;
+  let ex = explodeAmt;
+
+  labelBox(0, -400, 'TRIANGULAR CELL — DETAILED MECHANISM BREAKDOWN', 14, C.accent);
+  labelBox(0, -380, 'Per-node modular unit: 1 rope, 1 pulley per tier, 3 tiers stacked', 10, C.textDim);
+
+  // Layout: Left = single cell exploded, Right = stack assembled/exploded
+  let leftX = -250;
+  let rightX = 150;
+
+  // ===== LEFT: SINGLE CELL DETAIL =====
+  labelBox(leftX, -330, 'SINGLE CELL — EXPLODED ANATOMY', 11, C.accent);
+
+  let cellY = -140;
+  let triSize = 160; // large for detail
+  let boltR = triSize / sqrt(3) * 0.85;
+
+  // Base triangle plate
+  push();
+  translate(leftX, cellY);
+
+  // Main triangle
+  drawTri(0, 0, triSize, 0, C.tier1, [C.tier1[0]+50, C.tier1[1]+50, C.tier1[2]+50], 100);
+
+  // 6 bolt holes
+  for (let b = 0; b < 6; b++) {
+    let ba = b * TWO_PI/6 + PI/6;
+    let bx = cos(ba) * boltR;
+    let by = sin(ba) * boltR;
+    // Hole
+    fill(C.bg); stroke(C.bolt); strokeWeight(1.5);
+    ellipse(bx, by, 10, 10);
+    // Bolt callout (on first 2)
+    if (b < 2) {
+      stroke(C.dimLine); strokeWeight(0.5);
+      line(bx, by, bx + 30, by - 20);
+      labelLeft(bx + 32, by - 20, 'M4 BOLT HOLE', 7, C.dimLine);
+    }
+  }
+
+  // Central pocket (where cradle sits)
+  fill(C.bg[0]+10, C.bg[1]+10, C.bg[2]+10);
+  stroke(C.frameLt);
+  strokeWeight(1);
+  rect(-25, -12, 50, 24, 8);
+  labelBox(0, 25, 'CRADLE POCKET', 8, C.textDim);
+
+  // C-shaped cradle guides (2 pieces)
+  let sliderOff = sin(t) * 8;
+
+  // Left C-guide
+  fill(C.cradle[0], C.cradle[1], C.cradle[2], 200);
+  stroke(C.cradleDk);
+  strokeWeight(1.5);
+  arc(sliderOff - 5, 0, 32, 22, PI*0.55, PI*1.45);
+  // Right C-guide
+  arc(sliderOff + 5, 0, 32, 22, -PI*0.45, PI*0.45);
+
+  // Cradle callout
+  stroke(C.dimLine); strokeWeight(0.5);
+  line(sliderOff + 20, -5, sliderOff + 55, -30);
+  labelLeft(sliderOff + 57, -30, 'C-CRADLE GUIDE', 8, C.cradle);
+  line(sliderOff - 20, 5, sliderOff - 55, 30);
+  labelLeft(sliderOff - 110, 30, 'C-CRADLE GUIDE', 8, C.cradle);
+
+  // Central pulley (in the cradle)
+  drawPulley(sliderOff, 0, 18, C.sliderPulley, [60,60,65]);
+  // Pulley callout
+  stroke(C.dimLine); strokeWeight(0.5);
+  line(sliderOff, -12, sliderOff + 40, -50);
+  labelLeft(sliderOff + 42, -50, 'NYLON PULLEY (V-groove)', 8, C.sliderPulley);
+
+  // Rope wrapping pulley
+  noFill();
+  stroke(C.rope);
+  strokeWeight(2.5);
+  // Rope comes from above
+  line(sliderOff + 3, -70, sliderOff + 3, -10);
+  // Wraps around
+  arc(sliderOff, 0, 22, 22, -PI*0.5, PI*0.5);
+  // Exits below
+  line(sliderOff - 3, 10, sliderOff - 3, 70);
+
+  // Rope label
+  fill(C.rope); noStroke();
+  triangle(sliderOff + 3, -70, sliderOff, -63, sliderOff + 6, -63);
+  labelLeft(sliderOff + 15, -65, 'ROPE IN', 8, C.rope);
+  triangle(sliderOff - 3, 70, sliderOff - 6, 63, sliderOff, 63);
+  labelLeft(sliderOff + 15, 65, 'ROPE OUT', 8, C.rope);
+
+  // Slider bar connection (from edge)
+  let barDir = PI;
+  let barStartX = -triSize*0.45;
+  stroke(C.tier1); strokeWeight(3);
+  line(barStartX, 0, sliderOff - 18, 0);
+  // Arrow
+  fill(C.tier1); noStroke();
+  triangle(sliderOff-18, 0, sliderOff-24, -4, sliderOff-24, 4);
+  labelLeft(barStartX - 60, 0, '← FROM HELIX', 8, C.tier1);
+
+  // Dimensions
+  dimLine(-boltR, boltR + 15, boltR, boltR + 15, '~80mm', 10);
+  pop();
+
+  // Slider travel indicator
+  let stY = cellY + 95;
+  stroke(C.dimLine); strokeWeight(0.8);
+  line(leftX - 8, stY, leftX + 8, stY);
+  // Moving indicator
+  fill(C.accent); noStroke();
+  let stX = leftX + sin(t) * 8;
+  ellipse(stX, stY, 6, 6);
+  labelBox(leftX, stY + 14, 'SLIDER TRAVEL: 2-5mm', 8, C.accent);
+
+  // ===== RIGHT: 3-TIER STACK =====
+  labelBox(rightX, -330, '3-TIER STACK — ' + (exploded ? 'EXPLODED' : 'ASSEMBLED'), 11, C.accent);
+
+  let tierColors = [C.tier1, C.tier2, C.tier3];
+  let tierRots = [0, TWO_PI/3, 2*TWO_PI/3];
+  let tierNames = ['TIER 1 (0°)', 'TIER 2 (120°)', 'TIER 3 (240°)'];
+  let stackTriSize = 90;
+  let stackBoltR = stackTriSize / sqrt(3) * 0.85;
+  let tierSpacing = 85 + ex * 60;
+  let stackStartY = -220;
+
+  // Threaded rod standoffs
+  for (let b = 0; b < 6; b++) {
+    let ba = b * TWO_PI/6 + PI/6;
+    let bx = rightX + cos(ba) * stackBoltR;
+    stroke(C.bolt); strokeWeight(2.5);
+    line(bx, stackStartY + 10, bx, stackStartY + 2*tierSpacing - 10);
+    // Nuts at each end
+    fill(C.bolt); stroke(60); strokeWeight(0.8);
+    ellipse(bx, stackStartY + 5, 7, 7);
+    ellipse(bx, stackStartY + 2*tierSpacing - 5, 7, 7);
+  }
+
+  // Draw 3 tiers
+  for (let tier = 0; tier < 3; tier++) {
+    let ty = stackStartY + tier * tierSpacing;
+    let tc = tierColors[tier];
+    let tr = tierRots[tier];
+    let sliderOff = sin(t + tier * TWO_PI/3) * 6;
+
+    // Triangle plate
+    drawTri(rightX, ty, stackTriSize, tr, tc, [tc[0]+40, tc[1]+40, tc[2]+40], 90);
+
+    // Bolt holes
+    for (let b = 0; b < 6; b++) {
+      let ba = b * TWO_PI/6 + PI/6;
+      let bx = rightX + cos(ba) * stackBoltR;
+      let by = ty + sin(ba) * stackBoltR;
+      fill(40); noStroke();
+      ellipse(bx, by, 5, 5);
+    }
+
+    // Central cradle + pulley
+    // C-guides
+    fill(C.cradle[0], C.cradle[1], C.cradle[2], 180);
+    stroke(C.cradleDk); strokeWeight(1.2);
+    arc(rightX + sliderOff - 3, ty, 20, 14, PI*0.55, PI*1.45);
+    arc(rightX + sliderOff + 3, ty, 20, 14, -PI*0.45, PI*0.45);
+
+    // Pulley
+    drawPulley(rightX + sliderOff, ty, 12, C.sliderPulley, [50,50,55]);
+
+    // Slider bar from edge (direction based on tier)
+    let barAngle = tr - PI/2;
+    let barX = rightX + cos(barAngle) * stackTriSize * 0.55;
+    let barY = ty + sin(barAngle) * stackTriSize * 0.35;
+    stroke(tc); strokeWeight(2.5);
+    line(barX, barY, rightX + sliderOff, ty);
+
+    // Tier label
+    labelBox(rightX + stackTriSize*0.6 + 20, ty, tierNames[tier], 9, tc);
+  }
+
+  // Rope through all 3 tiers
+  noFill();
+  stroke(C.rope); strokeWeight(2.2);
+  beginShape();
+  curveVertex(rightX, stackStartY - 45);
+  curveVertex(rightX, stackStartY - 30);
+  for (let tier = 0; tier < 3; tier++) {
+    let ty = stackStartY + tier * tierSpacing;
+    let so = sin(t + tier * TWO_PI/3) * 6;
+    curveVertex(rightX + so + 4, ty - 8);
+    curveVertex(rightX + so, ty);
+    curveVertex(rightX + so - 4, ty + 8);
+  }
+  curveVertex(rightX, stackStartY + 2*tierSpacing + 30);
+  curveVertex(rightX, stackStartY + 2*tierSpacing + 45);
+  endShape();
+
+  // Rope labels
+  fill(C.rope); noStroke();
+  triangle(rightX, stackStartY - 45, rightX-3, stackStartY-38, rightX+3, stackStartY-38);
+  labelLeft(rightX + 12, stackStartY - 40, 'ANCHOR', 8, C.rope);
+
+  // Block at bottom
+  let blockY = stackStartY + 2*tierSpacing + 55;
+  let dzBlock = wave3(0, 0, t) * 1.5;
+  stroke(C.ropeDim); strokeWeight(1);
+  line(rightX, stackStartY + 2*tierSpacing + 30, rightX, blockY + dzBlock - 7);
+  drawHexBlock(rightX, blockY + dzBlock, 12, C.wood, 4);
+  labelBox(rightX, blockY + dzBlock + 22, 'BLOCK (Z = Σ3 waves)', 8, C.accent);
+
+  // Standoff dimension
+  dimLine(rightX + stackBoltR + 20, stackStartY, rightX + stackBoltR + 20, stackStartY + tierSpacing, 'TIER SPACING', 10);
+
+  // MA calculation box
+  let maX = -width/2 + 30;
+  let maY = height/2 - 130;
+  fill(C.panelBg); noStroke();
+  rect(maX, maY, 260, 110, 6);
+  labelBox(maX + 130, maY + 14, 'MECHANICAL ADVANTAGE', 10, C.accent);
+  let maLines = [
+    'Helix eccentricity: 12mm (peak-to-peak 24mm)',
+    'Dampener → lateral only: ±12mm',
+    'Distributed across slider bar: ±3mm per node',
+    'Per-tier pulley wrap MA: ~2:1',
+    'Per tier vertical displacement: ~6mm',
+    '3 tiers compound: 3 × 6mm = 18mm total',
+    'System MA: 18mm vertical / 12mm input = 1.5:1',
+  ];
+  for (let i = 0; i < maLines.length; i++) {
+    fill(C.textDim); textSize(8); textAlign(LEFT, CENTER);
+    text(maLines[i], maX + 10, maY + 32 + i * 12);
+  }
+
+  pop();
+}
+
+// =====================================================================
+// VIEW 5: HELIX CAM + DRIVE SYSTEM
+// =====================================================================
+function drawView5() {
+  push();
+  translate(width/2, height/2);
+  let t = animTime;
+
+  labelBox(0, -410, 'HELIX CAMSHAFT + DRIVE SYSTEM — FULL DETAIL', 14, C.accent);
+  labelBox(0, -390, 'From Helix cam parts.scad — 6810 bearings, 12mm eccentricity, 12°/disc', 10, C.textDim);
+
+  // ===== LEFT: HELIX STACK =====
+  let helixX = -300;
+  let numDiscs = 30;
+  let discSpacing = 8.5;
+  let discDia = 38;
+  let ecc = 20; // pixels (eccentric offset)
+  let totalH = numDiscs * discSpacing;
+  let startY = -totalH/2 + 20;
+
+  // Central shaft
+  stroke(C.bolt); strokeWeight(4);
+  line(helixX, startY - 20, helixX, startY + totalH + 20);
+  fill(C.bolt); noStroke();
+  ellipse(helixX, startY - 20, 8, 8);
+  ellipse(helixX, startY + totalH + 20, 8, 8);
+
+  // Discs (30 hubs, each twisted 12°)
+  for (let d = 0; d < numDiscs; d++) {
+    let dy = startY + d * discSpacing;
+    let twist = d * 12 * PI/180;
+    let rot = t * 1.5 + twist;
+    let ex = cos(rot) * ecc;
+    let ey = sin(rot) * ecc * 0.25;
+
+    // Disc body
+    let alpha = map(d, 0, numDiscs-1, 220, 160);
+    fill(C.helix[0], C.helix[1], C.helix[2], alpha);
+    stroke(C.helixLt[0], C.helixLt[1], C.helixLt[2], alpha*0.7);
+    strokeWeight(0.8);
+    ellipse(helixX + ex, dy + ey, discDia, discDia*0.4);
+
+    // 3 bolt holes at 120° (shown as dots) — NUT TRAP side twisted by 12°
+    for (let b = 0; b < 3; b++) {
+      let bAngle = b * TWO_PI/3;
+      let br = 8;
+      fill(40, 40, 45, alpha*0.8);
+      noStroke();
+      ellipse(helixX + cos(bAngle)*br, dy + sin(bAngle)*br*0.25, 3, 3);
+    }
+
+    // Shaft bore
+    fill(25, 25, 30);
+    noStroke();
+    ellipse(helixX, dy, 5, 3);
+  }
+
+  // Helix path trace (connecting eccentric centers)
+  noFill();
+  stroke(C.accent[0], C.accent[1], C.accent[2], 60);
+  strokeWeight(1);
+  beginShape();
+  for (let d = 0; d < numDiscs; d++) {
+    let dy = startY + d * discSpacing;
+    let twist = d * 12 * PI/180;
+    let rot = t * 1.5 + twist;
+    let ex = cos(rot) * ecc;
+    let ey = sin(rot) * ecc * 0.25;
+    curveVertex(helixX + ex, dy + ey);
+  }
+  endShape();
+
+  // Labels for helix stack
+  labelBox(helixX, startY - 40, 'HELIX CAMSHAFT', 12, C.accent);
+  dimLine(helixX + discDia/2 + 15, startY, helixX + discDia/2 + 15, startY + totalH, '30 DISCS', 10);
+  labelLeft(helixX - 120, startY + totalH/2, '12° twist/disc', 9, C.dimLine);
+  labelLeft(helixX - 120, startY + totalH/2 + 14, '= 360° total = 1 wave', 9, C.dimLine);
+
+  // Eccentricity callout
+  let callDisc = 5;
+  let callDy = startY + callDisc * discSpacing;
+  let callRot = t * 1.5 + callDisc * 12 * PI/180;
+  let callEx = cos(callRot) * ecc;
+  stroke(C.accent); strokeWeight(1); setLineDash([3,2]);
+  line(helixX, callDy, helixX + callEx, callDy + sin(callRot)*ecc*0.25);
+  setLineDash([]);
+  labelBox(helixX + callEx/2, callDy - 12, 'e = 12mm', 8, C.accent);
+
+  // ===== CENTER: BEARING FOLLOWER DETAIL =====
+  let bfX = 0;
+  let bfY = -140;
+
+  labelBox(bfX, bfY - 75, 'BEARING FOLLOWER ASSEMBLY', 11, C.accent);
+
+  // One enlarged disc
+  let bRot = t * 1.5;
+  let bEx = cos(bRot) * 30;
+  let bEy = sin(bRot) * 10;
+
+  // Hub body
+  fill(C.helix[0], C.helix[1], C.helix[2], 200);
+  stroke(C.helixLt);
+  strokeWeight(1.5);
+  ellipse(bfX + bEx, bfY + bEy, 55, 28);
+
+  // Bearing inner race
+  noFill(); stroke(C.bearing); strokeWeight(2.5);
+  ellipse(bfX + bEx, bfY + bEy, 62, 32);
+  // Bearing outer race
+  stroke(C.bearing[0], C.bearing[1], C.bearing[2], 120);
+  strokeWeight(4);
+  ellipse(bfX + bEx, bfY + bEy, 72, 37);
+  // Ball indicators
+  for (let ball = 0; ball < 12; ball++) {
+    let ba = ball * TWO_PI/12 + t*0.5;
+    let ballX = bfX + bEx + cos(ba) * 33;
+    let ballY = bfY + bEy + sin(ba) * 17;
+    fill(C.bearing); noStroke();
+    ellipse(ballX, ballY, 3, 3);
+  }
+
+  labelBox(bfX + bEx + 50, bfY + bEy - 10, '6810 BEARING', 9, C.bearing);
+  labelBox(bfX + bEx + 50, bfY + bEy + 5, '50mm ID × 65mm OD × 7mm', 8, C.textDim);
+
+  // Shaft bore (stays at center)
+  fill(C.bolt); noStroke();
+  ellipse(bfX, bfY, 8, 8);
+  labelLeft(bfX + 8, bfY + 12, 'ROTATION AXIS', 7, C.bolt);
+
+  // Gravity rib
+  let ribX = bfX + bEx;
+  let ribY = bfY + bEy + 20;
+  stroke(C.bolt); strokeWeight(3);
+  line(ribX, ribY, ribX, ribY + 55);
+  // Rib body
+  fill(C.bolt); stroke(60); strokeWeight(1);
+  rect(ribX-10, ribY + 55, 20, 12, 3);
+  // String eyelet
+  fill(C.rope);
+  stroke(C.ropeDim);
+  strokeWeight(1);
+  ellipse(ribX, ribY + 72, 8, 8);
+  fill(40);
+  ellipse(ribX, ribY + 72, 4, 4);
+  labelLeft(ribX + 15, ribY + 30, 'GRAVITY RIB', 8, C.bolt);
+  labelLeft(ribX + 15, ribY + 72, 'STRING EYELET', 8, C.rope);
+
+  // Dampener below
+  let dampY = ribY + 90;
+  fill(C.dampener[0], C.dampener[1], C.dampener[2], 180);
+  stroke(C.dampener); strokeWeight(1.5);
+  rect(ribX-18, dampY, 36, 16, 4);
+  fill(C.dampener);
+  textSize(7); textAlign(CENTER, CENTER);
+  text('DAMP', ribX, dampY + 8);
+  labelLeft(ribX + 25, dampY + 8, '← Limits to lateral push/pull', 8, C.dampener);
+
+  // ===== RIGHT: MOTOR + BELT DRIVE =====
+  let driveX = 300;
+  let driveY = -200;
+
+  labelBox(driveX, driveY - 60, 'DRIVE SYSTEM', 11, C.accent);
+
+  // Motor
+  fill(C.frame); stroke(C.frameLt); strokeWeight(1.5);
+  rect(driveX-20, driveY-15, 40, 30, 4);
+  fill(C.frameLt);
+  ellipse(driveX, driveY, 14, 14);
+  fill(C.bolt);
+  ellipse(driveX, driveY, 6, 6);
+  labelBox(driveX, driveY + 25, 'MOTOR', 9, C.text);
+  labelBox(driveX, driveY + 40, '< 1W NEMA17', 8, C.textDim);
+
+  // 3 belt paths to helixes
+  let helixPositions = [
+    {x: driveX - 80, y: driveY + 100, label: 'HELIX 1', teeth: '34T', col: C.tier1},
+    {x: driveX,      y: driveY + 130, label: 'HELIX 2', teeth: '55T', col: C.tier2},
+    {x: driveX + 80, y: driveY + 100, label: 'HELIX 3', teeth: '89T', col: C.tier3},
+  ];
+
+  // Motor pulley
+  fill(C.helix); stroke(C.helixLt); strokeWeight(1);
+  ellipse(driveX, driveY, 22, 22);
+  labelLeft(driveX + 15, driveY - 15, '21T MOTOR', 7, C.dimLine);
+
+  for (let hp of helixPositions) {
+    // Belt
+    stroke(hp.col[0], hp.col[1], hp.col[2], 120);
+    strokeWeight(1.5);
+    setLineDash([5,3]);
+    line(driveX, driveY, hp.x, hp.y);
+    setLineDash([]);
+    // Driven pulley
+    let pSize = hp.teeth === '89T' ? 30 : (hp.teeth === '55T' ? 24 : 20);
+    fill(hp.col[0], hp.col[1], hp.col[2], 100);
+    stroke(hp.col);
+    strokeWeight(1.5);
+    ellipse(hp.x, hp.y, pSize, pSize);
+    fill(C.bolt); noStroke();
+    ellipse(hp.x, hp.y, 5, 5);
+    labelBox(hp.x, hp.y + pSize/2 + 12, hp.label, 8, hp.col);
+    labelBox(hp.x, hp.y + pSize/2 + 25, hp.teeth + ' GT2', 7, C.textDim);
+  }
+
+  // Fibonacci ratio explanation
+  labelBox(driveX, driveY + 175, 'FIBONACCI RATIOS: 34T / 55T / 89T', 9, C.accent);
+  labelBox(driveX, driveY + 192, 'φ² : φ : 1 = QUASIPERIODIC (never repeats)', 8, C.textDim);
+
+  // ===== BOTTOM: SINUSOIDAL OUTPUT GRAPH =====
+  let graphX = -200;
+  let graphY = 250;
+  let graphW = 400;
+  let graphH = 100;
+
+  fill(C.panelBg); noStroke();
+  rect(graphX, graphY, graphW, graphH + 20, 6);
+  labelBox(graphX + graphW/2, graphY + 12, 'FOLLOWER DISPLACEMENT vs ROTATION', 10, C.text);
+
+  // Axes
+  stroke(60); strokeWeight(0.8);
+  line(graphX+30, graphY+graphH/2+15, graphX+graphW-10, graphY+graphH/2+15);
+  line(graphX+30, graphY+25, graphX+30, graphY+graphH+5);
+
+  // 3 sine waves (one per helix, at 120° offset)
+  for (let w = 0; w < 3; w++) {
+    let tc = [C.tier1, C.tier2, C.tier3][w];
+    noFill();
+    stroke(tc[0], tc[1], tc[2], 150);
+    strokeWeight(1.2);
+    beginShape();
+    for (let px = 0; px < graphW-45; px++) {
+      let angle = px / (graphW-45) * TWO_PI * 2;
+      let sy = sin(angle + w*TWO_PI/3) * graphH*0.3;
+      vertex(graphX+35+px, graphY+graphH/2+15+sy);
+    }
+    endShape();
+  }
+
+  // Compound wave (sum)
+  noFill();
+  stroke(C.accent);
+  strokeWeight(2);
+  beginShape();
+  for (let px = 0; px < graphW-45; px++) {
+    let angle = px / (graphW-45) * TWO_PI * 2;
+    let sy = 0;
+    for (let w = 0; w < 3; w++) sy += sin(angle + w*TWO_PI/3) * graphH*0.15;
+    vertex(graphX+35+px, graphY+graphH/2+15+sy);
+  }
+  endShape();
+
+  // Current position marker
+  let markerPhase = (t * 1.5) % (TWO_PI * 2);
+  let markerPx = markerPhase / (TWO_PI * 2) * (graphW - 45);
+  let markerSy = 0;
+  for (let w = 0; w < 3; w++) markerSy += sin(markerPhase + w*TWO_PI/3) * graphH*0.15;
+  fill(C.accent); noStroke();
+  ellipse(graphX+35+markerPx, graphY+graphH/2+15+markerSy, 8, 8);
+
+  // Y-axis labels
+  labelLeft(graphX+2, graphY+30, '+12mm', 7, C.dimLine);
+  labelLeft(graphX+2, graphY+graphH, '-12mm', 7, C.dimLine);
+
+  // Legend
+  for (let w = 0; w < 3; w++) {
+    let tc = [C.tier1, C.tier2, C.tier3][w];
+    fill(tc); noStroke();
+    rect(graphX + graphW - 110, graphY + 25 + w*12, 8, 3);
+    fill(C.textDim); textSize(7); textAlign(LEFT, CENTER);
+    text(['Helix 1 (0°)','Helix 2 (120°)','Helix 3 (240°)'][w], graphX + graphW - 98, graphY + 27 + w*12);
+  }
+  fill(C.accent); noStroke();
+  rect(graphX + graphW - 110, graphY + 25 + 3*12, 8, 3);
+  fill(C.textDim); textSize(7); textAlign(LEFT, CENTER);
+  text('Compound (sum)', graphX + graphW - 98, graphY + 27 + 3*12);
+
+  pop();
+}
+
+// =====================================================================
+// VIEW 6: SIDE-BY-SIDE COMPARISON
+// =====================================================================
+function drawView6() {
+  push();
+  let t = animTime;
+  let halfW = width/2;
+
+  // Divider
+  stroke(50); strokeWeight(2);
+  line(halfW, 50, halfW, height-140);
+
+  // ===== LEFT: V5 MINI SYSTEM =====
+  push();
+  translate(halfW/2, 60);
+  labelBox(0, 0, 'V5 MONOLITHIC MATRIX', 13, C.accent);
+
+  // Mini matrix box
+  let boxW = 200, boxH = 80;
+  let boxY = 60;
+  fill(C.v5wall[0], C.v5wall[1], C.v5wall[2], 40);
+  stroke(C.v5wall); strokeWeight(1.5);
+  rect(-boxW/2, boxY-boxH/2, boxW, boxH, 4);
+
+  // 5 channels with sliders
+  for (let ch = 0; ch < 5; ch++) {
+    let cy = boxY - boxH/2 + 8 + ch * 16;
+    let slOff = sin(t + ch*0.6) * 18;
+    // Wall
+    stroke(C.v5wall[0], C.v5wall[1], C.v5wall[2], 60); strokeWeight(0.5);
+    line(-boxW/2+3, cy-7, boxW/2-3, cy-7);
+    // Slider
+    fill(C.slider[0], C.slider[1], C.slider[2], 140); noStroke();
+    let slW = 40 + ch*12;
+    rect(slOff - slW/2, cy-2, slW, 4, 1);
+    // Pulleys
+    let nf = [3,4,5,4,3][ch];
+    for (let fp = 0; fp < nf; fp++) {
+      fill(C.fixedPulley); noStroke();
+      let fpx = (fp-(nf-1)/2)*12;
+      ellipse(fpx, cy-5, 4, 4);
+      ellipse(fpx, cy+5, 4, 4);
+    }
+    let ns = nf;
+    for (let sp = 0; sp < ns; sp++) {
+      fill(C.sliderPulley); noStroke();
+      let spx = slOff + (sp-(ns-1)/2)*13;
+      ellipse(spx, cy, 4, 4);
+    }
+  }
+
+  // Ropes and blocks
+  let blockBaseY = boxY + boxH/2 + 15;
+  let numBlocks = 13;
+  for (let b = 0; b < numBlocks; b++) {
+    let bx = (b-(numBlocks-1)/2) * 22;
+    let dz = wave3(b*8, 0, t) * 1.5;
+    let by = blockBaseY + 35 + dz;
+    stroke(C.ropeDim[0], C.ropeDim[1], C.ropeDim[2], 80); strokeWeight(0.5);
+    line(bx, boxY+boxH/2, bx, by-4);
+    drawHexBlock(bx, by, 6, C.wood, 2);
+  }
+  // Wave overlay
+  if (showWaveOverlay) {
+    noFill(); stroke(C.accent[0], C.accent[1], C.accent[2], 40); strokeWeight(1);
+    beginShape();
+    for (let b = 0; b < numBlocks; b++) {
+      let bx = (b-(numBlocks-1)/2)*22;
+      vertex(bx, blockBaseY + 35 + wave3(b*8,0,t)*1.5);
+    }
+    endShape();
+  }
+
+  labelBox(0, blockBaseY + 70, 'LINEAR ROW — COMPOUND WAVE', 9, C.text);
+  pop();
+
+  // ===== RIGHT: TRIANGULAR CELL MINI SYSTEM =====
+  push();
+  translate(halfW + halfW/2, 60);
+  labelBox(0, 0, 'TRIANGULAR CELL MODULAR', 13, C.accent);
+
+  // 3 tiers of cells
+  let vogel = vogelPositions(37, 10);
+  let sc2 = 1.1;
+  let tierBaseY = 40;
+  let tierSp = 25;
+  let tierColors = [C.tier1, C.tier2, C.tier3];
+  let tierRots = [0, TWO_PI/3, 2*TWO_PI/3];
+
+  for (let tier = 0; tier < 3; tier++) {
+    let ty = tierBaseY + tier * tierSp;
+    let tc = tierColors[tier];
+    let tr = tierRots[tier];
+    let so = sin(t + tier*TWO_PI/3) * 3;
+    for (let v = 0; v < vogel.length; v++) {
+      let vp = vogel[v];
+      let cx = vp.x * sc2 + so*0.3;
+      let cy = ty + vp.y * sc2 * 0.12;
+      drawTri(cx, cy, 7, tr, tc, [tc[0]+30,tc[1]+30,tc[2]+30], 50);
+      fill(220); noStroke();
+      ellipse(cx, cy, 1.5, 1.5);
+    }
+  }
+
+  // Blocks (Vogel pattern with wave)
+  let bBaseY = tierBaseY + 2*tierSp + 25;
+  for (let v = 0; v < vogel.length; v++) {
+    let vp = vogel[v];
+    let bx = vp.x * sc2;
+    let byOff = vp.y * sc2 * 0.08;
+    let dz = wave3(vp.x*sc2, vp.y*sc2, t) * 1.2;
+    let by = bBaseY + 30 + byOff + dz;
+    stroke(C.ropeDim[0],C.ropeDim[1],C.ropeDim[2],50); strokeWeight(0.3);
+    line(bx, tierBaseY + 2*tierSp + vp.y*sc2*0.12, bx, by-3);
+    drawHexBlock(bx, by, 5, C.wood, 1.5);
+  }
+  // Wave overlay (compound)
+  if (showWaveOverlay) {
+    noFill(); stroke(C.accent[0],C.accent[1],C.accent[2],40); strokeWeight(0.8);
+    beginShape();
+    for (let v = 0; v < vogel.length; v++) {
+      let vp = vogel[v];
+      let bx = vp.x * sc2;
+      vertex(bx, bBaseY + 30 + vp.y*sc2*0.08 + wave3(vp.x*sc2,vp.y*sc2,t)*1.2);
+    }
+    endShape();
+  }
+
+  labelBox(0, bBaseY + 65, 'VOGEL SPIRAL — 2D COMPOUND WAVE', 9, C.text);
+  pop();
+
+  // ===== COMPARISON TABLE =====
+  let tableY = height - 145;
+  let tableX = 40;
+  let colW = [180, 280, 280];
+  let rowH = 19;
+
+  fill(C.panelBg); noStroke();
+  rect(tableX-10, tableY-12, colW[0]+colW[1]+colW[2]+40, rowH*9+24, 6);
+
+  let headers = ['PARAMETER', 'V5 MONOLITHIC', 'TRIANGULAR CELL'];
+  let rows = [
+    ['Unit Type', '5-channel box housing', 'Equilateral triangle plate (80mm)'],
+    ['Slider Travel', '68mm (high)', '2-5mm (minimal)'],
+    ['Pulleys / Rope Path', '19 fixed + 19 slider per box', '1 per tier × 3 tiers = 3 per rope'],
+    ['Rope Length / Node', '~2m (weaves 5 channels)', '~0.5m (3 short tiers)'],
+    ['Modularity', 'One box per grid row', 'Individual cell per block (fully modular)'],
+    ['Scaling', 'Add channels to box', 'Tile cells in golden-angle spiral'],
+    ['Weight / Unit', '~800g per box assembly', '~15g per triangular cell'],
+    ['Key Advantage', 'Fewer parts, proven design', 'Scalable, minimal friction, elegant'],
+  ];
+
+  textSize(10); textStyle(BOLD);
+  for (let c = 0; c < 3; c++) {
+    let x = tableX;
+    for (let ci = 0; ci < c; ci++) x += colW[ci];
+    fill(C.accent); textAlign(LEFT, CENTER);
+    text(headers[c], x, tableY);
+  }
+  stroke(60); strokeWeight(0.8);
+  line(tableX, tableY+10, tableX+colW[0]+colW[1]+colW[2]+10, tableY+10);
+
+  textStyle(NORMAL); textSize(9);
+  for (let r = 0; r < rows.length; r++) {
+    let ry = tableY + 14 + r*rowH;
+    if (r%2===0) {
+      fill(255,255,255,8); noStroke();
+      rect(tableX-5, ry-8, colW[0]+colW[1]+colW[2]+20, rowH, 2);
+    }
+    let x = tableX;
+    for (let c = 0; c < 3; c++) {
+      fill(c===0 ? C.text : (c===1 ? [140,150,255] : [255,175,70]));
+      textAlign(LEFT, CENTER);
+      text(rows[r][c], x, ry+1);
+      x += colW[c];
+    }
+  }
+
+  pop();
+}
+
+// =====================================================================
+// UI OVERLAY
+// =====================================================================
+function drawUI() {
+  push();
+  // Top bar
+  fill(C.panelBg); noStroke();
+  rect(0, 0, width, 44);
+
+  // Title
+  fill(C.accent); textSize(15); textStyle(BOLD); textAlign(LEFT, CENTER);
+  text('KINETIC WAVE CHANDELIER', 14, 17);
+
+  // View name
+  fill(C.text); textSize(12); textStyle(NORMAL);
+  text('|  ' + viewNames[currentView], 240, 17);
+
+  // Controls hint
+  fill(C.textDim); textSize(9); textAlign(RIGHT, CENTER);
+  text('[1-6] Views   [SPACE] Pause   [+/-] Speed   [E] Explode   [W] Wave overlay   [R] Reset', width-12, 17);
+
+  // Status indicators
+  let statusX = 14;
+  let statusY = 35;
+  textSize(8); textAlign(LEFT, CENTER);
+  if (paused) {
+    fill(255, 80, 80);
+    text('▐▐ PAUSED', statusX, statusY);
+    statusX += 70;
+  }
+  if (exploded) {
+    fill(255, 180, 60);
+    text('◇ EXPLODED', statusX, statusY);
+    statusX += 80;
+  }
+  if (showWaveOverlay) {
+    fill(C.accent[0], C.accent[1], C.accent[2], 150);
+    text('∿ WAVE ON', statusX, statusY);
+  }
+
+  // Bottom info panel
+  let panelW = 200;
+  let panelH = 55;
+  let panelX = width - panelW - 8;
+  let panelY = height - panelH - 8;
+  fill(C.panelBg); noStroke();
+  rect(panelX, panelY, panelW, panelH, 5);
+
+  fill(C.textDim); textSize(8); textAlign(LEFT, CENTER);
+  let ph1 = (animTime % TWO_PI).toFixed(2);
+  let ph2 = ((animTime + TWO_PI/3) % TWO_PI).toFixed(2);
+  let ph3 = ((animTime + 2*TWO_PI/3) % TWO_PI).toFixed(2);
+  text('Speed: ' + animSpeed.toFixed(3) + '  |  Frame: ' + frameCount, panelX+8, panelY+12);
+  text('Helix 1: ' + ph1 + 'rad  |  Helix 2: ' + ph2 + 'rad', panelX+8, panelY+26);
+  text('Helix 3: ' + ph3 + 'rad  |  φ = ' + PHI.toFixed(4), panelX+8, panelY+40);
+
+  // View selector dots
+  for (let v = 1; v <= 6; v++) {
+    let sx = 14 + (v-1)*55;
+    let sy = height - 10;
+    fill(v === currentView ? C.accent : [50,50,60]);
+    noStroke();
+    rect(sx, sy-5, 48, 10, 3);
+    fill(v === currentView ? [20,20,30] : C.textDim);
+    textSize(8); textAlign(CENTER, CENTER);
+    text(viewShort[v], sx+24, sy);
+  }
+  pop();
+}
+
+// Helper for dashed lines
+function setLineDash(list) {
+  drawingContext.setLineDash(list);
+}
+
+// =====================================================================
+// P5.JS SETUP & DRAW
+// =====================================================================
+function setup() {
+  createCanvas(1400, 900);
+  textFont('Segoe UI');
+}
+
+function draw() {
+  background(C.bg);
+
+  if (!paused) animTime += animSpeed;
+
+  // Smooth explode interpolation
+  let targetExplode = exploded ? 1 : 0;
+  explodeAmt += (targetExplode - explodeAmt) * 0.06;
+
+  switch (currentView) {
+    case 1: drawView1(); break;
+    case 2: drawView2(); break;
+    case 3: drawView3(); break;
+    case 4: drawView4(); break;
+    case 5: drawView5(); break;
+    case 6: drawView6(); break;
+  }
+
+  drawUI();
+}
+
+function keyPressed() {
+  if (key >= '1' && key <= '6') currentView = parseInt(key);
+  if (key === ' ') { paused = !paused; return false; }
+  if (key === '+' || key === '=') animSpeed = min(animSpeed + 0.005, 0.15);
+  if (key === '-' || key === '_') animSpeed = max(animSpeed - 0.005, 0.002);
+  if (key === 'e' || key === 'E') exploded = !exploded;
+  if (key === 'r' || key === 'R') animTime = 0;
+  if (key === 'w' || key === 'W') showWaveOverlay = !showWaveOverlay;
+}
+</script>
+</body>
+</html>

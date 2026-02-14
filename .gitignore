@@ -4,6 +4,12 @@
 *.amf
 *.3mf
 *.dxf
+*.csg
+
+# Render outputs (PNG/JPG screenshots & renders)
+*.png
+*.jpg
+*.jpeg
 
 # Temporary files
 *.bak
@@ -37,6 +43,9 @@ __pycache__/
 
 # Node modules (if using JS tools)
 node_modules/
+
+# Embedded git repos (separate repositories)
+openscad-mcp/
 
 # Keep these despite wildcards
 !.gitkeep

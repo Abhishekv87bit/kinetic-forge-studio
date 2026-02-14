@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>V5 Monolithic Matrix — 3D Wave Engine</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:#111; overflow:hidden; font-family:'Segoe UI',system-ui,sans-serif; }
+    canvas { display:block; }
+
+    /* --- CONTROL PANEL --- */
+    #panel {
+      position:fixed; top:10px; left:10px; width:320px;
+      background:rgba(10,12,28,0.92); border:1px solid rgba(255,215,0,0.25);
+      border-radius:10px; padding:14px 16px; z-index:100;
+      color:#ccc; font-size:11px; backdrop-filter:blur(8px);
+      max-height:calc(100vh - 20px); overflow-y:auto;
+    }
+    #panel h2 { color:#ffd700; font-size:14px; margin:0 0 8px; letter-spacing:1px; }
+    #panel h3 { color:#8af; font-size:11px; margin:12px 0 4px; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:3px; }
+    .ctrl-row { display:flex; align-items:center; gap:6px; margin:4px 0; }
+    .ctrl-row label { width:110px; flex-shrink:0; font-size:10px; color:#aab; }
+    .ctrl-row input[type=range] { flex:1; accent-color:#ffd700; height:14px; }
+    .ctrl-row .val { width:45px; text-align:right; font-size:10px; color:#ffd700; font-family:monospace; }
+    .wave-btn {
+      display:inline-block; padding:5px 10px; margin:2px; border:1px solid rgba(255,215,0,0.3);
+      border-radius:5px; background:rgba(255,255,255,0.04); color:#ccc; cursor:pointer;
+      font-size:10px; transition:all 0.2s;
+    }
+    .wave-btn:hover { background:rgba(255,215,0,0.15); }
+    .wave-btn.active { background:rgba(255,215,0,0.2); border-color:#ffd700; color:#ffd700; }
+    .toggle-row { display:flex; gap:4px; flex-wrap:wrap; margin:4px 0; }
+    .toggle-btn {
+      padding:3px 8px; border:1px solid rgba(255,255,255,0.1); border-radius:4px;
+      background:rgba(255,255,255,0.05); color:#999; cursor:pointer; font-size:9px;
+    }
+    .toggle-btn.on { background:rgba(100,180,255,0.15); border-color:rgba(100,180,255,0.4); color:#8cf; }
+    #eng-panel {
+      position:fixed; bottom:10px; left:10px; width:320px;
+      background:rgba(10,12,28,0.92); border:1px solid rgba(100,200,255,0.2);
+      border-radius:10px; padding:12px 14px; z-index:100;
+      color:#bbc; font-size:10px; backdrop-filter:blur(8px);
+      font-family:monospace; line-height:1.5;
+    }
+    #eng-panel h3 { color:#8cf; font-size:11px; margin:0 0 6px; }
+    #eng-panel .eq { color:#ffd700; font-size:11px; }
+    #eng-panel .param { color:#adf; }
+    #eng-panel .warn { color:#f84; }
+    #eng-panel .ok { color:#8f8; }
+
+    #info-bar {
+      position:fixed; top:10px; right:10px;
+      background:rgba(10,12,28,0.85); border:1px solid rgba(255,255,255,0.08);
+      border-radius:8px; padding:8px 12px; z-index:100;
+      color:#888; font-size:9px; font-family:monospace;
+    }
+  </style>
+</head>
+<body>
+
+<!-- CONTROL PANEL -->
+<div id="panel">
+  <h2>⚙ V5 WAVE ENGINE</h2>
+
+  <h3>🌊 Wave Type</h3>
+  <div id="wave-types" class="toggle-row"></div>
+
+  <h3>Wave Parameters</h3>
+  <div class="ctrl-row">
+    <label>Amplitude (mm)</label>
+    <input type="range" id="amp" min="1" max="30" value="12" step="0.5">
+    <span class="val" id="amp-val">12</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Frequency (Hz)</label>
+    <input type="range" id="freq" min="0.1" max="3" value="0.8" step="0.05">
+    <span class="val" id="freq-val">0.8</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Wavelength (k)</label>
+    <input type="range" id="waveK" min="0.02" max="0.5" value="0.12" step="0.01">
+    <span class="val" id="waveK-val">0.12</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Phase Offset (°/ch)</label>
+    <input type="range" id="phaseOff" min="0" max="90" value="36" step="1">
+    <span class="val" id="phaseOff-val">36°</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Damping</label>
+    <input type="range" id="damping" min="0" max="1" value="0" step="0.01">
+    <span class="val" id="damping-val">0.00</span>
+  </div>
+
+  <h3>Helix Drive</h3>
+  <div class="ctrl-row">
+    <label>Helix Eccentricity</label>
+    <input type="range" id="eccMM" min="2" max="20" value="12" step="0.5">
+    <span class="val" id="eccMM-val">12mm</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Motor Speed (RPM)</label>
+    <input type="range" id="rpm" min="1" max="30" value="8" step="1">
+    <span class="val" id="rpm-val">8</span>
+  </div>
+
+  <h3>Animation</h3>
+  <div class="ctrl-row">
+    <label>Anim Speed</label>
+    <input type="range" id="speed" min="0" max="0.08" value="0.02" step="0.002">
+    <span class="val" id="speed-val">0.020</span>
+  </div>
+
+  <h3>Visibility</h3>
+  <div id="vis-toggles" class="toggle-row"></div>
+</div>
+
+<!-- ENGINEERING READOUT -->
+<div id="eng-panel">
+  <h3>📐 REVERSE ENGINEERING</h3>
+  <div id="eng-content"></div>
+</div>
+
+<!-- INFO BAR -->
+<div id="info-bar">
+  <div>ORBIT: Drag | ZOOM: Scroll | SPACE: Pause</div>
+  <div id="info-fps"></div>
+</div>
+
+<script>
+// =====================================================================
+// V5 MONOLITHIC MATRIX — 3D WAVE ENGINE
+// =====================================================================
+// Full 3D WEBGL rendering of the V5 matrix with wave controls
+// All dimensions from MATRIX SINGLE UNIT v5.scad
+// =====================================================================
+
+// --- V5 DIMENSIONS (mm, from OpenSCAD) ---
+const V5 = {
+  stackOffset: 22,
+  housingHeight: 85,
+  wallThick: 3,
+  fpRowY: 22.5,
+  railH: 4,
+  pipClear: 0.3,
+  channels: [
+    { name:'CH1', fixed:3, slider:3, hLen:83,  sLen:166, hGap:19, sGap:8, fpPitch:29, spPitch:46, fpOD:13, spOD:10, fpW:18, spW:7, axDia:5 },
+    { name:'CH2', fixed:4, slider:4, hLen:111, sLen:222, hGap:19, sGap:8, fpPitch:29, spPitch:46, fpOD:13, spOD:10, fpW:18, spW:7, axDia:5 },
+    { name:'CH3', fixed:5, slider:5, hLen:136, sLen:272, hGap:19, sGap:8, fpPitch:29, spPitch:46, fpOD:13, spOD:10, fpW:18, spW:7, axDia:5 },
+    { name:'CH4', fixed:4, slider:4, hLen:112, sLen:224, hGap:19, sGap:8, fpPitch:29, spPitch:46, fpOD:13, spOD:10, fpW:18, spW:7, axDia:5 },
+    { name:'CH5', fixed:3, slider:3, hLen:83,  sLen:166, hGap:19, sGap:8, fpPitch:29, spPitch:46, fpOD:13, spOD:10, fpW:18, spW:7, axDia:5 },
+  ],
+};
+
+// Scale: 1mm = 1.5px in 3D space
+const SC = 1.5;
+
+// --- WAVE TYPES ---
+const WAVE_TYPES = [
+  { id:'sine',        name:'Simple Sine',          desc:'Pure sinusoidal — single frequency, uniform amplitude',
+    eq:'h(x,t) = A·sin(ωt + k·x)', icon:'∿' },
+  { id:'traveling',   name:'Traveling Wave',        desc:'Phase offset per channel — wave appears to move through matrix',
+    eq:'h(x,t) = A·sin(ωt + k·x + φ·ch)', icon:'→∿' },
+  { id:'standing',    name:'Standing Wave',         desc:'Two opposing waves — fixed nodes and antinodes',
+    eq:'h(x,t) = 2A·cos(k·x)·sin(ωt)', icon:'∿|∿' },
+  { id:'varamp',      name:'Variable Amplitude',    desc:'Amplitude envelope — center channels have more throw',
+    eq:'h(x,t) = A·env(ch)·sin(ωt + k·x)', icon:'◠∿' },
+  { id:'interference', name:'3-Wave Interference',  desc:'Three helixes at 120° — compound wave superposition',
+    eq:'h(x,y,t) = Σ Aᵢ·sin(ωt + φᵢ + kᵢ·d)', icon:'≋' },
+  { id:'beat',        name:'Beat Pattern',          desc:'Two close frequencies — amplitude modulation',
+    eq:'h(x,t) = 2A·cos(Δω·t/2)·sin(ω̄·t + k·x)', icon:'∿∿' },
+  { id:'sawtooth',    name:'Sawtooth (Fourier)',    desc:'Sharp ramp via harmonic series — requires fast slider return',
+    eq:'h(t) = Σ (-1)ⁿ⁺¹·sin(n·ωt)/n', icon:'/|/' },
+  { id:'damped',      name:'Damped Wave',           desc:'Exponential decay from center — friction cascade simulation',
+    eq:'h(x,t) = A·e^(-γ·|x|)·sin(ωt + k·x)', icon:'∿⤵' },
+];
+
+let currentWave = 'sine';
+let animTime = 0;
+let paused = false;
+
+// Visibility toggles
+let vis = { walls:true, fixedPulleys:true, sliderPulleys:true, sliders:true, ropes:true, blocks:true, rails:true, axes:false, waveProfile:true };
+
+// Computed slider positions per channel (updated each frame)
+let sliderPos = [0,0,0,0,0];
+// Block heights (for 15 blocks in a row)
+let blockHeights = [];
+const NUM_BLOCKS = 15;
+
+// --- UI SETUP ---
+function setupUI() {
+  // Wave type buttons
+  let wtDiv = document.getElementById('wave-types');
+  for (let wt of WAVE_TYPES) {
+    let btn = document.createElement('span');
+    btn.className = 'wave-btn' + (wt.id === currentWave ? ' active' : '');
+    btn.textContent = wt.icon + ' ' + wt.name;
+    btn.title = wt.desc;
+    btn.dataset.id = wt.id;
+    btn.onclick = () => {
+      currentWave = wt.id;
+      document.querySelectorAll('.wave-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    };
+    wtDiv.appendChild(btn);
+  }
+
+  // Visibility toggles
+  let visDiv = document.getElementById('vis-toggles');
+  let visItems = [
+    ['walls','Walls'], ['fixedPulleys','Fixed Pulleys'], ['sliderPulleys','Slider Pulleys'],
+    ['sliders','Sliders'], ['ropes','Ropes'], ['blocks','Blocks'],
+    ['rails','Rails'], ['axes','Axes'], ['waveProfile','Wave Profile']
+  ];
+  for (let [key, label] of visItems) {
+    let btn = document.createElement('span');
+    btn.className = 'toggle-btn' + (vis[key] ? ' on' : '');
+    btn.textContent = label;
+    btn.onclick = () => {
+      vis[key] = !vis[key];
+      btn.classList.toggle('on');
+    };
+    visDiv.appendChild(btn);
+  }
+
+  // Slider value displays
+  let sliders = ['amp','freq','waveK','phaseOff','damping','eccMM','rpm','speed'];
+  for (let s of sliders) {
+    let el = document.getElementById(s);
+    let valEl = document.getElementById(s+'-val');
+    el.oninput = () => {
+      let v = parseFloat(el.value);
+      if (s==='phaseOff') valEl.textContent = v+'°';
+      else if (s==='eccMM') valEl.textContent = v+'mm';
+      else if (s==='speed') valEl.textContent = v.toFixed(3);
+      else if (s==='damping') valEl.textContent = v.toFixed(2);
+      else valEl.textContent = v;
+    };
+  }
+}
+
+// Get slider values
+function getCtrl(id) { return parseFloat(document.getElementById(id).value); }
+
+// =====================================================================
+// WAVE MATH ENGINE
+// =====================================================================
+
+function computeWave(blockIdx, chIdx, t) {
+  let A = getCtrl('amp');
+  let f = getCtrl('freq');
+  let k = getCtrl('waveK');
+  let phDeg = getCtrl('phaseOff');
+  let damp = getCtrl('damping');
+  let omega = f * TWO_PI;
+  let ph = phDeg * PI / 180;
+  let x = (blockIdx - (NUM_BLOCKS-1)/2) * V5.channels[2].fpPitch; // spatial position in mm
+
+  switch(currentWave) {
+    case 'sine':
+      return A * sin(omega*t + k*x);
+
+    case 'traveling':
+      return A * sin(omega*t + k*x + ph*chIdx);
+
+    case 'standing':
+      return 2*A * cos(k*x) * sin(omega*t);
+
+    case 'varamp': {
+      // Envelope peaks at center channel
+      let env = [0.5, 0.8, 1.0, 0.8, 0.5];
+      let e = chIdx < 5 ? env[chIdx] : 1;
+      return A * e * sin(omega*t + k*x);
+    }
+
+    case 'interference': {
+      let d = 0;
+      for (let h = 0; h < 3; h++) {
+        let phase = h * TWO_PI / 3;
+        let dirX = cos(h * TWO_PI/3);
+        let dirY = sin(h * TWO_PI/3);
+        let bY = (blockIdx - (NUM_BLOCKS-1)/2) * 15; // spread in Y
+        let proj = x * dirX + bY * dirY;
+        d += (A/3) * sin(omega*t + phase + k*proj);
+      }
+      return d;
+    }
+
+    case 'beat': {
+      let f2 = f * 1.15; // slightly different frequency
+      let omega2 = f2 * TWO_PI;
+      return A * (sin(omega*t + k*x) + sin(omega2*t + k*x)) / 2;
+    }
+
+    case 'sawtooth': {
+      // Fourier series approximation (5 harmonics)
+      let val = 0;
+      for (let n = 1; n <= 5; n++) {
+        val += pow(-1, n+1) * sin(n * omega * t + n * k * x) / n;
+      }
+      return A * val * 0.65;
+    }
+
+    case 'damped': {
+      let dist = abs(x);
+      let decay = exp(-damp * dist * 0.01);
+      return A * decay * sin(omega*t + k*x);
+    }
+
+    default: return 0;
+  }
+}
+
+// Compute per-channel slider displacement
+function computeSliderDisplacement(chIdx, t) {
+  let A = getCtrl('amp');
+  let f = getCtrl('freq');
+  let phDeg = getCtrl('phaseOff');
+  let omega = f * TWO_PI;
+  let ph = phDeg * PI / 180;
+
+  switch(currentWave) {
+    case 'traveling':
+      return A * sin(omega*t + ph*chIdx);
+    case 'varamp': {
+      let env = [0.5, 0.8, 1.0, 0.8, 0.5];
+      return A * env[chIdx] * sin(omega*t);
+    }
+    case 'standing':
+      return A * sin(omega*t); // both halves driven at same freq
+    case 'beat': {
+      let f2 = f * 1.15;
+      return A * (sin(omega*t) + sin(f2*TWO_PI*t)) / 2;
+    }
+    default:
+      return A * sin(omega*t + chIdx * 0.3);
+  }
+}
+
+// =====================================================================
+// ENGINEERING READOUT
+// =====================================================================
+
+function updateEngPanel() {
+  let A = getCtrl('amp');
+  let f = getCtrl('freq');
+  let k = getCtrl('waveK');
+  let ecc = getCtrl('eccMM');
+  let rpm = getCtrl('rpm');
+  let phDeg = getCtrl('phaseOff');
+  let damp = getCtrl('damping');
+
+  let wt = WAVE_TYPES.find(w => w.id === currentWave);
+
+  // Calculate mechanical requirements
+  let maxSliderTravel = A * 2; // peak-to-peak
+  let maxSLen = V5.channels[2].sLen; // CH3 longest slider
+  let travelPct = (maxSliderTravel / maxSLen * 100).toFixed(1);
+  let travelOK = maxSliderTravel < maxSLen * 0.4;
+
+  let motorHz = rpm / 60;
+  let requiredF = f;
+  let gearRatio = (requiredF / motorHz).toFixed(2);
+
+  let eccNeeded = A; // amplitude = eccentricity for 1:1 MA
+  let eccOK = eccNeeded <= ecc;
+
+  // Pulley cascade efficiency (9 pulleys with ball bearings)
+  let eta = Math.pow(0.96, 9);
+  let actualMA = 9 * eta;
+  let effectiveAmp = ecc * actualMA / 9; // simplified
+  let effectiveOK = effectiveAmp >= A;
+
+  // Phase offset → helix disc mapping
+  let discPerDeg = 30 / 360; // 30 discs = 360°
+  let discsPerChannel = (phDeg * discPerDeg).toFixed(1);
+
+  // Wavelength in mm
+  let wavelengthMM = (TWO_PI / k).toFixed(0);
+
+  let html = '';
+  html += `<div class="eq">${wt.eq}</div>`;
+  html += `<div style="color:#666;margin:3px 0">${wt.desc}</div>`;
+  html += `<br>`;
+  html += `<div class="param">Amplitude: ${A}mm → Slider P-P: ${maxSliderTravel.toFixed(1)}mm (${travelPct}% of CH3)</div>`;
+  html += `<div class="${travelOK ? 'ok' : 'warn'}">${travelOK ? '✓' : '⚠'} Slider travel ${travelOK ? 'OK' : 'EXCEEDS 40% — increase slider length or reduce amplitude'}</div>`;
+  html += `<br>`;
+  html += `<div class="param">Eccentricity needed: ${eccNeeded.toFixed(1)}mm | Available: ${ecc}mm</div>`;
+  html += `<div class="${eccOK ? 'ok' : 'warn'}">${eccOK ? '✓' : '⚠'} ${eccOK ? 'Helix eccentricity sufficient' : 'NEED MORE ECCENTRICITY — increase helix offset'}</div>`;
+  html += `<br>`;
+  html += `<div class="param">Motor ${rpm}RPM = ${motorHz.toFixed(2)}Hz → Need ${requiredF}Hz → Gear ratio: ${gearRatio}:1</div>`;
+  html += `<div class="param">Wavelength: ${wavelengthMM}mm | Friction cascade η: ${(eta*100).toFixed(1)}%</div>`;
+
+  if (currentWave === 'traveling' || currentWave === 'varamp') {
+    html += `<br><div class="param">Phase ${phDeg}°/ch → Tap helix every ${discsPerChannel} discs apart</div>`;
+    html += `<div class="param">CH1→disc 0, CH2→disc ${discsPerChannel}, CH3→disc ${(discsPerChannel*2).toFixed(1)}...</div>`;
+  }
+
+  if (currentWave === 'standing') {
+    html += `<br><div class="warn">⚠ STANDING WAVE needs TWO drive inputs (opposing sliders)</div>`;
+    html += `<div class="param">Modification: Split slider bar at center, drive from both ends</div>`;
+  }
+
+  if (currentWave === 'beat') {
+    html += `<br><div class="warn">⚠ BEAT PATTERN needs TWO different frequencies</div>`;
+    html += `<div class="param">Modification: Second helix at ${(f*1.15).toFixed(2)}Hz via different belt ratio</div>`;
+    html += `<div class="param">Fibonacci: 55T vs 89T → ratio ${(89/55).toFixed(3)} ≈ φ</div>`;
+  }
+
+  if (currentWave === 'sawtooth') {
+    html += `<br><div class="warn">⚠ SAWTOOTH needs sharp reversal — high slider acceleration</div>`;
+    html += `<div class="param">Modification: Cam profile instead of helix (non-sinusoidal)</div>`;
+    html += `<div class="param">Or: Accept softened sawtooth with 5-harmonic Fourier approx</div>`;
+  }
+
+  if (currentWave === 'damped') {
+    html += `<br><div class="param">Damping γ=${damp.toFixed(2)} → Edge attenuation: ${(Math.exp(-damp*V5.channels[2].hLen*0.5*0.01)*100).toFixed(0)}%</div>`;
+    html += `<div class="param">Physical: Friction cascade naturally creates this! Use PLA-on-PLA bearings for outer channels</div>`;
+  }
+
+  document.getElementById('eng-content').innerHTML = html;
+}
+
+// =====================================================================
+// 3D RENDERING
+// =====================================================================
+
+function setup() {
+  createCanvas(windowWidth, windowHeight, WEBGL);
+  setupUI();
+  for (let i = 0; i < NUM_BLOCKS; i++) blockHeights.push(0);
+}
+
+function draw() {
+  background(20, 22, 35);
+  orbitControl(2, 2, 0.5);
+
+  // Animation
+  if (!paused) animTime += getCtrl('speed');
+
+  // Update physics
+  for (let ch = 0; ch < 5; ch++) {
+    sliderPos[ch] = computeSliderDisplacement(ch, animTime);
+  }
+  for (let b = 0; b < NUM_BLOCKS; b++) {
+    // Block height = sum of all channel contributions (compound through the rope path)
+    let h = 0;
+    for (let ch = 0; ch < 5; ch++) {
+      h += computeWave(b, ch, animTime) * 0.2; // each channel contributes
+    }
+    blockHeights[b] = h;
+  }
+
+  // Update engineering readout
+  if (frameCount % 10 === 0) updateEngPanel();
+  if (frameCount % 30 === 0) {
+    document.getElementById('info-fps').textContent = 'FPS: ' + floor(frameRate());
+  }
+
+  // --- LIGHTING ---
+  ambientLight(120);
+  directionalLight(255, 248, 230, 0.5, 1, -0.8);
+  directionalLight(180, 200, 255, -0.4, -0.3, -1);
+  pointLight(255, 220, 160, 0, -400*SC, 300*SC);
+
+  // --- CAMERA OFFSET ---
+  translate(0, -50*SC, 0);
+
+  // --- AXES ---
+  if (vis.axes) drawAxes();
+
+  // --- DRAW THE V5 MATRIX ---
+  push();
+  drawV5Matrix();
+  pop();
+
+  // --- DRAW HANGING BLOCKS ---
+  if (vis.blocks) {
+    push();
+    drawHangingBlocks();
+    pop();
+  }
+
+  // --- WAVE PROFILE (floating ghost surface) ---
+  if (vis.waveProfile) {
+    push();
+    drawWaveProfile();
+    pop();
+  }
+}
+
+// =====================================================================
+// V5 MATRIX RENDERER
+// =====================================================================
+
+function drawV5Matrix() {
+  let totalH = 5 * V5.stackOffset * SC;
+  let startZ = -totalH/2;
+
+  // Matrix is oriented: X=slider direction, Y=housing height, Z=stack direction
+  // Rotate to hang from above (Z points down in world)
+  rotateX(PI/2);
+
+  for (let ch = 0; ch < 5; ch++) {
+    let chn = V5.channels[ch];
+    let cz = startZ + ch * V5.stackOffset * SC + V5.stackOffset * SC / 2;
+    let halfHL = chn.hLen * SC / 2;
+    let halfSL = chn.sLen * SC / 2;
+    let halfHH = V5.housingHeight * SC / 2;
+    let gapH = chn.hGap * SC;
+    let sGap = chn.sGap * SC;
+    let slOff = sliderPos[ch] * SC;
+
+    push();
+    translate(0, 0, cz);
+
+    // === WALLS ===
+    if (vis.walls) {
+      // Top wall
+      push();
+      translate(0, 0, -V5.stackOffset*SC/2);
+      fill(80, 90, 200, 60);
+      stroke(110, 120, 230, 80);
+      strokeWeight(0.5);
+      box(halfHL*2 + 4*SC, halfHH*2, V5.wallThick*SC);
+      pop();
+
+      // Bottom wall (only on last channel)
+      if (ch === 4) {
+        push();
+        translate(0, 0, V5.stackOffset*SC/2);
+        fill(80, 90, 200, 60);
+        stroke(110, 120, 230, 80);
+        box(halfHL*2 + 4*SC, halfHH*2, V5.wallThick*SC);
+        pop();
+      }
+
+      // Side walls
+      push();
+      translate(-halfHL - SC, 0, 0);
+      fill(80, 90, 200, 40);
+      stroke(110, 120, 230, 50);
+      box(V5.wallThick*SC, halfHH*2, gapH);
+      pop();
+      push();
+      translate(halfHL + SC, 0, 0);
+      fill(80, 90, 200, 40);
+      stroke(110, 120, 230, 50);
+      box(V5.wallThick*SC, halfHH*2, gapH);
+      pop();
+    }
+
+    // === GUIDE RAILS ===
+    if (vis.rails) {
+      let railW = halfHL * 1.8;
+      push();
+      translate(0, 0, -gapH/2 + V5.wallThick*SC + V5.railH*SC/2);
+      fill(100, 110, 220);
+      noStroke();
+      box(railW, V5.railH*SC, V5.railH*SC*0.5);
+      pop();
+    }
+
+    // === FIXED PULLEYS ===
+    if (vis.fixedPulleys) {
+      for (let fp = 0; fp < chn.fixed; fp++) {
+        let fpx = (fp - (chn.fixed-1)/2) * chn.fpPitch * SC;
+        // Top row (+Y)
+        push();
+        translate(fpx, V5.fpRowY*SC, 0);
+        drawPulley3D(chn.fpOD*SC, chn.fpW*SC, chn.axDia*SC, gapH + V5.wallThick*2*SC, [140,140,150]);
+        pop();
+        // Bottom row (-Y)
+        push();
+        translate(fpx, -V5.fpRowY*SC, 0);
+        drawPulley3D(chn.fpOD*SC, chn.fpW*SC, chn.axDia*SC, gapH + V5.wallThick*2*SC, [140,140,150]);
+        pop();
+      }
+    }
+
+    // === SLIDER PLATES ===
+    if (vis.sliders) {
+      let plateW = halfSL * 0.7;
+      let plateT = 3*SC;
+
+      // Top plate
+      push();
+      translate(slOff, 0, -sGap/2 - plateT/2);
+      fill(220, 85, 85, 200);
+      stroke(240, 110, 110, 100);
+      strokeWeight(0.3);
+      box(plateW*2, 15*SC, plateT);
+      pop();
+
+      // Bottom plate
+      push();
+      translate(slOff, 0, sGap/2 + plateT/2);
+      fill(220, 85, 85, 200);
+      stroke(240, 110, 110, 100);
+      box(plateW*2, 15*SC, plateT);
+      pop();
+    }
+
+    // === SLIDER PULLEYS ===
+    if (vis.sliderPulleys) {
+      for (let sp = 0; sp < chn.slider; sp++) {
+        let spx = slOff + (sp - (chn.slider-1)/2) * chn.spPitch * SC;
+        push();
+        translate(spx, 0, 0);
+        drawPulley3D(chn.spOD*SC, chn.spW*SC, chn.axDia*SC, sGap + 6*SC, [230,230,235]);
+        pop();
+      }
+    }
+
+    pop(); // end channel
+  }
+
+  // === ROPES (weaving through all channels) ===
+  if (vis.ropes) {
+    drawRopes3D(startZ);
+  }
+}
+
+// --- 3D Pulley (cylinder with groove) ---
+function drawPulley3D(od, w, axDia, axLen, col) {
+  // Pulley body
+  push();
+  fill(col[0], col[1], col[2]);
+  stroke(col[0]-30, col[1]-30, col[2]-30);
+  strokeWeight(0.3);
+  rotateX(PI/2);
+  cylinder(od/2, w);
+  // V-groove (darker ring)
+  fill(col[0]-30, col[1]-30, col[2]-30);
+  noStroke();
+  torus(od/2 * 0.7, w*0.08);
+  pop();
+
+  // Axle
+  push();
+  fill(70, 70, 80);
+  noStroke();
+  rotateY(PI/2);
+  // Axle runs in Y direction (perpendicular to pulley face)
+  // Actually for our matrix, axles are in Z direction (through walls)
+  rotateX(PI/2);
+  cylinder(axDia/2, axLen);
+  pop();
+}
+
+// --- Rope paths through matrix ---
+function drawRopes3D(startZ) {
+  let numRopes = 5;
+  for (let r = 0; r < numRopes; r++) {
+    let rx = (r - (numRopes-1)/2) * 25 * SC;
+    noFill();
+    stroke(218, 175, 55, 150);
+    strokeWeight(1.5);
+    beginShape();
+    // Enter from above (negative Z in rotated space)
+    vertex(rx, 0, startZ - 20*SC);
+    for (let ch = 0; ch < 5; ch++) {
+      let chn = V5.channels[ch];
+      let cz = startZ + ch * V5.stackOffset * SC + V5.stackOffset*SC/2;
+      let slOff = sliderPos[ch] * SC;
+      let fpIdx = min(r, chn.fixed-1);
+      let fpx = (fpIdx - (chn.fixed-1)/2) * chn.fpPitch * SC;
+      let spIdx = min(r, chn.slider-1);
+      let spx = slOff + (spIdx - (chn.slider-1)/2) * chn.spPitch * SC;
+
+      // Top fixed
+      vertex(fpx + rx*0.1, V5.fpRowY*SC, cz);
+      // Slider
+      vertex(spx, 0, cz);
+      // Bottom fixed
+      vertex(fpx + rx*0.1, -V5.fpRowY*SC, cz);
+    }
+    // Exit below
+    let lastCZ = startZ + 4 * V5.stackOffset*SC + V5.stackOffset*SC/2;
+    vertex(rx, 0, lastCZ + 20*SC);
+    endShape();
+  }
+}
+
+// =====================================================================
+// HANGING BLOCKS
+// =====================================================================
+
+function drawHangingBlocks() {
+  let dropDist = 250 * SC; // distance below matrix
+  let blockSpacing = 30 * SC;
+  let matrixBottom = 5 * V5.stackOffset * SC / 2 + 10*SC;
+
+  for (let b = 0; b < NUM_BLOCKS; b++) {
+    let bx = (b - (NUM_BLOCKS-1)/2) * blockSpacing;
+    let wave = blockHeights[b] * SC;
+    let by = matrixBottom + dropDist + wave;
+
+    // Rope from matrix to block
+    if (vis.ropes) {
+      push();
+      stroke(218, 175, 55, 100);
+      strokeWeight(1);
+      line(bx, 0, matrixBottom, bx, 0, by - 15*SC);
+      pop();
+    }
+
+    // Wooden block (3D box)
+    push();
+    translate(bx, 0, by);
+
+    // Wood material
+    let woodR = 180 + (b%3)*15;
+    let woodG = 130 + (b%3)*10;
+    let woodB = 60 + (b%3)*8;
+    if (b%2===0) { woodR-=20; woodG-=15; woodB-=10; } // checkerboard variation
+
+    fill(woodR, woodG, woodB);
+    stroke(woodR-40, woodG-40, woodB-40);
+    strokeWeight(0.5);
+    box(22*SC, 22*SC, 35*SC);
+
+    // String attachment hole on top
+    push();
+    translate(0, 0, -18*SC);
+    fill(100, 80, 40);
+    noStroke();
+    cylinder(2*SC, 3*SC);
+    pop();
+
+    pop();
+  }
+}
+
+// =====================================================================
+// WAVE PROFILE (Ghost Surface)
+// =====================================================================
+
+function drawWaveProfile() {
+  let dropDist = 250 * SC;
+  let matrixBottom = 5 * V5.stackOffset * SC / 2 + 10*SC;
+  let blockSpacing = 30 * SC;
+  let profileZ = matrixBottom + dropDist;
+
+  // Draw a transparent wave surface
+  noFill();
+  strokeWeight(2);
+
+  // Compound wave (gold)
+  stroke(255, 215, 0, 80);
+  beginShape();
+  for (let b = 0; b < NUM_BLOCKS; b++) {
+    let bx = (b - (NUM_BLOCKS-1)/2) * blockSpacing;
+    let wave = blockHeights[b] * SC;
+    vertex(bx, 0, profileZ + wave);
+  }
+  endShape();
+
+  // Individual channel contributions (colored)
+  let chColors = [[76,175,80], [50,140,230], [255,152,0], [180,80,180], [200,200,100]];
+  for (let ch = 0; ch < 5; ch++) {
+    stroke(chColors[ch][0], chColors[ch][1], chColors[ch][2], 40);
+    strokeWeight(1);
+    beginShape();
+    for (let b = 0; b < NUM_BLOCKS; b++) {
+      let bx = (b - (NUM_BLOCKS-1)/2) * blockSpacing;
+      let wave = computeWave(b, ch, animTime) * SC * 0.2;
+      vertex(bx, 0, profileZ + wave);
+    }
+    endShape();
+  }
+}
+
+// =====================================================================
+// HELPERS
+// =====================================================================
+
+function drawAxes() {
+  strokeWeight(2);
+  // X = red
+  stroke(255, 0, 0); line(0,0,0, 100*SC,0,0);
+  // Y = green
+  stroke(0, 255, 0); line(0,0,0, 0,100*SC,0);
+  // Z = blue (down)
+  stroke(0, 0, 255); line(0,0,0, 0,0,100*SC);
+}
+
+function keyPressed() {
+  if (key === ' ') { paused = !paused; return false; }
+}
+
+function windowResized() { resizeCanvas(windowWidth, windowHeight); }
+</script>
+</body>
+</html>

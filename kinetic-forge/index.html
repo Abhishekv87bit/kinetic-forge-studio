@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KineticForge</title>
+  <link rel="stylesheet" href="/styles/main.css">
+</head>
+<body>
+  <header id="app-header">
+    <div class="header-left">
+      <span class="app-title">KineticForge</span>
+    </div>
+    <div class="header-center" id="mode-toggle-container"></div>
+    <div class="header-right" id="header-actions"></div>
+  </header>
+
+  <nav id="app-nav"></nav>
+
+  <main id="app-main">
+    <div id="workspace"></div>
+    <aside id="sidebar"></aside>
+  </main>
+
+  <footer id="app-footer">
+    <span id="xp-display">XP: 0</span>
+    <span id="streak-display">Streak: 0d</span>
+    <span id="stage-display"></span>
+  </footer>
+
+  <div id="toast-container"></div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "created": "2026-02-06T09:13:33.539Z",
+  "lastActive": "2026-02-10T05:48:30.215Z",
+  "mode": "learn",
+  "xp": {
+    "total": 0,
+    "byStage": {
+      "discover": 0,
+      "animate": 0,
+      "mechanize": 0,
+      "simulate": 0,
+      "build": 0,
+      "iterate": 0
+    }
+  },
+  "streak": {
+    "currentDays": 1,
+    "longestDays": 2,
+    "lastActiveDate": "2026-02-10",
+    "freezesAvailable": 1,
+    "freezesUsed": 0
+  },
+  "journey": {
+    "stagesCompleted": [],
+    "totalProjectsStarted": 0,
+    "totalProjectsCompleted": 0,
+    "totalTasksCompleted": 0,
+    "skillLevels": {
+      "fourBar": 0,
+      "cams": 0,
+      "gears": 0,
+      "simulation": 0,
+      "eccentric": 0,
+      "designThinking": 0
+    }
+  },
+  "preferences": {
+    "tooltipsEnabled": true,
+    "claudeSuggestionsEnabled": true,
+    "autoSyncToGitHub": false
+  },
+  "curriculum": {
+    "filesViewed": [
+      "02_CARDBOARD_PROTOTYPING_CURRICULUM.md",
+      "04_FUSION360_LEARNING_GUIDE.md",
+      "10_KINETIC_MOTION_RECIPES.md",
+      "06_ONLINE_TOOLS_REFERENCE.md",
+      "SESSION_LOG.md",
+      "16_DESIGN_HISTORY_INDEX.md",
+      "01_DAUGHTER_AUTOMATA_PROJECTS.md",
+      "14_DESIGN_THINKING_FRAMEWORK.md"
+    ],
+    "lastViewed": "14_DESIGN_THINKING_FRAMEWORK.md"
+  },
+  "dailyTasks": {
+    "date": "2026-02-10",
+    "tasks": [
+      {
+        "type": "learn-fourbar-grashof",
+        "title": "Find a Grashof-valid linkage (ground=80mm)",
+        "description": "Adjust link lengths until the crank can fully rotate",
+        "difficulty": "easy",
+        "params": {
+          "G": 80
+        },
+        "xp": 15,
+        "skillTag": "fourBar",
+        "stage": "learn",
+        "id": "daily-0",
+        "completed": false
+      },
+      {
+        "type": "learn-fourbar-coupler",
+        "title": "Trace the coupler curve for looping motion",
+        "description": "Explore how coupler point position changes the output path",
+        "difficulty": "medium",
+        "params": {
+          "feel": "looping"
+        },
+        "xp": 20,
+        "skillTag": "fourBar",
+        "stage": "learn",
+        "id": "daily-1",
+        "completed": false
+      },
+      {
+        "type": "learn-fourbar-swing",
+        "title": "Match 15 deg swing angle",
+        "description": "Given a target rocker swing, find the right link lengths",
+        "difficulty": "stretch",
+        "params": {
+          "swing": 15
+        },
+        "xp": 25,
+        "skillTag": "fourBar",
+        "stage": "learn",
+        "id": "daily-2",
+        "completed": false
+      }
+    ],
+    "completedCount": 0,
+    "dailyBonusAwarded": false
+  },
+  "onboardingComplete": true,
+  "guidanceDismissed": {
+    "learn-exercises": false
+  }
+}

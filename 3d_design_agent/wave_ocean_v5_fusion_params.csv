@@ -1,0 +1,32 @@
+Name,Unit,Expression,Comment
+MODULE,mm,3,ISO 21771 gear module
+PRESSURE_ANGLE,deg,20,Standard pressure angle
+GEAR_TEETH,ul,20,Number of gear teeth
+GEAR_PITCH_DIA,mm,MODULE * GEAR_TEETH,Pitch diameter = 60mm
+GEAR_BASE_DIA,mm,GEAR_PITCH_DIA * cos(PRESSURE_ANGLE),Base diameter = 56.38mm
+GEAR_TIP_DIA,mm,GEAR_PITCH_DIA + 2 * MODULE,Tip diameter = 66mm
+GEAR_ROOT_DIA,mm,GEAR_PITCH_DIA - 2.5 * MODULE,Root diameter = 52.5mm
+GEAR_FACE_WIDTH,mm,15,Gear thickness
+GEAR_BORE,mm,15,Shaft hole diameter
+CIRCULAR_PITCH,mm,PI * MODULE,Tooth spacing = 9.42mm
+TOOTH_THICKNESS,mm,PI * MODULE / 2,At pitch circle = 4.71mm
+ROOT_FILLET,mm,0.25 * MODULE,Fillet radius = 0.75mm
+RACK_TOOTH_HEIGHT,mm,2.25 * MODULE,Total = 6.75mm
+RACK_ADDENDUM,mm,MODULE,Above pitch line = 3mm
+RACK_DEDENDUM,mm,1.25 * MODULE,Below pitch line = 3.75mm
+TRACK_LENGTH,mm,200,Total rack length
+TRACK_WIDTH,mm,20,Rack width
+TRACK_AMPLITUDE,mm,15,Wave height +/-
+TRACK_WAVELENGTH,mm,100,One wave cycle
+PIN_OFFSET,mm,15,Eccentric pin from gear center
+PIN_DIA,mm,8,Eccentric pin diameter
+ROD_LENGTH,mm,55,Connecting rod length (CONSTANT)
+ROCKER_LENGTH,mm,100,Total rocker bar length
+ROCKER_HALF,mm,ROCKER_LENGTH / 2,Half length = 50mm
+ROCKER_THICKNESS,mm,6,Rocker bar thickness
+PIVOT_HEIGHT,mm,85,Pivot Z position
+ROD_END_BORE,mm,8,Rod-end bearing bore
+ROD_END_BALL_DIA,mm,12,Spherical ball diameter
+ROD_END_BODY_OD,mm,16,Housing outer diameter
+SHOULDER_BOLT_SHOULDER_DIA,mm,8,Bearing surface diameter
+SHOULDER_BOLT_HEAD_DIA,mm,12,Hex head across flats

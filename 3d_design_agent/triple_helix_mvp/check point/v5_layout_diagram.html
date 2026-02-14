@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>V5 Layout Diagram — Top View</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+    <style>
+        body { margin: 0; background: #1a1a2e; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        canvas { border: 1px solid #333; }
+    </style>
+</head>
+<body>
+<script>
+// =========================================================
+// V5 LAYOUT DIAGRAM — Top View
+// Shows: hex matrix, ring, stubs, arm paths, helix centers,
+//        shaft axes, bearing positions, cam envelopes
+// =========================================================
+
+// V5 Parameters (mm)
+const HEX_R = 88.5;
+const FRAME_RING_R_IN = HEX_R + 2;
+const FRAME_RING_R_OUT = FRAME_RING_R_IN + 10;
+const STUB_LENGTH = 30;
+const STUB_INWARD = 8;
+const STUB_W = 20;
+const ARM_W = 20;
+const STUB_R_START = FRAME_RING_R_OUT - STUB_INWARD;
+const STUB_R_END = FRAME_RING_R_OUT + STUB_LENGTH;
+const JUNCTION_R = STUB_R_END + STUB_W / 2;
+
+const STAR_RATIO = 1.5;
+const HEX_C2C = 2 * HEX_R;
+const STAR_TIP_R = STAR_RATIO * HEX_C2C;
+const HEXAGRAM_INNER_R = STAR_TIP_R / Math.sqrt(3);
+
+const CORRIDOR_GAP = 58.5;
+const V_PUSH = CORRIDOR_GAP / (2 * Math.tan(Math.PI / 6));
+const HELIX_R = HEXAGRAM_INNER_R + V_PUSH;
+
+const ECCENTRICITY = 20;
+const DISC_OD = 27;
+const BEARING_OD_RIB = 19;
+const RIB_ARM_LENGTH = 20;
+const HELIX_LENGTH = 9 * 14; // 126mm
+const HALF_HELIX = HELIX_LENGTH / 2;
+const SHAFT_EXT = 10; // extra past cam stack for bearing
+
+const V_ANGLE = 74;
+const HALF_V = V_ANGLE / 2;
+
+const HELIX_ANGLES = [180, 300, 60];
+const STUB_ANGLES = [0, 120, 240];
+
+const ARM_DEFS = [
+    { stub: 0, tip: 0 - HALF_V },
+    { stub: 0, tip: 0 + HALF_V },
+    { stub: 120, tip: 120 - HALF_V },
+    { stub: 120, tip: 120 + HALF_V },
+    { stub: 240, tip: 240 - HALF_V },
+    { stub: 240, tip: 240 + HALF_V },
+];
+
+const ARM_COLORS = [
+    [220, 60, 60],    // A0 red
+    [60, 200, 60],    // A1 green
+    [60, 100, 230],   // A2 blue
+    [230, 150, 30],   // A3 orange
+    [180, 60, 200],   // A4 purple
+    [30, 200, 200],   // A5 cyan
+];
+
+let scale_factor;
+let cx, cy;
+
+function setup() {
+    createCanvas(1000, 800);
+    scale_factor = 1.3;
+    cx = width / 2;
+    cy = height / 2 + 20;
+}
+
+function toScreen(x, y) {
+    return [cx + x * scale_factor, cy - y * scale_factor];
+}
+
+function radPoint(r, angleDeg) {
+    const a = angleDeg * Math.PI / 180;
+    return [r * Math.cos(a), r * Math.sin(a)];
+}
+
+function draw() {
+    background(26, 26, 46);
+
+    // Title
+    fill(255);
+    noStroke();
+    textSize(18);
+    textAlign(LEFT);
+    text("V5 LAYOUT DIAGRAM — Top View (75% Scale)", 20, 30);
+    textSize(12);
+    fill(180);
+    text("Green hex = matrix | Gray circle = arm crossing | Blue circle = HELIX_R | Yellow = shaft axes | Red = bearings", 20, 50);
+
+    // --- Reference circles ---
+
+    // Hexagram inner R (crossing)
+    noFill();
+    stroke(100, 100, 100, 80);
+    strokeWeight(1);
+    drawCircle(0, 0, HEXAGRAM_INNER_R);
+    let lp = toScreen(HEXAGRAM_INNER_R + 5, 25);
+    noStroke(); fill(150);
+    textSize(10);
+    text("CROSSING R=153", lp[0], lp[1]);
+
+    // HELIX_R circle
+    noFill();
+    stroke(60, 120, 230, 100);
+    strokeWeight(1.5);
+    drawDashedCircle(0, 0, HELIX_R, 8, 4);
+    lp = toScreen(HELIX_R + 5, -15);
+    noStroke(); fill(80, 150, 255);
+    text("HELIX_R=" + Math.round(HELIX_R), lp[0], lp[1]);
+
+    // V4 Star tip R (ghost)
+    noFill();
+    stroke(80, 80, 80, 40);
+    strokeWeight(1);
+    drawDashedCircle(0, 0, STAR_TIP_R, 4, 8);
+    lp = toScreen(STAR_TIP_R + 5, 0);
+    noStroke(); fill(100, 100, 100, 120);
+    textSize(9);
+    text("V4 tips=266 (gone)", lp[0], lp[1]);
+
+    // --- Hex matrix ---
+    stroke(60, 200, 60, 150);
+    strokeWeight(2);
+    fill(60, 200, 60, 20);
+    drawHex(0, 0, HEX_R);
+    lp = toScreen(HEX_R + 5, 5);
+    noStroke(); fill(100, 220, 100);
+    textSize(10);
+    text("HEX_R=88.5", lp[0], lp[1]);
+
+    // --- Frame ring ---
+    noFill();
+    stroke(80, 80, 80, 150);
+    strokeWeight(2);
+    drawHex(0, 0, FRAME_RING_R_OUT);
+    stroke(80, 80, 80, 80);
+    strokeWeight(1);
+    drawHex(0, 0, FRAME_RING_R_IN);
+
+    // --- Stubs (red blocks) ---
+    for (let sa of STUB_ANGLES) {
+        let p1 = radPoint(STUB_R_START, sa);
+        let p2 = radPoint(STUB_R_END, sa);
+        let sp1 = toScreen(p1[0], p1[1]);
+        let sp2 = toScreen(p2[0], p2[1]);
+        stroke(180, 40, 40);
+        strokeWeight(ARM_W * scale_factor * 0.7);
+        line(sp1[0], sp1[1], sp2[0], sp2[1]);
+
+        // Stub label
+        let lbl = toScreen(p2[0], p2[1]);
+        noStroke(); fill(220, 80, 80);
+        textSize(9);
+        textAlign(CENTER);
+        text("STUB " + Math.round(sa) + "°", lbl[0], lbl[1] - 15);
+    }
+
+    // --- Arms (6 beams) ---
+    textAlign(CENTER);
+    for (let ai = 0; ai < 6; ai++) {
+        let stubAngle = ARM_DEFS[ai].stub;
+        let tipAngle = ARM_DEFS[ai].tip;
+
+        // Junction (arm start)
+        let jxy = radPoint(JUNCTION_R, stubAngle);
+        // Star tip (V4 full extent)
+        let txy = radPoint(STAR_TIP_R, tipAngle);
+
+        let sj = toScreen(jxy[0], jxy[1]);
+        let st = toScreen(txy[0], txy[1]);
+
+        // Ghost line (V4 full extent)
+        stroke(ARM_COLORS[ai][0], ARM_COLORS[ai][1], ARM_COLORS[ai][2], 30);
+        strokeWeight(3);
+        line(sj[0], sj[1], st[0], st[1]);
+
+        // Find where arm crosses HELIX_R radial distance
+        // Parametric: P(t) = junction + t*(tip - junction)
+        // |P(t)| = HELIX_R — solve numerically
+        let dx = txy[0] - jxy[0];
+        let dy = txy[1] - jxy[1];
+        let cutT = findRadialIntersection(jxy[0], jxy[1], dx, dy, HELIX_R);
+
+        let cutX = jxy[0] + cutT * dx;
+        let cutY = jxy[1] + cutT * dy;
+        let sc = toScreen(cutX, cutY);
+
+        // Solid arm (V5 extent — to HELIX_R)
+        stroke(ARM_COLORS[ai][0], ARM_COLORS[ai][1], ARM_COLORS[ai][2], 200);
+        strokeWeight(ARM_W * scale_factor * 0.5);
+        line(sj[0], sj[1], sc[0], sc[1]);
+
+        // Arm end dot
+        fill(ARM_COLORS[ai][0], ARM_COLORS[ai][1], ARM_COLORS[ai][2]);
+        noStroke();
+        circle(sc[0], sc[1], 10);
+
+        // Label at midpoint
+        let mx = (sj[0] + sc[0]) / 2;
+        let my = (sj[1] + sc[1]) / 2;
+        fill(255);
+        textSize(11);
+        text("A" + ai, mx, my - 10);
+    }
+
+    // --- Helix assemblies ---
+    for (let hi = 0; hi < 3; hi++) {
+        let a = HELIX_ANGLES[hi] * Math.PI / 180;
+        let hcx = HELIX_R * Math.cos(a);
+        let hcy = HELIX_R * Math.sin(a);
+        let shc = toScreen(hcx, hcy);
+
+        // Cam envelope (max rib reach) — dashed circle
+        let maxReach = ECCENTRICITY + BEARING_OD_RIB / 2 + RIB_ARM_LENGTH; // 49.5mm
+        noFill();
+        stroke(100, 180, 255, 60);
+        strokeWeight(1);
+        drawDashedCircle(hcx, hcy, maxReach, 4, 3);
+
+        // Disc envelope (solid)
+        let discReach = ECCENTRICITY + DISC_OD / 2; // 33.5mm
+        fill(60, 130, 220, 40);
+        stroke(60, 130, 220, 100);
+        strokeWeight(1);
+        drawCircleAt(hcx, hcy, discReach);
+
+        // Center dot
+        fill(30, 80, 220);
+        noStroke();
+        let s = toScreen(hcx, hcy);
+        circle(s[0], s[1], 12);
+
+        // Label
+        fill(100, 180, 255);
+        textSize(14);
+        textAlign(CENTER);
+        text("H" + (hi + 1), s[0], s[1] - 12);
+
+        // --- Shaft axis (yellow line) ---
+        let sdx = -Math.sin(a);
+        let sdy = Math.cos(a);
+        let shaftHalf = HALF_HELIX + SHAFT_EXT; // 73mm
+
+        let s1 = toScreen(hcx + sdx * (-shaftHalf), hcy + sdy * (-shaftHalf));
+        let s2 = toScreen(hcx + sdx * shaftHalf, hcy + sdy * shaftHalf);
+
+        stroke(230, 230, 50, 180);
+        strokeWeight(3);
+        line(s1[0], s1[1], s2[0], s2[1]);
+
+        // Shaft label
+        noStroke();
+        fill(230, 230, 50);
+        textSize(8);
+        text("shaft", (s1[0] + s2[0]) / 2 + 10, (s1[1] + s2[1]) / 2);
+
+        // --- Bearing positions (red circles at shaft ends) ---
+        let bn = toScreen(hcx + sdx * (-shaftHalf), hcy + sdy * (-shaftHalf));
+        let bf = toScreen(hcx + sdx * shaftHalf, hcy + sdy * shaftHalf);
+
+        fill(220, 50, 50, 200);
+        stroke(255, 80, 80);
+        strokeWeight(2);
+        circle(bn[0], bn[1], 16 * scale_factor * 0.6);
+        circle(bf[0], bf[1], 16 * scale_factor * 0.6);
+
+        // Bearing labels
+        noStroke();
+        fill(255, 100, 100);
+        textSize(9);
+        text("Bn" + (hi + 1), bn[0], bn[1] - 12);
+        text("Bf" + (hi + 1), bf[0], bf[1] - 12);
+    }
+
+    // --- Legend box ---
+    let lx = 20, ly = height - 180;
+    fill(30, 30, 50, 220);
+    stroke(80);
+    strokeWeight(1);
+    rect(lx - 5, ly - 15, 320, 170, 5);
+
+    noStroke();
+    textAlign(LEFT);
+    textSize(11);
+    fill(100, 220, 100); text("Green hex = matrix (HEX_R=88.5)", lx, ly);
+    fill(150); text("Gray circle = arm crossing (R=153)", lx, ly + 18);
+    fill(80, 150, 255); text("Blue dashed = HELIX_R (" + Math.round(HELIX_R) + "mm)", lx, ly + 36);
+    fill(100); text("Faint dashed = V4 star tips (266mm, removed)", lx, ly + 54);
+    fill(230, 230, 50); text("Yellow lines = shaft axes (5mm steel rod)", lx, ly + 72);
+    fill(255, 100, 100); text("Red dots = 625ZZ bearing positions", lx, ly + 90);
+    fill(200); text("Solid colored = V5 arm extent", lx, ly + 108);
+    fill(120); text("Faint colored = V4 arm extent (trimmed)", lx, ly + 126);
+    fill(255); textSize(12);
+    text("QUESTION: Where should arms END?", lx, ly + 150);
+
+    // Dimension callouts
+    noStroke();
+    fill(255, 255, 200);
+    textSize(10);
+    textAlign(CENTER);
+
+    // Radial dimension line from origin to HELIX_R
+    let dimStart = toScreen(0, -5);
+    let dimEnd = toScreen(HELIX_R, -5);
+    stroke(255, 255, 200, 100);
+    strokeWeight(1);
+    line(dimStart[0], dimStart[1], dimEnd[0], dimEnd[1]);
+    noStroke();
+    text(Math.round(HELIX_R) + "mm", (dimStart[0] + dimEnd[0]) / 2, dimStart[1] + 15);
+
+    noLoop();
+}
+
+function findRadialIntersection(ox, oy, dx, dy, targetR) {
+    // Find t where |origin + t*dir| = targetR
+    // (ox+t*dx)^2 + (oy+t*dy)^2 = targetR^2
+    let a = dx * dx + dy * dy;
+    let b = 2 * (ox * dx + oy * dy);
+    let c = ox * ox + oy * oy - targetR * targetR;
+    let disc = b * b - 4 * a * c;
+    if (disc < 0) return 0.5;
+    let t1 = (-b + Math.sqrt(disc)) / (2 * a);
+    let t2 = (-b - Math.sqrt(disc)) / (2 * a);
+    // Pick the positive t that's between 0 and 1
+    if (t1 >= 0 && t1 <= 1.5) return t1;
+    if (t2 >= 0 && t2 <= 1.5) return t2;
+    return 0.5;
+}
+
+function drawHex(x, y, r) {
+    let s = [];
+    for (let i = 0; i < 6; i++) {
+        let angle = i * 60;
+        let p = toScreen(x + r * cos(radians(angle)), y + r * sin(radians(angle)));
+        s.push(p);
+    }
+    beginShape();
+    for (let p of s) vertex(p[0], p[1]);
+    endShape(CLOSE);
+}
+
+function drawCircle(x, y, r) {
+    let s = toScreen(x, y);
+    circle(s[0], s[1], r * 2 * scale_factor);
+}
+
+function drawCircleAt(x, y, r) {
+    let s = toScreen(x, y);
+    circle(s[0], s[1], r * 2 * scale_factor);
+}
+
+function drawDashedCircle(cx2, cy2, r, dashLen, gapLen) {
+    let circumference = 2 * Math.PI * r;
+    let totalSegments = Math.floor(circumference / (dashLen + gapLen));
+    for (let i = 0; i < totalSegments; i++) {
+        let a1 = (i * (dashLen + gapLen) / circumference) * 2 * Math.PI;
+        let a2 = a1 + (dashLen / circumference) * 2 * Math.PI;
+        let p1 = toScreen(cx2 + r * Math.cos(a1), cy2 + r * Math.sin(a1));
+        let p2 = toScreen(cx2 + r * Math.cos(a2), cy2 + r * Math.sin(a2));
+        line(p1[0], p1[1], p2[0], p2[1]);
+    }
+}
+</script>
+</body>
+</html>

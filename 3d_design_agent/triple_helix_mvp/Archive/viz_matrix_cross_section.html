@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Triple Helix Matrix — V5 Top View Stacking</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<style>
+  body { margin: 0; background: #1a1a2e; color: #eee; font-family: 'Segoe UI', sans-serif; }
+  #controls { position: fixed; top: 10px; right: 10px; z-index: 100; background: rgba(0,0,0,0.85); padding: 15px; border-radius: 8px; width: 260px; }
+  #controls label { display: block; margin: 6px 0 2px; font-size: 11px; color: #aaa; }
+  #controls input[type=range] { width: 100%; }
+  #controls .value { float: right; color: #4fc3f7; font-weight: bold; }
+  h3 { margin: 0 0 8px; color: #4fc3f7; font-size: 13px; }
+  .section { border-top: 1px solid #333; margin-top: 8px; padding-top: 6px; }
+  #info { position: fixed; bottom: 10px; right: 10px; z-index: 100; background: rgba(0,0,0,0.85); padding: 12px; border-radius: 8px; font-size: 11px; width: 260px; }
+  #info .g { color: #81c784; } #info .w { color: #ffb74d; } #info .b { color: #4fc3f7; font-weight:bold; }
+</style>
+</head>
+<body>
+<div id="controls">
+  <h3>Matrix Dimension Explorer</h3>
+  <label>FP_ROW_Y <span class="value" id="v_fpry">22.5</span>mm</label>
+  <input type="range" id="s_fpry" min="6" max="31" step="0.5" value="22.5">
+  <label>HOUSING_HEIGHT <span class="value" id="v_hh">70</span>mm</label>
+  <input type="range" id="s_hh" min="20" max="85" step="1" value="70">
+  <div class="section">
+  <label>CH_GAP <span class="value" id="v_chg">19</span>mm</label>
+  <input type="range" id="s_chg" min="8" max="25" step="0.5" value="19">
+  <label>S_GAP (slider gap) <span class="value" id="v_sg">8</span>mm</label>
+  <input type="range" id="s_sg" min="3" max="12" step="0.5" value="8">
+  <label>WALL_THICKNESS <span class="value" id="v_wt">3</span>mm</label>
+  <input type="range" id="s_wt" min="1.5" max="5" step="0.5" value="3">
+  </div>
+  <div class="section">
+  <label>FP_OD <span class="value" id="v_fpod">13</span>mm</label>
+  <input type="range" id="s_fpod" min="6" max="20" step="0.5" value="13">
+  <label>SP_OD <span class="value" id="v_spod">10</span>mm</label>
+  <input type="range" id="s_spod" min="5" max="16" step="0.5" value="10">
+  </div>
+  <div class="section">
+  <label><input type="checkbox" id="c_showT1" checked> Tier 1 (0°) <span style="color:#e57373">■</span></label>
+  <label><input type="checkbox" id="c_showT2" checked> Tier 2 (120°) <span style="color:#81c784">■</span></label>
+  <label><input type="checkbox" id="c_showT3" checked> Tier 3 (240°) <span style="color:#64b5f6">■</span></label>
+  <label><input type="checkbox" id="c_showCenter" checked> Show center point</label>
+  <label><input type="checkbox" id="c_autoplay" checked> Auto-play animation</label>
+  <label>Animation t <span class="value" id="v_anim">0</span></label>
+  <input type="range" id="s_anim" min="0" max="1" step="0.005" value="0">
+  </div>
+</div>
+<div id="info"><div id="derived"></div></div>
+
+<script>
+// ============================================================
+// V5 TOP VIEW — Exact reproduction of the OpenSCAD tier
+// Then stacking 3 copies at 0/120/240 with aligned centers
+// ============================================================
+// V5 coordinate system (BEFORE rotate([90,0,0])):
+//   X = slider travel direction (channel length)
+//   Y = housing depth (FP_ROW_Y dimension)
+//   Z = channel stacking
+//
+// After rotate([90,0,0]):
+//   code-X → display X (left-right)
+//   code-Y → display Z (up, vertical)
+//   code-Z → display -Y (into screen)
+//
+// TOP VIEW = looking down the display-Z axis = looking along code-Y
+// What we see: code-X (horizontal) and code-Z (vertical, channel stacking)
+// But wait — after rotate([90,0,0]), looking down Z means looking along
+// original Y. So top view shows X vs -Z_original mapped to screen X,Y.
+//
+// ACTUALLY: The user's screenshot is the OpenSCAD top view.
+// In OpenSCAD top view (looking down +Z), after rotate([90,0,0]):
+//   screen horizontal = code-X (slider travel)
+//   screen vertical   = code-Y → becomes screen Y after rotation
+//
+// Let me just match what the user SEES in OpenSCAD top view.
+// The V5 code does: rotate([90, 0, 0]) { ... channels at various Z ... }
+// After rotate([90,0,0]): (x,y,z) → (x, -z, y)
+// So looking down +Z (OpenSCAD top view) we see:
+//   screen X = original X (slider direction, housing lengths)
+//   screen Y = original -Z (channel stacking, negated)
+// Housing depth (original Y) goes into the screen.
+//
+// In the top view:
+//   Horizontal: channel lengths (X direction)
+//   Vertical: channel stacking (5 channels, each STACK_OFFSET apart)
+//   The walls appear as horizontal bars (their X-extent = housing length)
+//   The pulleys appear as circles (their Y-extent = housing depth INTO screen)
+//     but from top we see the axle endpoints, so they're dots.
+//
+// The V5 top view shows:
+//   6 horizontal blue walls (thin slates!) at different X-widths
+//   Between them, pulley axles as vertical cylinders (appear as circles from top)
+//   The overall shape: widest at center (CH3=136mm), narrower at edges (CH1/5=83mm)
+//   This IS a hexagonal-ish shape.
+//
+// CENTER POINT: All CH_CXS are around -51 to -53. The geometric centroid
+// of the bounding box in X:
+//   leftmost = min(CH_CXS[i] - CH_LENS[i]/2) = -51 - 68 = -119
+//   rightmost = max(CH_CXS[i] + CH_LENS[i]/2) = -51 + 68 = 17
+//   center_X = (-119 + 17) / 2 = -51
+// In Z: channels at [-44, -22, 0, 22, 44], symmetric about 0
+//   center_Z = 0
+// So center = (-51, 0) in V5 local frame (X, Z)
+
+const V5 = {
+  STACK_OFFSET: 22.0,
+  HOUSING_HEIGHT: 85.0,  // V5 original (not config's 70)
+  WALL_THICKNESS: 3.0,
+  FP_ROW_Y: 31.0,        // V5 original
+  FP_COUNTS: [3, 4, 5, 4, 3],
+  FP_PITCH: 29.0,
+  FP_OD: 13.0,
+  SP_OD: 10.0,
+  CH_GAPS: [19, 19, 19, 19, 19],
+  CH_LENS: [83, 111, 136, 112, 83],
+  CH_CXS: [-51, -51, -51, -53, -53],
+  S_GAPS: [8, 8, 8, 8, 8],
+  // Geometric center in V5 local X:
+  // leftmost wall edge: min of (CX - LEN/2) = min(-92.5, -106.5, -119, -109, -94.5) = -119
+  // rightmost wall edge: max of (CX + LEN/2) = max(-9.5, 4.5, 17, 3, -11.5) = 17
+  // CENTER_X = (-119 + 17) / 2 = -51
+  CENTER_X: -51,
+  CENTER_Z: 0
+};
+
+let P = {}; // current params
+let t = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight, WEBGL);
+}
+function windowResized() { resizeCanvas(windowWidth, windowHeight); }
+
+function readSliders() {
+  P.FP_ROW_Y = +document.getElementById('s_fpry').value;
+  P.HOUSING_HEIGHT = +document.getElementById('s_hh').value;
+  P.CH_GAP = +document.getElementById('s_chg').value;
+  P.S_GAP = +document.getElementById('s_sg').value;
+  P.WALL_THICKNESS = +document.getElementById('s_wt').value;
+  P.FP_OD = +document.getElementById('s_fpod').value;
+  P.SP_OD = +document.getElementById('s_spod').value;
+
+  // Recalculate STACK_OFFSET from CH_GAP + WALL
+  P.STACK_OFFSET = P.CH_GAP + P.WALL_THICKNESS;
+  P.plate_t = (P.CH_GAP / 2) - (P.S_GAP / 2) - 0.3;
+  P.slot_d = 0.3 + 1.0 + 0.5;
+  P.TIER_ENVELOPE_H = 4 * P.STACK_OFFSET + P.CH_GAP + 2 * P.WALL_THICKNESS;
+  P.TIER_PITCH = P.TIER_ENVELOPE_H + 3.0;
+  P.MATRIX_TOTAL_H = 3 * P.TIER_ENVELOPE_H + 2 * 3.0;
+
+  // Keep V5 channel dimensions (lengths, centers) — those don't change with gap/wall
+  P.FP_COUNTS = V5.FP_COUNTS;
+  P.CH_LENS = V5.CH_LENS;
+  P.CH_CXS = V5.CH_CXS;
+  P.FP_PITCH = V5.FP_PITCH;
+  P.CENTER_X = V5.CENTER_X;
+
+  // Housing height: the smaller value from slider
+  P.MIN_HH = 2 * P.FP_ROW_Y + P.FP_OD + 4;
+
+  // Validate
+  P.plate_ok = P.plate_t >= P.slot_d;
+  P.fp_ok = P.FP_OD <= P.CH_GAP - 0.6;
+  P.sp_ok = P.SP_OD <= P.S_GAP - 0.6;
+  P.hh_ok = P.HOUSING_HEIGHT >= P.MIN_HH;
+
+  // Update displays
+  document.getElementById('v_fpry').textContent = P.FP_ROW_Y;
+  document.getElementById('v_hh').textContent = P.HOUSING_HEIGHT;
+  document.getElementById('v_chg').textContent = P.CH_GAP;
+  document.getElementById('v_sg').textContent = P.S_GAP;
+  document.getElementById('v_wt').textContent = P.WALL_THICKNESS;
+  document.getElementById('v_fpod').textContent = P.FP_OD;
+  document.getElementById('v_spod').textContent = P.SP_OD;
+
+  if (document.getElementById('c_autoplay').checked) {
+    t += 0.003;
+    if (t > 1) t -= 1;
+    document.getElementById('s_anim').value = t;
+  } else {
+    t = +document.getElementById('s_anim').value;
+  }
+  document.getElementById('v_anim').textContent = t.toFixed(2);
+
+  // Info panel
+  let h = '';
+  h += `<span class="b">TIER HEIGHT: ${P.TIER_ENVELOPE_H.toFixed(0)}mm</span> (was 113)<br>`;
+  h += `<span class="b">3-TIER STACK: ${P.MATRIX_TOTAL_H.toFixed(0)}mm</span> (was 345)<br>`;
+  h += `<span class="b">REDUCTION: ${((1-P.MATRIX_TOTAL_H/345)*100).toFixed(0)}%</span><br><br>`;
+  h += `STACK_OFFSET: ${P.STACK_OFFSET.toFixed(1)}mm (was 22)<br>`;
+  h += `plate_t: ${P.plate_t.toFixed(1)}mm (need ≥${P.slot_d.toFixed(1)})<br>`;
+  h += `Min housing: ${P.MIN_HH.toFixed(0)}mm<br><br>`;
+  h += P.plate_ok ? `<span class="g">✓ plate_t OK</span><br>` : `<span class="w">⚠ plate_t TOO THIN</span><br>`;
+  h += P.fp_ok ? `<span class="g">✓ FP fits in gap</span><br>` : `<span class="w">⚠ FP too big for gap</span><br>`;
+  h += P.sp_ok ? `<span class="g">✓ SP fits in gap</span><br>` : `<span class="w">⚠ SP too big for gap</span><br>`;
+  h += P.hh_ok ? `<span class="g">✓ Housing depth OK</span><br>` : `<span class="w">⚠ Housing too shallow</span><br>`;
+  document.getElementById('derived').innerHTML = h;
+}
+
+function draw() {
+  readSliders();
+  background(26, 26, 46);
+
+  let showT = [
+    document.getElementById('c_showT1').checked,
+    document.getElementById('c_showT2').checked,
+    document.getElementById('c_showT3').checked
+  ];
+  let showCenter = document.getElementById('c_showCenter').checked;
+
+  // === LEFT: V5 TOP VIEW (one tier, matching user's screenshot) ===
+  push();
+  translate(-width/4, 0, 0);
+  drawTierTopView(1.4, showCenter);
+  // Title
+  push();
+  translate(-180, -height/2+25, 0);
+  fill(79,195,247); textSize(13); textAlign(LEFT);
+  text('ONE TIER — Top View (matches OpenSCAD)', 0, 0);
+  pop();
+  pop();
+
+  // === RIGHT: 3 TIERS STACKED, looking down (top view) ===
+  push();
+  translate(width/4 + 30, -50, 0);
+  drawStackedTopView(1.0, showT, showCenter);
+  push();
+  translate(-200, -height/2+25, 0);
+  fill(79,195,247); textSize(13); textAlign(LEFT);
+  text('3 TIERS STACKED — Top View (centers aligned)', 0, 0);
+  pop();
+  pop();
+
+  // === BOTTOM: SIDE CROSS-SECTION (one channel) ===
+  push();
+  translate(0, height/2-130, 0);
+  drawChannelCrossSection(3.0);
+  push();
+  translate(-250, -95, 0);
+  fill(79,195,247); textSize(12); textAlign(LEFT);
+  text('SINGLE CHANNEL CROSS-SECTION (string U-detour)', 0, 0);
+  pop();
+  pop();
+}
+
+// ============================================================
+// DRAW ONE TIER — TOP VIEW (matching OpenSCAD top view exactly)
+// ============================================================
+function drawTierTopView(sc, showCenter) {
+  // After rotate([90,0,0]) in OpenSCAD:
+  //   Top view sees: screen_X = code_X, screen_Y = -code_Z
+  // Channel Z-centers: ch_z = (i-2)*STACK_OFFSET
+  //   CH1: z=-2*SO, CH2: z=-SO, CH3: z=0, CH4: z=+SO, CH5: z=+2*SO
+  // On screen (top view): CH1 at screen_Y = +2*SO (bottom), CH5 at -2*SO (top)
+  // So in our p5 (Y down): CH1 at top, CH5 at bottom — actually let me just
+  // match OpenSCAD where +Y is up. In p5 WEBGL, Y is down. So I'll negate.
+
+  for (let ch = 0; ch < 5; ch++) {
+    let ch_z = (ch - 2) * P.STACK_OFFSET;
+    let screen_y = ch_z; // in p5 WEBGL, positive = down, which matches increasing ch_z going down
+
+    let len = P.CH_LENS[ch];
+    let cx = P.CH_CXS[ch];
+
+    // Wall below this channel (between ch-1 and ch)
+    if (ch === 0) {
+      // Bottom wall of CH1
+      let wall_z = ch_z - P.CH_GAP/2 - P.WALL_THICKNESS;
+      drawWallTopView(cx, wall_z, len, sc);
+    }
+    // Shared wall above this channel
+    let wall_above_z = ch_z + P.CH_GAP/2;
+    let wall_len = len;
+    if (ch < 4) {
+      // Shared wall spans the wider of this and next channel
+      let next_len = P.CH_LENS[ch+1];
+      let next_cx = P.CH_CXS[ch+1];
+      let left = Math.min(cx - len/2, next_cx - next_len/2);
+      let right = Math.max(cx + len/2, next_cx + next_len/2);
+      wall_len = right - left;
+      let wall_cx = (left + right) / 2;
+      drawWallTopView(wall_cx, wall_above_z, wall_len, sc);
+    } else {
+      // Top wall of CH5
+      drawWallTopView(cx, wall_above_z, len, sc);
+    }
+
+    // Pulleys — circles from top view (we see the circular cross-section)
+    let count = P.FP_COUNTS[ch];
+    for (let p = 0; p < count; p++) {
+      let px = cx + (-(count-1)/2 + p) * P.FP_PITCH;
+      // Upper row at +FP_ROW_Y (into screen in top view — but we CAN'T see depth)
+      // From top, both rows overlap. Show as single circle at each X position.
+      // The pulleys are cylinders along Y (housing depth). From top we see circles.
+      let py = screen_y;
+
+      // Fixed pulley (show as two dots for upper and lower row, slightly offset to indicate depth)
+      fill(180, 180, 220, 180);
+      stroke(200, 200, 255, 200);
+      strokeWeight(0.5);
+      let fpR = P.FP_OD / 2 * sc;
+      // Upper row
+      ellipse((px) * sc, py * sc - 2, fpR*2, fpR*2);
+      // Lower row (slightly offset)
+      ellipse((px) * sc, py * sc + 2, fpR*2, fpR*2);
+    }
+
+    // Slider pulleys (animated)
+    let slider_disp = 12 * Math.sin(t * 2 * Math.PI + ch * 72 * Math.PI / 180);
+    fill(220, 100, 100, 180);
+    stroke(255, 120, 120, 200);
+    let spR = P.SP_OD / 2 * sc;
+    for (let p = 0; p < count; p++) {
+      let spx = cx + (-(count-1)/2 + p) * V5.FP_PITCH + slider_disp;
+      ellipse(spx * sc, screen_y * sc, spR*2, spR*2);
+    }
+  }
+
+  // Center point
+  if (showCenter) {
+    noFill();
+    stroke(255, 50, 50);
+    strokeWeight(2);
+    ellipse(P.CENTER_X * sc, 0, 14, 14);
+    // Crosshair
+    line(P.CENTER_X * sc - 10, 0, P.CENTER_X * sc + 10, 0);
+    line(P.CENTER_X * sc, -10, P.CENTER_X * sc, 10);
+    fill(255, 80, 80);
+    noStroke();
+    textSize(9);
+    textAlign(LEFT);
+    text(`center (${P.CENTER_X}, 0)`, P.CENTER_X * sc + 12, -4);
+  }
+
+  // Bounding box
+  // Compute actual bounding box from walls
+  let left = Infinity, right = -Infinity;
+  for (let ch = 0; ch < 5; ch++) {
+    left = Math.min(left, P.CH_CXS[ch] - P.CH_LENS[ch]/2);
+    right = Math.max(right, P.CH_CXS[ch] + P.CH_LENS[ch]/2);
+  }
+  let top_z = -(2*P.STACK_OFFSET + P.CH_GAP/2 + P.WALL_THICKNESS);
+  let bot_z = (2*P.STACK_OFFSET + P.CH_GAP/2 + P.WALL_THICKNESS);
+
+  noFill();
+  stroke(100, 255, 100, 60);
+  strokeWeight(1);
+  rectMode(CORNERS);
+  rect(left*sc, top_z*sc, right*sc, bot_z*sc);
+
+  noStroke();
+  fill(100, 255, 100, 120);
+  textSize(8);
+  textAlign(CENTER);
+  text(`${(right-left).toFixed(0)} × ${(bot_z-top_z).toFixed(0)}mm`, (left+right)/2*sc, bot_z*sc+12);
+}
+
+function drawWallTopView(cx, z, len, sc) {
+  // Wall is a horizontal bar in top view
+  fill(100, 100, 220, 150);
+  noStroke();
+  rectMode(CENTER);
+  rect(cx * sc, z * sc + P.WALL_THICKNESS/2 * sc,
+       len * sc, P.WALL_THICKNESS * sc);
+
+  // Housing depth edges (lighter lines showing the 85mm/70mm extent)
+  // In top view the wall extends in Y (into screen) = HOUSING_HEIGHT
+  // We can't fully show depth, but we show the wall outline
+}
+
+// ============================================================
+// DRAW 3 TIERS STACKED — TOP VIEW (the critical visualization)
+// ============================================================
+function drawStackedTopView(sc, showT, showCenter) {
+  let tier_colors = [
+    [229, 115, 115],  // red
+    [129, 199, 132],  // green
+    [100, 181, 246],  // blue
+  ];
+  let tier_angles = [0, 120, 240];
+
+  // For each tier, draw the top view of all 5 channels,
+  // but FIRST translate so center point goes to origin,
+  // THEN rotate by tier angle.
+  for (let tier = 2; tier >= 0; tier--) { // draw back to front
+    if (!showT[tier]) continue;
+
+    push();
+    // Rotate around origin by tier angle
+    rotateZ(radians(tier_angles[tier]));
+    // Translate so the tier center is at origin
+    translate(-(P.CENTER_X) * sc, 0, 0);
+
+    let tc = tier_colors[tier];
+
+    for (let ch = 0; ch < 5; ch++) {
+      let ch_z = (ch - 2) * P.STACK_OFFSET;
+      let len = P.CH_LENS[ch];
+      let cx = P.CH_CXS[ch];
+
+      // Draw walls
+      if (ch === 0) {
+        let wall_z = ch_z - P.CH_GAP/2 - P.WALL_THICKNESS;
+        fill(tc[0], tc[1], tc[2], 60);
+        stroke(tc[0], tc[1], tc[2], 140);
+        strokeWeight(0.8);
+        rectMode(CENTER);
+        rect(cx*sc, wall_z*sc + P.WALL_THICKNESS/2*sc, len*sc, P.WALL_THICKNESS*sc);
+      }
+      {
+        let wall_z = ch_z + P.CH_GAP/2;
+        let wall_len = len;
+        let wall_cx = cx;
+        if (ch < 4) {
+          let next_len = P.CH_LENS[ch+1];
+          let next_cx = P.CH_CXS[ch+1];
+          let l = Math.min(cx-len/2, next_cx-next_len/2);
+          let r = Math.max(cx+len/2, next_cx+next_len/2);
+          wall_len = r - l;
+          wall_cx = (l + r) / 2;
+        }
+        fill(tc[0], tc[1], tc[2], 60);
+        stroke(tc[0], tc[1], tc[2], 140);
+        strokeWeight(0.8);
+        rectMode(CENTER);
+        rect(wall_cx*sc, wall_z*sc + P.WALL_THICKNESS/2*sc, wall_len*sc, P.WALL_THICKNESS*sc);
+      }
+
+      // Pulleys
+      let count = P.FP_COUNTS[ch];
+      for (let p = 0; p < count; p++) {
+        let px = cx + (-(count-1)/2 + p) * P.FP_PITCH;
+        fill(tc[0], tc[1], tc[2], 100);
+        noStroke();
+        ellipse(px*sc, ch_z*sc, P.FP_OD*sc, P.FP_OD*sc);
+      }
+    }
+
+    // Tier label
+    fill(tc[0], tc[1], tc[2], 220);
+    noStroke();
+    textSize(10);
+    textAlign(CENTER);
+    let label_z = -2*P.STACK_OFFSET - P.CH_GAP/2 - P.WALL_THICKNESS - 6;
+    text(`T${tier+1} (${tier_angles[tier]}°)`, P.CH_CXS[2]*sc, label_z*sc);
+
+    pop();
+  }
+
+  // Center alignment marker (should be at 0,0 for all tiers)
+  if (showCenter) {
+    noFill();
+    stroke(255, 255, 50);
+    strokeWeight(2);
+    ellipse(0, 0, 16, 16);
+    line(-12, 0, 12, 0);
+    line(0, -12, 0, 12);
+    fill(255, 255, 50);
+    noStroke();
+    textSize(9);
+    text('aligned center', 0, 20);
+  }
+
+  // Show circumscribed circle
+  // Each tier footprint bounding box centered at origin after translation
+  // Tier at 0°: BBox in X: [left-CENTER_X, right-CENTER_X], in Z: same as original
+  let left = Infinity, right = -Infinity;
+  for (let ch = 0; ch < 5; ch++) {
+    left = Math.min(left, P.CH_CXS[ch] - P.CH_LENS[ch]/2);
+    right = Math.max(right, P.CH_CXS[ch] + P.CH_LENS[ch]/2);
+  }
+  let halfW = Math.max(Math.abs(left - P.CENTER_X), Math.abs(right - P.CENTER_X));
+  let halfH = 2*P.STACK_OFFSET + P.CH_GAP/2 + P.WALL_THICKNESS;
+  let circumR = Math.sqrt(halfW*halfW + halfH*halfH);
+
+  noFill();
+  stroke(255, 255, 100, 50);
+  strokeWeight(1);
+  ellipse(0, 0, circumR*2*sc, circumR*2*sc);
+  noStroke();
+  fill(255, 255, 100, 100);
+  textSize(9);
+  textAlign(CENTER);
+  text(`circ. ⌀${(circumR*2).toFixed(0)}mm`, 0, circumR*sc+14);
+  text(`halfW=${halfW.toFixed(0)} halfH=${halfH.toFixed(0)}`, 0, circumR*sc+26);
+}
+
+// ============================================================
+// SINGLE CHANNEL CROSS-SECTION (the U-detour you're squeezing)
+// ============================================================
+function drawChannelCrossSection(sc) {
+  // Looking along X (slider direction)
+  // Horizontal = Y (housing depth direction, FP_ROW_Y)
+  // Vertical = Z (within channel gap)
+  let halfGap = P.CH_GAP / 2;
+  let halfSGap = P.S_GAP / 2;
+
+  // Channel gap background
+  fill(40, 40, 70, 120);
+  noStroke();
+  rectMode(CENTER);
+  rect(0, 0, P.HOUSING_HEIGHT*sc, P.CH_GAP*sc);
+
+  // Walls (top and bottom of this channel)
+  fill(100, 100, 220, 150);
+  rect(0, -(halfGap + P.WALL_THICKNESS/2)*sc, P.HOUSING_HEIGHT*sc, P.WALL_THICKNESS*sc);
+  rect(0, (halfGap + P.WALL_THICKNESS/2)*sc, P.HOUSING_HEIGHT*sc, P.WALL_THICKNESS*sc);
+
+  // Slider plates (red)
+  fill(200, 80, 80, 180);
+  let plate_ctr = halfSGap + P.plate_t/2;
+  rect(0, -plate_ctr*sc, 40*sc, P.plate_t*sc);
+  rect(0, plate_ctr*sc, 40*sc, P.plate_t*sc);
+
+  // Slider gap
+  fill(50, 25, 25, 100);
+  rect(0, 0, 40*sc, P.S_GAP*sc);
+
+  // Fixed pulleys at ±FP_ROW_Y
+  fill(140, 140, 255, 200);
+  stroke(180, 180, 255);
+  strokeWeight(1);
+  ellipse(P.FP_ROW_Y*sc, 0, P.FP_OD*sc, P.FP_OD*sc);
+  ellipse(-P.FP_ROW_Y*sc, 0, P.FP_OD*sc, P.FP_OD*sc);
+
+  // Slider pulley at center
+  fill(220, 100, 100, 200);
+  stroke(255, 130, 130);
+  ellipse(0, 0, P.SP_OD*sc, P.SP_OD*sc);
+
+  // String path
+  stroke(255, 255, 80, 200);
+  strokeWeight(2);
+  noFill();
+  let ey = -(halfGap + P.WALL_THICKNESS)*sc;
+  let xy = (halfGap + P.WALL_THICKNESS)*sc;
+  // Entry → upper FP → slider → lower FP → exit
+  line(P.FP_ROW_Y*0.3*sc, ey, P.FP_ROW_Y*sc, 0);
+  line(P.FP_ROW_Y*sc, 0, 0, 0);
+  line(0, 0, -P.FP_ROW_Y*sc, 0);
+  line(-P.FP_ROW_Y*sc, 0, -P.FP_ROW_Y*0.3*sc, xy);
+
+  // Dimension: FP_ROW_Y
+  stroke(255, 200, 100, 150);
+  strokeWeight(1);
+  let dy = halfGap * sc * 0.7;
+  line(0, dy, P.FP_ROW_Y*sc, dy);
+  noStroke();
+  fill(255, 200, 100);
+  textSize(8);
+  textAlign(CENTER);
+  text(`FP_ROW_Y=${P.FP_ROW_Y}`, P.FP_ROW_Y/2*sc, dy-4);
+
+  // Dimension: CH_GAP
+  stroke(100, 200, 100, 150);
+  strokeWeight(1);
+  let dx = P.HOUSING_HEIGHT/2*sc + 10;
+  line(dx, -halfGap*sc, dx, halfGap*sc);
+  noStroke();
+  fill(100, 200, 100);
+  text(`gap=${P.CH_GAP}`, dx+20, 0);
+
+  // Dimension: S_GAP
+  stroke(255, 130, 130, 150);
+  strokeWeight(1);
+  let dx2 = 25*sc;
+  line(dx2, -halfSGap*sc, dx2, halfSGap*sc);
+  noStroke();
+  fill(255, 130, 130);
+  text(`s_gap=${P.S_GAP}`, dx2+15, 0);
+}
+</script>
+</body>
+</html>

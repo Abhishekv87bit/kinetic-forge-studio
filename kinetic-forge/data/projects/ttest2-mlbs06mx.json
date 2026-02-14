@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "id": "ttest2-mlbs06mx",
+  "name": "ttest2",
+  "created": "2026-02-07T03:50:04.953Z",
+  "updated": "2026-02-07T03:50:19.447Z",
+  "currentStage": "discover",
+  "stages": {
+    "discover": {
+      "status": "in_progress",
+      "savedEquations": [
+        {
+          "id": "eq-mlbs06ne",
+          "expression": "waves3d: {\"amplitude\":1.9,\"freqX\":1.9,\"freqY\":1.6,\"sources\":1,\"phaseOffset\":3.4,\"speed\":2.5}",
+          "tool": "waves3d",
+          "savedAt": "2026-02-07T03:50:04.970Z"
+        },
+        {
+          "id": "eq-mlbs0htf",
+          "expression": "sin(x)",
+          "tool": "parametric",
+          "savedAt": "2026-02-07T03:50:19.443Z"
+        }
+      ]
+    },
+    "animate": {
+      "status": "locked",
+      "savedAnimations": []
+    },
+    "mechanize": {
+      "status": "locked",
+      "mechanism": null
+    },
+    "simulate": {
+      "status": "locked",
+      "results": null
+    },
+    "build": {
+      "status": "locked",
+      "generatedCode": null,
+      "syntaxErrors": []
+    },
+    "iterate": {
+      "status": "locked",
+      "testLogs": []
+    }
+  },
+  "iterations": [],
+  "tags": [],
+  "notes": ""
+}

@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Wave Types — V5 Matrix Block Motion</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:#0a0a14; overflow:hidden; font-family:'Segoe UI',system-ui,sans-serif; }
+    canvas { display:block; }
+  </style>
+</head>
+<body>
+<script>
+// =====================================================================
+// WAVE TYPE VISUALIZER — V5 MATRIX BLOCK MOTION
+// =====================================================================
+// Shows how different wave types look on the hanging block array
+// Our helix: 30 discs, 12°/disc, each disc = one cam = one slider
+// Traveling wave is the DEFAULT — it's what the helix inherently produces
+//
+// Controls:
+//   [1-8]    Select wave type
+//   [SPACE]  Pause
+//   [+/-]    Speed
+//   [A/Z]    Amplitude up/down
+//   [F/V]    Frequency up/down
+//   [D/C]    Damping up/down
+//   [P/O]    Phase offset up/down (for multi-helix modes)
+//   [G]      Toggle grid overlay
+//   [S]      Toggle side profile view
+//   [R]      Reset
+// =====================================================================
+
+let animTime = 0;
+let paused = false;
+let speed = 0.018;
+let currentWave = 0; // index into WAVES array
+
+// Wave parameters
+let amp = 40;       // pixels (maps to mm displacement)
+let freq = 0.8;     // Hz equivalent
+let waveK = 0.08;   // spatial frequency
+let phasePerCh = 12; // degrees per disc (helix twist)
+let damping = 0.02;
+let showGrid = true;
+let sideView = false;
+
+// Block config
+const NUM_BLOCKS = 30;  // 30 discs = 30 sliders = 30 blocks in a row
+const BLOCK_W = 28;
+const BLOCK_H = 42;
+const BLOCK_SPACING = 34;
+const ROPE_ANCHOR_Y = 180;
+const BASE_DROP = 250;
+
+// Colors
+const COL = {
+  bg:     [10, 10, 20],
+  wood1:  [196, 149, 106],
+  wood2:  [175, 128, 85],
+  wood3:  [210, 165, 120],
+  rope:   [218, 175, 55],
+  accent: [255, 215, 0],
+  text:   [200, 200, 210],
+  dim:    [120, 120, 140],
+  panel:  [14, 16, 32, 230],
+  wave1:  [76, 175, 80],    // green
+  wave2:  [50, 140, 230],   // blue
+  wave3:  [255, 152, 0],    // orange
+  grid:   [255, 255, 255, 15],
+  profile:[255, 215, 0, 60],
+  node:   [255, 80, 80],
+  antinode:[80, 255, 120],
+};
+
+// =====================================================================
+// WAVE DEFINITIONS
+// =====================================================================
+
+const WAVES = [
+  {
+    name: 'TRAVELING WAVE',
+    tag: 'DEFAULT — What our helix naturally produces',
+    eq: 'h(n,t) = A · sin(ωt − n · 12°)',
+    desc: 'Each of 30 discs is offset 12° from previous. As shaft rotates, the wave travels down the row. This is our helix doing exactly what it was designed to do.',
+    color: COL.wave1,
+    icon: '→∿',
+    fn: (n, t) => {
+      // n = block index (0-29), each maps to a disc offset by 12°
+      let discPhase = n * phasePerCh * PI / 180;
+      return amp * sin(freq * TWO_PI * t - discPhase);
+    },
+    mods: 'NONE — This is native helix behavior. 30 discs × 12°/disc = 360° = one complete wavelength across the array.',
+  },
+  {
+    name: 'SIMPLE SINE (ALL IN PHASE)',
+    tag: 'All sliders driven by same disc — no traveling',
+    eq: 'h(n,t) = A · sin(ωt)',
+    desc: 'Every block moves up and down together. Like a piston. You\'d get this if all sliders connected to the SAME disc on the helix.',
+    color: [200, 200, 200],
+    icon: '∿',
+    fn: (n, t) => {
+      return amp * sin(freq * TWO_PI * t);
+    },
+    mods: 'Connect all sliders to one disc (defeats purpose of helix). Or: use simple eccentric cam instead of helix.',
+  },
+  {
+    name: 'VARIABLE WAVELENGTH',
+    tag: 'Change phase offset per disc — stretch/compress wave',
+    eq: 'h(n,t) = A · sin(ωt − n · φ)',
+    desc: 'Phase offset controls wavelength. 12°=one wave across 30 blocks. 24°=two waves. 6°=half wave. Use [P/O] to adjust.',
+    color: COL.wave2,
+    icon: '∿∿',
+    fn: (n, t) => {
+      let discPhase = n * phasePerCh * PI / 180;
+      return amp * sin(freq * TWO_PI * t - discPhase);
+    },
+    mods: 'Change helix twist angle. 12°/disc = 1λ. 24°/disc = 2λ (need steeper helix or skip every other disc). 6°/disc = ½λ (use 60-disc helix or gear down).',
+  },
+  {
+    name: 'STANDING WAVE',
+    tag: 'Two opposing traveling waves = fixed nodes',
+    eq: 'h(n,t) = 2A · cos(n·12°) · sin(ωt)',
+    desc: 'Sum of two waves traveling in opposite directions. Creates fixed points (nodes) that never move, and antinodes that oscillate maximally. Red dots = nodes.',
+    color: [255, 100, 100],
+    icon: '∿|∿',
+    fn: (n, t) => {
+      let discPhase = n * phasePerCh * PI / 180;
+      return 2 * amp * cos(discPhase) * sin(freq * TWO_PI * t);
+    },
+    mods: 'NEED TWO HELIXES rotating OPPOSITE directions, both driving the same sliders via a summing mechanism (e.g., compound pulley). Or: one helix + mirror reflection at the end.',
+  },
+  {
+    name: 'VARIABLE AMPLITUDE',
+    tag: 'Amplitude envelope — center blocks move more',
+    eq: 'h(n,t) = A · env(n) · sin(ωt − n·12°)',
+    desc: 'Gaussian envelope peaks at center. Edge blocks barely move, center blocks have full throw. Like the helix eccentricity varying along the shaft.',
+    color: [180, 120, 255],
+    icon: '◠∿',
+    fn: (n, t) => {
+      let discPhase = n * phasePerCh * PI / 180;
+      // Gaussian envelope centered at n=15
+      let center = (NUM_BLOCKS - 1) / 2;
+      let sigma = NUM_BLOCKS / 4;
+      let env = exp(-pow(n - center, 2) / (2 * sigma * sigma));
+      return amp * env * sin(freq * TWO_PI * t - discPhase);
+    },
+    mods: 'VARIABLE ECCENTRICITY along helix shaft. Center discs offset 12mm, edge discs offset 3mm. Margolin does this — slide plywood discs on the shaft to tune amplitude per position.',
+  },
+  {
+    name: '3-HELIX INTERFERENCE',
+    tag: 'Three helixes at 120° — compound wave superposition',
+    eq: 'h(n,t) = Σᵢ A·sin(ωt + φᵢ − kᵢ·n)',
+    desc: 'THREE helixes each contribute a wave component at 120° phase offset. The block position = algebraic sum. This is the Margolin Triple Helix mechanism — our target design.',
+    color: COL.wave3,
+    icon: '≋',
+    fn: (n, t) => {
+      let d = 0;
+      for (let h = 0; h < 3; h++) {
+        let helixPhase = h * TWO_PI / 3;
+        let spatialPhase = n * phasePerCh * PI / 180;
+        d += (amp / 2.5) * sin(freq * TWO_PI * t + helixPhase - spatialPhase * (1 + h * 0.3));
+      }
+      return d;
+    },
+    mods: '3 HELIX SHAFTS at 120° offset. Each drives its own tier of sliders. Rope threads through all 3 tiers. Block Z = sum of 3 displacements. THIS IS OUR FULL SYSTEM.',
+  },
+  {
+    name: 'BEAT PATTERN',
+    tag: 'Two close frequencies = pulsing amplitude',
+    eq: 'h(n,t) = A·[sin(ω₁t−kn) + sin(ω₂t−kn)]',
+    desc: 'Two waves at slightly different frequencies create a slow "beat" — amplitude grows and shrinks over time. The blocks pulse in and out of motion.',
+    color: [255, 200, 80],
+    icon: '∿~∿',
+    fn: (n, t) => {
+      let discPhase = n * phasePerCh * PI / 180;
+      let f1 = freq;
+      let f2 = freq * 1.12; // 12% higher = slow beat
+      return (amp / 2) * (sin(f1 * TWO_PI * t - discPhase) + sin(f2 * TWO_PI * t - discPhase));
+    },
+    mods: 'TWO HELIXES at different speeds. Use Fibonacci belt ratios: 55T/89T = ratio 1.618. Beat frequency = |f₁ - f₂|. The "breathing" effect is mesmerizing.',
+  },
+  {
+    name: 'DAMPED / FRICTION CASCADE',
+    tag: 'Amplitude decays outward — natural friction effect',
+    eq: 'h(n,t) = A · e^(−γ·n) · sin(ωt − n·12°)',
+    desc: 'Each pulley in the chain loses ~4% to friction. After 9 pulleys: 69% efficiency. Outer blocks move less because the rope has passed through more pulleys. Use [D/C] to adjust.',
+    color: [100, 200, 180],
+    icon: '∿⤵',
+    fn: (n, t) => {
+      let discPhase = n * phasePerCh * PI / 180;
+      let decay = exp(-damping * n);
+      return amp * decay * sin(freq * TWO_PI * t - discPhase);
+    },
+    mods: 'This happens NATURALLY from friction. To enhance: use PLA-on-PLA (high friction) for outer positions, ball bearings for center. Or to ELIMINATE: use ball bearings everywhere (η=0.96/pulley).',
+  },
+];
+
+// =====================================================================
+// DRAWING
+// =====================================================================
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  textFont('Segoe UI');
+}
+
+function draw() {
+  background(COL.bg);
+  if (!paused) animTime += speed;
+
+  let wave = WAVES[currentWave];
+  let centerX = width / 2;
+
+  // === GRID OVERLAY ===
+  if (showGrid) drawGrid(centerX);
+
+  // === HELIX + MATRIX REGION (top) ===
+  drawMatrixRegion(centerX, wave);
+
+  // === BLOCKS + ROPES ===
+  drawBlocks(centerX, wave);
+
+  // === WAVE PROFILE OVERLAY ===
+  drawWaveOverlay(centerX, wave);
+
+  // === SIDE PROFILE ===
+  if (sideView) drawSideProfile(wave);
+
+  // === UI ===
+  drawUI(wave);
+  drawEngPanel(wave);
+}
+
+// =====================================================================
+// MATRIX REGION (schematic top bar)
+// =====================================================================
+function drawMatrixRegion(cx, wave) {
+  let matrixY = ROPE_ANCHOR_Y - 30;
+  let matrixH = 50;
+  let totalW = NUM_BLOCKS * BLOCK_SPACING;
+
+  // Matrix housing outline
+  push();
+  fill(COL.panel);
+  stroke(80, 90, 200, 60);
+  strokeWeight(1);
+  rect(cx - totalW/2 - 10, matrixY - matrixH/2, totalW + 20, matrixH, 4);
+
+  // Channel labels
+  fill(COL.dim);
+  textSize(8);
+  textAlign(CENTER, CENTER);
+  text('V5 MATRIX — 5 CHANNELS × ' + NUM_BLOCKS + ' SLIDERS', cx, matrixY - matrixH/2 - 8);
+
+  // Slider positions (animated bars inside matrix)
+  for (let n = 0; n < NUM_BLOCKS; n++) {
+    let bx = cx + (n - (NUM_BLOCKS-1)/2) * BLOCK_SPACING;
+    let displacement = wave.fn(n, animTime);
+    let sliderOff = displacement * 0.15; // scaled down for visual
+
+    // Slider bar
+    let chIdx = floor(n / 6); // rough channel grouping
+    let chColor = lerpColor(
+      color(80, 90, 200),
+      color(220, 85, 85),
+      abs(sliderOff) / (amp * 0.15)
+    );
+    stroke(chColor);
+    strokeWeight(2);
+    line(bx + sliderOff, matrixY - 15, bx + sliderOff, matrixY + 15);
+
+    // Pulley dot
+    fill(200); noStroke();
+    ellipse(bx + sliderOff, matrixY, 4, 4);
+  }
+  pop();
+}
+
+// =====================================================================
+// BLOCKS + ROPES
+// =====================================================================
+function drawBlocks(cx, wave) {
+  for (let n = 0; n < NUM_BLOCKS; n++) {
+    let bx = cx + (n - (NUM_BLOCKS-1)/2) * BLOCK_SPACING;
+    let displacement = wave.fn(n, animTime);
+    let by = ROPE_ANCHOR_Y + BASE_DROP + displacement;
+
+    // Rope
+    push();
+    stroke(COL.rope[0], COL.rope[1], COL.rope[2], 130);
+    strokeWeight(1.2);
+    line(bx, ROPE_ANCHOR_Y, bx, by - BLOCK_H/2);
+    pop();
+
+    // 3D-ish wooden block
+    draw3DWoodBlock(bx, by, n, displacement);
+
+    // Disc number label (every 5th)
+    if (n % 5 === 0) {
+      push();
+      fill(COL.dim);
+      noStroke();
+      textSize(8);
+      textAlign(CENTER, CENTER);
+      text('D' + n, bx, ROPE_ANCHOR_Y + 12);
+      pop();
+    }
+  }
+}
+
+function draw3DWoodBlock(cx, cy, idx, displacement) {
+  push();
+  let r = BLOCK_W / 2;
+  let h = BLOCK_H;
+  let isoX = r * 0.35;
+  let isoY = r * 0.2;
+
+  // Color based on displacement for visual feedback
+  let dispNorm = map(displacement, -amp, amp, -1, 1);
+  let woodR = lerp(COL.wood2[0], COL.wood3[0], (dispNorm + 1) / 2);
+  let woodG = lerp(COL.wood2[1], COL.wood3[1], (dispNorm + 1) / 2);
+  let woodB = lerp(COL.wood2[2], COL.wood3[2], (dispNorm + 1) / 2);
+  if (idx % 2 === 0) { woodR -= 12; woodG -= 10; woodB -= 8; }
+
+  // Side face (right, darker)
+  fill(woodR - 40, woodG - 40, woodB - 40);
+  stroke(woodR - 55, woodG - 55, woodB - 55);
+  strokeWeight(0.5);
+  beginShape();
+  vertex(cx + r, cy - h/2);
+  vertex(cx + r + isoX, cy - h/2 - isoY);
+  vertex(cx + r + isoX, cy + h/2 - isoY);
+  vertex(cx + r, cy + h/2);
+  endShape(CLOSE);
+
+  // Front face
+  fill(woodR, woodG, woodB);
+  stroke(woodR - 25, woodG - 25, woodB - 25);
+  strokeWeight(0.6);
+  rect(cx - r, cy - h/2, r * 2, h, 1);
+
+  // Wood grain
+  stroke(woodR - 12, woodG - 15, woodB - 15, 50);
+  strokeWeight(0.3);
+  for (let g = 0; g < 4; g++) {
+    let gy = cy - h/2 + h * (0.15 + g * 0.22);
+    line(cx - r + 2, gy, cx + r - 2, gy);
+  }
+
+  // Top face
+  fill(woodR + 18, woodG + 14, woodB + 8);
+  stroke(woodR - 8, woodG - 10, woodB - 12);
+  strokeWeight(0.5);
+  beginShape();
+  vertex(cx - r, cy - h/2);
+  vertex(cx - r + isoX, cy - h/2 - isoY);
+  vertex(cx + r + isoX, cy - h/2 - isoY);
+  vertex(cx + r, cy - h/2);
+  endShape(CLOSE);
+
+  // Rope attachment
+  fill(COL.rope);
+  noStroke();
+  ellipse(cx, cy - h/2, 3, 3);
+
+  pop();
+}
+
+// =====================================================================
+// WAVE PROFILE OVERLAY
+// =====================================================================
+function drawWaveOverlay(cx, wave) {
+  push();
+
+  // Compound wave curve (connects block centers)
+  noFill();
+  stroke(wave.color[0], wave.color[1], wave.color[2], 80);
+  strokeWeight(2);
+  beginShape();
+  for (let n = 0; n < NUM_BLOCKS; n++) {
+    let bx = cx + (n - (NUM_BLOCKS-1)/2) * BLOCK_SPACING;
+    let displacement = wave.fn(n, animTime);
+    let by = ROPE_ANCHOR_Y + BASE_DROP + displacement;
+    curveVertex(bx, by);
+  }
+  endShape();
+
+  // For standing wave: mark nodes and antinodes
+  if (currentWave === 3) { // standing wave
+    for (let n = 0; n < NUM_BLOCKS; n++) {
+      let bx = cx + (n - (NUM_BLOCKS-1)/2) * BLOCK_SPACING;
+      let discPhase = n * phasePerCh * PI / 180;
+      let cosVal = cos(discPhase);
+
+      if (abs(cosVal) < 0.08) {
+        // Node — never moves
+        fill(COL.node);
+        noStroke();
+        ellipse(bx, ROPE_ANCHOR_Y + BASE_DROP, 8, 8);
+        fill(COL.node);
+        textSize(7);
+        textAlign(CENTER);
+        text('NODE', bx, ROPE_ANCHOR_Y + BASE_DROP + 30);
+      } else if (abs(cosVal) > 0.95) {
+        // Antinode — max motion
+        fill(COL.antinode);
+        noStroke();
+        ellipse(bx, ROPE_ANCHOR_Y + BASE_DROP, 6, 6);
+      }
+    }
+  }
+
+  // For 3-helix: show individual wave components as ghost lines
+  if (currentWave === 5) { // 3-helix interference
+    let helixColors = [COL.wave1, COL.wave2, COL.wave3];
+    for (let h = 0; h < 3; h++) {
+      noFill();
+      stroke(helixColors[h][0], helixColors[h][1], helixColors[h][2], 35);
+      strokeWeight(1);
+      beginShape();
+      for (let n = 0; n < NUM_BLOCKS; n++) {
+        let bx = cx + (n - (NUM_BLOCKS-1)/2) * BLOCK_SPACING;
+        let helixPhase = h * TWO_PI / 3;
+        let spatialPhase = n * phasePerCh * PI / 180;
+        let d = (amp / 2.5) * sin(freq * TWO_PI * animTime + helixPhase - spatialPhase * (1 + h * 0.3));
+        let by = ROPE_ANCHOR_Y + BASE_DROP + d;
+        curveVertex(bx, by);
+      }
+      endShape();
+    }
+  }
+
+  // For variable amplitude: show envelope curve
+  if (currentWave === 4) {
+    noFill();
+    stroke(180, 120, 255, 40);
+    strokeWeight(1);
+    setLineDash([4, 3]);
+    // Upper envelope
+    beginShape();
+    for (let n = 0; n < NUM_BLOCKS; n++) {
+      let bx = cx + (n - (NUM_BLOCKS-1)/2) * BLOCK_SPACING;
+      let center = (NUM_BLOCKS - 1) / 2;
+      let sigma = NUM_BLOCKS / 4;
+      let env = exp(-pow(n - center, 2) / (2 * sigma * sigma));
+      vertex(bx, ROPE_ANCHOR_Y + BASE_DROP - amp * env);
+    }
+    endShape();
+    // Lower envelope
+    beginShape();
+    for (let n = 0; n < NUM_BLOCKS; n++) {
+      let bx = cx + (n - (NUM_BLOCKS-1)/2) * BLOCK_SPACING;
+      let center = (NUM_BLOCKS - 1) / 2;
+      let sigma = NUM_BLOCKS / 4;
+      let env = exp(-pow(n - center, 2) / (2 * sigma * sigma));
+      vertex(bx, ROPE_ANCHOR_Y + BASE_DROP + amp * env);
+    }
+    endShape();
+    setLineDash([]);
+  }
+
+  // For damped: show decay envelope
+  if (currentWave === 7) {
+    noFill();
+    stroke(100, 200, 180, 40);
+    strokeWeight(1);
+    setLineDash([4, 3]);
+    beginShape();
+    for (let n = 0; n < NUM_BLOCKS; n++) {
+      let bx = cx + (n - (NUM_BLOCKS-1)/2) * BLOCK_SPACING;
+      let decay = exp(-damping * n);
+      vertex(bx, ROPE_ANCHOR_Y + BASE_DROP - amp * decay);
+    }
+    endShape();
+    beginShape();
+    for (let n = 0; n < NUM_BLOCKS; n++) {
+      let bx = cx + (n - (NUM_BLOCKS-1)/2) * BLOCK_SPACING;
+      let decay = exp(-damping * n);
+      vertex(bx, ROPE_ANCHOR_Y + BASE_DROP + amp * decay);
+    }
+    endShape();
+    setLineDash([]);
+  }
+
+  pop();
+}
+
+// =====================================================================
+// SIDE PROFILE (Z-axis displacement graph)
+// =====================================================================
+function drawSideProfile(wave) {
+  push();
+  let graphX = width - 180;
+  let graphY = 200;
+  let graphW = 160;
+  let graphH = height - 280;
+
+  // Background
+  fill(COL.panel);
+  noStroke();
+  rect(graphX - 10, graphY - 30, graphW + 20, graphH + 60, 6);
+
+  // Title
+  fill(COL.accent);
+  textSize(10);
+  textAlign(CENTER);
+  text('Z-AXIS PROFILE', graphX + graphW/2, graphY - 15);
+
+  // Axis
+  stroke(60);
+  strokeWeight(0.5);
+  line(graphX + graphW/2, graphY, graphX + graphW/2, graphY + graphH);
+
+  // Zero line label
+  fill(COL.dim);
+  textSize(7);
+  textAlign(RIGHT);
+  text('0', graphX + graphW/2 - 4, graphY + graphH/2);
+  text('+' + amp + 'mm', graphX + graphW - 5, graphY + 5);
+  text('-' + amp + 'mm', graphX + 5, graphY + 5);
+
+  // Plot each block as a horizontal bar
+  for (let n = 0; n < NUM_BLOCKS; n++) {
+    let displacement = wave.fn(n, animTime);
+    let barY = graphY + (n / (NUM_BLOCKS - 1)) * graphH;
+    let barX = graphX + graphW/2 + (displacement / amp) * graphW/2 * 0.8;
+
+    // Bar
+    let c = wave.color;
+    stroke(c[0], c[1], c[2], 150);
+    strokeWeight(2);
+    line(graphX + graphW/2, barY, barX, barY);
+
+    // Dot
+    fill(c[0], c[1], c[2]);
+    noStroke();
+    ellipse(barX, barY, 5, 5);
+  }
+
+  // Block index labels
+  fill(COL.dim);
+  textSize(7);
+  textAlign(LEFT);
+  for (let n = 0; n < NUM_BLOCKS; n += 5) {
+    let barY = graphY + (n / (NUM_BLOCKS - 1)) * graphH;
+    text('D' + n, graphX + graphW + 4, barY);
+  }
+
+  pop();
+}
+
+// =====================================================================
+// GRID
+// =====================================================================
+function drawGrid(cx) {
+  push();
+  stroke(COL.grid);
+  strokeWeight(0.5);
+  // Horizontal lines
+  for (let y = 0; y < height; y += 50) {
+    line(0, y, width, y);
+  }
+  // Center vertical
+  stroke(COL.grid[0], COL.grid[1], COL.grid[2], 8);
+  line(cx, 0, cx, height);
+  // Zero displacement line
+  stroke(COL.accent[0], COL.accent[1], COL.accent[2], 15);
+  strokeWeight(1);
+  setLineDash([5, 5]);
+  line(cx - NUM_BLOCKS * BLOCK_SPACING / 2, ROPE_ANCHOR_Y + BASE_DROP,
+       cx + NUM_BLOCKS * BLOCK_SPACING / 2, ROPE_ANCHOR_Y + BASE_DROP);
+  setLineDash([]);
+  pop();
+}
+
+// =====================================================================
+// UI
+// =====================================================================
+function drawUI(wave) {
+  push();
+
+  // Top bar
+  fill(COL.panel);
+  noStroke();
+  rect(0, 0, width, 52);
+
+  // Title
+  fill(COL.accent);
+  textSize(16);
+  textStyle(BOLD);
+  textAlign(LEFT, CENTER);
+  text(wave.icon + '  ' + wave.name, 14, 16);
+
+  // Tag line
+  fill(COL.dim);
+  textSize(10);
+  textStyle(NORMAL);
+  text(wave.tag, 14, 36);
+
+  // Controls hint
+  fill(COL.dim);
+  textSize(9);
+  textAlign(RIGHT, CENTER);
+  text('[1-8] Wave  [SPACE] Pause  [+/-] Speed  [A/Z] Amp  [F/V] Freq  [P/O] Phase  [D/C] Damp  [G] Grid  [S] Side', width - 12, 16);
+
+  // Parameter readout
+  let paramStr = `A=${amp}px  f=${freq.toFixed(2)}Hz  k=${waveK.toFixed(2)}  φ=${phasePerCh}°/disc  γ=${damping.toFixed(2)}  speed=${speed.toFixed(3)}`;
+  fill(COL.text);
+  textSize(9);
+  textAlign(RIGHT, CENTER);
+  text(paramStr, width - 12, 36);
+
+  // Paused indicator
+  if (paused) {
+    fill(255, 80, 80);
+    textSize(12);
+    textStyle(BOLD);
+    textAlign(CENTER, CENTER);
+    text('▐▐ PAUSED', width/2, 44);
+    textStyle(NORMAL);
+  }
+
+  pop();
+}
+
+function drawEngPanel(wave) {
+  push();
+  let pw = 380;
+  let ph = 130;
+  let px = width/2 - pw/2;
+  let py = height - ph - 10;
+
+  fill(COL.panel);
+  noStroke();
+  rect(px, py, pw, ph, 8);
+
+  // Equation
+  fill(COL.accent);
+  textSize(13);
+  textStyle(BOLD);
+  textAlign(CENTER, TOP);
+  text(wave.eq, px + pw/2, py + 10);
+  textStyle(NORMAL);
+
+  // Description
+  fill(COL.text);
+  textSize(9);
+  textAlign(LEFT, TOP);
+  textWrap(WORD);
+  text(wave.desc, px + 12, py + 30, pw - 24);
+
+  // Modification line
+  fill(100, 200, 255);
+  textSize(9);
+  textStyle(BOLD);
+  text('V5 MOD: ', px + 12, py + 80);
+  textStyle(NORMAL);
+  fill(COL.dim);
+  text(wave.mods, px + 65, py + 80, pw - 80);
+
+  // Wave selector dots
+  for (let i = 0; i < WAVES.length; i++) {
+    let dx = px + 12 + i * 46;
+    let dy = py + ph - 18;
+    fill(i === currentWave ? COL.accent : [50, 50, 60]);
+    noStroke();
+    rect(dx, dy, 40, 12, 3);
+    fill(i === currentWave ? [20, 20, 30] : COL.dim);
+    textSize(7);
+    textAlign(CENTER, CENTER);
+    text((i + 1) + ':' + WAVES[i].icon, dx + 20, dy + 6);
+  }
+
+  pop();
+}
+
+// =====================================================================
+// HELPERS
+// =====================================================================
+function setLineDash(list) {
+  drawingContext.setLineDash(list);
+}
+
+function keyPressed() {
+  // Wave selection
+  if (key >= '1' && key <= '8') currentWave = parseInt(key) - 1;
+
+  // Pause
+  if (key === ' ') { paused = !paused; return false; }
+
+  // Speed
+  if (key === '+' || key === '=') speed = min(speed + 0.003, 0.1);
+  if (key === '-' || key === '_') speed = max(speed - 0.003, 0.001);
+
+  // Amplitude
+  if (key === 'a' || key === 'A') amp = min(amp + 3, 80);
+  if (key === 'z' || key === 'Z') amp = max(amp - 3, 5);
+
+  // Frequency
+  if (key === 'f' || key === 'F') freq = min(freq + 0.05, 3);
+  if (key === 'v' || key === 'V') freq = max(freq - 0.05, 0.1);
+
+  // Phase per disc
+  if (key === 'p' || key === 'P') phasePerCh = min(phasePerCh + 1, 36);
+  if (key === 'o' || key === 'O') phasePerCh = max(phasePerCh - 1, 1);
+
+  // Damping
+  if (key === 'd' || key === 'D') damping = min(damping + 0.005, 0.2);
+  if (key === 'c' || key === 'C') damping = max(damping - 0.005, 0);
+
+  // Grid
+  if (key === 'g' || key === 'G') showGrid = !showGrid;
+
+  // Side profile
+  if (key === 's' || key === 'S') sideView = !sideView;
+
+  // Reset
+  if (key === 'r' || key === 'R') { animTime = 0; amp = 40; freq = 0.8; phasePerCh = 12; damping = 0.02; }
+}
+
+function windowResized() { resizeCanvas(windowWidth, windowHeight); }
+</script>
+</body>
+</html>

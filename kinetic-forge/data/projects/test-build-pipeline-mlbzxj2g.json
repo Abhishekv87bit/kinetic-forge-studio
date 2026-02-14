@@ -1,0 +1,356 @@
+{
+  "version": 2,
+  "id": "test-build-pipeline-mlbzxj2g",
+  "name": "Test Build Pipeline",
+  "created": "2026-02-07T07:31:58.024Z",
+  "updated": "2026-02-07T07:38:50.278Z",
+  "currentStage": "mechanize",
+  "sourcePattern": null,
+  "stages": {
+    "mechanize": {
+      "status": "in_progress",
+      "mechanism": {
+        "family": "eccentric",
+        "familyName": "Eccentric Cam / Ring Drive",
+        "type": "eccentric",
+        "config": {
+          "eccentricCount": 0,
+          "eccentricity": 5,
+          "baseRadius": 25,
+          "stringCount": 37,
+          "returnMethod": "Gravity"
+        },
+        "requirements": {
+          "components": [
+            {
+              "name": "Motor",
+              "count": 1,
+              "material": "N20 geared DC"
+            },
+            {
+              "name": "Eccentric ring",
+              "count": 1,
+              "material": "Aluminum or 3D print"
+            },
+            {
+              "name": "String",
+              "count": 37,
+              "material": "Fishing line"
+            },
+            {
+              "name": "Hanging element",
+              "count": 37,
+              "material": "Wood or acrylic"
+            }
+          ],
+          "estimatedParts": 77,
+          "estimatedStrings": 37,
+          "estimatedPulleys": 0,
+          "motorCount": 1,
+          "estimatedWeight": "TBD in Simulate",
+          "frictionBudget": null,
+          "notes": [
+            "Use PRIME number string count to avoid Moire."
+          ]
+        },
+        "validation": {
+          "mechanismSelected": true,
+          "configured": true,
+          "powerBudget": {
+            "required": 0.5,
+            "available": 2,
+            "margin": 4
+          }
+        },
+        "savedAt": "2026-02-07T07:34:46.977Z"
+      },
+      "recommendations": [
+        {
+          "id": "camshaft",
+          "name": "Camshaft-Driven",
+          "score": 50
+        },
+        {
+          "id": "helix",
+          "name": "Helix-Driven",
+          "score": 50
+        },
+        {
+          "id": "eccentric",
+          "name": "Eccentric Cam / Ring Drive",
+          "score": 50
+        }
+      ]
+    },
+    "simulate": {
+      "status": "in_progress",
+      "results": {
+        "lockupDetected": false,
+        "forceNegative": false,
+        "collisionDetected": false,
+        "motorOverloaded": false,
+        "criticalFails": 0,
+        "anyFails": 0,
+        "ranAt": "2026-02-07T07:35:58.139Z"
+      },
+      "calculations": {
+        "power": {
+          "motor-torque": {
+            "status": "pass",
+            "value": "Load: 14.7mN·m | Available: 500mN·m | Margin: 34.0x",
+            "note": "Adequate torque margin."
+          },
+          "power-margin": {
+            "status": "pass",
+            "value": "Est. load: 0.09W | Motor: 2W | Margin: 22.2x",
+            "note": "Excellent power headroom."
+          },
+          "efficiency-chain": {
+            "status": "pass",
+            "value": "Gear: 96% * Belt: 97% * Linkage: 90% = 83.8%",
+            "note": "Chain efficiency affects real power delivered to elements."
+          },
+          "startup-torque": {
+            "status": "pass",
+            "value": "Static friction ~1.5x dynamic",
+            "note": "Accounted in motor torque margin."
+          }
+        },
+        "friction": {
+          "pulley-cascade": {
+            "status": "pass",
+            "value": "7 pulleys in series = 69.8% efficiency",
+            "note": "Margolin rule: max 9 serial. You have 7."
+          },
+          "string-tension": {
+            "status": "pass",
+            "value": "Element weight: ~0.20N | Min tension: 0.29N",
+            "note": "Fishing line: ~10N breaking strength. Adequate."
+          },
+          "cable-stretch": {
+            "status": "pass",
+            "value": "Steel cable: 0.1mm/m at typical loads",
+            "note": "1/16\" steel cable has minimal elongation."
+          },
+          "bearing-friction": {
+            "status": "pass",
+            "value": "~10 bearings * 0.003 N·m each",
+            "note": "Ball bearings: negligible friction contribution."
+          },
+          "gear-efficiency": {
+            "status": "pass",
+            "value": "Spur gears: 96% | Worm: ~70% per stage",
+            "note": "Avoid worm gears unless self-locking needed."
+          }
+        },
+        "structural": {
+          "shaft-deflection": {
+            "status": "pass",
+            "value": "Est: 0.3mm | Limit: 0.6mm (L/500)",
+            "note": "Steel rod 6mm: very rigid at desktop scale."
+          },
+          "joint-forces": {
+            "status": "pass",
+            "value": "Forces < 5N at all joints (desktop scale)",
+            "note": "Well within material limits for steel/aluminum/PLA."
+          },
+          "wall-thickness": {
+            "status": "pass",
+            "value": "3D print: >= 1.2mm | Metal: >= 0.8mm",
+            "note": "Ensure all printed parts have adequate wall thickness."
+          },
+          "cantilever-check": {
+            "status": "pass",
+            "value": "F*L^3/(3EI) < 0.5mm for desktop lengths",
+            "note": "Keep unsupported spans under 100mm for 3D print."
+          },
+          "fatigue-life": {
+            "status": "pass",
+            "value": "PLA indoor low-stress: years | PLA high-stress: 6-12 months",
+            "note": "Replace high-stress PLA parts with PETG or nylon for longevity."
+          }
+        },
+        "clearance": {
+          "moving-clearance": {
+            "status": "pass",
+            "value": "Design clearance: 0.3-0.5mm for free rotation",
+            "note": "3D print tolerance: +/- 0.2mm. Design for 0.4mm gap."
+          },
+          "gear-mesh": {
+            "status": "pass",
+            "value": "Radial clearance: 0.2mm | Backlash: 0.05-0.1 * module",
+            "note": "Never mesh different pressure angles."
+          },
+          "sweep-collision": {
+            "status": "pass",
+            "value": "Manual check: verify no collisions in full rotation",
+            "note": "Use OpenSCAD animation to verify."
+          },
+          "press-fit": {
+            "status": "pass",
+            "value": "608 bearing: 22.1mm hole | 623: 10.1mm hole",
+            "note": "Bearing OD + 0.1mm = hole diameter."
+          },
+          "thermal-expansion": {
+            "status": "pass",
+            "value": "PLA: 68e-6/degC | At 10degC rise: 0.2mm on 300mm part",
+            "note": "Negligible at indoor temperatures."
+          }
+        },
+        "dynamics": {
+          "static-balance": {
+            "status": "pass",
+            "value": "Sum(mass * distance) verified for rotating elements",
+            "note": "Add counterweight opposite heavy side if unbalanced."
+          },
+          "dynamic-balance": {
+            "status": "pass",
+            "value": "Operating at ~10 RPM (<< 300 RPM threshold)",
+            "note": "Below 300 RPM: static balance is sufficient."
+          },
+          "resonance": {
+            "status": "pass",
+            "value": "Drive: 0.17 Hz | Natural: ~15 Hz | Ratio: 90.0",
+            "note": "Well above resonance. Safe."
+          },
+          "dead-points": {
+            "status": "pass",
+            "value": "Cam mechanisms: no dead points (continuous contact)",
+            "note": ""
+          },
+          "flywheel": {
+            "status": "pass",
+            "value": "If dead points present: add flywheel with I > 3x mechanism",
+            "note": "Not required if no dead points."
+          },
+          "vibration": {
+            "status": "pass",
+            "value": "Est. vibration < 0.1mm at bearings",
+            "note": "Low speed + balanced = minimal vibration."
+          }
+        },
+        "scaling": {
+          "weight-scaling": {
+            "status": "pass",
+            "value": "L^3 scaling: 2x size = 8x weight",
+            "note": "If scaling up from prototype, multiply motor torque by scale^3."
+          },
+          "inertia-scaling": {
+            "status": "pass",
+            "value": "L^4 scaling: 2x size = 16x rotational resistance",
+            "note": "Moment of inertia dominates at larger scales."
+          },
+          "deflection-scaling": {
+            "status": "pass",
+            "value": "Linear scaling: larger = more flex",
+            "note": "Use stiffer material or larger cross-section at scale."
+          },
+          "tolerance-stack": {
+            "status": "pass",
+            "value": "3 parts * 0.3mm: worst=0.9mm, stat=0.5mm",
+            "note": "Acceptable tolerance stack."
+          }
+        },
+        "aesthetics": {
+          "golden-ratio": {
+            "status": "pass",
+            "value": "Key ratio: 2.000 (phi = 1.618, deviation: 23.6%)",
+            "note": "Reasonable proportions."
+          },
+          "speed-feel": {
+            "status": "pass",
+            "value": "10 RPM → \"Energetic, busy\"",
+            "note": "Most kinetic sculptures work best at 2-10 RPM (natural, organic feel)."
+          },
+          "polyrhythm": {
+            "status": "pass",
+            "value": "Single wave: no polyrhythm applicable",
+            "note": ""
+          },
+          "slow-in-out": {
+            "status": "pass",
+            "value": "Check cam profile for smooth acceleration",
+            "note": "Disney principle: objects decelerate at motion extremes."
+          },
+          "anticipation": {
+            "status": "pass",
+            "value": "Backlash or spring wind-up provides anticipation",
+            "note": "Small counter-motion before main action adds life."
+          },
+          "secondary-action": {
+            "status": "pass",
+            "value": "Add trailing elements (ribbons, pendulums) for follow-through",
+            "note": "Compliant elements add organic character."
+          },
+          "prime-count": {
+            "status": "pass",
+            "value": "Element count: 37 (PRIME)",
+            "note": "Prime count avoids Moire patterns (Margolin: River Loom uses 271)."
+          }
+        },
+        "materials": {
+          "pla-outdoor": {
+            "status": "pass",
+            "value": "Assuming indoor use (PLA acceptable)",
+            "note": "For outdoor: use ASA or PETG instead of PLA."
+          },
+          "lubrication": {
+            "status": "pass",
+            "value": "3D print: dry PTFE spray | Metal: light grease",
+            "note": "Never use WD-40 as lubricant (it's a solvent). Never mix lubricant types."
+          },
+          "material-fatigue": {
+            "status": "pass",
+            "value": "Low-stress application: PLA adequate for prototype",
+            "note": "High-stress parts: upgrade to PETG, nylon, or metal."
+          },
+          "bearing-material": {
+            "status": "pass",
+            "value": "Steel shaft + ball bearing (608/623) = standard",
+            "note": "Alternative: steel shaft in brass bushing for silent operation."
+          },
+          "weight-budget": {
+            "status": "pass",
+            "value": "Est. total: ~60g moving elements",
+            "note": "Add frame weight for total mass."
+          }
+        }
+      }
+    },
+    "build": {
+      "status": "in_progress",
+      "buildType": "prototype",
+      "materials": {
+        "Motor": {
+          "material": "PETG",
+          "quantity": 1,
+          "role": "mechanical"
+        },
+        "Eccentric ring": {
+          "material": "Steel",
+          "quantity": 1,
+          "role": "fasteners"
+        },
+        "String": {
+          "material": "Steel",
+          "quantity": 37,
+          "role": "fasteners"
+        },
+        "Hanging element": {
+          "material": "PLA",
+          "quantity": 37,
+          "role": "decorative"
+        }
+      },
+      "generatedCode": "// KineticForge — Generated Eccentric Cam / Ring Drive Design\n// Build type: prototype\n// Generated: 2026-02-07T07:38:19.539Z\n//\n// Family: Eccentric Cam / Ring Drive\n\n// === ECCENTRIC CAM PARAMETERS ===\neccentricity = 5;\nring_radius = 25;\nring_thickness = 8;\n\n$fn = 64;\n\nmodule eccentric_ring() {\n    rotate([0, 0, $t * 360])\n    translate([eccentricity, 0, 0])\n    difference() {\n        cylinder(r=ring_radius, h=ring_thickness);\n        translate([0, 0, -1])\n        cylinder(r=ring_radius - 5, h=ring_thickness + 2);\n    }\n}\n\neccentric_ring();\n\n// === BILL OF MATERIALS ===\n// Motor: 1x PETG\n// Eccentric ring: 1x Steel\n// String: 37x Steel\n// Hanging element: 37x PLA\n",
+      "syntaxErrors": []
+    },
+    "iterate": {
+      "status": "locked",
+      "testLogs": []
+    }
+  },
+  "iterations": [],
+  "tags": [],
+  "notes": ""
+}

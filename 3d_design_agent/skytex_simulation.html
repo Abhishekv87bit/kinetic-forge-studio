@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Skytex Triple-Helix — Digital Twin v2.0</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0a0a0f;
+      color: #c0c0cc;
+      font-family: 'Consolas', 'Courier New', monospace;
+      overflow: hidden;
+    }
+    canvas { display: block; }
+    #controls {
+      position: fixed;
+      top: 8px;
+      left: 8px;
+      z-index: 10;
+      background: rgba(10,10,20,0.85);
+      border: 1px solid #333;
+      border-radius: 4px;
+      padding: 10px 14px;
+      min-width: 200px;
+      font-size: 11px;
+      line-height: 1.7;
+    }
+    #controls h2 {
+      font-size: 13px;
+      color: #e0e0f0;
+      margin-bottom: 6px;
+      letter-spacing: 1px;
+    }
+    #controls .row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: 2px 0;
+    }
+    #controls label { min-width: 80px; color: #888; }
+    #controls input[type=range] { width: 100px; }
+    #controls .val { color: #aaa; min-width: 40px; text-align: right; }
+    #controls .sep { border-top: 1px solid #333; margin: 6px 0; }
+    #controls .chk { display: inline-flex; align-items: center; gap: 3px; margin-right: 8px; }
+    #controls .chk input { margin: 0; }
+    #view-hint {
+      position: fixed;
+      top: 8px;
+      right: 8px;
+      z-index: 10;
+      background: rgba(10,10,20,0.85);
+      border: 1px solid #333;
+      border-radius: 4px;
+      padding: 8px 12px;
+      font-size: 11px;
+    }
+    #view-hint .key { color: #f0c040; font-weight: bold; }
+    #view-hint .active { color: #80ff80; }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <h2>SKYTEX v2.0</h2>
+    <div class="row"><label>Amplitude</label><input type="range" id="sl-amp" min="2" max="30" value="10" step="1"><span class="val" id="v-amp">10</span></div>
+    <div class="row"><label>Speed</label><input type="range" id="sl-spd" min="0" max="3" value="0.8" step="0.1"><span class="val" id="v-spd">0.8</span></div>
+    <div class="row"><label>B&T Ratio</label><input type="range" id="sl-bt" min="1" max="7" value="1" step="1"><span class="val" id="v-bt">1</span></div>
+    <div class="sep"></div>
+    <div>
+      <span class="chk"><input type="checkbox" id="chk-helix" checked>Helices</span>
+      <span class="chk"><input type="checkbox" id="chk-sliders" checked>Sliders</span>
+      <span class="chk"><input type="checkbox" id="chk-ribs" checked>Ribs</span>
+    </div>
+    <div>
+      <span class="chk"><input type="checkbox" id="chk-strings" checked>Strings</span>
+      <span class="chk"><input type="checkbox" id="chk-blocks" checked>Blocks</span>
+      <span class="chk"><input type="checkbox" id="chk-cables" checked>Cables</span>
+    </div>
+    <div>
+      <span class="chk"><input type="checkbox" id="chk-pulleys" checked>Pulleys</span>
+      <span class="chk"><input type="checkbox" id="chk-frame" checked>Frame</span>
+      <span class="chk"><input type="checkbox" id="chk-drive" checked>Drive</span>
+    </div>
+    <div>
+      <span class="chk"><input type="checkbox" id="chk-matrix">Matrix</span>
+      <span class="chk"><input type="checkbox" id="chk-whiffletree" checked>Whiffletree</span>
+    </div>
+  </div>
+  <div id="view-hint">
+    <div><span class="key">1</span> Full System <span id="vm1" class="active">●</span></div>
+    <div><span class="key">2</span> Exploded <span id="vm2">○</span></div>
+    <div><span class="key">3</span> Whiffletree Macro <span id="vm3">○</span></div>
+    <div><span class="key">4</span> Drive Train <span id="vm4">○</span></div>
+  </div>
+  <script src="skytex_simulation.js"></script>
+</body>
+</html>

@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Hex Matrix — Interactive N Slider</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<style>
+body { margin: 0; background: #1a1a1a; display: flex; justify-content: center; align-items: center; min-height: 100vh; flex-direction: column; font-family: monospace; }
+</style>
+</head>
+<body>
+<script>
+// ============================================================
+// 3 sets of N parallel walls at 0°, 120°, 240° form a hex grid.
+// The walls THEMSELVES form the hex boundary.
+// Total triangles = 6N².
+//
+// ALGORITHM: find all triple-intersections of wall lines.
+// Each intersection of wall_i from set A, wall_j from set B
+// gives a vertex. Group vertices into triangles.
+// ============================================================
+
+const WALL_DIRS = [0, 120, 240];
+const TIER_LABELS = ["Tier 1 (rot 0°)", "Tier 2 (rot 120°)", "Tier 3 (rot 240°)"];
+
+const COLORS = [
+  [255, 60, 60],
+  [60, 200, 60],
+  [60, 140, 255],
+];
+const EDGE_COLORS = [
+  [255, 255, 0],
+  [255, 140, 0],
+  [200, 0, 255],
+];
+
+let N = 3;
+let slider;
+let triangleCentroids = [];
+let hexR = 280;
+
+function setup() {
+  createCanvas(700, 850);
+  slider = createSlider(1, 25, 3, 1);
+  slider.position(width/2 - 150, 58);
+  slider.style('width', '300px');
+  slider.input(() => { N = slider.value(); recompute(); redraw(); });
+  recompute();
+}
+
+function recompute() {
+  triangleCentroids = findAllTriangles(N);
+}
+
+function draw() {
+  background(25);
+  let cx = width/2, cy = 430;
+  let expected = 6 * N * N;
+
+  fill(255); noStroke(); textAlign(CENTER, TOP); textSize(20);
+  text("N = " + N, cx, 10);
+  textSize(13); fill(180);
+  text((N+1) + " walls/tier · " + N + " ch/tier · " + N + " cams/helix · " + (N*3) + " total", cx, 36);
+  fill(120); textSize(11); text("N = " + N, cx, 80);
+
+  // Legend
+  textSize(11); textAlign(LEFT, CENTER);
+  for (let i = 0; i < 3; i++) {
+    let ly = 100 + i * 20;
+    fill(COLORS[i][0], COLORS[i][1], COLORS[i][2]); rect(20, ly-5, 14, 10);
+    fill(EDGE_COLORS[i][0], EDGE_COLORS[i][1], EDGE_COLORS[i][2]); rect(40, ly-5, 14, 10);
+    fill(200);
+    text(TIER_LABELS[i] + " walls || " + ["yellow","orange","purple"][i] + " edges", 60, ly);
+  }
+
+  drawColoredHex(cx, cy, hexR);
+
+  for (let tier = 0; tier < 3; tier++) {
+    let col = COLORS[tier];
+    stroke(col[0], col[1], col[2], 220);
+    strokeWeight(N <= 5 ? 2.0 : N <= 10 ? 1.2 : 0.7);
+    drawChannelWalls(cx, cy, hexR, N, WALL_DIRS[tier]);
+  }
+
+  // Draw triangle centroids
+  let dotSize = N <= 2 ? 22 : N <= 3 ? 16 : N <= 5 ? 10 : N <= 8 ? 6 : N <= 12 ? 4 : 2.5;
+  let fontSize = N <= 2 ? 10 : N <= 3 ? 8 : N <= 5 ? 6 : 0;
+
+  textAlign(CENTER, CENTER); noStroke();
+  for (let i = 0; i < triangleCentroids.length; i++) {
+    let t = triangleCentroids[i];
+    fill(255, 255, 100, 200);
+    ellipse(cx + t.x * hexR, cy + t.y * hexR, dotSize, dotSize);
+    if (fontSize > 0) {
+      fill(0); textSize(fontSize);
+      text(i + 1, cx + t.x * hexR, cy + t.y * hexR);
+    }
+  }
+
+  textAlign(CENTER, TOP); textSize(13);
+  if (triangleCentroids.length === expected) {
+    fill(80, 255, 80);
+    text("✓ " + triangleCentroids.length + " shafts = 6×" + N + "²", cx, cy + hexR + 14);
+  } else {
+    fill(255, 80, 80);
+    text("✗ Found " + triangleCentroids.length + ", expected " + expected, cx, cy + hexR + 14);
+  }
+  fill(180); textSize(11);
+  text(N + " cams/helix · " + (N*3) + " cams total · " + N + " strips/tier · " + (N*3) + " strips total", cx, cy + hexR + 32);
+}
+
+// ============================================================
+// Colored hex edges
+// ============================================================
+function drawColoredHex(cx, cy, r) {
+  let verts = [];
+  for (let i = 0; i < 6; i++) {
+    let a = radians(30 + i * 60);
+    verts.push({ x: cx + r * cos(a), y: cy + r * sin(a) });
+  }
+  let edgeToTier = [2, 1, 0, 2, 1, 0];
+  strokeWeight(4);
+  for (let i = 0; i < 6; i++) {
+    let ti = edgeToTier[i];
+    stroke(EDGE_COLORS[ti][0], EDGE_COLORS[ti][1], EDGE_COLORS[ti][2]);
+    let j = (i + 1) % 6;
+    line(verts[i].x, verts[i].y, verts[j].x, verts[j].y);
+  }
+}
+
+// ============================================================
+// Draw walls
+// ============================================================
+function drawChannelWalls(cx, cy, r, n, wallAngleDeg) {
+  let a = radians(wallAngleDeg);
+  let wx = cos(a), wy = sin(a);
+  let px = cos(a + PI/2), py = sin(a + PI/2);
+  let ftf = r * cos(PI / 6);
+  for (let i = 0; i <= n; i++) {
+    let t = -ftf + i * (2 * ftf / n);
+    let mx = cx + px * t, my = cy + py * t;
+    let pts = clipLineToHex(mx, my, wx, wy, cx, cy, r);
+    if (pts) line(pts.x1, pts.y1, pts.x2, pts.y2);
+  }
+}
+
+function clipLineToHex(mx, my, dx, dy, cx, cy, r) {
+  let tmin = -9999, tmax = 9999;
+  for (let i = 0; i < 6; i++) {
+    let a = radians(30 + i * 60);
+    let nx = cos(a), ny = sin(a);
+    let d = r * cos(PI / 6);
+    let num = d - (nx * (mx - cx) + ny * (my - cy));
+    let den = nx * dx + ny * dy;
+    if (abs(den) < 0.0001) { if (num < 0) return null; }
+    else {
+      let t = num / den;
+      if (den > 0) tmax = min(tmax, t); else tmin = max(tmin, t);
+    }
+  }
+  return tmin > tmax ? null : { x1: mx + tmin * dx, y1: my + tmin * dy, x2: mx + tmax * dx, y2: my + tmax * dy };
+}
+
+// ============================================================
+// TRIANGLE FINDER — Vertex-based approach
+//
+// For each pair of wall-sets (AB, AC, BC), find all intersection
+// points. Then for each intersection vertex, find adjacent triangles.
+//
+// Simpler approach: use the DUAL — each triangle is uniquely
+// defined by 3 consecutive wall indices (one from each direction).
+// The triangle between walls (i, i+1) from set A, (j, j+1) from
+// set B, (k, k+1) from set C has its 3 vertices at the
+// intersections of these wall pairs.
+//
+// For the hex grid, the constraint is:
+//   i + j + k = s  (for up-triangles) or s+1 (for down-triangles)
+//   where s ranges appropriately.
+//
+// Actually, let's just compute ALL pairwise intersections, then
+// find triangles by grouping nearest vertices.
+// ============================================================
+
+function findAllTriangles(n) {
+  let ftf = cos(PI / 6); // normalized, r=1
+
+  // Wall directions and perpendiculars
+  let wallDirs = [], perpDirs = [];
+  for (let t = 0; t < 3; t++) {
+    let a = radians(WALL_DIRS[t]);
+    wallDirs.push({ x: cos(a), y: sin(a) });
+    perpDirs.push({ x: cos(a + PI/2), y: sin(a + PI/2) });
+  }
+
+  // Wall positions: for set t, wall i is at perpendicular offset
+  // p_i = -ftf + i * (2*ftf/n), for i = 0..n
+  function wallOffset(i) { return -ftf + i * (2 * ftf / n); }
+
+  // Intersection of wall i from set A and wall j from set B
+  // Wall A_i: point = perpA * offsetA_i, direction = wallDirA
+  // Wall B_j: point = perpB * offsetB_j, direction = wallDirB
+  // Solve: perpA * oA + wallDirA * t1 = perpB * oB + wallDirB * t2
+  function intersect(setA, iA, setB, iB) {
+    let oA = wallOffset(iA), oB = wallOffset(iB);
+    let pA = perpDirs[setA], pB = perpDirs[setB];
+    let wA = wallDirs[setA], wB = wallDirs[setB];
+
+    // Point on wall A: (pA.x*oA + wA.x*t, pA.y*oA + wA.y*t)
+    // Point on wall B: (pB.x*oB + wB.x*s, pB.y*oB + wB.y*s)
+    // Equating: pA.x*oA + wA.x*t = pB.x*oB + wB.x*s
+    //           pA.y*oA + wA.y*t = pB.y*oB + wB.y*s
+
+    let det = wA.x * (-wB.y) - wA.y * (-wB.x);
+    if (abs(det) < 1e-10) return null;
+
+    let dx = pB.x * oB - pA.x * oA;
+    let dy = pB.y * oB - pA.y * oA;
+
+    let t = (dx * (-wB.y) - dy * (-wB.x)) / det;
+
+    return {
+      x: pA.x * oA + wA.x * t,
+      y: pA.y * oA + wA.y * t
+    };
+  }
+
+  // Find ALL intersection vertices (between pairs of wall sets)
+  // Set pair (0,1): walls from set 0 × walls from set 1
+  // Set pair (0,2): walls from set 0 × walls from set 2
+  // Set pair (1,2): walls from set 1 × walls from set 2
+  //
+  // Total vertices: 3 × (n+1)² — but only those inside the hex
+
+  // For each vertex, we know which walls it sits on.
+  // A triangle is formed by 3 vertices that are mutually connected
+  // by segments of 3 different walls.
+
+  // Easier approach: For each cell (i,j,k), compute centroid directly.
+  // The centroid of a triangle in the hex grid can be found as the
+  // average of its 3 vertices.
+  //
+  // Triangle vertices:
+  //   Up-triangle (i,j,k):  intersect(0,i, 1,j), intersect(1,j, 2,k), intersect(2,k, 0,i+1)
+  //     when i+j+k = some consistent value
+  //   Down-triangle (i,j,k): intersect(0,i+1, 1,j+1), intersect(1,j+1, 2,k+1), intersect(2,k+1, 0,i+1)
+  //     ... this is getting complicated.
+  //
+  // Let me just use the classification approach with high-resolution sampling.
+
+  // GRID SAMPLING — with correct bounds and resolution
+  let d = 2 * ftf / n;
+  let step = Math.max(0.5 / hexR, d / 12); // ensure enough resolution
+
+  let cells = {};
+
+  for (let gx = -1; gx <= 1; gx += step) {
+    for (let gy = -1; gy <= 1; gy += step) {
+      // Inside hex?
+      let inside = true;
+      for (let i = 0; i < 6; i++) {
+        let a = radians(30 + i * 60);
+        if (cos(a) * gx + sin(a) * gy > ftf + step * 0.01) { inside = false; break; }
+      }
+      if (!inside) continue;
+
+      // Classify by channel indices
+      let chs = [];
+      let fracs = [];
+      for (let t = 0; t < 3; t++) {
+        let proj = perpDirs[t].x * gx + perpDirs[t].y * gy;
+        let cont = (proj + ftf) / d;
+        let ch = Math.floor(cont);
+        let frac = cont - ch;
+        if (ch >= n) { ch = n - 1; frac = 0.999; }
+        if (ch < 0) { ch = 0; frac = 0.001; }
+        chs.push(ch);
+        fracs.push(frac);
+      }
+
+      let fracSum = fracs[0] + fracs[1] + fracs[2];
+      let orient = fracSum < 1.5 ? 0 : 1;
+      let key = chs[0] + "," + chs[1] + "," + chs[2] + "," + orient;
+
+      if (!cells[key]) cells[key] = { sx: 0, sy: 0, cnt: 0 };
+      cells[key].sx += gx;
+      cells[key].sy += gy;
+      cells[key].cnt++;
+    }
+  }
+
+  let results = [];
+  for (let key in cells) {
+    let c = cells[key];
+    if (c.cnt < 2) continue;
+    results.push({ x: c.sx / c.cnt, y: c.sy / c.cnt });
+  }
+  return results;
+}
+</script>
+</body>
+</html>

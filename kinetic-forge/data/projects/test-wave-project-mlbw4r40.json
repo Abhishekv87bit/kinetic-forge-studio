@@ -1,0 +1,61 @@
+{
+  "version": 2,
+  "id": "test-wave-project-mlbw4r40",
+  "name": "Test Wave Project",
+  "created": "2026-02-07T05:45:36.576Z",
+  "updated": "2026-02-07T05:45:36.579Z",
+  "currentStage": "mechanize",
+  "sourcePattern": {
+    "tab": "waves3d",
+    "savedAt": "2026-02-07T05:45:36.575Z",
+    "type": "wave3d",
+    "waves": [
+      {
+        "id": 1,
+        "A": 1.5,
+        "kx": 2,
+        "ky": 0,
+        "phi": 0,
+        "omega": 1,
+        "enabled": true
+      },
+      {
+        "id": 2,
+        "A": 1,
+        "kx": 0,
+        "ky": 2,
+        "phi": 0.7853981633974483,
+        "omega": 0.8,
+        "enabled": true
+      }
+    ],
+    "interaction": "superposition",
+    "expression": "1.5sin(2.0x + 1.0y) + 1.0sin(1.0x + 2.0y)"
+  },
+  "stages": {
+    "mechanize": {
+      "status": "in_progress",
+      "mechanism": null,
+      "recommendations": []
+    },
+    "simulate": {
+      "status": "locked",
+      "results": null,
+      "calculations": {}
+    },
+    "build": {
+      "status": "locked",
+      "buildType": null,
+      "materials": {},
+      "generatedCode": null,
+      "syntaxErrors": []
+    },
+    "iterate": {
+      "status": "locked",
+      "testLogs": []
+    }
+  },
+  "iterations": [],
+  "tags": [],
+  "notes": ""
+}

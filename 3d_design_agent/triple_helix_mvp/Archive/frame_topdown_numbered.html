@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Hex Frame V3 — Top Down with Numbered Arms</title>
+<style>
+  body { margin: 0; background: #1a1a1a; display: flex; justify-content: center; align-items: center; height: 100vh; }
+  canvas { border: 1px solid #333; }
+</style>
+</head>
+<body>
+<canvas id="c" width="900" height="900"></canvas>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+const CX = W/2, CY = H/2;
+
+// Scale: 1mm = 1.1px (fits 354mm star tips in 900px)
+const S = 1.1;
+
+function toScreen(x, y) {
+  // Flip Y so positive Y goes up (math convention)
+  return [CX + x * S, CY - y * S];
+}
+
+// Parameters from hex_frame_v3.scad
+const HEX_R = 118;
+const FRAME_RING_R_IN = 120;
+const FRAME_RING_R_OUT = 130;
+const STUB_R_START = 130;
+const STUB_R_END = 160;
+const STAR_TIP_R = 354;
+const HEXAGRAM_INNER_R = 354 / Math.sqrt(3); // ~204mm
+const CORRIDOR_GAP = 60;
+const HELIX_R = HEXAGRAM_INNER_R + CORRIDOR_GAP / (2 * Math.tan(Math.PI/6)); // ~256mm
+const STUB_W = 12;
+const ARM_W = 12;
+
+const STUB_ANGLES = [0, 120, 240]; // degrees
+const HELIX_ANGLES = [180, 300, 60]; // degrees
+
+// ARM_DEFS: [stub_angle, star_tip_angle]
+const ARM_DEFS = [
+  [0,   330],  // Arm 0 (index 0)
+  [0,    30],  // Arm 1 (index 1)
+  [120,  90],  // Arm 2 (index 2)
+  [120, 150],  // Arm 3 (index 3)
+  [240, 210],  // Arm 4 (index 4)
+  [240, 270],  // Arm 5 (index 5)
+];
+
+function degToRad(d) { return d * Math.PI / 180; }
+function polar(r, deg) { return [r * Math.cos(degToRad(deg)), r * Math.sin(degToRad(deg))]; }
+
+// Draw hex ring
+function drawHexRing(rIn, rOut, color, lineW) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = lineW;
+  for (let pass = 0; pass < 2; pass++) {
+    const r = pass === 0 ? rOut : rIn;
+    ctx.beginPath();
+    for (let i = 0; i <= 6; i++) {
+      const a = degToRad(i * 60);
+      const [sx, sy] = toScreen(r * Math.cos(a), r * Math.sin(a));
+      if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+    }
+    ctx.stroke();
+  }
+}
+
+// Draw filled hex
+function drawFilledHex(r, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  for (let i = 0; i <= 6; i++) {
+    const a = degToRad(i * 60);
+    const [sx, sy] = toScreen(r * Math.cos(a), r * Math.sin(a));
+    if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+  }
+  ctx.fill();
+}
+
+// Draw a line between two world coords
+function drawLine(x1, y1, x2, y2, color, width) {
+  const [sx1, sy1] = toScreen(x1, y1);
+  const [sx2, sy2] = toScreen(x2, y2);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.beginPath();
+  ctx.moveTo(sx1, sy1);
+  ctx.lineTo(sx2, sy2);
+  ctx.stroke();
+}
+
+// Draw circle at world coords
+function drawCircle(x, y, r, fillColor, strokeColor, lineW) {
+  const [sx, sy] = toScreen(x, y);
+  if (fillColor) {
+    ctx.fillStyle = fillColor;
+    ctx.beginPath();
+    ctx.arc(sx, sy, r * S, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  if (strokeColor) {
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = lineW || 1;
+    ctx.beginPath();
+    ctx.arc(sx, sy, r * S, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+}
+
+// Draw text at world coords
+function drawText(text, x, y, color, size, bold) {
+  const [sx, sy] = toScreen(x, y);
+  ctx.fillStyle = color;
+  ctx.font = (bold ? 'bold ' : '') + size + 'px Arial';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, sx, sy);
+}
+
+// ===== RENDER =====
+
+// Background
+ctx.fillStyle = '#1a1a1a';
+ctx.fillRect(0, 0, W, H);
+
+// Title
+ctx.fillStyle = '#ccc';
+ctx.font = 'bold 20px Arial';
+ctx.textAlign = 'center';
+ctx.fillText('Hex Frame V3 — Top Down View', CX, 30);
+ctx.font = '14px Arial';
+ctx.fillText('Orange arms numbered 1–6 (from ARM_DEFS array indices 0–5)', CX, 55);
+
+// Matrix hex (semi-transparent green)
+drawFilledHex(HEX_R, 'rgba(80, 180, 80, 0.15)');
+
+// Slider direction indicators at tier angles [0, 120, 240]
+for (const ta of [0, 120, 240]) {
+  const [ex, ey] = polar(HEX_R, ta);
+  drawLine(-ex, -ey, ex, ey, 'rgba(200, 60, 60, 0.3)', 2);
+}
+
+// Frame rings
+drawHexRing(FRAME_RING_R_IN, FRAME_RING_R_OUT, 'rgba(40, 40, 50, 0.8)', 2);
+
+// 3 STUBS (red)
+for (const sa of STUB_ANGLES) {
+  const [sx, sy] = polar(STUB_R_START, sa);
+  const [ex, ey] = polar(STUB_R_END, sa);
+  drawLine(sx, sy, ex, ey, 'rgba(180, 40, 40, 0.9)', ARM_W * S * 0.6);
+  // Label
+  const [lx, ly] = polar((STUB_R_START + STUB_R_END) / 2 + 15, sa);
+  drawText('Stub ' + sa + '°', lx, ly, '#cc4444', 11, false);
+}
+
+// 6 MAIN FRAME ARMS (orange) — the key things to number
+const armColors = [
+  '#e88820', '#e88820', '#e88820', '#e88820', '#e88820', '#e88820'
+];
+
+for (let i = 0; i < 6; i++) {
+  const [stubAngle, tipAngle] = ARM_DEFS[i];
+  const [sx, sy] = polar(STUB_R_END, stubAngle);
+  const [ex, ey] = polar(STAR_TIP_R, tipAngle);
+
+  // Draw the arm as a thick line
+  drawLine(sx, sy, ex, ey, armColors[i], ARM_W * S * 0.5);
+}
+
+// Number each arm with a big circle + number at ~55% along the arm
+for (let i = 0; i < 6; i++) {
+  const [stubAngle, tipAngle] = ARM_DEFS[i];
+  const [sx, sy] = polar(STUB_R_END, stubAngle);
+  const [ex, ey] = polar(STAR_TIP_R, tipAngle);
+
+  // Label position at 55% along the arm
+  const frac = 0.55;
+  const lx = sx + (ex - sx) * frac;
+  const ly = sy + (ey - sy) * frac;
+
+  // White circle background
+  const [scx, scy] = toScreen(lx, ly);
+  ctx.fillStyle = '#222';
+  ctx.strokeStyle = '#e88820';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(scx, scy, 18, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  // Number (1-indexed for user)
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 20px Arial';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(String(i + 1), scx, scy);
+}
+
+// Star tips (small dots)
+const tipAngles = [30, 90, 150, 210, 270, 330];
+for (const ta of tipAngles) {
+  const [tx, ty] = polar(STAR_TIP_R, ta);
+  drawCircle(tx, ty, 4, '#e88820', null, 0);
+  // Label the tip angle
+  const [ltx, lty] = polar(STAR_TIP_R + 18, ta);
+  drawText(ta + '°', ltx, lty, '#aa6615', 11, false);
+}
+
+// Helix positions (large markers)
+const helixColors = ['#44aaff', '#44aaff', '#44aaff'];
+for (let hi = 0; hi < 3; hi++) {
+  const ha = HELIX_ANGLES[hi];
+  const [hx, hy] = polar(HELIX_R, ha);
+
+  // Helix marker
+  drawCircle(hx, hy, 12, 'rgba(68, 170, 255, 0.3)', '#44aaff', 2);
+  drawText('H' + (hi+1), hx, hy, '#44aaff', 14, true);
+
+  // Helix angle label
+  const [lhx, lhy] = polar(HELIX_R + 25, ha);
+  drawText(ha + '°', lhx, lhy, '#6699cc', 11, false);
+}
+
+// Legend (arm definitions)
+ctx.fillStyle = '#aaa';
+ctx.font = '13px monospace';
+ctx.textAlign = 'left';
+const legendX = 20;
+let legendY = H - 200;
+ctx.fillText('ARM DEFINITIONS:', legendX, legendY);
+legendY += 20;
+const armLabels = [
+  '1: Stub 0° → Tip 330°',
+  '2: Stub 0° → Tip 30°',
+  '3: Stub 120° → Tip 90°',
+  '4: Stub 120° → Tip 150°',
+  '5: Stub 240° → Tip 210°',
+  '6: Stub 240° → Tip 270°',
+];
+for (const label of armLabels) {
+  ctx.fillStyle = '#e88820';
+  ctx.fillText(label, legendX, legendY);
+  legendY += 18;
+}
+
+// Helix corridor pairs
+legendY += 10;
+ctx.fillStyle = '#6699cc';
+ctx.fillText('HELIX CORRIDORS:', legendX, legendY);
+legendY += 18;
+ctx.fillText('H1 (180°): Arms 4 & 3', legendX, legendY); legendY += 18;
+ctx.fillText('H2 (300°): Arms 6 & 1', legendX, legendY); legendY += 18;
+ctx.fillText('H3 (60°):  Arms 2 & 3... wait', legendX, legendY);
+
+// Actually fix the corridor info from the scad:
+// HELIX_ARM_PAIRS = [[1, 2], [3, 4], [5, 0]];
+// Helix 60°:  Arm index 1 (0→30°) and Arm index 2 (120°→90°)  = Arms 2 & 3
+// Helix 180°: Arm index 3 (120°→150°) and Arm index 4 (240°→210°)  = Arms 4 & 5
+// Helix 300°: Arm index 5 (240°→270°) and Arm index 0 (0°→330°)  = Arms 6 & 1
+
+// Redo the corridor legend properly
+// Clear the bad text
+ctx.fillStyle = '#1a1a1a';
+ctx.fillRect(legendX - 5, H - 200 + 120, 300, 80);
+
+legendY = H - 200 + 130;
+ctx.fillStyle = '#6699cc';
+ctx.font = '13px monospace';
+ctx.fillText('HELIX CORRIDORS:', legendX, legendY);
+legendY += 18;
+ctx.fillText('H1 (180°): Arms 4 & 5', legendX, legendY); legendY += 18;
+ctx.fillText('H2 (300°): Arms 6 & 1', legendX, legendY); legendY += 18;
+ctx.fillText('H3 (60°):  Arms 2 & 3', legendX, legendY);
+
+// Compass directions
+drawText('0°', 420, 0, '#555', 12, false);
+drawText('90°', 0, 420, '#555', 12, false);
+drawText('180°', -420, 0, '#555', 12, false);
+drawText('270°', 0, -420, '#555', 12, false);
+
+// Center dot
+drawCircle(0, 0, 3, '#666', null, 0);
+
+</script>
+</body>
+</html>

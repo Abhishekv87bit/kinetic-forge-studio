@@ -1,0 +1,4 @@
+Planetary gear by ngoodger on Thingiverse: https://www.thingiverse.com/thing:264769
+
+Summary:
+Youtube link: http://youtu.be/m3w0liy-QJE  3d printed planetary gear with gear bearings connecting the carrier to the gear planets.  This allows (potentially) for reduced frictional losses in comparison to sleeve bearing.  The design is a extension of Emmett Lalish's innovative gear bearing http://www.thingiverse.com/thing:53451 and also uses his pin connectors V3 library http://www.thingiverse.com/thing:33790.  The gear ratio is written on the using HarlanDMii Write library http://www.thingiverse.com/thing:16193  

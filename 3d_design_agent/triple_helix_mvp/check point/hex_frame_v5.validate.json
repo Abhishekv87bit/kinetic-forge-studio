@@ -1,0 +1,509 @@
+{
+  "file": "D:\\Claude local\\3d_design_agent\\triple_helix_mvp\\check point\\hex_frame_v5.scad",
+  "markers": {
+    "ORIGIN": {
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0,
+      "r": 0.0
+    },
+    "S0": {
+      "x": 140.0,
+      "y": 0.0,
+      "z": 0.0,
+      "r": 140.0
+    },
+    "S1": {
+      "x": -70.0,
+      "y": 121.2,
+      "z": 0.0,
+      "r": 140.0
+    },
+    "S2": {
+      "x": -70.0,
+      "y": -121.2,
+      "z": 0.0,
+      "r": 140.0
+    },
+    "JU0": {
+      "x": 150.0,
+      "y": 0.0,
+      "z": 51.0,
+      "r": 150.0
+    },
+    "JU1": {
+      "x": -75.0,
+      "y": 129.9,
+      "z": 51.0,
+      "r": 150.0
+    },
+    "JU2": {
+      "x": -75.0,
+      "y": -129.9,
+      "z": 51.0,
+      "r": 150.0
+    },
+    "T0": {
+      "x": 375.4,
+      "y": -315.0,
+      "z": 0.0,
+      "r": 490.0
+    },
+    "T1": {
+      "x": 375.4,
+      "y": 315.0,
+      "z": 0.0,
+      "r": 490.0
+    },
+    "T2": {
+      "x": 85.1,
+      "y": 482.6,
+      "z": 0.0,
+      "r": 490.0
+    },
+    "T3": {
+      "x": -460.4,
+      "y": 167.6,
+      "z": 0.0,
+      "r": 490.0
+    },
+    "T4": {
+      "x": -460.4,
+      "y": -167.6,
+      "z": 0.0,
+      "r": 490.0
+    },
+    "T5": {
+      "x": 85.1,
+      "y": -482.6,
+      "z": 0.0,
+      "r": 490.0
+    },
+    "A0@25": {
+      "x": 206.3,
+      "y": -78.7,
+      "z": 51.0,
+      "r": 220.9
+    },
+    "A0@50": {
+      "x": 262.7,
+      "y": -157.5,
+      "z": 51.0,
+      "r": 306.3
+    },
+    "A0@75": {
+      "x": 319.0,
+      "y": -236.2,
+      "z": 51.0,
+      "r": 397.0
+    },
+    "A1@25": {
+      "x": 206.3,
+      "y": 78.7,
+      "z": 51.0,
+      "r": 220.9
+    },
+    "A1@50": {
+      "x": 262.7,
+      "y": 157.5,
+      "z": 51.0,
+      "r": 306.3
+    },
+    "A1@75": {
+      "x": 319.0,
+      "y": 236.2,
+      "z": 51.0,
+      "r": 397.0
+    },
+    "A2@25": {
+      "x": -35.0,
+      "y": 218.1,
+      "z": 51.0,
+      "r": 220.9
+    },
+    "A2@50": {
+      "x": 5.0,
+      "y": 306.2,
+      "z": 51.0,
+      "r": 306.3
+    },
+    "A2@75": {
+      "x": 45.1,
+      "y": 394.4,
+      "z": 51.0,
+      "r": 397.0
+    },
+    "A3@25": {
+      "x": -171.4,
+      "y": 139.3,
+      "z": 51.0,
+      "r": 220.9
+    },
+    "A3@50": {
+      "x": -267.7,
+      "y": 148.7,
+      "z": 51.0,
+      "r": 306.3
+    },
+    "A3@75": {
+      "x": -364.1,
+      "y": 158.2,
+      "z": 51.0,
+      "r": 397.0
+    },
+    "A4@25": {
+      "x": -171.4,
+      "y": -139.3,
+      "z": 51.0,
+      "r": 220.9
+    },
+    "A4@50": {
+      "x": -267.7,
+      "y": -148.7,
+      "z": 51.0,
+      "r": 306.3
+    },
+    "A4@75": {
+      "x": -364.1,
+      "y": -158.2,
+      "z": 51.0,
+      "r": 397.0
+    },
+    "A5@25": {
+      "x": -35.0,
+      "y": -218.1,
+      "z": 51.0,
+      "r": 220.9
+    },
+    "A5@50": {
+      "x": 5.0,
+      "y": -306.2,
+      "z": 51.0,
+      "r": 306.3
+    },
+    "A5@75": {
+      "x": 45.1,
+      "y": -394.4,
+      "z": 51.0,
+      "r": 397.0
+    },
+    "H1": {
+      "x": -339.2,
+      "y": 0.0,
+      "z": 0.0,
+      "r": 339.2
+    },
+    "H2": {
+      "x": 169.6,
+      "y": -293.8,
+      "z": 0.0,
+      "r": 339.2
+    },
+    "H3": {
+      "x": 169.6,
+      "y": 293.8,
+      "z": 0.0,
+      "r": 339.2
+    },
+    "CN1": {
+      "x": -460.4,
+      "y": 0.0,
+      "z": 0.0,
+      "r": 460.4
+    },
+    "CN2": {
+      "x": 230.2,
+      "y": -398.8,
+      "z": 0.0,
+      "r": 460.4
+    },
+    "CN3": {
+      "x": 230.2,
+      "y": 398.8,
+      "z": 0.0,
+      "r": 460.4
+    },
+    "D1": {
+      "x": -267.7,
+      "y": 0.0,
+      "z": 30.0,
+      "r": 267.7
+    },
+    "D2": {
+      "x": 133.9,
+      "y": -231.9,
+      "z": 0.0,
+      "r": 267.7
+    },
+    "D3": {
+      "x": 133.9,
+      "y": 231.9,
+      "z": -30.0,
+      "r": 267.7
+    },
+    "PBn1": {
+      "x": -339.2,
+      "y": 251.0,
+      "z": 0.0,
+      "r": 422.0
+    },
+    "PBf1": {
+      "x": -339.2,
+      "y": -251.0,
+      "z": 0.0,
+      "r": 422.0
+    },
+    "PBn2": {
+      "x": -47.8,
+      "y": -419.3,
+      "z": 0.0,
+      "r": 422.0
+    },
+    "PBf2": {
+      "x": 387.0,
+      "y": -168.3,
+      "z": 0.0,
+      "r": 422.0
+    },
+    "PBn3": {
+      "x": 387.0,
+      "y": 168.3,
+      "z": 0.0,
+      "r": 422.0
+    },
+    "PBf3": {
+      "x": -47.8,
+      "y": 419.3,
+      "z": 0.0,
+      "r": 422.0
+    }
+  },
+  "helixes": {
+    "1": {
+      "z": 0.0,
+      "cx": -339.2,
+      "cy": 0.0,
+      "angle": 180.0,
+      "drive": "MOTOR-DIRECT"
+    },
+    "2": {
+      "z": 0.0,
+      "cx": 169.6,
+      "cy": -293.8,
+      "angle": 300.0,
+      "drive": "BELT-GT2"
+    },
+    "3": {
+      "z": 0.0,
+      "cx": 169.6,
+      "cy": 293.8,
+      "angle": 60.0,
+      "drive": "BELT-GT2"
+    }
+  },
+  "dampeners": {
+    "1": {
+      "z": 30.0
+    },
+    "2": {
+      "z": 0.0
+    },
+    "3": {
+      "z": -30.0
+    }
+  },
+  "config": {
+    "HELIX_R": 339.2,
+    "HELIX_Z": [
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "checks": [
+    {
+      "status": "PASS",
+      "name": "H1 cam Z=0",
+      "detail": "Z=0.0 (expect 0)"
+    },
+    {
+      "status": "PASS",
+      "name": "H2 cam Z=0",
+      "detail": "Z=0.0 (expect 0)"
+    },
+    {
+      "status": "PASS",
+      "name": "H3 cam Z=0",
+      "detail": "Z=0.0 (expect 0)"
+    },
+    {
+      "status": "PASS",
+      "name": "H1 near PB on shaft axis",
+      "detail": "perp_dist=0.0mm (max 5mm), proj=-251.0mm"
+    },
+    {
+      "status": "PASS",
+      "name": "H1 far PB on shaft axis",
+      "detail": "perp_dist=0.0mm (max 5mm), proj=251.0mm"
+    },
+    {
+      "status": "PASS",
+      "name": "H2 near PB on shaft axis",
+      "detail": "perp_dist=0.0mm (max 5mm), proj=-251.0mm"
+    },
+    {
+      "status": "PASS",
+      "name": "H2 far PB on shaft axis",
+      "detail": "perp_dist=0.0mm (max 5mm), proj=251.0mm"
+    },
+    {
+      "status": "PASS",
+      "name": "H3 near PB on shaft axis",
+      "detail": "perp_dist=0.0mm (max 5mm), proj=-251.0mm"
+    },
+    {
+      "status": "PASS",
+      "name": "H3 far PB on shaft axis",
+      "detail": "perp_dist=0.0mm (max 5mm), proj=251.0mm"
+    },
+    {
+      "status": "PASS",
+      "name": "H1 near PB at journal reach",
+      "detail": "proj=-251.0mm (expect ~-251mm, reach=251.0mm)"
+    },
+    {
+      "status": "PASS",
+      "name": "H1 far PB at journal reach",
+      "detail": "proj=251.0mm (expect ~251mm, reach=251.0mm)"
+    },
+    {
+      "status": "PASS",
+      "name": "H2 near PB at journal reach",
+      "detail": "proj=-251.0mm (expect ~-251mm, reach=251.0mm)"
+    },
+    {
+      "status": "PASS",
+      "name": "H2 far PB at journal reach",
+      "detail": "proj=251.0mm (expect ~251mm, reach=251.0mm)"
+    },
+    {
+      "status": "PASS",
+      "name": "H3 near PB at journal reach",
+      "detail": "proj=-251.0mm (expect ~-251mm, reach=251.0mm)"
+    },
+    {
+      "status": "PASS",
+      "name": "H3 far PB at journal reach",
+      "detail": "proj=251.0mm (expect ~251mm, reach=251.0mm)"
+    },
+    {
+      "status": "PASS",
+      "name": "PBn1 Z matches cam",
+      "detail": "PB_Z=0.0, cam_Z=0.0"
+    },
+    {
+      "status": "PASS",
+      "name": "PBf1 Z matches cam",
+      "detail": "PB_Z=0.0, cam_Z=0.0"
+    },
+    {
+      "status": "PASS",
+      "name": "PBn2 Z matches cam",
+      "detail": "PB_Z=0.0, cam_Z=0.0"
+    },
+    {
+      "status": "PASS",
+      "name": "PBf2 Z matches cam",
+      "detail": "PB_Z=0.0, cam_Z=0.0"
+    },
+    {
+      "status": "PASS",
+      "name": "PBn3 Z matches cam",
+      "detail": "PB_Z=0.0, cam_Z=0.0"
+    },
+    {
+      "status": "PASS",
+      "name": "PBf3 Z matches cam",
+      "detail": "PB_Z=0.0, cam_Z=0.0"
+    },
+    {
+      "status": "FAIL",
+      "name": "H2 GT2 marker exists",
+      "detail": "Marker GT2_H2 missing"
+    },
+    {
+      "status": "FAIL",
+      "name": "H3 GT2 marker exists",
+      "detail": "Marker GT2_H3 missing"
+    },
+    {
+      "status": "PASS",
+      "name": "D1 dampener at tier Z",
+      "detail": "Z=30.0 (expect 30)"
+    },
+    {
+      "status": "PASS",
+      "name": "D1 marker at tier Z",
+      "detail": "marker Z=30.0 (expect 30)"
+    },
+    {
+      "status": "PASS",
+      "name": "D2 dampener at tier Z",
+      "detail": "Z=0.0 (expect 0)"
+    },
+    {
+      "status": "PASS",
+      "name": "D2 marker at tier Z",
+      "detail": "marker Z=0.0 (expect 0)"
+    },
+    {
+      "status": "PASS",
+      "name": "D3 dampener at tier Z",
+      "detail": "Z=-30.0 (expect -30)"
+    },
+    {
+      "status": "PASS",
+      "name": "D3 marker at tier Z",
+      "detail": "marker Z=-30.0 (expect -30)"
+    },
+    {
+      "status": "PASS",
+      "name": "H1 gap to hex",
+      "detail": "gap=221mm (need >40mm for rib+dampener+clearance)"
+    },
+    {
+      "status": "PASS",
+      "name": "H2 gap to hex",
+      "detail": "gap=221mm (need >40mm for rib+dampener+clearance)"
+    },
+    {
+      "status": "PASS",
+      "name": "H3 gap to hex",
+      "detail": "gap=221mm (need >40mm for rib+dampener+clearance)"
+    },
+    {
+      "status": "PASS",
+      "name": "TipBridge H1 Z",
+      "detail": "Z=0.0 (for reference)"
+    },
+    {
+      "status": "PASS",
+      "name": "TipBridge H2 Z",
+      "detail": "Z=0.0 (for reference)"
+    },
+    {
+      "status": "PASS",
+      "name": "TipBridge H3 Z",
+      "detail": "Z=0.0 (for reference)"
+    },
+    {
+      "status": "PASS",
+      "name": "HELIX_R matches echo",
+      "detail": "computed=339.2, echo=339.2"
+    }
+  ],
+  "summary": {
+    "pass": 34,
+    "fail": 2
+  }
+}
