@@ -52,6 +52,18 @@ SHOW_BEARINGS   = true;
 SHOW_FOLLOWERS  = true;
 SHOW_COLLARS    = true;
 SHOW_RETAINERS  = true;
+SHOW_SOFT_STOPS = true;
+
+// =============================================
+// SOFT STOP PARAMETERS (W2 fix)
+// =============================================
+// Two small nubs on disc flange at ±15° from neutral (cable direction).
+// If follower arm swings past ±15° (slack cable), arm contacts nub.
+// Prevents over-rotation and tangling.
+SOFT_STOP_ANGLE   = 15;        // degrees from neutral
+SOFT_STOP_DIA     = 3.0;       // nub diameter
+SOFT_STOP_H       = FOLLOWER_RING_H + 1;  // taller than follower ring
+SOFT_STOP_R       = FOLLOWER_RING_OD / 2 + 1;  // just outside follower ring OD
 
 // =============================================
 // VERIFICATION
@@ -187,6 +199,11 @@ module helix_assembly_v5(t = 0) {
             if (SHOW_COLLARS && i < NUM_CAMS - 1)
                 translate([0, 0, DISC_THICK])
                     spacer_collar_v5();
+
+            // Soft stop nubs at ±15° from cable direction (W2 fix)
+            if (SHOW_SOFT_STOPS)
+                translate([disc_cx, disc_cy, FLANGE_H + CAM_BRG_W/2])
+                    _soft_stop_pair();
         }
     }
 
@@ -333,6 +350,25 @@ module spacer_collar_v5() {
         // D-flat cutout
         translate([SHAFT_DIA/2 - D_FLAT_DEPTH, -SHAFT_BORE, -1])
             cube([D_FLAT_DEPTH + 1, SHAFT_BORE * 2, COLLAR_THICK + 2]);
+    }
+}
+
+
+// =========================================================
+// SOFT STOP PAIR — two nubs at ±15° from neutral
+// =========================================================
+// Placed on disc flange, just outside follower ring.
+// Prevents follower arm from swinging beyond ±15° if cable goes slack.
+// Neutral = -X direction (toward matrix center, where cable attaches).
+module _soft_stop_pair() {
+    for (sign = [-1, 1]) {
+        _stop_angle = 180 + sign * SOFT_STOP_ANGLE;  // 180° = -X = cable direction
+        _sx = SOFT_STOP_R * cos(_stop_angle);
+        _sy = SOFT_STOP_R * sin(_stop_angle);
+
+        color([0.9, 0.3, 0.1, 0.9])
+        translate([_sx, _sy, 0])
+            cylinder(d = SOFT_STOP_DIA, h = SOFT_STOP_H, center = true, $fn = 12);
     }
 }
 

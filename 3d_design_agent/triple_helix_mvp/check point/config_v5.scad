@@ -1,13 +1,13 @@
 // =========================================================
 // CONFIG V5 — Single Source of Truth for Triple Helix MVP
 // =========================================================
-// V5 PROTOTYPE: 83% scale, central steel shaft, print-in-place.
+// V5 PROTOTYPE: 75% scale, central steel shaft, print-in-place.
 //
 // INCLUDE this file (not `use`) in every V5 module.
 // All shared parameters live here. No file duplicates any value.
 //
 // KEY CHANGES from V4:
-//   - HEX_R = 98 (was 118) → 13 channels (was 13 in V4!)
+//   - HEX_R = 98 → 13 channels, NUM_CAMS = 12 (decoupled)
 //   - STACK_OFFSET = 12mm (channel spacing in matrix)
 //   - AXIAL_PITCH = 14mm (cam spacing on shaft — DECOUPLED from channels)
 //   - Central 5mm steel shaft through all discs (V4 was shaftless)
@@ -45,7 +45,7 @@ function anim_t() = (MANUAL_POSITION >= 0) ? MANUAL_POSITION : $t;
 // HEX GEOMETRY — the ONE sizing parameter
 // =============================================
 /* [Hex Tier] */
-HEX_R         = 98;       // 83% scale prototype (was 118) → 13 channels
+HEX_R         = 98;       // 75% scale prototype → 13 channels
 
 HEX_C2C       = 2 * HEX_R;                     // corner-to-corner = 177mm
 HEX_FF        = HEX_R * sqrt(3);               // flat-to-flat = 153.2mm
@@ -82,7 +82,7 @@ FP_OD         = 8.0;       // fixed pulley OD
 SP_OD         = 8.0;       // slider pulley OD
 _MIN_ROPE_GAP = 2.0;       // gap between FP and SP rows for rope passage
 
-FP_ROW_Y      = (FP_OD + SP_OD) / 2 + _MIN_ROPE_GAP;  // 10mm (derived)
+FP_ROW_Y      = 20.0;     // 20mm — per rope routing analysis (limits inter-tier lateral shift)
 
 // =============================================
 // PULLEY STAGGER — prevents adjacent channels sharing X positions
@@ -120,12 +120,12 @@ COL_COUNTS = [for (i = [0:NUM_CHANNELS-1]) culled_col_count(i)];
 // MECHANICS
 // =============================================
 /* [Mechanics] */
-ECCENTRICITY  = 20.0;      // mm cam throw — Pareto optimal per Eq.1/Eq.2
-CAM_STROKE    = 2 * ECCENTRICITY;  // 40mm peak-to-peak
+ECCENTRICITY  = 12.0;      // mm cam throw — per master prompt (gentler wave at 75% scale)
+CAM_STROKE    = 2 * ECCENTRICITY;  // 24mm peak-to-peak
 
 /* [Slider Bias] */
-SLIDER_BIAS        = 0.866;    // Pareto optimal with ECC=20 (C1+C2 binding)
-SLIDER_REST_OFFSET = ECCENTRICITY * SLIDER_BIAS;  // 17.3mm toward helix side
+SLIDER_BIAS        = 0.80;     // per master prompt (rest position bias toward helix)
+SLIDER_REST_OFFSET = ECCENTRICITY * SLIDER_BIAS;  // 9.6mm toward helix side
 
 // =============================================
 // HOUSING / TIER
@@ -139,11 +139,12 @@ HOUSING_HEIGHT = 2 * FP_ROW_Y + FP_OD + 2;         // 30mm (derived)
 // =============================================
 NUM_TIERS     = 3;
 TIER_ANGLES   = [0, 120, 240];
-TIER_PITCH    = HOUSING_HEIGHT;                      // 30mm (zero-gap stacking)
+INTER_TIER_GAP = 25.0;                               // 25mm between tiers (string angle ≤39°)
+TIER_PITCH    = HOUSING_HEIGHT + INTER_TIER_GAP;     // 75mm (housing + gap)
 
 // Z-layout: matrix centered at Z=0
-TIER1_TOP     = TIER_PITCH + HOUSING_HEIGHT / 2;     // +45
-TIER3_BOT     = -TIER_PITCH - HOUSING_HEIGHT / 2;    // -45
+TIER1_TOP     = TIER_PITCH + HOUSING_HEIGHT / 2;     // +100
+TIER3_BOT     = -TIER_PITCH - HOUSING_HEIGHT / 2;    // -100
 
 // =============================================
 // ANCHOR & GUIDE PLATES
@@ -318,7 +319,7 @@ RETAINER_DEPTH    = 1.5;
 // These are used by hex_frame_v5.scad for positioning frame bearings (625ZZ)
 JOURNAL_LENGTH    = 10.0;     // stub extension from helix center along shaft
 JOURNAL_EXT       = 150.0;    // extension beyond discs to carrier plates
-// JOURNAL_TOTAL_REACH = HELIX_LENGTH/2 + JOURNAL_LENGTH + JOURNAL_EXT = 91 + 10 + 150 = 251mm
+// JOURNAL_TOTAL_REACH = HELIX_LENGTH/2 + JOURNAL_LENGTH + JOURNAL_EXT (derived at compile)
 
 // =============================================
 // HEXAGRAM FRAME — key geometry constants
@@ -391,7 +392,7 @@ if (_shortest_ch > 0) {
         echo(str("CONFIG !! Stagger may clip columns on shortest channel"));
 }
 
-echo(str("=== CONFIG V5 (83% PROTOTYPE) ==="));
+echo(str("=== CONFIG V5 (75% PROTOTYPE) ==="));
 echo(str("HEX_R=", HEX_R, " | Channels=", NUM_CHANNELS, " | Cams=", NUM_CAMS));
 echo(str("STACK_OFFSET=", STACK_OFFSET, "mm (matrix) | AXIAL_PITCH=", AXIAL_PITCH, "mm (cams) — DECOUPLED"));
 echo(str("ECCENTRICITY=", ECCENTRICITY, " CAM_ECC=", round(CAM_ECC*10)/10));
