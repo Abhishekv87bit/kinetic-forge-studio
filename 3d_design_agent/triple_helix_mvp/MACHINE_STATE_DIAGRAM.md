@@ -78,19 +78,19 @@ CENTRAL VERTICAL SHAFT
      |              MATRIX ASSEMBLY (3 TIERS)                  |
      |                                                         |
      |  +---------------------------------------------------+  |
-     |  | TIER 1 (Z=+100, rotation=0 deg)                  |  |
+     |  | TIER 1 (Z=+55, rotation=0 deg)                   |  |
      |  |   13 channels x [redirect_in -> slider -> redirect_out] |
      |  |   Slider X = bias + E*sin(t + i*27.7)            |  |
-     |  |   FP_ROW_Y = 20mm (U-detour depth)               |  |
+     |  |   FP_ROW_Y = 10mm (U-detour depth)               |  |
      |  +---------------------------------------------------+  |
      |                     <-> 25mm gap                        |
      |  +---------------------------------------------------+  |
-     |  | TIER 2 (Z=+25, rotation=120 deg)                 |  |
+     |  | TIER 2 (Z=0, rotation=120 deg)                   |  |
      |  |   13 channels (same architecture, 120 deg rotated)|  |
      |  +---------------------------------------------------+  |
      |                     <-> 25mm gap                        |
      |  +---------------------------------------------------+  |
-     |  | TIER 3 (Z=-50, rotation=240 deg)                 |  |
+     |  | TIER 3 (Z=-55, rotation=240 deg)                 |  |
      |  |   13 channels (same architecture, 240 deg rotated)|  |
      |  +---------------------------------------------------+  |
      +--------------------------+------------------------------+
@@ -100,7 +100,7 @@ CENTRAL VERTICAL SHAFT
                                 v
      +--------------------------------------------------------+
      |              GUIDE PLATES (2x PTFE bushings)            |
-     |   GP1: Z = -125mm | GP2: Z = -143mm | Gap = 15mm       |
+     |   GP1: Z = -70mm | GP2: Z = -88mm | Gap = 15mm        |
      |   13 bushing positions in hex grid                      |
      |   Funnel entry (5mm) -> 2mm bore -> dampens oscillation |
      +--------------------------+------------------------------+
@@ -225,10 +225,10 @@ NUM_CHANNELS    = 13            (derived from HEX_R)
 NUM_CAMS        = 13            (1 per channel)
 ECCENTRICITY    = 12mm          (wave throw target)
 CAM_ECC         = 14.5mm        (disc geometry eccentricity)
-FP_ROW_Y        = 20mm          (U-detour baseline depth)
+FP_ROW_Y        = 10mm          (derived: (FP_OD+SP_OD)/2 + rope gap)
 INTER_TIER_GAP  = 25mm          (string angle accommodation)
-HOUSING_HEIGHT  = 50mm          (derived: 2*FP_ROW_Y + FP_OD + 2)
-TIER_PITCH      = 75mm          (housing + gap)
+HOUSING_HEIGHT  = 30mm          (derived: 2*FP_ROW_Y + FP_OD + 2)
+TIER_PITCH      = 55mm          (housing + gap)
 HELIX_LENGTH    = 182mm         (13 x 14mm axial pitch)
 _STAR_RATIO     = 2.5           (hexagram extension)
 V_ANGLE         = 89.25 deg     (auto-computed for arm parallelism)
@@ -246,10 +246,8 @@ Soft stops      = +/-15 deg on each disc (W2 fix)
 |-----------|-------------|--------------|--------|
 | Scale label | 83% | 75% | Corrected to match design intent |
 | V_ANGLE | 70.87 (hardcoded) | 89.25 (auto-computed) | Binary search solver for arm parallelism |
-| FP_ROW_Y | 10mm (derived) | 20mm (fixed) | Per rope routing analysis, limits inter-tier lateral shift |
 | INTER_TIER_GAP | 0mm (zero-gap) | 25mm | String angle accommodation between tiers |
 | ECCENTRICITY | 20mm | 12mm | Per master prompt, gentler wave motion |
 | SLIDER_BIAS | 0.866 | 0.80 | Per master prompt |
-| HOUSING_HEIGHT | 30mm | 50mm | Cascaded from FP_ROW_Y change |
-| TIER_PITCH | 30mm | 75mm | Housing + inter-tier gap |
+| TIER_PITCH | 30mm | 55mm | Housing (30mm) + inter-tier gap (25mm) |
 | Soft stops | none | +/-15 deg | W2 audit fix, prevents follower over-rotation |

@@ -82,7 +82,7 @@ FP_OD         = 8.0;       // fixed pulley OD
 SP_OD         = 8.0;       // slider pulley OD
 _MIN_ROPE_GAP = 2.0;       // gap between FP and SP rows for rope passage
 
-FP_ROW_Y      = 20.0;     // 20mm — per rope routing analysis (limits inter-tier lateral shift)
+FP_ROW_Y      = (FP_OD + SP_OD) / 2 + _MIN_ROPE_GAP;  // derived: 10mm for 8mm pulleys
 
 // =============================================
 // PULLEY STAGGER — prevents adjacent channels sharing X positions
@@ -140,11 +140,11 @@ HOUSING_HEIGHT = 2 * FP_ROW_Y + FP_OD + 2;         // 30mm (derived)
 NUM_TIERS     = 3;
 TIER_ANGLES   = [0, 120, 240];
 INTER_TIER_GAP = 25.0;                               // 25mm between tiers (string angle ≤39°)
-TIER_PITCH    = HOUSING_HEIGHT + INTER_TIER_GAP;     // 75mm (housing + gap)
+TIER_PITCH    = HOUSING_HEIGHT + INTER_TIER_GAP;     // 55mm (housing + gap)
 
 // Z-layout: matrix centered at Z=0
-TIER1_TOP     = TIER_PITCH + HOUSING_HEIGHT / 2;     // +100
-TIER3_BOT     = -TIER_PITCH - HOUSING_HEIGHT / 2;    // -100
+TIER1_TOP     = TIER_PITCH + HOUSING_HEIGHT / 2;     // +70
+TIER3_BOT     = -TIER_PITCH - HOUSING_HEIGHT / 2;    // -70
 
 // =============================================
 // ANCHOR & GUIDE PLATES
@@ -154,10 +154,10 @@ GP1_THICK         = 3.0;
 GP2_THICK         = 5.0;
 GUIDE_PLATE_GAP   = 15.0;
 
-ANCHOR_Z  = TIER1_TOP;                               // +45
-GP1_Z     = TIER3_BOT;                               // -45
-GP2_Z     = GP1_Z - GP1_THICK - GUIDE_PLATE_GAP;     // -63
-GP2_BOT   = GP2_Z - GP2_THICK;                        // -68
+ANCHOR_Z  = TIER1_TOP;                               // +70
+GP1_Z     = TIER3_BOT;                               // -70
+GP2_Z     = GP1_Z - GP1_THICK - GUIDE_PLATE_GAP;     // -88
+GP2_BOT   = GP2_Z - GP2_THICK;                        // -93
 
 // =============================================
 // CENTRAL SHAFT — 5mm stainless steel rod (V5)
