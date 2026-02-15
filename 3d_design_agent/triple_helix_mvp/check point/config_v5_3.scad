@@ -288,8 +288,66 @@ BEARING_ZONE_H    = CAM_BRG_W + 0.5;                  // 6.5mm
 COLLAR_THICK      = AXIAL_PITCH - DISC_THICK;          // 7.0mm integrated collar stub
 HELIX_LENGTH      = NUM_CAMS * AXIAL_PITCH;            // 154mm (11 × 14)
 
-// Shaft extension — from last disc to frame bearing carrier plate
-SHAFT_EXT_TO_CARRIER = 120.0; // mm from last disc face to carrier plate center
+// Shaft extension — DERIVED from hexagram frame geometry
+// The carrier plate sits where the shaft axis crosses the frame arm.
+// This distance depends on hex geometry, star ratio, corridor gap.
+//
+// Derivation:
+//   Helix center at HELIX_R along radial direction.
+//   Shaft runs TANGENT (perpendicular to radial) through helix center.
+//   Frame arms from adjacent stubs cross the shaft at a tangent distance
+//   of _SHAFT_TANGENT_DIST from helix center.
+//   SHAFT_EXT_TO_CARRIER = _SHAFT_TANGENT_DIST - HELIX_LENGTH/2
+//   (distance from last disc face to carrier center along shaft)
+//
+// Frame geometry constants (needed here for shaft extension derivation):
+//   _STAR_RATIO and _CORRIDOR_GAP_CFG MUST be defined before this point.
+//   They live in the HEXAGRAM FRAME section below but are referenced here.
+//   Using local _CFG_ prefixed copies to avoid forward reference issues.
+_CFG_STAR_RATIO     = 2.5;       // must match _STAR_RATIO below
+_CFG_CORR_GAP       = 65.0;      // must match _CORRIDOR_GAP_CFG below
+_CFG_STAR_TIP_R     = _CFG_STAR_RATIO * 2 * HEX_R;               // 445mm
+_CFG_HEXAGRAM_INNER = _CFG_STAR_TIP_R / sqrt(3);                  // 256.9mm
+_CFG_V_PUSH         = _CFG_CORR_GAP / (2 * tan(30));              // 56.3mm
+_CFG_HELIX_R        = _CFG_HEXAGRAM_INNER + _CFG_V_PUSH;          // 313.2mm
+_CFG_STUB_R_END     = (HEX_R + 2 + 10) + 30;                      // 131mm (R_IN + RING_W + STUB_LENGTH)
+_CFG_JUNCTION_R     = _CFG_STUB_R_END + 10;                        // 141mm (+ STUB_W/2)
+
+// V_ANGLE for parallel corridors (binary search — same as hex_frame)
+function _cfg_par_res(V, T, J) = T*T*sin(120-V) - 2*J*T*sin(120-V/2) + J*J*sin(120);
+function _cfg_find_V(T, J, lo=10, hi=150, d=0) =
+    d > 50 ? (lo+hi)/2 :
+    let(mid=(lo+hi)/2, r=_cfg_par_res(mid,T,J))
+    abs(r) < 0.0001 ? mid :
+    r > 0 ? _cfg_find_V(T,J,mid,hi,d+1) : _cfg_find_V(T,J,lo,mid,d+1);
+_CFG_V_ANGLE        = _cfg_find_V(_CFG_STAR_TIP_R, _CFG_JUNCTION_R);
+
+// Arm A3: stub=120°, tip_angle=120°+V/2. Shaft for H1: helix_angle=180°
+// Tangent distance from helix center to arm crossing along shaft:
+_CFG_STUB_A = 120;
+_CFG_TIP_A  = _CFG_STUB_A + _CFG_V_ANGLE / 2;
+_CFG_JX     = _CFG_JUNCTION_R * cos(_CFG_STUB_A);
+_CFG_JY     = _CFG_JUNCTION_R * sin(_CFG_STUB_A);
+_CFG_TX     = _CFG_STAR_TIP_R * cos(_CFG_TIP_A);
+_CFG_TY     = _CFG_STAR_TIP_R * sin(_CFG_TIP_A);
+_CFG_ADX    = _CFG_TX - _CFG_JX;
+_CFG_ADY    = _CFG_TY - _CFG_JY;
+_CFG_ALEN   = sqrt(_CFG_ADX*_CFG_ADX + _CFG_ADY*_CFG_ADY);
+// Helix 1 at 180°: shaft_dir = [0, -1], helix_center = [-HELIX_R, 0]
+_CFG_SDX    = -sin(180);  // 0
+_CFG_SDY    = cos(180);   // -1
+_CFG_HCX    = _CFG_HELIX_R * cos(180);
+_CFG_HCY    = _CFG_HELIX_R * sin(180);
+_CFG_CROSS  = (_CFG_ADX/_CFG_ALEN) * _CFG_SDY - (_CFG_ADY/_CFG_ALEN) * _CFG_SDX;
+_CFG_DJX    = _CFG_HCX - _CFG_JX;
+_CFG_DJY    = _CFG_HCY - _CFG_JY;
+_CFG_T_MM   = (_CFG_DJX * _CFG_SDY - _CFG_DJY * _CFG_SDX) / _CFG_CROSS;
+_CFG_CX     = _CFG_JX + (_CFG_ADX/_CFG_ALEN) * _CFG_T_MM;
+_CFG_CY     = _CFG_JY + (_CFG_ADY/_CFG_ALEN) * _CFG_T_MM;
+_SHAFT_TANGENT_DIST = abs((_CFG_CX - _CFG_HCX) * _CFG_SDX + (_CFG_CY - _CFG_HCY) * _CFG_SDY);
+
+// SHAFT_EXT_TO_CARRIER = tangent distance minus half helix length
+SHAFT_EXT_TO_CARRIER = _SHAFT_TANGENT_DIST - HELIX_LENGTH / 2;  // ~45mm (was 120mm!)
 // SHAFT_EXT_BEYOND defined below (after GT2 params, depends on GT2_BOSS_H)
 
 // Shaft retainer — E-clip groove on shaft beyond each carrier plate (R3)
@@ -311,11 +369,21 @@ ECLIP_OD             = 15.0;             // E-clip outer diameter (visual only)
 CARRIER_PLATE_T_CFG  = 20;                    // carrier plate thickness (also in hex_frame)
 ECLIP_INBOARD_OFFSET = CARRIER_PLATE_T_CFG / 2 + 1;  // 11mm from carrier center (inside edge)
 
-// GT2 pulley sits flush on OUTSIDE edge of carrier (pushed toward camshaft center)
-// SHAFT_EXT_BEYOND = just enough for GT2 boss + 1mm clearance
-_GT2_BOSS_H_REF      = 8;               // must match GT2_BOSS_H (avoids forward reference)
-SHAFT_EXT_BEYOND     = _GT2_BOSS_H_REF + 1;  // 9mm (was 15mm — pulley flush with arm outside face)
-SHAFT_TOTAL_LENGTH   = HELIX_LENGTH + 2 * (SHAFT_EXT_TO_CARRIER + SHAFT_EXT_BEYOND);  // 412mm
+// GT2 pulley sits OUTSIDE the carrier arm's outside face.
+// "Outside face" = away from corridor (toward star tips).
+// The pulley must clear the frame entirely — no collision with carrier node.
+//
+// Drive end (GT2 side):
+//   Shaft extends past carrier center by CARRIER_PLATE_T/2 (to reach outside face)
+//   + GT2_BOSS_H (pulley body) + 1mm clearance
+// Free end (no pulley):
+//   Shaft extends past carrier center by just enough for E-clip groove
+_GT2_BOSS_H_REF         = 8;                   // must match GT2_BOSS_H below
+SHAFT_EXT_BEYOND_DRIVE  = CARRIER_PLATE_T_CFG / 2 + _GT2_BOSS_H_REF + 1;  // 19mm (GT2 clears outside face)
+SHAFT_EXT_BEYOND_FREE   = CARRIER_PLATE_T_CFG / 2 + 3;  // 13mm (just past outside face for E-clip)
+SHAFT_EXT_BEYOND        = SHAFT_EXT_BEYOND_DRIVE;  // backward compat (drive end is the long side)
+SHAFT_TOTAL_LENGTH      = HELIX_LENGTH + SHAFT_EXT_TO_CARRIER * 2
+                          + SHAFT_EXT_BEYOND_DRIVE + SHAFT_EXT_BEYOND_FREE;  // ~231mm
 
 // Follower ring — rides on bearing OUTER race, cable eyelet
 // No arm needed — cable attaches directly to follower ring eyelet

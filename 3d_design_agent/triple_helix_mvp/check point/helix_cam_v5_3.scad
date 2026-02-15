@@ -98,27 +98,28 @@ helix_assembly_v5(anim_t());
 // to carrier plate B (Z > HELIX_LENGTH).
 //
 // Layout along shaft Z-axis (local frame):
-//   Z = -SHAFT_EXT_TO_CARRIER - SHAFT_EXT_BEYOND  : shaft start (drive end)
-//   Z = -SHAFT_EXT_TO_CARRIER                      : carrier plate A center
-//   Z = 0                                          : first disc face (bearing side)
-//   Z = DISC_THICK                                 : first collar start
-//   Z = AXIAL_PITCH                                : second disc face
-//   Z = NUM_CAMS * AXIAL_PITCH - COLLAR_THICK      : last disc end (no collar on last)
-//   Z = HELIX_LENGTH + SHAFT_EXT_TO_CARRIER        : carrier plate B center
-//   Z = HELIX_LENGTH + SHAFT_EXT_TO_CARRIER + SHAFT_EXT_BEYOND : shaft end
+//   Z = -_ext_drive                                 : shaft start (drive end, GT2 pulley)
+//   Z = -_ext_drive + GT2_BOSS_H                    : GT2 top face (flush with carrier outside)
+//   Z = -SHAFT_EXT_TO_CARRIER                       : carrier plate A center
+//   Z = 0                                           : first disc face (bearing side)
+//   Z = DISC_THICK                                  : first collar start
+//   Z = AXIAL_PITCH                                 : second disc face
+//   Z = NUM_CAMS * AXIAL_PITCH - COLLAR_THICK       : last disc end (no collar on last)
+//   Z = HELIX_LENGTH + SHAFT_EXT_TO_CARRIER         : carrier plate B center
+//   Z = HELIX_LENGTH + SHAFT_EXT_TO_CARRIER + SHAFT_EXT_BEYOND_FREE : shaft end (free end)
 
 module helix_assembly_v5(t = 0) {
     crank_angle = t * 360;
 
-    // Shaft extension distances
-    _ext_in  = SHAFT_EXT_TO_CARRIER + SHAFT_EXT_BEYOND;
-    _ext_out = SHAFT_EXT_TO_CARRIER + SHAFT_EXT_BEYOND;
-    _total_shaft = HELIX_LENGTH + _ext_in + _ext_out;
+    // Shaft extension distances (ASYMMETRIC: drive end has GT2 pulley)
+    _ext_drive = SHAFT_EXT_TO_CARRIER + SHAFT_EXT_BEYOND_DRIVE;  // ~64mm (GT2 side)
+    _ext_free  = SHAFT_EXT_TO_CARRIER + SHAFT_EXT_BEYOND_FREE;   // ~58mm (no pulley)
+    _total_shaft = HELIX_LENGTH + _ext_drive + _ext_free;
 
-    // Central steel shaft — full length spanning between carrier plates
+    // Central steel shaft — full length
     if (SHOW_SHAFT) {
         color(C_STEEL)
-        translate([0, 0, -_ext_in])
+        translate([0, 0, -_ext_drive])
             difference() {
                 cylinder(d = SHAFT_DIA, h = _total_shaft, $fn = 32);
 
@@ -127,9 +128,9 @@ module helix_assembly_v5(t = 0) {
                     cube([D_FLAT_DEPTH + 1, SHAFT_DIA * 2, _total_shaft + 2]);
 
                 // E-clip groove A (drive end, INSIDE edge of carrier node)
-                // Carrier A center at Z = SHAFT_EXT_BEYOND from shaft start
-                // E-clip sits right at corridor face, catches bearing inner race
-                _eclip_a_z = SHAFT_EXT_BEYOND + ECLIP_INBOARD_OFFSET;
+                // Carrier A center at Z = SHAFT_EXT_BEYOND_DRIVE from shaft start
+                // E-clip sits at corridor face (inside edge), catches bearing shoulder
+                _eclip_a_z = SHAFT_EXT_BEYOND_DRIVE + ECLIP_INBOARD_OFFSET;
                 translate([0, 0, _eclip_a_z - ECLIP_GROOVE_W/2])
                     difference() {
                         cylinder(d = SHAFT_DIA + 1, h = ECLIP_GROOVE_W, $fn = 32);
@@ -137,7 +138,7 @@ module helix_assembly_v5(t = 0) {
                     }
 
                 // E-clip groove B (free end, INSIDE edge of carrier node)
-                _eclip_b_z = _ext_in + HELIX_LENGTH + SHAFT_EXT_TO_CARRIER
+                _eclip_b_z = _ext_drive + HELIX_LENGTH + SHAFT_EXT_TO_CARRIER
                              - ECLIP_INBOARD_OFFSET;
                 translate([0, 0, _eclip_b_z - ECLIP_GROOVE_W/2])
                     difference() {
@@ -200,8 +201,11 @@ module helix_assembly_v5(t = 0) {
         }
     }
 
-    // GT2 pulley on drive end (beyond carrier plate A)
-    translate([0, 0, -_ext_in])
+    // GT2 pulley on drive end — sits flush with carrier outside face
+    // GT2 top face at Z = -SHAFT_EXT_TO_CARRIER - CARRIER_PLATE_T_CFG/2 (outside face)
+    // GT2 bottom face at Z = outside_face - GT2_BOSS_H
+    _gt2_z = -SHAFT_EXT_TO_CARRIER - CARRIER_PLATE_T_CFG / 2 - GT2_BOSS_H;
+    translate([0, 0, _gt2_z])
         gt2_pulley_boss_v5();
 }
 
