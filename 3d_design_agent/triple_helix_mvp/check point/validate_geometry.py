@@ -5,6 +5,9 @@ Triple Helix MVP — Geometry Constraint Validator
 Parses OpenSCAD echo output and validates spatial relationships.
 Run after every compile to catch broken parametric chains BEFORE visual inspection.
 
+Auto-detects config_v*.scad values from the file being validated.
+No hardcoded config — works with V4, V5, V5.2, and future versions.
+
 Usage:
     python validate_geometry.py hex_frame_v4.scad
     python validate_geometry.py --render hex_frame_v4.scad   (also renders PNG)
@@ -24,15 +27,15 @@ import json
 from pathlib import Path
 
 # ============================================================
-# CONFIG — these must match config_v4.scad values
-# If these drift from config, the validator itself is broken.
-# TODO: auto-parse config_v4.scad for these values
+# OPENSCAD PATHS
 # ============================================================
 OPENSCAD_PATH = r"C:\Program Files\OpenSCAD\openscad.exe"
 OPENSCAD_COM = r"C:\Program Files\OpenSCAD\openscad.com"  # console version
 
-# Parametric chain: all derived from config_v4.scad
-CONFIG = {
+# ============================================================
+# CONFIG DEFAULTS — V4 fallback (overridden by auto-detection)
+# ============================================================
+CONFIG_DEFAULTS = {
     "HEX_R": 118,
     "HELIX_ANGLES": [180, 300, 60],
     "HELIX_LENGTH": 182,        # NUM_CAMS * AXIAL_PITCH = 13 * 14
@@ -54,10 +57,400 @@ CONFIG = {
     "COLLAR_OD": 16.0,
 }
 
-# Derived
-JOURNAL_TOTAL_REACH = CONFIG["HELIX_LENGTH"] / 2 + CONFIG["JOURNAL_LENGTH"] + CONFIG["JOURNAL_EXT"]
-HELIX_R = None  # parsed from echo
-CORRIDOR_GAP = None
+
+# ============================================================
+# AUTO-DETECT CONFIG from .scad files
+# ============================================================
+def parse_scad_config(config_path):
+    """Parse OpenSCAD variable assignments from a .scad file.
+
+    Handles:
+      VAR = 123;                        simple integer
+      VAR = 123.45;                     float
+      VAR = -5.0;                       negative
+      VAR = 2 * OTHER;                  binary expression (if OTHER parsed)
+      VAR = 2 * A + B + 3;             multi-term arithmetic
+      VAR = OTHER + 10;                 addition
+      VAR = OTHER / 2;                  division
+      VAR = OTHER - 3;                  subtraction
+      VAR = [180, 300, 60];             array of numbers
+      VAR = OTHER;                      alias
+      VAR = sqrt(3);                    OpenSCAD math builtins
+
+    Uses two-pass resolution: first pass parses what it can,
+    second pass resolves dependencies that were missing on first pass.
+
+    Skips:
+      // comments, /* block starts, function, module, if, echo, $fn, $t lines
+    """
+    if not config_path.exists():
+        return None
+
+    skip_prefixes = ("//", "/*", "function", "module", "if", "echo", "for", "let")
+    skip_vars = {"$fn", "$t", "$fa", "$fs"}
+
+    # Extract all variable assignment lines first
+    assignments = []  # list of (var_name, rhs_string)
+    with open(config_path, "r", encoding="utf-8", errors="replace") as f:
+        for line in f:
+            line = line.strip()
+
+            # Skip empty, comments, structural keywords
+            if not line or line.startswith(skip_prefixes):
+                continue
+
+            # Strip inline comments: VAR = 123; // comment
+            if "//" in line:
+                line = line[:line.index("//")].strip()
+
+            # Match: VAR_NAME = <something>;
+            m = re.match(r'^([A-Z_][A-Z0-9_]*)\s*=\s*(.+?)\s*;', line)
+            if not m:
+                continue
+
+            var_name = m.group(1)
+            rhs = m.group(2).strip()
+
+            # Skip special OpenSCAD variables
+            if var_name in skip_vars or var_name.startswith("$"):
+                continue
+
+            assignments.append((var_name, rhs))
+
+    if not assignments:
+        return None
+
+    # Multi-pass resolution: keep trying until no new values resolve
+    parsed = {}
+    max_passes = 4
+    for pass_num in range(max_passes):
+        resolved_this_pass = 0
+        for var_name, rhs in assignments:
+            if var_name in parsed:
+                continue  # already resolved
+            val = _eval_expr(rhs, parsed)
+            if val is not None:
+                parsed[var_name] = val
+                resolved_this_pass += 1
+        if resolved_this_pass == 0:
+            break  # no progress, stop
+
+    return parsed if parsed else None
+
+
+def _eval_expr(expr, known):
+    """Evaluate an OpenSCAD expression string given known variable values.
+
+    Handles arithmetic (+, -, *, /), parenthesized sub-expressions,
+    OpenSCAD builtins (sqrt, PI), array literals, variable references,
+    and boolean literals.
+    """
+    expr = expr.strip()
+
+    # Array literal: [180, 300, 60]
+    m = re.match(r'^\[(.+)\]$', expr)
+    if m:
+        try:
+            items = [x.strip() for x in m.group(1).split(",")]
+            nums = []
+            for item in items:
+                v = _eval_expr(item, known)
+                if v is not None and isinstance(v, (int, float)):
+                    nums.append(v)
+                else:
+                    return None
+            return nums
+        except Exception:
+            return None
+
+    # Boolean literals
+    if expr == "true":
+        return True
+    if expr == "false":
+        return False
+
+    # Try evaluating as arithmetic expression
+    val = _eval_arithmetic(expr, known)
+    return val
+
+
+def _eval_arithmetic(expr, known):
+    """Evaluate an arithmetic expression with +, -, *, / and parentheses.
+
+    Tokenizes the expression and evaluates using standard precedence:
+      * and / bind tighter than + and -
+    """
+    tokens = _tokenize(expr, known)
+    if tokens is None:
+        return None
+    try:
+        result, pos = _parse_add_sub(tokens, 0)
+        if pos == len(tokens):
+            return result
+        return None  # leftover tokens
+    except Exception:
+        return None
+
+
+def _tokenize(expr, known):
+    """Tokenize an OpenSCAD arithmetic expression into numbers, operators, and parens.
+
+    Resolves:
+      - Numeric literals (int, float, negative)
+      - Variable references (looked up in known)
+      - OpenSCAD builtins: sqrt(), PI
+      - Operators: +, -, *, /
+      - Parentheses: (, )
+      - Ternary expressions are NOT supported (returns None)
+    """
+    tokens = []
+    i = 0
+    s = expr.strip()
+
+    # Bail on ternary expressions and conditionals
+    if "?" in s or ":" in s:
+        return None
+
+    while i < len(s):
+        c = s[i]
+
+        # Whitespace
+        if c in " \t":
+            i += 1
+            continue
+
+        # Operators and parens
+        if c in "+-*/()":
+            tokens.append(c)
+            i += 1
+            continue
+
+        # Number (possibly negative, but only at start or after operator/open-paren)
+        if c.isdigit() or c == ".":
+            j = i
+            while j < len(s) and (s[j].isdigit() or s[j] == "."):
+                j += 1
+            tok = s[i:j]
+            n = _try_number(tok)
+            if n is None:
+                return None
+            tokens.append(n)
+            i = j
+            continue
+
+        # Identifier (variable or builtin function)
+        if c.isalpha() or c == "_":
+            j = i
+            while j < len(s) and (s[j].isalnum() or s[j] == "_"):
+                j += 1
+            name = s[i:j]
+            i = j
+
+            # OpenSCAD built-in constants
+            if name == "PI":
+                tokens.append(math.pi)
+                continue
+
+            # OpenSCAD built-in functions: sqrt(expr), abs(expr)
+            if name in ("sqrt", "abs") and i < len(s) and s[i] == "(":
+                # Find matching close paren
+                depth = 0
+                start = i
+                while i < len(s):
+                    if s[i] == "(":
+                        depth += 1
+                    elif s[i] == ")":
+                        depth -= 1
+                        if depth == 0:
+                            break
+                    i += 1
+                if depth != 0:
+                    return None
+                inner = s[start+1:i]
+                i += 1  # skip closing paren
+                inner_val = _eval_arithmetic(inner, known)
+                if inner_val is None:
+                    return None
+                if name == "sqrt":
+                    tokens.append(math.sqrt(inner_val))
+                elif name == "abs":
+                    tokens.append(abs(inner_val))
+                continue
+
+            # Variable reference
+            if name in known:
+                v = known[name]
+                if isinstance(v, (int, float)):
+                    tokens.append(v)
+                    continue
+                else:
+                    return None  # non-numeric variable
+            else:
+                return None  # unknown variable
+
+        # Unknown character
+        return None
+
+    return tokens if tokens else None
+
+
+def _parse_add_sub(tokens, pos):
+    """Parse addition and subtraction (lowest precedence)."""
+    left, pos = _parse_mul_div(tokens, pos)
+    while pos < len(tokens) and tokens[pos] in ("+", "-"):
+        op = tokens[pos]
+        pos += 1
+        right, pos = _parse_mul_div(tokens, pos)
+        if op == "+":
+            left = left + right
+        else:
+            left = left - right
+    return left, pos
+
+
+def _parse_mul_div(tokens, pos):
+    """Parse multiplication and division (higher precedence)."""
+    left, pos = _parse_unary(tokens, pos)
+    while pos < len(tokens) and tokens[pos] in ("*", "/"):
+        op = tokens[pos]
+        pos += 1
+        right, pos = _parse_unary(tokens, pos)
+        if op == "*":
+            left = left * right
+        elif right != 0:
+            left = left / right
+        else:
+            raise ValueError("division by zero")
+    return left, pos
+
+
+def _parse_unary(tokens, pos):
+    """Parse unary minus and atoms (numbers, parenthesized expressions)."""
+    if pos < len(tokens) and tokens[pos] == "-":
+        pos += 1
+        val, pos = _parse_unary(tokens, pos)
+        return -val, pos
+    if pos < len(tokens) and tokens[pos] == "+":
+        pos += 1
+        return _parse_unary(tokens, pos)
+    return _parse_atom(tokens, pos)
+
+
+def _parse_atom(tokens, pos):
+    """Parse an atom: number or parenthesized expression."""
+    if pos >= len(tokens):
+        raise ValueError("unexpected end of expression")
+    tok = tokens[pos]
+    if isinstance(tok, (int, float)):
+        return tok, pos + 1
+    if tok == "(":
+        val, pos = _parse_add_sub(tokens, pos + 1)
+        if pos >= len(tokens) or tokens[pos] != ")":
+            raise ValueError("missing closing paren")
+        return val, pos + 1
+    raise ValueError(f"unexpected token: {tok}")
+
+
+def _try_number(s):
+    """Try parsing a string as int or float. Returns None on failure."""
+    s = s.strip()
+    try:
+        if "." in s:
+            return float(s)
+        return int(s)
+    except (ValueError, TypeError):
+        return None
+
+
+def auto_detect_config(scad_path):
+    """Auto-detect and parse config values for a given .scad file.
+
+    Strategy:
+      1. If the file IS a config file (name starts with config_), parse it directly.
+      2. Otherwise, scan for 'include <config_*.scad>' and parse that config file
+         from the same directory.
+      3. Map parsed OpenSCAD variable names to the CONFIG dict keys the validator uses.
+      4. Return merged dict (parsed values override defaults) or None if nothing found.
+    """
+    scad_path = Path(scad_path).resolve()
+    scad_dir = scad_path.parent
+
+    config_file = None
+
+    # Case 1: the file itself is a config
+    if scad_path.name.startswith("config_"):
+        config_file = scad_path
+    else:
+        # Case 2: look for include <config_*.scad>
+        try:
+            with open(scad_path, "r", encoding="utf-8", errors="replace") as f:
+                for line in f:
+                    m = re.match(r'^\s*include\s*<(config_[^>]+\.scad)>', line)
+                    if m:
+                        config_file = scad_dir / m.group(1)
+                        break
+        except Exception:
+            return None
+
+    if config_file is None or not config_file.exists():
+        return None
+
+    raw = parse_scad_config(config_file)
+    if not raw:
+        return None
+
+    # Build CONFIG dict from parsed values
+    # Direct mappings (OpenSCAD name -> CONFIG key)
+    direct_map = {
+        "HEX_R": "HEX_R",
+        "HELIX_ANGLES": "HELIX_ANGLES",
+        "HELIX_LENGTH": "HELIX_LENGTH",
+        "JOURNAL_LENGTH": "JOURNAL_LENGTH",
+        "JOURNAL_EXT": "JOURNAL_EXT",
+        "BEARING_OD": "BEARING_OD",
+        "BEARING_ID": "BEARING_ID",
+        "BEARING_W": "BEARING_W",
+        "BEARING_WIDTH": "BEARING_W",
+        "ARM_W": "ARM_W",
+        "ARM_H": "ARM_H",
+        "GT2_OD": "GT2_OD",
+        "GT2_BOSS_H": "GT2_BOSS_H",
+        "ECCENTRICITY": "ECCENTRICITY",
+        "TIER_PITCH": "TIER_PITCH",
+        "HOUSING_HEIGHT": "HOUSING_HEIGHT",
+        "SNAP_RING_T": "SNAP_RING_T",
+        "SPACER_T": "SPACER_T",
+        "COLLAR_T": "COLLAR_T",
+        "COLLAR_OD": "COLLAR_OD",
+    }
+
+    config = dict(CONFIG_DEFAULTS)  # start with defaults
+
+    for scad_name, cfg_key in direct_map.items():
+        if scad_name in raw:
+            config[cfg_key] = raw[scad_name]
+
+    # Derived fallbacks — compute if components are available but the
+    # composite variable wasn't directly parsed (e.g., HELIX_LENGTH
+    # depends on NUM_CAMS which is function-derived in OpenSCAD)
+    if "HELIX_LENGTH" not in raw:
+        axial = raw.get("AXIAL_PITCH")
+        num_cams = raw.get("NUM_CAMS")
+        if axial is not None and num_cams is not None:
+            config["HELIX_LENGTH"] = num_cams * axial
+        elif axial is not None and "NUM_CHANNELS" in raw:
+            # NUM_CAMS often equals NUM_CHANNELS
+            config["HELIX_LENGTH"] = raw["NUM_CHANNELS"] * axial
+
+    # Report what was auto-detected
+    config_name = config_file.name
+    detected_keys = [cfg_key for scad_name, cfg_key in direct_map.items() if scad_name in raw]
+    print(f"Config auto-detected: {config_name} ({len(detected_keys)} values)")
+    if detected_keys:
+        print(f"  Keys: {', '.join(sorted(detected_keys))}")
+
+    return config
+
 
 # ============================================================
 # ECHO PARSER
@@ -156,17 +549,20 @@ def shaft_proj(hx, hy, sdx, sdy, px, py):
     return (px - hx) * sdx + (py - hy) * sdy
 
 
-results = []
+def run_checks(markers, helixes, dampeners, tip_bridges, config_vals, config):
+    """Run all geometry constraint checks. Returns (all_pass, results_list)."""
+    results = []
 
-def check(name, condition, detail=""):
-    status = "PASS" if condition else "FAIL"
-    results.append((status, name, detail))
-    sym = "OK" if condition else "XX"
-    print(f"  [{sym}] {name}: {detail}")
-    return condition
+    def check(name, condition, detail=""):
+        status = "PASS" if condition else "FAIL"
+        results.append((status, name, detail))
+        sym = "OK" if condition else "XX"
+        print(f"  [{sym}] {name}: {detail}")
+        return condition
 
+    # Compute derived values from the active config
+    journal_total_reach = config["HELIX_LENGTH"] / 2 + config["JOURNAL_LENGTH"] + config["JOURNAL_EXT"]
 
-def run_checks(markers, helixes, dampeners, tip_bridges, config_vals):
     print("\n" + "=" * 60)
     print("GEOMETRY CONSTRAINT VALIDATION")
     print("=" * 60)
@@ -221,10 +617,10 @@ def run_checks(markers, helixes, dampeners, tip_bridges, config_vals):
                 continue
             pb = markers[prefix]
             proj = shaft_proj(h["cx"], h["cy"], sdx, sdy, pb["x"], pb["y"])
-            expected = sign * JOURNAL_TOTAL_REACH
+            expected = sign * journal_total_reach
             check(f"H{hi} {side} PB at journal reach",
-                  abs(abs(proj) - JOURNAL_TOTAL_REACH) < 20,
-                  f"proj={proj:.1f}mm (expect ~{expected:.0f}mm, reach={JOURNAL_TOTAL_REACH}mm)")
+                  abs(abs(proj) - journal_total_reach) < 20,
+                  f"proj={proj:.1f}mm (expect ~{expected:.0f}mm, reach={journal_total_reach}mm)")
 
     # ----------------------------------------------------------
     # CHECK 4: Bearing Z matches cam Z
@@ -246,10 +642,6 @@ def run_checks(markers, helixes, dampeners, tip_bridges, config_vals):
     # CHECK 5: GT2 pulley clears arm width
     # ----------------------------------------------------------
     print("\n--- CHECK 5: GT2 Pulley Arm Clearance ---")
-    # GT2 position on shaft axis must be far enough from helix center
-    # that the pulley body doesn't intersect any arm beam.
-    # Minimum: GT2 must be outboard of PB housing (already on shaft axis at ±251mm)
-    # Check: GT2 marker proj along shaft > JOURNAL_TOTAL_REACH + clearance
     for hi in [1, 2, 3]:
         if hi not in helixes:
             continue
@@ -263,17 +655,15 @@ def run_checks(markers, helixes, dampeners, tip_bridges, config_vals):
         gt2 = markers[gt2_key]
         sdx, sdy = shaft_dir(h["angle"])
         proj = shaft_proj(h["cx"], h["cy"], sdx, sdy, gt2["x"], gt2["y"])
-        # GT2 should be at JOURNAL_TOTAL_REACH + bearing_half + snap + spacer + GT2/2
-        # Just check it's beyond the bearing position
         check(f"H{hi} GT2 beyond bearing",
-              abs(proj) > JOURNAL_TOTAL_REACH,
-              f"GT2 proj={proj:.1f}mm, bearing at {JOURNAL_TOTAL_REACH}mm")
+              abs(proj) > journal_total_reach,
+              f"GT2 proj={proj:.1f}mm, bearing at {journal_total_reach}mm")
 
     # ----------------------------------------------------------
     # CHECK 6: Dampener at tier Z (NOT cam Z)
     # ----------------------------------------------------------
     print("\n--- CHECK 6: Dampener Z = Tier Z ---")
-    tier_z_map = {1: CONFIG["TIER_PITCH"], 2: 0, 3: -CONFIG["TIER_PITCH"]}
+    tier_z_map = {1: config["TIER_PITCH"], 2: 0, 3: -config["TIER_PITCH"]}
     for hi in [1, 2, 3]:
         if hi in dampeners:
             expected_z = tier_z_map[hi]
@@ -296,7 +686,7 @@ def run_checks(markers, helixes, dampeners, tip_bridges, config_vals):
     for hi in [1, 2, 3]:
         if f"H{hi}" in markers:
             hm = markers[f"H{hi}"]
-            gap = hm["r"] - CONFIG["HEX_R"]
+            gap = hm["r"] - config["HEX_R"]
             check(f"H{hi} gap to hex",
                   gap > 40,
                   f"gap={gap:.0f}mm (need >40mm for rib+dampener+clearance)")
@@ -308,7 +698,6 @@ def run_checks(markers, helixes, dampeners, tip_bridges, config_vals):
     for hi in [1, 2, 3]:
         if hi in tip_bridges:
             tb_z = tip_bridges[hi]["z"]
-            # With cams at Z=0, tip bridges should be at Z=0
             check(f"TipBridge H{hi} Z",
                   True,  # just report
                   f"Z={tb_z} (for reference)")
@@ -335,7 +724,7 @@ def run_checks(markers, helixes, dampeners, tip_bridges, config_vals):
     print(f"RESULTS: {passes} PASS, {fails} FAIL, {len(results)} total")
     print(f"{'=' * 60}")
 
-    return fails == 0
+    return fails == 0, results
 
 
 # ============================================================
@@ -348,6 +737,12 @@ def compile_and_validate(scad_file, do_render=False):
         return 2
 
     print(f"Compiling: {scad_path.name}")
+
+    # Auto-detect config from the .scad file
+    config = auto_detect_config(scad_path)
+    if config is None:
+        print(f"Config auto-detect: no config found, using V4 defaults")
+        config = dict(CONFIG_DEFAULTS)
 
     # Compile to CSG (fast, gets all echoes)
     csg_out = scad_path.with_suffix(".test.csg")
@@ -383,7 +778,7 @@ def compile_and_validate(scad_file, do_render=False):
     markers, helixes, dampeners, tip_bridges, config_vals = parse_echos(echo_lines)
     print(f"Parsed: {len(markers)} markers, {len(helixes)} helixes, {len(dampeners)} dampeners")
 
-    all_pass = run_checks(markers, helixes, dampeners, tip_bridges, config_vals)
+    all_pass, results = run_checks(markers, helixes, dampeners, tip_bridges, config_vals, config)
 
     # Optional render
     if do_render:
@@ -408,6 +803,7 @@ def compile_and_validate(scad_file, do_render=False):
     with open(results_file, "w") as f:
         json.dump({
             "file": str(scad_path),
+            "config_source": config.get("_source", "defaults"),
             "markers": markers,
             "helixes": helixes,
             "dampeners": dampeners,
