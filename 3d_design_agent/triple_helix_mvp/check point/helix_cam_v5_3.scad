@@ -126,9 +126,9 @@ module helix_assembly_v5(t = 0) {
                 translate([SHAFT_DIA/2 - D_FLAT_DEPTH, -SHAFT_DIA, -1])
                     cube([D_FLAT_DEPTH + 1, SHAFT_DIA * 2, _total_shaft + 2]);
 
-                // E-clip groove A (drive end, inboard of carrier plate)
+                // E-clip groove A (drive end, INSIDE edge of carrier node)
                 // Carrier A center at Z = SHAFT_EXT_BEYOND from shaft start
-                // Groove sits just inboard of carrier face (no boss)
+                // E-clip sits right at corridor face, catches bearing inner race
                 _eclip_a_z = SHAFT_EXT_BEYOND + ECLIP_INBOARD_OFFSET;
                 translate([0, 0, _eclip_a_z - ECLIP_GROOVE_W/2])
                     difference() {
@@ -136,7 +136,7 @@ module helix_assembly_v5(t = 0) {
                         cylinder(d = ECLIP_GROOVE_DIA, h = ECLIP_GROOVE_W, $fn = 32);
                     }
 
-                // E-clip groove B (free end, inboard of carrier plate)
+                // E-clip groove B (free end, INSIDE edge of carrier node)
                 _eclip_b_z = _ext_in + HELIX_LENGTH + SHAFT_EXT_TO_CARRIER
                              - ECLIP_INBOARD_OFFSET;
                 translate([0, 0, _eclip_b_z - ECLIP_GROOVE_W/2])
@@ -149,7 +149,7 @@ module helix_assembly_v5(t = 0) {
 
     // E-clip retainer visualizations (torus-like rings on shaft)
     if (SHOW_RETAINERS) {
-        // E-clip A (drive end, inboard of carrier plate A)
+        // E-clip A (drive end, INSIDE edge of carrier node A)
         _eclip_a_pos = -SHAFT_EXT_TO_CARRIER + ECLIP_INBOARD_OFFSET;
         color([0.8, 0.8, 0.2, 1.0])
         translate([0, 0, _eclip_a_pos])
@@ -159,7 +159,7 @@ module helix_assembly_v5(t = 0) {
                          center = true, $fn = 24);
             }
 
-        // E-clip B (free end, inboard of carrier plate B)
+        // E-clip B (free end, INSIDE edge of carrier node B)
         _eclip_b_pos = HELIX_LENGTH + SHAFT_EXT_TO_CARRIER - ECLIP_INBOARD_OFFSET;
         color([0.8, 0.8, 0.2, 1.0])
         translate([0, 0, _eclip_b_pos])

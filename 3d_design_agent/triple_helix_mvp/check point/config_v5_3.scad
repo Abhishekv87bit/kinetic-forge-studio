@@ -290,8 +290,7 @@ HELIX_LENGTH      = NUM_CAMS * AXIAL_PITCH;            // 154mm (11 × 14)
 
 // Shaft extension — from last disc to frame bearing carrier plate
 SHAFT_EXT_TO_CARRIER = 120.0; // mm from last disc face to carrier plate center
-SHAFT_EXT_BEYOND     = 15.0;  // mm beyond carrier for retainer/pulley
-SHAFT_TOTAL_LENGTH   = HELIX_LENGTH + 2 * (SHAFT_EXT_TO_CARRIER + SHAFT_EXT_BEYOND);  // 424mm
+// SHAFT_EXT_BEYOND defined below (after GT2 params, depends on GT2_BOSS_H)
 
 // Shaft retainer — E-clip groove on shaft beyond each carrier plate (R3)
 // DIN 6799 E-8 for 8mm shaft
@@ -300,16 +299,23 @@ ECLIP_GROOVE_W       = 0.9;              // groove width for E-8 clip
 ECLIP_OD             = 15.0;             // E-clip outer diameter (visual only)
 
 // Shaft axial retention — E-clips only (simplest, no printed boss)
-// Two E-clips per shaft: one on each side of carrier plate, just inboard.
+// Two E-clips per shaft: one on the INSIDE edge of each carrier node.
+// "Inside edge" = corridor side, facing disc stack.
 // E-clip catches against the 688ZZ bearing inner race shoulder.
 //
-// Layout (per carrier, from outside looking in):
-//   shaft end → [carrier plate with 688ZZ press-fit] → E-clip → gap → disc stack
+// Layout (per carrier, outside→inside):
+//   GT2 pulley | arm outside face | [carrier node + 688ZZ] | E-clip | corridor → disc stack
 //
 // ECLIP_INBOARD_OFFSET = distance from carrier plate center to E-clip groove
-// = half carrier plate thickness + 2mm clearance
+// = half carrier plate thickness + 1mm clearance (right at inside face)
 CARRIER_PLATE_T_CFG  = 20;                    // carrier plate thickness (also in hex_frame)
-ECLIP_INBOARD_OFFSET = CARRIER_PLATE_T_CFG / 2 + 2;  // 12mm from carrier center
+ECLIP_INBOARD_OFFSET = CARRIER_PLATE_T_CFG / 2 + 1;  // 11mm from carrier center (inside edge)
+
+// GT2 pulley sits flush on OUTSIDE edge of carrier (pushed toward camshaft center)
+// SHAFT_EXT_BEYOND = just enough for GT2 boss + 1mm clearance
+_GT2_BOSS_H_REF      = 8;               // must match GT2_BOSS_H (avoids forward reference)
+SHAFT_EXT_BEYOND     = _GT2_BOSS_H_REF + 1;  // 9mm (was 15mm — pulley flush with arm outside face)
+SHAFT_TOTAL_LENGTH   = HELIX_LENGTH + 2 * (SHAFT_EXT_TO_CARRIER + SHAFT_EXT_BEYOND);  // 412mm
 
 // Follower ring — rides on bearing OUTER race, cable eyelet
 // No arm needed — cable attaches directly to follower ring eyelet
