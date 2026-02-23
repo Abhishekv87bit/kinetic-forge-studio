@@ -1,6 +1,7 @@
 import { useProjectStore } from "./stores/projectStore";
 import HomeScreen from "./components/HomeScreen";
 import Viewport3D from "./components/Viewport3D";
+import ChatPanel from "./components/ChatPanel";
 
 function Workspace() {
     const { activeProject, goHome } = useProjectStore();
@@ -16,9 +17,8 @@ function Workspace() {
                 <span style={{ fontSize: 12, opacity: 0.6 }}>Gate: {activeProject.gate}</span>
             </header>
             <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-                <div style={{ width: 280, borderRight: "1px solid #333", padding: 16, background: "#16213e", color: "#fff", overflowY: "auto" }}>
-                    <h3>Chat</h3>
-                    <p style={{ opacity: 0.5, fontSize: 14 }}>Type your design intent...</p>
+                <div style={{ width: 280, borderRight: "1px solid #333", padding: 16, background: "#16213e", color: "#fff", display: "flex", flexDirection: "column" }}>
+                    <ChatPanel projectId={activeProject.id} />
                 </div>
                 <div style={{ flex: 1, background: "#0a0a0a" }}>
                     <Viewport3D />
