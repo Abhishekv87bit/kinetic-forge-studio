@@ -1,9 +1,10 @@
-import { useRef, useState, useEffect, useCallback, type JSX } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { Canvas, useLoader, useThree, type ThreeEvent } from "@react-three/fiber";
 import { OrbitControls, Grid } from "@react-three/drei";
 import { GLTFLoader } from "three-stdlib";
 import * as THREE from "three";
 import { useViewportStore } from "../stores/viewportStore";
+import ViewportToolbar, { type ViewMode } from "./ViewportToolbar";
 
 const API_BASE = "http://localhost:8000/api";
 
@@ -49,17 +50,103 @@ function ErrorOverlay({ message }: { message: string }) {
 }
 
 /**
+ * Camera controller that responds to preset view changes.
+ * Lives inside the Canvas to access useThree().
+ */
+function CameraController({ targetPosition }: { targetPosition: [number, number, number] | null }) {
+    const { camera } = useThree();
+
+    useEffect(() => {
+        if (!targetPosition) return;
+        const [x, y, z] = targetPosition;
+        // Scale the preset direction by the camera's current distance to maintain zoom level
+        const currentDist = camera.position.length();
+        const dir = new THREE.Vector3(x, y, z).normalize();
+        const scaledPos = dir.multiplyScalar(Math.max(currentDist, 5));
+
+        camera.position.set(scaledPos.x, scaledPos.y, scaledPos.z);
+        camera.lookAt(0, 0, 0);
+        camera.updateProjectionMatrix();
+    }, [targetPosition, camera]);
+
+    return null;
+}
+
+/**
+ * Applies view mode (solid, wireframe, xray) to all meshes in the scene.
+ * Lives inside the Canvas.
+ */
+function ViewModeController({ scene, viewMode, highlightedUuid }: {
+    scene: THREE.Object3D | null;
+    viewMode: ViewMode;
+    highlightedUuid: string | null;
+}) {
+    const originalMaterials = useRef<Map<string, THREE.Material | THREE.Material[]>>(new Map());
+
+    // Store originals on first load
+    useEffect(() => {
+        if (!scene) return;
+        scene.traverse((child) => {
+            if (child instanceof THREE.Mesh && !originalMaterials.current.has(child.uuid)) {
+                // Clone the material so we have a clean original
+                if (Array.isArray(child.material)) {
+                    originalMaterials.current.set(child.uuid, child.material.map((m: THREE.Material) => m.clone()));
+                } else {
+                    originalMaterials.current.set(child.uuid, child.material.clone());
+                }
+            }
+        });
+    }, [scene]);
+
+    // Apply view mode
+    useEffect(() => {
+        if (!scene) return;
+
+        scene.traverse((child) => {
+            if (!(child instanceof THREE.Mesh)) return;
+
+            // Skip highlighted mesh — it keeps its highlight material
+            if (child.uuid === highlightedUuid) return;
+
+            const original = originalMaterials.current.get(child.uuid);
+            if (!original) return;
+
+            if (viewMode === "solid") {
+                // Restore original material
+                child.material = Array.isArray(original)
+                    ? original.map((m: THREE.Material) => m.clone())
+                    : original.clone();
+            } else if (viewMode === "wireframe") {
+                const mat = new THREE.MeshStandardMaterial({
+                    color: 0x4a9eff,
+                    wireframe: true,
+                });
+                child.material = mat;
+            } else if (viewMode === "xray") {
+                const mat = new THREE.MeshStandardMaterial({
+                    color: 0x4a9eff,
+                    transparent: true,
+                    opacity: 0.25,
+                    depthWrite: false,
+                    side: THREE.DoubleSide,
+                });
+                child.material = mat;
+            }
+        });
+    }, [scene, viewMode, highlightedUuid]);
+
+    return null;
+}
+
+/**
  * Component that loads a GLB from the backend and renders it.
  * Handles click-to-select with raycasting via R3F's built-in event system.
  */
-function GeometryScene({ url }: { url: string }) {
+function GeometryScene({ url, viewMode }: { url: string; viewMode: ViewMode }) {
     const gltf = useLoader(GLTFLoader, url);
     const groupRef = useRef<THREE.Group>(null);
-    const { selectMesh, selectedMesh } = useViewportStore();
+    const { selectMesh } = useViewportStore();
     const [highlightedUuid, setHighlightedUuid] = useState<string | null>(null);
-
-    // Store original materials for unhighlighting
-    const originalMaterials = useRef<Map<string, THREE.Material | THREE.Material[]>>(new Map());
 
     // Fit camera to loaded scene
     const { camera } = useThree();
@@ -82,35 +169,18 @@ function GeometryScene({ url }: { url: string }) {
         }
     }, [gltf, camera]);
 
-    // Collect all meshes for click handling
-    useEffect(() => {
-        if (!gltf.scene) return;
-        gltf.scene.traverse((child) => {
-            if (child instanceof THREE.Mesh) {
-                originalMaterials.current.set(child.uuid, child.material);
-            }
-        });
-    }, [gltf]);
-
-    // Apply highlight to selected mesh, restore others
+    // Apply highlight to selected mesh
     useEffect(() => {
         if (!gltf.scene) return;
         gltf.scene.traverse((child) => {
             if (child instanceof THREE.Mesh) {
                 if (child.uuid === highlightedUuid) {
-                    // Highlight material
                     child.material = new THREE.MeshStandardMaterial({
                         color: 0x4a9eff,
                         emissive: 0x1a3a6e,
                         emissiveIntensity: 0.3,
                         wireframe: false,
                     });
-                } else {
-                    // Restore original
-                    const original = originalMaterials.current.get(child.uuid);
-                    if (original) {
-                        child.material = original;
-                    }
                 }
             }
         });
@@ -145,6 +215,11 @@ function GeometryScene({ url }: { url: string }) {
 
     return (
         <group ref={groupRef}>
+            <ViewModeController
+                scene={gltf.scene}
+                viewMode={viewMode}
+                highlightedUuid={highlightedUuid}
+            />
             <primitive
                 object={gltf.scene}
                 onClick={handleClick}
@@ -161,6 +236,8 @@ interface Viewport3DProps {
 export default function Viewport3D({ projectId }: Viewport3DProps) {
     const { loading, error, setLoading, setError, geometryVersion } = useViewportStore();
     const [geometryUrl, setGeometryUrl] = useState<string | null>(null);
+    const [cameraTarget, setCameraTarget] = useState<[number, number, number] | null>(null);
+    const [viewMode, setViewMode] = useState<ViewMode>("solid");
 
     useEffect(() => {
         if (!projectId) {
@@ -171,7 +248,6 @@ export default function Viewport3D({ projectId }: Viewport3DProps) {
         setLoading(true);
         setError(null);
 
-        // Create a blob URL from the fetched GLB data
         const controller = new AbortController();
         fetch(`${API_BASE}/projects/${projectId}/geometry`, { signal: controller.signal })
             .then((res) => {
@@ -205,17 +281,29 @@ export default function Viewport3D({ projectId }: Viewport3DProps) {
         };
     }, [geometryUrl]);
 
+    const handleSetView = useCallback((position: [number, number, number]) => {
+        // Use a new array reference each time to trigger the effect
+        setCameraTarget([...position]);
+    }, []);
+
     return (
         <div style={{ position: "relative", width: "100%", height: "100%" }}>
             {loading && <LoadingOverlay />}
             {error && <ErrorOverlay message={error} />}
+            <ViewportToolbar
+                onSetView={handleSetView}
+                viewMode={viewMode}
+                onSetViewMode={setViewMode}
+            />
             <Canvas camera={{ position: [3, 3, 3], fov: 50 }}>
                 <ambientLight intensity={0.5} />
                 <directionalLight position={[10, 10, 10]} intensity={0.8} />
                 <directionalLight position={[-5, 5, -5]} intensity={0.3} />
 
+                <CameraController targetPosition={cameraTarget} />
+
                 {geometryUrl ? (
-                    <GeometryScene url={geometryUrl} />
+                    <GeometryScene url={geometryUrl} viewMode={viewMode} />
                 ) : (
                     <FallbackCube />
                 )}
