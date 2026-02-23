@@ -18,6 +18,7 @@ export const projectsApi = {
     lockDecision: (id: string, decisionId: number) =>
         api(`/projects/${id}/decisions/${decisionId}/lock`, { method: "POST" }),
     listComponents: (id: string) => api(`/projects/${id}/components`),
+    getGateStatus: (id: string) => api(`/projects/${id}/gate-status`),
 };
 
 export async function fetchHealth() {

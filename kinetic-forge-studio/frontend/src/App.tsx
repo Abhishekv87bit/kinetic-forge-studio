@@ -1,8 +1,10 @@
+import { useState, useCallback } from "react";
 import { useProjectStore } from "./stores/projectStore";
 import { useViewportStore } from "./stores/viewportStore";
 import HomeScreen from "./components/HomeScreen";
 import Viewport3D from "./components/Viewport3D";
 import ChatPanel from "./components/ChatPanel";
+import GateStatus from "./components/GateStatus";
 
 function SelectedMeshInfo() {
     const selectedMesh = useViewportStore((s) => s.selectedMesh);
@@ -32,8 +34,39 @@ function SelectedMeshInfo() {
     );
 }
 
+const exportButtonEnabled: React.CSSProperties = {
+    padding: "8px 20px",
+    borderRadius: 4,
+    border: "none",
+    background: "#4a9eff",
+    color: "#fff",
+    cursor: "pointer",
+    fontWeight: 600,
+    fontSize: 13,
+};
+
+const exportButtonDisabled: React.CSSProperties = {
+    ...exportButtonEnabled,
+    background: "#333",
+    color: "#666",
+    cursor: "not-allowed",
+    opacity: 0.5,
+};
+
 function Workspace() {
     const { activeProject, goHome } = useProjectStore();
+    const [gatePassed, setGatePassed] = useState(false);
+
+    const handleGateChange = useCallback((passed: boolean) => {
+        setGatePassed(passed);
+    }, []);
+
+    const handleExport = useCallback(() => {
+        if (!gatePassed || !activeProject) return;
+        // Export will be implemented in Phase 7 (Task 27)
+        alert(`Export package for "${activeProject.name}" (not yet implemented -- Phase 7)`);
+    }, [gatePassed, activeProject]);
+
     if (!activeProject) return null;
 
     return (
@@ -43,7 +76,17 @@ function Workspace() {
                     <button onClick={goHome} style={{ background: "none", border: "none", color: "#4a9eff", cursor: "pointer" }}>&#8592; Home</button>
                     <span>{activeProject.name}</span>
                 </div>
-                <span style={{ fontSize: 12, opacity: 0.6 }}>Gate: {activeProject.gate}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <span style={{ fontSize: 12, opacity: 0.6 }}>Gate: {activeProject.gate}</span>
+                    <button
+                        onClick={handleExport}
+                        disabled={!gatePassed}
+                        style={gatePassed ? exportButtonEnabled : exportButtonDisabled}
+                        title={gatePassed ? "Export STEP + STL package" : "Fix validation errors before exporting"}
+                    >
+                        Export
+                    </button>
+                </div>
             </header>
             <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
                 <div style={{ width: 280, borderRight: "1px solid #333", padding: 16, background: "#16213e", color: "#fff", display: "flex", flexDirection: "column" }}>
@@ -55,6 +98,14 @@ function Workspace() {
                 <div style={{ width: 280, borderLeft: "1px solid #333", padding: 16, background: "#16213e", color: "#fff", overflowY: "auto" }}>
                     <h3>Spec Sheet</h3>
                     <SelectedMeshInfo />
+
+                    {/* Gate Status Panel */}
+                    <h4 style={{ marginTop: 16, opacity: 0.7 }}>Validation</h4>
+                    <GateStatus
+                        projectId={activeProject.id}
+                        onGateChange={handleGateChange}
+                    />
+
                     <h4 style={{ marginTop: 16, opacity: 0.7 }}>Decisions ({activeProject.decisions.length})</h4>
                     {activeProject.decisions.map((d) => (
                         <div key={d.id} style={{ padding: 8, marginBottom: 4, background: "#0d1b3e", borderRadius: 4, fontSize: 13 }}>
