@@ -48,7 +48,9 @@ export default function ChatPanel({ projectId }: Props) {
                         alignSelf: m.role === "user" ? "flex-end" : "flex-start",
                         maxWidth: "90%",
                     }}>
-                        {m.content}
+                        {m.content.split("\n").map((line, j) => (
+                            <span key={j}>{line}{j < m.content.split("\n").length - 1 && <br />}</span>
+                        ))}
                     </div>
                 ))}
                 <div ref={bottomRef} />
@@ -69,11 +71,31 @@ export default function ChatPanel({ projectId }: Props) {
             </div>
             <div style={{ marginTop: 8 }}>
                 <FileUpload projectId={projectId} onUpload={(result) => {
+                    const a = result.analysis;
+                    let analysisText: string;
+                    if (typeof a === "string") {
+                        analysisText = a;
+                    } else if (a?.error) {
+                        analysisText = `⚠️ Analysis failed: ${a.error}`;
+                    } else if (a?.face_count !== undefined) {
+                        // STL analysis
+                        const bb = a.bounding_box;
+                        analysisText = `📐 STL Analysis:\n• ${a.face_count.toLocaleString()} faces, ${a.vertex_count.toLocaleString()} vertices\n• Size: ${bb?.x_size?.toFixed(1)} × ${bb?.y_size?.toFixed(1)} × ${bb?.z_size?.toFixed(1)} mm\n• Volume: ${a.volume?.toFixed(1)} mm³\n• Watertight: ${a.is_watertight ? "✅ Yes" : "❌ No"}`;
+                    } else if (a?.body_count !== undefined) {
+                        // STEP analysis
+                        analysisText = `📐 STEP Analysis:\n• ${a.body_count} bodies\n• ${a.total_faces} faces (${Object.entries(a.face_types || {}).map(([k,v]) => `${v} ${k}`).join(", ")})\n• Volume: ${a.volume?.toFixed(1)} mm³`;
+                    } else if (a?.mechanism_type !== undefined) {
+                        // Photo analysis
+                        analysisText = `📸 Photo Analysis:\n• Mechanism: ${a.mechanism_type}\n• Motion: ${a.motion_type}\n• Components: ~${a.component_count}\n• Materials: ${a.materials?.join(", ") || "unknown"}`;
+                    } else if (a?.cycle_period !== undefined) {
+                        // Video analysis
+                        analysisText = `🎬 Video Analysis:\n• Cycle: ${a.cycle_period}s\n• Tempo: ${a.tempo}\n• Motions: ${a.motion_types?.join(", ")}`;
+                    } else {
+                        analysisText = a?.message || JSON.stringify(a, null, 2);
+                    }
                     setMessages((m) => [...m,
                         { role: "user", content: `Uploaded: ${result.filename}` },
-                        { role: "assistant", content: typeof result.analysis === "string"
-                            ? result.analysis
-                            : result.analysis?.message || JSON.stringify(result.analysis) },
+                        { role: "assistant", content: analysisText },
                     ]);
                 }} />
             </div>
