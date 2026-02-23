@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import FileUpload from "./FileUpload";
 
 interface Message {
     role: "user" | "assistant";
@@ -69,6 +70,14 @@ export default function ChatPanel({ projectId }: Props) {
                     style={{ padding: "8px 12px", borderRadius: 4, background: "#4a9eff", color: "#fff", border: "none", cursor: "pointer" }}>
                     Send
                 </button>
+            </div>
+            <div style={{ marginTop: 8 }}>
+                <FileUpload projectId={projectId} onUpload={(result) => {
+                    setMessages((m) => [...m,
+                        { role: "user", content: `Uploaded: ${result.filename}` },
+                        { role: "assistant", content: result.analysis },
+                    ]);
+                }} />
             </div>
         </div>
     );
