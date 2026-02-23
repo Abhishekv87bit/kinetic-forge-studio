@@ -1,0 +1,19 @@
+field: teeth
+priority: 6
+question: "How many teeth on the primary gear? (Determines gear ratio and size.)"
+options:
+  - value: 20
+    label: "20 teeth"
+    impact: "Small gear. Quick ratio with small module."
+  - value: 36
+    label: "36 teeth"
+    impact: "Medium gear. Good balance of size and ratio."
+  - value: 48
+    label: "48 teeth"
+    impact: "Large gear. Smooth meshing, bigger envelope."
+  - value: 0
+    label: "Auto-calculate"
+    impact: "Let the system choose based on envelope and module."
+default: 0
+allow_custom: true
+custom_prompt: "Enter the number of teeth:"

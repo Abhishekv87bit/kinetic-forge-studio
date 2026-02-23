@@ -1,0 +1,29 @@
+field: mechanism_type
+priority: 1
+question: "What type of mechanism would you like? This determines the core motion pattern."
+options:
+  - value: planetary
+    label: Planetary Gear
+    impact: "Compact speed reduction or differential motion. Great for enclosed sculptural forms."
+  - value: four_bar
+    label: Four-Bar Linkage
+    impact: "Converts rotation to complex curves. Classic kinetic sculpture motion."
+  - value: scotch_yoke
+    label: Scotch Yoke
+    impact: "Pure sinusoidal linear motion from rotation. Simple and smooth."
+  - value: wave
+    label: Wave Mechanism
+    impact: "Cascading motion across multiple elements. Organic, flowing feel."
+  - value: cam
+    label: Cam & Follower
+    impact: "Programmable motion profile via cam shape. Precise control."
+  - value: geneva
+    label: Geneva Drive
+    impact: "Intermittent indexing motion. Dramatic stop-and-go effect."
+  - value: linkage
+    label: General Linkage
+    impact: "Multi-bar mechanism. Flexible path generation."
+  - value: gear_train
+    label: Gear Train
+    impact: "Speed/torque conversion. Visible meshing gears as aesthetic."
+default: four_bar

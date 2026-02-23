@@ -1,0 +1,17 @@
+field: material
+priority: 2
+question: "What material will this be made from? This affects tolerances and design constraints."
+options:
+  - value: PLA
+    label: PLA (3D Printed)
+    impact: "Fast prototyping, 0.2mm tolerance, limited strength. Good for iteration."
+  - value: wood
+    label: Wood (Laser Cut / CNC)
+    impact: "Warm aesthetic, flat-pack assembly. Birch plywood typical."
+  - value: metal
+    label: Metal (CNC / Welded)
+    impact: "Production quality, tight tolerances, durable. Steel or aluminum."
+  - value: acrylic
+    label: Acrylic (Laser Cut)
+    impact: "Transparent, precise, brittle. Great for layered visible mechanisms."
+default: PLA

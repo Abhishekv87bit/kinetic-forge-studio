@@ -1,0 +1,22 @@
+field: envelope_mm
+priority: 3
+question: "How large should the overall mechanism be? (This is the bounding envelope.)"
+options:
+  - value: 30
+    label: "Tiny (~30mm)"
+    impact: "Miniature mechanism. Requires very fine tolerances."
+  - value: 70
+    label: "Compact (~70mm)"
+    impact: "Desktop size. Common for FDM prototypes."
+  - value: 150
+    label: "Medium (~150mm)"
+    impact: "Comfortable working size. Room for detail."
+  - value: 300
+    label: "Large (~300mm)"
+    impact: "Table-scale sculpture. Impressive presence."
+  - value: 500
+    label: "Custom (enter mm)"
+    impact: "Specify your exact dimension."
+default: 70
+allow_custom: true
+custom_prompt: "Enter the envelope size in millimeters:"

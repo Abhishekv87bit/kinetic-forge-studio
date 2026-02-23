@@ -1,0 +1,245 @@
+"""Tests for the orchestrator pipeline."""
+
+import pytest
+from httpx import AsyncClient, ASGITransport
+
+from app.orchestrator.pipeline import Pipeline, PipelineResponse
+from app.translator.classifier import KeywordClassifier
+from app.translator.question_tree import QuestionTree
+
+
+# ---------------------------------------------------------------------------
+# Unit tests for Pipeline class
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def pipeline():
+    return Pipeline()
+
+
+def test_pipeline_init(pipeline):
+    """Pipeline initializes with empty spec and history."""
+    assert pipeline.spec == {}
+    assert pipeline.history == []
+
+
+def test_process_full_spec(pipeline):
+    """A message with all required fields should return a generation response."""
+    resp = pipeline.process("compact planetary gear 70mm PLA single motor")
+    assert resp.response_type == "generation"
+    assert "Spec complete" in resp.message
+    assert pipeline.spec["mechanism_type"] == "planetary"
+    assert pipeline.spec["envelope_mm"] == 70.0
+    assert pipeline.spec["material"] == "PLA"
+    assert pipeline.spec["motor_count"] == 1
+
+
+def test_process_partial_spec_asks_question(pipeline):
+    """A message missing required fields should return a question."""
+    resp = pipeline.process("planetary gear")
+    assert resp.response_type == "question"
+    assert resp.question is not None or "need" in resp.message.lower()
+
+
+def test_process_incremental_spec(pipeline):
+    """Multiple messages should accumulate spec fields."""
+    resp1 = pipeline.process("I want a planetary gear")
+    assert resp1.response_type == "question"
+    assert pipeline.spec["mechanism_type"] == "planetary"
+
+    resp2 = pipeline.process("make it 70mm in PLA")
+    assert pipeline.spec["envelope_mm"] == 70.0
+    assert pipeline.spec["material"] == "PLA"
+
+    # Still missing motor_count
+    assert resp2.response_type == "question"
+
+    resp3 = pipeline.process("single motor")
+    assert pipeline.spec["motor_count"] == 1
+    assert resp3.response_type == "generation"
+
+
+def test_spec_updates_tracked(pipeline):
+    """Spec updates should be returned in the response."""
+    resp = pipeline.process("planetary gear 70mm")
+    updates = resp.spec_updates
+    fields_updated = [u["field"] for u in updates]
+    assert "mechanism_type" in fields_updated
+    assert "envelope_mm" in fields_updated
+
+
+def test_feelings_accumulated(pipeline):
+    """Feelings should accumulate across messages."""
+    pipeline.process("organic flowing wave sculpture")
+    assert "organic" in pipeline.spec.get("feelings", [])
+    assert "flowing" in pipeline.spec.get("feelings", [])
+
+
+def test_classification_included(pipeline):
+    """Classification result should be in the response."""
+    resp = pipeline.process("planetary gear")
+    assert resp.classification is not None
+    assert "fields" in resp.classification
+
+
+def test_apply_answer_continues_flow(pipeline):
+    """Applying an answer should check unknowns and continue."""
+    # Start with nothing
+    resp = pipeline.process("something vague")
+    assert resp.response_type == "question"
+
+    # Apply answer for mechanism_type
+    resp2 = pipeline.apply_answer("mechanism_type", "planetary")
+    assert pipeline.spec["mechanism_type"] == "planetary"
+    # Should still have unknowns
+    assert resp2.response_type == "question"
+
+
+def test_apply_answer_completes_spec(pipeline):
+    """Applying answers until spec is complete should trigger generation."""
+    pipeline.apply_answer("mechanism_type", "wave")
+    pipeline.apply_answer("material", "PLA")
+    pipeline.apply_answer("envelope_mm", 150)
+    resp = pipeline.apply_answer("motor_count", 1)
+    assert resp.response_type == "generation"
+    assert "Spec complete" in resp.message
+
+
+def test_reset_clears_state(pipeline):
+    """Reset should clear spec and history."""
+    pipeline.process("planetary gear 70mm PLA single motor")
+    assert len(pipeline.spec) > 0
+    assert len(pipeline.history) > 0
+    pipeline.reset()
+    assert pipeline.spec == {}
+    assert pipeline.history == []
+
+
+def test_pipeline_response_to_dict(pipeline):
+    """PipelineResponse serialization."""
+    resp = pipeline.process("wave sculpture wood single motor 100mm")
+    d = resp.to_dict()
+    assert "message" in d
+    assert "response_type" in d
+    assert "spec_updates" in d
+
+
+def test_empty_message(pipeline):
+    """Empty message should ask for information."""
+    resp = pipeline.process("")
+    assert resp.response_type == "question"
+    assert len(resp.to_dict()["spec_updates"]) == 0
+
+
+def test_repeated_field_updates(pipeline):
+    """Sending a different value for the same field should update it."""
+    pipeline.process("planetary gear")
+    assert pipeline.spec["mechanism_type"] == "planetary"
+    pipeline.process("actually make it a wave sculpture with ripple motion")
+    assert pipeline.spec["mechanism_type"] == "wave"
+
+
+# ---------------------------------------------------------------------------
+# Integration tests via HTTP (chat route wired to pipeline)
+# ---------------------------------------------------------------------------
+
+from app.main import app
+from app.routes.chat import _pipelines
+
+
+@pytest.fixture(autouse=True)
+def clear_pipelines():
+    """Clear in-memory pipelines between tests."""
+    _pipelines.clear()
+    yield
+    _pipelines.clear()
+
+
+@pytest.mark.asyncio
+async def test_chat_endpoint_classification():
+    """POST to chat should return pipeline response with classification."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.post(
+            "/api/projects/test123/chat",
+            json={"content": "planetary gear 70mm PLA single motor"}
+        )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["response_type"] == "generation"
+    assert "user_message" in data
+    assert data["user_message"] == "planetary gear 70mm PLA single motor"
+
+
+@pytest.mark.asyncio
+async def test_chat_endpoint_question_flow():
+    """Chat should return questions when spec is incomplete."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.post(
+            "/api/projects/test456/chat",
+            json={"content": "I want a wave sculpture"}
+        )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["response_type"] == "question"
+
+
+@pytest.mark.asyncio
+async def test_chat_answer_endpoint():
+    """POST to /answer should apply an answer and continue."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # First send a message to create the pipeline
+        await client.post(
+            "/api/projects/test789/chat",
+            json={"content": "I want a sculpture"}
+        )
+        # Then answer a question
+        resp = await client.post(
+            "/api/projects/test789/chat/answer",
+            json={"field": "mechanism_type", "value": "planetary"}
+        )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["response_type"] == "question"  # still more unknowns
+
+
+@pytest.mark.asyncio
+async def test_chat_reset_endpoint():
+    """POST to /reset should clear the pipeline."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # Send a message first
+        await client.post(
+            "/api/projects/resettest/chat",
+            json={"content": "planetary gear 70mm PLA single motor"}
+        )
+        # Reset
+        resp = await client.post("/api/projects/resettest/chat/reset")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "reset"
+
+
+@pytest.mark.asyncio
+async def test_chat_multi_turn_conversation():
+    """Multi-turn conversation should accumulate spec and eventually generate."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        pid = "multiturn"
+
+        # Turn 1: mechanism
+        r1 = await client.post(f"/api/projects/{pid}/chat", json={"content": "planetary gear"})
+        d1 = r1.json()
+        assert d1["response_type"] == "question"
+
+        # Turn 2: size + material
+        r2 = await client.post(f"/api/projects/{pid}/chat", json={"content": "make it 70mm in PLA"})
+        d2 = r2.json()
+        assert d2["response_type"] == "question"  # still need motor_count
+
+        # Turn 3: motor
+        r3 = await client.post(f"/api/projects/{pid}/chat", json={"content": "single motor"})
+        d3 = r3.json()
+        assert d3["response_type"] == "generation"

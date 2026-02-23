@@ -1,0 +1,14 @@
+field: motor_count
+priority: 4
+question: "How many motors should drive this mechanism?"
+options:
+  - value: 1
+    label: Single Motor
+    impact: "Simpler design, all motion derived from one source. Recommended for most sculptures."
+  - value: 2
+    label: Dual Motor
+    impact: "Independent motion axes. More complex but allows counter-rotation or speed variation."
+  - value: 0
+    label: Hand-Cranked / Passive
+    impact: "No motor. Human-powered or gravity-driven."
+default: 1

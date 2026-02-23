@@ -1,0 +1,301 @@
+# Kinetic Forge Studio — Taxonomy for keyword classification
+# Maps user-facing keywords to structured design fields.
+
+mechanism_types:
+  planetary:
+    keywords:
+      - planetary
+      - epicyclic
+      - sun gear
+      - sun and planet
+      - ring gear
+      - planet gear
+      - planets
+    description: Planetary/epicyclic gear train
+  four_bar:
+    keywords:
+      - four bar
+      - four-bar
+      - 4-bar
+      - 4bar
+      - crank rocker
+      - grashof
+      - coupler
+    description: Four-bar linkage mechanism
+  scotch_yoke:
+    keywords:
+      - scotch yoke
+      - scotch-yoke
+      - slider crank
+      - slider-crank
+      - reciprocating
+    description: Scotch yoke or slider-crank
+  wave:
+    keywords:
+      - wave
+      - waves
+      - undulating
+      - ripple
+      - ocean
+      - sinusoidal
+    description: Wave-based motion mechanism
+  cam:
+    keywords:
+      - cam
+      - cam follower
+      - eccentric
+      - lobe
+      - profile cam
+    description: Cam and follower mechanism
+  geneva:
+    keywords:
+      - geneva
+      - geneva drive
+      - intermittent
+      - maltese cross
+      - indexing
+    description: Geneva drive (intermittent motion)
+  linkage:
+    keywords:
+      - linkage
+      - mechanism
+      - kinematic chain
+      - multi-bar
+      - parallel motion
+    description: General linkage mechanism
+  rack_and_pinion:
+    keywords:
+      - rack and pinion
+      - rack-and-pinion
+      - rack & pinion
+      - rack pinion
+      - linear gear
+      - rack gear
+      - pinion gear
+      - steering rack
+    description: Rack and pinion (rotary to linear motion)
+  gear_train:
+    keywords:
+      - gear train
+      - gear-train
+      - reduction
+      - gear ratio
+      - compound gear
+    description: Simple or compound gear train
+  ratchet:
+    keywords:
+      - ratchet
+      - pawl
+      - one-way
+      - anti-reverse
+    description: Ratchet mechanism
+  belt_drive:
+    keywords:
+      - belt
+      - belt drive
+      - pulley
+      - timing belt
+      - GT2
+    description: Belt and pulley drive
+
+motion_types:
+  rotation:
+    keywords:
+      - rotate
+      - rotation
+      - rotary
+      - spinning
+      - revolving
+      - turn
+      - turning
+  oscillation:
+    keywords:
+      - oscillate
+      - oscillation
+      - oscillating
+      - pendulum
+      - swing
+      - swinging
+      - rocking
+      - back and forth
+  linear:
+    keywords:
+      - linear
+      - slide
+      - sliding
+      - translate
+      - translation
+      - push
+      - pull
+      - reciprocate
+  wave:
+    keywords:
+      - wave
+      - waves
+      - undulate
+      - undulating
+      - ripple
+      - flowing
+  breathing:
+    keywords:
+      - breathing
+      - breathe
+      - expand
+      - contract
+      - pulsing
+      - pulse
+      - inflate
+      - deflate
+  intermittent:
+    keywords:
+      - intermittent
+      - step
+      - stepping
+      - index
+      - indexing
+      - stop-and-go
+
+materials:
+  PLA:
+    keywords:
+      - PLA
+      - pla
+      - 3d print
+      - 3d printed
+      - printed
+      - FDM
+      - fdm
+      - filament
+  wood:
+    keywords:
+      - wood
+      - wooden
+      - plywood
+      - birch
+      - maple
+      - oak
+      - walnut
+      - timber
+      - laser cut
+  metal:
+    keywords:
+      - metal
+      - steel
+      - aluminum
+      - aluminium
+      - brass
+      - copper
+      - CNC
+      - cnc
+      - machined
+  acrylic:
+    keywords:
+      - acrylic
+      - plexiglass
+      - perspex
+      - lucite
+      - laser cut acrylic
+      - clear
+
+size_indicators:
+  envelope_patterns:
+    - pattern: '(\d+)\s*mm'
+      field: envelope_mm
+      description: Dimension in millimeters
+    - pattern: '(\d+)\s*cm'
+      field: envelope_cm
+      multiplier: 10
+      description: Dimension in centimeters
+    - pattern: '(\d+)\s*inch'
+      field: envelope_inch
+      multiplier: 25.4
+      description: Dimension in inches
+  size_words:
+    tiny:
+      keywords:
+        - tiny
+        - miniature
+        - micro
+        - small
+      estimated_envelope_mm: 30
+    compact:
+      keywords:
+        - compact
+        - pocket
+        - desktop
+      estimated_envelope_mm: 70
+    medium:
+      keywords:
+        - medium
+        - mid-size
+        - moderate
+      estimated_envelope_mm: 150
+    large:
+      keywords:
+        - large
+        - big
+        - floor
+        - table
+      estimated_envelope_mm: 300
+    monumental:
+      keywords:
+        - monumental
+        - huge
+        - wall
+        - installation
+      estimated_envelope_mm: 1000
+
+numerical_parameters:
+  planet_count:
+    patterns:
+      - '(\d+)\s*planets?'
+      - '(\d+)\s*planet gears?'
+    description: Number of planet gears
+  teeth:
+    patterns:
+      - '(\d+)\s*teeth'
+      - '(\d+)T\b'
+      - '(\d+)\s*tooth'
+    description: Number of gear teeth
+  gear_module:
+    patterns:
+      - 'module\s*(\d+(?:\.\d+)?)'
+      - 'mod\s*(\d+(?:\.\d+)?)'
+    description: Gear module value
+  motor_count:
+    patterns:
+      - '(\d+)\s*motors?'
+    description: Number of motors
+    special_words:
+      single: 1
+      dual: 2
+      twin: 2
+      triple: 3
+  speed_rpm:
+    patterns:
+      - '(\d+)\s*rpm'
+      - '(\d+)\s*RPM'
+    description: Speed in RPM
+
+feelings:
+  keywords:
+    - organic
+    - mechanical
+    - steampunk
+    - flowing
+    - breathing
+    - meditative
+    - dramatic
+    - gentle
+    - aggressive
+    - hypnotic
+    - delicate
+    - industrial
+    - whimsical
+    - elegant
+    - brutal
+    - minimal
+    - complex
+    - chaotic
+    - serene
+    - playful

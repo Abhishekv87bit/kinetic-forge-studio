@@ -1,0 +1,29 @@
+name: Feature Request
+description: Suggest a new feature
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the problem or need.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: How should this work?
+    validations:
+      required: true
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope
+      description: How big is this change?
+      options:
+        - Lightweight (bug fix, config change)
+        - Medium (clear feature, < 8 files)
+        - Full (new subsystem, architectural change)
+    validations:
+      required: true
