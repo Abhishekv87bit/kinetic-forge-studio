@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { chatApi } from "../api/client";
 import FileUpload from "./FileUpload";
 
 interface Message {
@@ -25,13 +26,8 @@ export default function ChatPanel({ projectId }: Props) {
         setMessages((m) => [...m, { role: "user", content: text }]);
         setLoading(true);
         try {
-            const res = await fetch(`http://localhost:8000/api/projects/${projectId}/chat`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ content: text }),
-            });
-            const data = await res.json();
-            setMessages((m) => [...m, { role: "assistant", content: data.response }]);
+            const data = await chatApi.send(projectId, text);
+            setMessages((m) => [...m, { role: "assistant", content: data.message }]);
         } catch {
             setMessages((m) => [...m, { role: "assistant", content: "Error connecting to backend." }]);
         }
@@ -75,7 +71,9 @@ export default function ChatPanel({ projectId }: Props) {
                 <FileUpload projectId={projectId} onUpload={(result) => {
                     setMessages((m) => [...m,
                         { role: "user", content: `Uploaded: ${result.filename}` },
-                        { role: "assistant", content: result.analysis },
+                        { role: "assistant", content: typeof result.analysis === "string"
+                            ? result.analysis
+                            : result.analysis?.message || JSON.stringify(result.analysis) },
                     ]);
                 }} />
             </div>

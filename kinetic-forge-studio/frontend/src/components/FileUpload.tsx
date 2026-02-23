@@ -1,8 +1,15 @@
 import { useRef } from "react";
+import { uploadApi } from "../api/client";
+
+interface AnalysisResult {
+    message?: string;
+    error?: string;
+    [key: string]: unknown;
+}
 
 interface Props {
     projectId: string;
-    onUpload: (result: { filename: string; file_type: string; analysis: string }) => void;
+    onUpload: (result: { filename: string; file_type: string; analysis: AnalysisResult | string }) => void;
 }
 
 export default function FileUpload({ projectId, onUpload }: Props) {
@@ -11,14 +18,16 @@ export default function FileUpload({ projectId, onUpload }: Props) {
     const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        const form = new FormData();
-        form.append("file", file);
-        const res = await fetch(`http://localhost:8000/api/projects/${projectId}/upload`, {
-            method: "POST",
-            body: form,
-        });
-        const data = await res.json();
-        onUpload(data);
+        try {
+            const data = await uploadApi.upload(projectId, file);
+            onUpload(data);
+        } catch (err) {
+            onUpload({
+                filename: file.name,
+                file_type: "unknown",
+                analysis: `Upload failed: ${err instanceof Error ? err.message : "unknown error"}`,
+            });
+        }
         if (inputRef.current) inputRef.current.value = "";
     };
 

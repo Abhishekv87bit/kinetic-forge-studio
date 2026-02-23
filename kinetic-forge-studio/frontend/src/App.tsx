@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { useProjectStore } from "./stores/projectStore";
 import { useViewportStore } from "./stores/viewportStore";
+import { exportApi } from "./api/client";
 import HomeScreen from "./components/HomeScreen";
 import Viewport3D from "./components/Viewport3D";
 import ChatPanel from "./components/ChatPanel";
@@ -61,10 +62,21 @@ function Workspace() {
         setGatePassed(passed);
     }, []);
 
-    const handleExport = useCallback(() => {
+    const handleExport = useCallback(async () => {
         if (!gatePassed || !activeProject) return;
-        // Export will be implemented in Phase 7 (Task 27)
-        alert(`Export package for "${activeProject.name}" (not yet implemented -- Phase 7)`);
+        try {
+            const blob = await exportApi.download(activeProject.id);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `${activeProject.name.replace(/ /g, "_")}_export.zip`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            alert(`Export failed: ${err instanceof Error ? err.message : "unknown error"}`);
+        }
     }, [gatePassed, activeProject]);
 
     if (!activeProject) return null;
