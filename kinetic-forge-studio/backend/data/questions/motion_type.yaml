@@ -1,0 +1,23 @@
+field: motion_type
+priority: 5
+question: "What kind of motion do you want to see?"
+options:
+  - value: rotation
+    label: Continuous Rotation
+    impact: "Smooth, unending circular motion."
+  - value: oscillation
+    label: Oscillation / Rocking
+    impact: "Back-and-forth swinging or pendulum motion."
+  - value: linear
+    label: Linear / Sliding
+    impact: "Straight-line translation."
+  - value: wave
+    label: Wave / Undulating
+    impact: "Cascading motion like ocean waves."
+  - value: breathing
+    label: Breathing / Pulsing
+    impact: "Expanding and contracting motion."
+  - value: intermittent
+    label: Intermittent / Indexing
+    impact: "Stop-and-go stepping motion."
+default: rotation
