@@ -6,6 +6,7 @@ from app.routes.chat import router as chat_router
 from app.routes.upload import router as upload_router
 from app.routes.viewport import router as viewport_router
 from app.routes.validation import router as validation_router
+from app.routes.library import router as library_router
 
 app = FastAPI(title=settings.app_name, version=settings.version)
 
@@ -22,6 +23,7 @@ app.include_router(chat_router)
 app.include_router(upload_router)
 app.include_router(viewport_router)
 app.include_router(validation_router)
+app.include_router(library_router)
 
 @app.get("/api/health")
 async def health():
