@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { fetchHealth } from "./api/client";
+import Viewport3D from "./components/Viewport3D";
 
 function App() {
     const [status, setStatus] = useState<string>("connecting...");
@@ -22,7 +23,7 @@ function App() {
                     <p style={{ opacity: 0.5 }}>Chat panel placeholder</p>
                 </div>
                 <div style={{ flex: 1, background: "#0a0a0a" }}>
-                    <p style={{ color: "#666", padding: "16px" }}>3D Viewport placeholder</p>
+                    <Viewport3D />
                 </div>
                 <div style={{ width: "280px", borderLeft: "1px solid #333", padding: "16px", background: "#16213e", color: "#fff" }}>
                     <h3>Spec Sheet</h3>
