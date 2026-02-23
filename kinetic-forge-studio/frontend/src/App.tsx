@@ -1,7 +1,36 @@
 import { useProjectStore } from "./stores/projectStore";
+import { useViewportStore } from "./stores/viewportStore";
 import HomeScreen from "./components/HomeScreen";
 import Viewport3D from "./components/Viewport3D";
 import ChatPanel from "./components/ChatPanel";
+
+function SelectedMeshInfo() {
+    const selectedMesh = useViewportStore((s) => s.selectedMesh);
+    if (!selectedMesh) return null;
+
+    const bb = selectedMesh.boundingBox;
+    const size = bb
+        ? [
+            (bb.max[0] - bb.min[0]).toFixed(2),
+            (bb.max[1] - bb.min[1]).toFixed(2),
+            (bb.max[2] - bb.min[2]).toFixed(2),
+        ]
+        : null;
+
+    return (
+        <div style={{ marginTop: 16, padding: 12, background: "#0d2b5e", borderRadius: 6, border: "1px solid #2a5a9e" }}>
+            <h4 style={{ margin: "0 0 8px", color: "#4a9eff" }}>Selected</h4>
+            <div style={{ fontSize: 13, lineHeight: 1.6 }}>
+                <div><strong>Name:</strong> {selectedMesh.name}</div>
+                <div><strong>Vertices:</strong> {selectedMesh.vertexCount.toLocaleString()}</div>
+                <div><strong>Faces:</strong> {selectedMesh.faceCount.toLocaleString()}</div>
+                {size && (
+                    <div><strong>Size:</strong> {size[0]} x {size[1]} x {size[2]}</div>
+                )}
+            </div>
+        </div>
+    );
+}
 
 function Workspace() {
     const { activeProject, goHome } = useProjectStore();
@@ -21,10 +50,11 @@ function Workspace() {
                     <ChatPanel projectId={activeProject.id} />
                 </div>
                 <div style={{ flex: 1, background: "#0a0a0a" }}>
-                    <Viewport3D />
+                    <Viewport3D projectId={activeProject.id} />
                 </div>
                 <div style={{ width: 280, borderLeft: "1px solid #333", padding: 16, background: "#16213e", color: "#fff", overflowY: "auto" }}>
                     <h3>Spec Sheet</h3>
+                    <SelectedMeshInfo />
                     <h4 style={{ marginTop: 16, opacity: 0.7 }}>Decisions ({activeProject.decisions.length})</h4>
                     {activeProject.decisions.map((d) => (
                         <div key={d.id} style={{ padding: 8, marginBottom: 4, background: "#0d1b3e", borderRadius: 4, fontSize: 13 }}>
