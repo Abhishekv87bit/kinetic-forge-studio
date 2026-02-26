@@ -1,0 +1,1249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Tensegrity Builder — Verlet Strut/Cable Self-Stressed Structures</title>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f5f3ee; overflow: hidden; font-family: 'Georgia', serif; display: flex; height: 100vh; }
+
+  #sidebar {
+    width: 280px; min-width: 280px; background: #f0ede6;
+    border-right: 1px solid #c8c0b0; overflow-y: auto; padding: 12px 14px;
+    font-size: 12px; color: #444;
+  }
+  #sidebar h1 { font-size: 14px; letter-spacing: 1.5px; color: #333; margin-bottom: 2px; font-weight: normal; }
+  #sidebar .subtitle { font-size: 10px; color: #888; margin-bottom: 12px; font-style: italic; }
+
+  .section-title {
+    font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: #8b7355;
+    margin-top: 14px; margin-bottom: 6px; border-bottom: 1px solid #d8d0c0; padding-bottom: 3px;
+  }
+  .ctrl-row { display: flex; align-items: center; margin-bottom: 5px; }
+  .ctrl-row label { flex: 0 0 95px; font-size: 11px; color: #666; }
+  .ctrl-row input[type="range"] { flex: 1; height: 3px; accent-color: #8b4513; }
+  .ctrl-row .val { flex: 0 0 40px; text-align: right; font-size: 10px; color: #555; font-family: 'Consolas', monospace; }
+
+  select {
+    width: 100%; padding: 4px 8px; font-size: 11px; font-family: 'Georgia', serif;
+    background: #faf8f3; color: #555; border: 1px solid #c8c0b0; border-radius: 3px; margin-bottom: 4px;
+  }
+
+  .btn-row { display: flex; gap: 5px; margin: 8px 0; flex-wrap: wrap; }
+  .btn {
+    padding: 5px 10px; font-size: 10px; font-family: 'Georgia', serif;
+    background: #555; color: #f5f3ee; border: none; cursor: pointer;
+    letter-spacing: 0.5px; border-radius: 2px; transition: background 0.15s;
+  }
+  .btn:hover { background: #333; }
+  .btn.active { background: #8b4513; }
+  .btn.accent { background: #2a6848; }
+  .btn.accent:hover { background: #1a4830; }
+  .btn.danger { background: #8b2020; }
+  .btn:disabled { background: #aaa; cursor: not-allowed; }
+
+  .toggle-row { display: flex; align-items: center; margin-bottom: 5px; gap: 6px; }
+  .toggle-row label { font-size: 11px; color: #666; }
+  .toggle-row input[type="checkbox"] { accent-color: #8b4513; }
+
+  #canvas-container { flex: 1; position: relative; }
+  #canvas-container canvas { display: block; }
+
+  #info-bar {
+    position: fixed; bottom: 0; left: 280px; right: 0; z-index: 100;
+    background: rgba(245,243,238,0.92); border-top: 1px solid #bbb;
+    padding: 4px 16px; font-size: 10px; color: #777; font-style: italic;
+  }
+
+  #hud {
+    position: absolute; top: 8px; right: 12px; background: rgba(245,243,238,0.9);
+    border: 1px solid #c8c0b0; border-radius: 4px; padding: 8px 12px;
+    font-size: 10px; line-height: 1.7; color: #666; min-width: 160px; pointer-events: none;
+  }
+  #hud .hv { color: #444; font-family: 'Consolas', monospace; float: right; }
+
+  #physics-hud {
+    position: absolute; top: 8px; left: 290px; background: rgba(245,243,238,0.9);
+    border: 1px solid #c8c0b0; border-radius: 4px; padding: 6px 10px;
+    font-size: 9px; line-height: 1.6; color: #666; min-width: 140px; pointer-events: none;
+    font-family: 'Consolas', monospace;
+  }
+  #physics-hud.warn { border-color: #cc8800; background: rgba(255,240,200,0.9); }
+  #physics-hud.error { border-color: #cc2020; background: rgba(255,220,220,0.9); }
+
+  .progress-bar { width: 100%; height: 3px; background: #ddd; border-radius: 2px; margin: 4px 0; }
+  .progress-bar-fill { height: 100%; background: #8b4513; border-radius: 2px; transition: width 0.1s; }
+
+  .detail-list { max-height: 160px; overflow-y: auto; font-size: 9px; line-height: 1.5; margin-top: 4px; }
+  .detail-item { padding: 1px 0; color: #666; font-family: 'Consolas', monospace; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #c8c0b0; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h1>TENSEGRITY BUILDER</h1>
+  <div class="subtitle">Verlet Strut/Cable Self-Stressed Structures</div>
+
+  <div class="section-title">Structure</div>
+  <select id="sel-preset">
+    <option value="3prism" selected>3-Strut Prism</option>
+    <option value="4tower">4-Strut Tower</option>
+    <option value="6icosa">6-Strut Icosahedron</option>
+    <option value="random">Random</option>
+  </select>
+  <div class="ctrl-row">
+    <label>Strut Count</label>
+    <input type="range" id="sl-struts" min="3" max="8" step="1" value="3">
+    <span class="val" id="v-struts">3</span>
+  </div>
+
+  <div class="section-title">Physics</div>
+  <div class="ctrl-row">
+    <label>Pretension</label>
+    <input type="range" id="sl-pretension" min="0" max="1.0" step="0.02" value="0.15">
+    <span class="val" id="v-pretension">0.15</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Damping</label>
+    <input type="range" id="sl-damping" min="0.900" max="0.999" step="0.001" value="0.985">
+    <span class="val" id="v-damping">0.985</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Gravity</label>
+    <input type="range" id="sl-gravity" min="0" max="0.5" step="0.01" value="0.08">
+    <span class="val" id="v-gravity">0.08</span>
+  </div>
+  <div class="toggle-row">
+    <input type="checkbox" id="cb-gravity" checked>
+    <label for="cb-gravity">Enable gravity</label>
+  </div>
+  <div class="toggle-row">
+    <input type="checkbox" id="cb-ground">
+    <label for="cb-ground">Pin ground nodes</label>
+  </div>
+
+  <div class="section-title">Display</div>
+  <div class="toggle-row">
+    <input type="checkbox" id="cb-stress" checked>
+    <label for="cb-stress">Show stress coloring</label>
+  </div>
+  <div class="toggle-row">
+    <input type="checkbox" id="cb-labels">
+    <label for="cb-labels">Show node labels</label>
+  </div>
+
+  <div class="section-title">Mode</div>
+  <div class="btn-row">
+    <button class="btn active" id="btn-atlas" onclick="setMode('atlas')">Atlas 4&times;4</button>
+    <button class="btn" id="btn-single" onclick="setMode('single')">Single</button>
+  </div>
+
+  <div class="section-title">Actions</div>
+  <div class="btn-row">
+    <button class="btn accent" onclick="randomizeAll()">Randomize</button>
+    <button class="btn" onclick="mutateAll()">Mutate</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn danger" id="btn-beautiful" onclick="findBeautiful()">Find Beautiful</button>
+    <button class="btn" onclick="shakeAll()">Shake</button>
+  </div>
+  <div id="progress-container" style="display:none;">
+    <div class="progress-bar"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
+    <span style="font-size:9px;color:#888;" id="progress-text">Searching...</span>
+  </div>
+
+  <div class="section-title">Details</div>
+  <div class="detail-list" id="detail-list">
+    <div class="detail-item" style="color:#999;">Click a cell to inspect structure</div>
+  </div>
+</div>
+
+<div id="canvas-container">
+  <div id="hud">
+    <div>FPS <span class="hv" id="hud-fps">--</span></div>
+    <div>Mode <span class="hv" id="hud-mode">atlas</span></div>
+    <div>Nodes <span class="hv" id="hud-nodes">--</span></div>
+    <div>Struts <span class="hv" id="hud-struts">--</span></div>
+    <div>Cables <span class="hv" id="hud-cables">--</span></div>
+    <div>Stability <span class="hv" id="hud-stability">--</span></div>
+    <div>Score <span class="hv" id="hud-score">--</span></div>
+  </div>
+  <div id="physics-hud">
+    <div>Energy: <span id="ph-energy">--</span></div>
+    <div>Max Tension: <span id="ph-tension">--</span></div>
+    <div>Max Compress: <span id="ph-compress">--</span></div>
+    <div>Slack: <span id="ph-slack">--</span></div>
+    <div>Drift: <span id="ph-drift">--</span></div>
+  </div>
+</div>
+
+<div id="info-bar">
+  Plate IX. &mdash; Tensegrity structures: compression struts float in a web of tension cables. Each cell shows a unique self-stressed topology. Click to inspect, drag nodes to test stability.
+</div>
+
+<script>
+// ============================================================
+// TENSEGRITY BUILDER — Verlet Strut/Cable Self-Stressed Structures
+// ============================================================
+
+const COLS = 4, ROWS = 4;
+const FIND_BEAUTIFUL_TOTAL = 200;
+const FIND_BEAUTIFUL_CHUNK = 25;
+const VERLET_SUBSTEPS = 8;
+const SETTLE_STEPS = 500;
+
+// ===== STATE =====
+let mode = 'atlas';
+let cells = [];
+let selectedIdx = -1;
+let hoverCell = -1;
+let cw, ch;
+let findBeautifulRunning = false;
+let dragActive = false;
+let dragNodeIdx = -1;
+
+// ===== VERLET PARTICLE =====
+function makeNode(x, y, pinned) {
+  return { x: x, y: y, px: x, py: y, pinned: !!pinned };
+}
+
+// ===== CONSTRAINT TYPES =====
+function makeStrut(a, b, restLen) {
+  return { type: 'strut', a: a, b: b, restLen: restLen, stress: 0 };
+}
+function makeCable(a, b, maxLen) {
+  return { type: 'cable', a: a, b: b, maxLen: maxLen, tension: 0, slack: false };
+}
+
+// ===== ENFORCE STRUT: rigid distance (push and pull) =====
+function enforceStrut(nodes, c) {
+  let p1 = nodes[c.a], p2 = nodes[c.b];
+  let dx = p2.x - p1.x, dy = p2.y - p1.y;
+  let dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist < 0.0001) { dist = 0.0001; dx = 0.0001; }
+  let diff = (dist - c.restLen) / dist * 0.5;
+  if (!p1.pinned) { p1.x += dx * diff; p1.y += dy * diff; }
+  if (!p2.pinned) { p2.x -= dx * diff; p2.y -= dy * diff; }
+  c.stress = dist - c.restLen; // positive = tension, negative = compression
+  return Math.abs(dist - c.restLen);
+}
+
+// ===== ENFORCE CABLE: tension only (can go slack) =====
+function enforceCable(nodes, c) {
+  let p1 = nodes[c.a], p2 = nodes[c.b];
+  let dx = p2.x - p1.x, dy = p2.y - p1.y;
+  let dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist <= c.maxLen) {
+    c.tension = 0;
+    c.slack = true;
+    return 0;
+  }
+  c.slack = false;
+  let diff = (dist - c.maxLen) / dist * 0.5;
+  if (!p1.pinned) { p1.x += dx * diff; p1.y += dy * diff; }
+  if (!p2.pinned) { p2.x -= dx * diff; p2.y -= dy * diff; }
+  c.tension = dist - c.maxLen;
+  return c.tension;
+}
+
+// ===== VERLET INTEGRATION =====
+function verletStep(nodes, constraints, gravity, damping) {
+  let grav = gravity;
+  // Integrate
+  for (let n of nodes) {
+    if (n.pinned) continue;
+    let vx = (n.x - n.px) * damping;
+    let vy = (n.y - n.py) * damping;
+    n.px = n.x;
+    n.py = n.y;
+    n.x += vx;
+    n.y += vy + grav;
+  }
+  // Satisfy constraints
+  for (let iter = 0; iter < VERLET_SUBSTEPS; iter++) {
+    for (let c of constraints) {
+      if (c.type === 'strut') enforceStrut(nodes, c);
+      else enforceCable(nodes, c);
+    }
+  }
+}
+
+// ===== SETTLE: run many steps to find equilibrium =====
+function settle(structure, steps) {
+  for (let i = 0; i < steps; i++) {
+    verletStep(structure.nodes, structure.constraints, 0, 0.95);
+  }
+  // Snapshot rest positions
+  for (let n of structure.nodes) {
+    n.px = n.x;
+    n.py = n.y;
+  }
+}
+
+// ===== STRUCTURE PRESETS =====
+function generate3StrutPrism(cx, cy, radius) {
+  let nodes = [];
+  let constraints = [];
+  let r = radius * 0.5;
+  // Top triangle (rotated 30deg from bottom)
+  for (let i = 0; i < 3; i++) {
+    let a = (i / 3) * Math.PI * 2 - Math.PI / 2 + Math.PI / 6;
+    nodes.push(makeNode(cx + Math.cos(a) * r, cy - radius * 0.4 + Math.sin(a) * r * 0.4, false));
+  }
+  // Bottom triangle
+  for (let i = 0; i < 3; i++) {
+    let a = (i / 3) * Math.PI * 2 - Math.PI / 2;
+    nodes.push(makeNode(cx + Math.cos(a) * r, cy + radius * 0.4 + Math.sin(a) * r * 0.4, false));
+  }
+  // Struts: connect top[i] to bottom[i] (vertical, non-sharing endpoints)
+  for (let i = 0; i < 3; i++) {
+    let d = dist(nodes[i], nodes[i + 3]);
+    constraints.push(makeStrut(i, i + 3, d));
+  }
+  // Cables: top triangle
+  for (let i = 0; i < 3; i++) {
+    let j = (i + 1) % 3;
+    let d = dist(nodes[i], nodes[j]);
+    constraints.push(makeCable(i, j, d));
+  }
+  // Cables: bottom triangle
+  for (let i = 0; i < 3; i++) {
+    let j = (i + 1) % 3;
+    let d = dist(nodes[i + 3], nodes[j + 3]);
+    constraints.push(makeCable(i + 3, j + 3, d));
+  }
+  // Cables: diagonal connections (each top node to one bottom neighbor)
+  for (let i = 0; i < 3; i++) {
+    let j = (i + 1) % 3;
+    let d = dist(nodes[i], nodes[j + 3]);
+    constraints.push(makeCable(i, j + 3, d));
+  }
+  return { nodes, constraints, strutCount: 3, cableCount: 9 };
+}
+
+function generate4StrutTower(cx, cy, radius) {
+  let nodes = [];
+  let constraints = [];
+  let r = radius * 0.45;
+  // Top square (rotated 22.5deg from bottom)
+  for (let i = 0; i < 4; i++) {
+    let a = (i / 4) * Math.PI * 2 - Math.PI / 4 + Math.PI / 8;
+    nodes.push(makeNode(cx + Math.cos(a) * r, cy - radius * 0.35 + Math.sin(a) * r * 0.35, false));
+  }
+  // Bottom square
+  for (let i = 0; i < 4; i++) {
+    let a = (i / 4) * Math.PI * 2 - Math.PI / 4;
+    nodes.push(makeNode(cx + Math.cos(a) * r, cy + radius * 0.35 + Math.sin(a) * r * 0.35, false));
+  }
+  // Struts: top[i] to bottom[i]
+  for (let i = 0; i < 4; i++) {
+    let d = dist(nodes[i], nodes[i + 4]);
+    constraints.push(makeStrut(i, i + 4, d));
+  }
+  // Cables: top square
+  for (let i = 0; i < 4; i++) {
+    let j = (i + 1) % 4;
+    let d = dist(nodes[i], nodes[j]);
+    constraints.push(makeCable(i, j, d));
+  }
+  // Cables: bottom square
+  for (let i = 0; i < 4; i++) {
+    let j = (i + 1) % 4;
+    let d = dist(nodes[i + 4], nodes[j + 4]);
+    constraints.push(makeCable(i + 4, j + 4, d));
+  }
+  // Cables: diagonal (each top to next bottom)
+  for (let i = 0; i < 4; i++) {
+    let j = (i + 1) % 4;
+    let d = dist(nodes[i], nodes[j + 4]);
+    constraints.push(makeCable(i, j + 4, d));
+  }
+  return { nodes, constraints, strutCount: 4, cableCount: 12 };
+}
+
+function generate6StrutIcosa(cx, cy, radius) {
+  let nodes = [];
+  let constraints = [];
+  let r = radius * 0.5;
+  // 12 nodes arranged in 3 layers of 4
+  // Top layer (4 nodes)
+  for (let i = 0; i < 4; i++) {
+    let a = (i / 4) * Math.PI * 2 - Math.PI / 4;
+    nodes.push(makeNode(cx + Math.cos(a) * r * 0.6, cy - radius * 0.35 + Math.sin(a) * r * 0.25, false));
+  }
+  // Middle layer (4 nodes, rotated 45deg)
+  for (let i = 0; i < 4; i++) {
+    let a = (i / 4) * Math.PI * 2;
+    nodes.push(makeNode(cx + Math.cos(a) * r, cy + Math.sin(a) * r * 0.2, false));
+  }
+  // Bottom layer (4 nodes)
+  for (let i = 0; i < 4; i++) {
+    let a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+    nodes.push(makeNode(cx + Math.cos(a) * r * 0.6, cy + radius * 0.35 + Math.sin(a) * r * 0.25, false));
+  }
+  // 6 Struts: no shared endpoints
+  let strutPairs = [[0,7], [1,8], [2,9], [3,10], [4,11], [5,6]];
+  for (let [a,b] of strutPairs) {
+    let d = dist(nodes[a], nodes[b]);
+    constraints.push(makeStrut(a, b, d));
+  }
+  // Cables: connect layers + within layers
+  // Top ring
+  for (let i = 0; i < 4; i++) {
+    let j = (i + 1) % 4;
+    constraints.push(makeCable(i, j, dist(nodes[i], nodes[j])));
+  }
+  // Middle ring
+  for (let i = 0; i < 4; i++) {
+    let j = (i + 1) % 4;
+    constraints.push(makeCable(i + 4, j + 4, dist(nodes[i+4], nodes[j+4])));
+  }
+  // Bottom ring
+  for (let i = 0; i < 4; i++) {
+    let j = (i + 1) % 4;
+    constraints.push(makeCable(i + 8, j + 8, dist(nodes[i+8], nodes[j+8])));
+  }
+  // Top to middle
+  for (let i = 0; i < 4; i++) {
+    constraints.push(makeCable(i, i + 4, dist(nodes[i], nodes[i+4])));
+  }
+  // Middle to bottom
+  for (let i = 0; i < 4; i++) {
+    constraints.push(makeCable(i + 4, i + 8, dist(nodes[i+4], nodes[i+8])));
+  }
+  // Cross diagonals
+  for (let i = 0; i < 4; i++) {
+    let j = (i + 1) % 4;
+    constraints.push(makeCable(i, j + 4, dist(nodes[i], nodes[j+4])));
+    constraints.push(makeCable(i + 4, j + 8, dist(nodes[i+4], nodes[j+8])));
+  }
+  let cableCount = constraints.length - 6;
+  return { nodes, constraints, strutCount: 6, cableCount: cableCount };
+}
+
+function generateRandom(cx, cy, radius, strutCount) {
+  let nodes = [];
+  let constraints = [];
+  let numNodes = strutCount * 2;
+  // Place nodes on a circle + some random offset
+  for (let i = 0; i < numNodes; i++) {
+    let a = (i / numNodes) * Math.PI * 2 + (Math.random() - 0.5) * 0.3;
+    let r = radius * (0.3 + Math.random() * 0.4);
+    nodes.push(makeNode(cx + Math.cos(a) * r, cy + Math.sin(a) * r, false));
+  }
+  // Assign struts: no shared endpoints
+  let used = new Set();
+  let struts = [];
+  for (let s = 0; s < strutCount; s++) {
+    let a = s * 2, b = s * 2 + 1;
+    used.add(a); used.add(b);
+    let d = dist(nodes[a], nodes[b]);
+    if (d < 10) d = radius * 0.5; // ensure minimum strut length
+    constraints.push(makeStrut(a, b, d));
+    struts.push([a, b]);
+  }
+  // Assign cables: connect each strut endpoint to 2-3 nearby nodes
+  let strutEndpoints = new Set();
+  for (let [a,b] of struts) { strutEndpoints.add(a); strutEndpoints.add(b); }
+  let cableSet = new Set();
+  for (let ni = 0; ni < numNodes; ni++) {
+    // Find nearest 2-3 non-same-strut nodes
+    let dists = [];
+    for (let nj = 0; nj < numNodes; nj++) {
+      if (ni === nj) continue;
+      // Don't cable between endpoints of same strut
+      let sameStrut = false;
+      for (let [a,b] of struts) {
+        if ((ni === a && nj === b) || (ni === b && nj === a)) sameStrut = true;
+      }
+      if (sameStrut) continue;
+      let d = dist(nodes[ni], nodes[nj]);
+      dists.push({ idx: nj, d: d });
+    }
+    dists.sort((a, b) => a.d - b.d);
+    let count = 2 + Math.floor(Math.random() * 2);
+    for (let k = 0; k < Math.min(count, dists.length); k++) {
+      let key = Math.min(ni, dists[k].idx) + ',' + Math.max(ni, dists[k].idx);
+      if (!cableSet.has(key)) {
+        cableSet.add(key);
+        let d = dists[k].d;
+        constraints.push(makeCable(ni, dists[k].idx, d));
+      }
+    }
+  }
+  return { nodes, constraints, strutCount: strutCount, cableCount: constraints.length - strutCount };
+}
+
+function dist(a, b) {
+  let dx = b.x - a.x, dy = b.y - a.y;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+// ===== APPLY PRETENSION: shorten cable max lengths =====
+function applyPretension(structure, pretension) {
+  for (let c of structure.constraints) {
+    if (c.type === 'cable') {
+      c.maxLen = c.maxLen * (1.0 - pretension * 0.3);
+    }
+  }
+}
+
+// ===== GENERATE STRUCTURE =====
+function generateStructure(cx, cy, radius, preset, strutCount, pretension) {
+  let s;
+  if (preset === '3prism') s = generate3StrutPrism(cx, cy, radius);
+  else if (preset === '4tower') s = generate4StrutTower(cx, cy, radius);
+  else if (preset === '6icosa') s = generate6StrutIcosa(cx, cy, radius);
+  else s = generateRandom(cx, cy, radius, strutCount);
+  applyPretension(s, pretension);
+  settle(s, SETTLE_STEPS);
+  s.score = scoreStructure(s);
+  s.stabilityRating = computeStability(s);
+  return s;
+}
+
+// ===== STABILITY TEST: perturb and measure recovery =====
+function computeStability(structure) {
+  // Save positions
+  let saved = structure.nodes.map(n => ({ x: n.x, y: n.y, px: n.px, py: n.py }));
+  // Perturb
+  let perturbMag = 5;
+  for (let n of structure.nodes) {
+    if (n.pinned) continue;
+    n.x += (Math.random() - 0.5) * perturbMag * 2;
+    n.y += (Math.random() - 0.5) * perturbMag * 2;
+    n.px = n.x;
+    n.py = n.y;
+  }
+  // Settle
+  for (let i = 0; i < 200; i++) {
+    verletStep(structure.nodes, structure.constraints, 0, 0.95);
+  }
+  // Measure displacement from saved
+  let maxDisp = 0;
+  for (let i = 0; i < structure.nodes.length; i++) {
+    let dx = structure.nodes[i].x - saved[i].x;
+    let dy = structure.nodes[i].y - saved[i].y;
+    let d = Math.sqrt(dx * dx + dy * dy);
+    if (d > maxDisp) maxDisp = d;
+  }
+  // Restore
+  for (let i = 0; i < structure.nodes.length; i++) {
+    structure.nodes[i].x = saved[i].x;
+    structure.nodes[i].y = saved[i].y;
+    structure.nodes[i].px = saved[i].px;
+    structure.nodes[i].py = saved[i].py;
+  }
+  // Stability: inverse of max displacement (high = stable)
+  return maxDisp < 0.1 ? 10 : Math.min(10, 1.0 / maxDisp * 10);
+}
+
+// ===== SCORE: stability * complexity * symmetry =====
+function scoreStructure(s) {
+  let stability = computeStability(s);
+  let complexity = (s.strutCount + s.cableCount) / 30;
+  // Symmetry: check angular distribution of struts
+  let angles = [];
+  for (let c of s.constraints) {
+    if (c.type === 'strut') {
+      let dx = s.nodes[c.b].x - s.nodes[c.a].x;
+      let dy = s.nodes[c.b].y - s.nodes[c.a].y;
+      angles.push(Math.atan2(dy, dx));
+    }
+  }
+  let symmetry = 0;
+  if (angles.length > 1) {
+    // Measure evenness of angular spread
+    angles.sort((a, b) => a - b);
+    let idealGap = Math.PI * 2 / angles.length;
+    let variance = 0;
+    for (let i = 0; i < angles.length; i++) {
+      let next = (i + 1) % angles.length;
+      let gap = angles[next] - angles[i];
+      if (gap < 0) gap += Math.PI * 2;
+      variance += (gap - idealGap) * (gap - idealGap);
+    }
+    symmetry = Math.max(0, 1.0 - variance / (Math.PI * Math.PI));
+  }
+  return stability * 0.5 + complexity * 0.3 + symmetry * 0.2;
+}
+
+// ===== COMPUTE PHYSICS STATS =====
+function computeStats(structure) {
+  let totalEnergy = 0;
+  let maxTension = 0;
+  let maxCompress = 0;
+  let slackCount = 0;
+  let cableCount = 0;
+  for (let c of structure.constraints) {
+    if (c.type === 'strut') {
+      let compression = -c.stress;
+      if (compression > maxCompress) maxCompress = compression;
+      totalEnergy += c.stress * c.stress * 0.5;
+    } else {
+      cableCount++;
+      if (c.slack) slackCount++;
+      if (c.tension > maxTension) maxTension = c.tension;
+      totalEnergy += c.tension * c.tension * 0.5;
+    }
+  }
+  return { totalEnergy, maxTension, maxCompress, slackCount, cableCount };
+}
+
+// ===== CELL =====
+function makeCell(cx, cy, w, h, preset, strutCount, pretension) {
+  let radius = Math.min(w, h) * 0.35;
+  let s = generateStructure(cx, cy, radius, preset, strutCount, pretension);
+  s.cx = cx; s.cy = cy; s.w = w; s.h = h; s.radius = radius;
+  return s;
+}
+
+// ===== DRAWING =====
+function drawStructure(p, s, ox, oy, scale, showStress, showLabels, isSelected) {
+  p.push();
+  p.translate(ox, oy);
+
+  // Draw cables
+  for (let c of s.constraints) {
+    if (c.type !== 'cable') continue;
+    let n1 = s.nodes[c.a], n2 = s.nodes[c.b];
+    let x1 = n1.x * scale, y1 = n1.y * scale;
+    let x2 = n2.x * scale, y2 = n2.y * scale;
+    if (c.slack) {
+      // Dashed slack cable
+      p.stroke(180, 160, 130, 120);
+      p.strokeWeight(1);
+      p.drawingContext.setLineDash([3, 4]);
+      p.line(x1, y1, x2, y2);
+      p.drawingContext.setLineDash([]);
+    } else {
+      // Taut cable: thickness and color by tension
+      let t = Math.min(c.tension / 5, 1);
+      if (showStress) {
+        let r = Math.floor(139 + t * 116); // brown to red
+        let g = Math.floor(69 - t * 50);
+        let b = Math.floor(19 - t * 19);
+        p.stroke(r, g, b);
+      } else {
+        p.stroke(139, 90, 43);
+      }
+      p.strokeWeight(1.5 + t * 3.5);
+      p.line(x1, y1, x2, y2);
+    }
+  }
+
+  // Draw struts
+  for (let c of s.constraints) {
+    if (c.type !== 'strut') continue;
+    let n1 = s.nodes[c.a], n2 = s.nodes[c.b];
+    let x1 = n1.x * scale, y1 = n1.y * scale;
+    let x2 = n2.x * scale, y2 = n2.y * scale;
+    let compression = Math.min(Math.abs(c.stress) / 5, 1);
+    if (showStress) {
+      let r = Math.floor(120 - compression * 80);
+      let g = Math.floor(120 - compression * 80);
+      let b = Math.floor(120 + compression * 135);
+      p.stroke(r, g, b);
+    } else {
+      p.stroke(100);
+    }
+    p.strokeWeight(4 + compression * 3);
+    p.line(x1, y1, x2, y2);
+    // Endpoints
+    p.fill(showStress ? p.color(80 - compression * 40, 80 - compression * 40, 120 + compression * 135) : p.color(100));
+    p.noStroke();
+    p.ellipse(x1, y1, 5, 5);
+    p.ellipse(x2, y2, 5, 5);
+  }
+
+  // Draw nodes
+  for (let i = 0; i < s.nodes.length; i++) {
+    let n = s.nodes[i];
+    let x = n.x * scale, y = n.y * scale;
+    // Count connections
+    let conns = 0;
+    for (let c of s.constraints) {
+      if (c.a === i || c.b === i) conns++;
+    }
+    let r = 3 + conns * 1.2;
+    if (n.pinned) {
+      p.fill(180, 60, 60);
+      p.stroke(120, 40, 40);
+      p.strokeWeight(1);
+      // Draw triangle for pinned
+      p.triangle(x - r, y + r, x + r, y + r, x, y - r);
+    } else {
+      p.fill(60, 60, 60, 180);
+      p.noStroke();
+      p.ellipse(x, y, r * 2, r * 2);
+    }
+    if (showLabels) {
+      p.fill(100);
+      p.noStroke();
+      p.textSize(8);
+      p.textAlign(p.LEFT, p.BOTTOM);
+      p.text(i, x + r + 2, y - 2);
+    }
+  }
+
+  // Selection highlight
+  if (isSelected) {
+    p.noFill();
+    p.stroke(139, 69, 19, 100);
+    p.strokeWeight(2);
+    p.rectMode(p.CENTER);
+    let bx = 0, by = 0;
+    for (let n of s.nodes) { bx += n.x; by += n.y; }
+    bx = (bx / s.nodes.length) * scale;
+    by = (by / s.nodes.length) * scale;
+    p.rect(bx, by, s.radius * scale * 2.2, s.radius * scale * 2.2, 4);
+  }
+
+  p.pop();
+}
+
+function drawExternalLoad(p, s, ox, oy, scale, nodeIdx, fx, fy) {
+  if (nodeIdx < 0 || nodeIdx >= s.nodes.length) return;
+  let n = s.nodes[nodeIdx];
+  let x = n.x * scale + ox;
+  let y = n.y * scale + oy;
+  let mag = Math.sqrt(fx * fx + fy * fy);
+  if (mag < 1) return;
+  let arrowLen = Math.min(mag * 0.5, 60);
+  let ax = fx / mag * arrowLen;
+  let ay = fy / mag * arrowLen;
+  p.push();
+  p.stroke(200, 40, 40);
+  p.strokeWeight(2.5);
+  p.line(x, y, x + ax, y + ay);
+  // Arrowhead
+  let angle = Math.atan2(ay, ax);
+  let headLen = 8;
+  p.line(x + ax, y + ay,
+    x + ax - Math.cos(angle - 0.4) * headLen,
+    y + ay - Math.sin(angle - 0.4) * headLen);
+  p.line(x + ax, y + ay,
+    x + ax - Math.cos(angle + 0.4) * headLen,
+    y + ay - Math.sin(angle + 0.4) * headLen);
+  p.pop();
+}
+
+function stabilityColor(rating) {
+  if (rating > 5) return '#2a6848';
+  if (rating > 2) return '#cc8800';
+  return '#cc2020';
+}
+
+// ===== ATLAS CELL DRAWING =====
+function drawAtlasCell(p, cell, idx, x, y, w, h) {
+  p.push();
+  let isHover = (idx === hoverCell);
+  let isSel = (idx === selectedIdx);
+
+  // Background
+  p.fill(isSel ? '#f0e8d8' : (isHover ? '#f8f5ee' : '#faf8f3'));
+  p.stroke(isSel ? '#8b4513' : '#d8d0c0');
+  p.strokeWeight(isSel ? 2 : 1);
+  p.rect(x + 2, y + 2, w - 4, h - 4, 3);
+
+  // Draw the structure centered
+  let cx = x + w / 2;
+  let cy = y + h / 2;
+  // Compute bounding box of nodes
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (let n of cell.nodes) {
+    if (n.x < minX) minX = n.x;
+    if (n.x > maxX) maxX = n.x;
+    if (n.y < minY) minY = n.y;
+    if (n.y > maxY) maxY = n.y;
+  }
+  let bw = maxX - minX || 1;
+  let bh = maxY - minY || 1;
+  let scale = Math.min((w - 30) / bw, (h - 40) / bh);
+  let offX = cx - (minX + maxX) / 2 * scale;
+  let offY = cy - (minY + maxY) / 2 * scale;
+  drawStructure(p, cell, offX, offY, scale, true, false, isSel);
+
+  // Labels
+  p.noStroke();
+  p.fill(100);
+  p.textSize(8);
+  p.textAlign(p.LEFT, p.TOP);
+  p.text('S:' + cell.strutCount + ' C:' + cell.cableCount, x + 6, y + 6);
+  // Stability badge
+  p.fill(stabilityColor(cell.stabilityRating));
+  p.textAlign(p.RIGHT, p.TOP);
+  p.text(cell.stabilityRating.toFixed(1), x + w - 8, y + 6);
+
+  p.pop();
+}
+
+// ===== PRESETS FOR VARIETY =====
+function randomPreset() {
+  let presets = ['3prism', '4tower', '6icosa', 'random'];
+  return presets[Math.floor(Math.random() * presets.length)];
+}
+
+function randomStrutCount() {
+  return 3 + Math.floor(Math.random() * 6);
+}
+
+// ===== GENERATE CELLS =====
+function generateCells(p) {
+  cells = [];
+  let pretension = parseFloat(document.getElementById('sl-pretension').value);
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      let x = c * cw + cw / 2;
+      let y = r * ch + ch / 2;
+      let preset = randomPreset();
+      let sc = preset === '3prism' ? 3 : preset === '4tower' ? 4 : preset === '6icosa' ? 6 : randomStrutCount();
+      cells.push(makeCell(x, y, cw, ch, preset, sc, pretension));
+    }
+  }
+}
+
+// ===== MODE SWITCHING =====
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-atlas').className = 'btn' + (m === 'atlas' ? ' active' : '');
+  document.getElementById('btn-single').className = 'btn' + (m === 'single' ? ' active' : '');
+  document.getElementById('hud-mode').textContent = m;
+  document.getElementById('physics-hud').style.display = (m === 'single') ? 'block' : 'none';
+  if (m === 'atlas') {
+    selectedIdx = -1;
+    dragActive = false;
+  } else if (m === 'single' && selectedIdx < 0 && cells.length > 0) {
+    selectedIdx = 0;
+  }
+}
+
+// ===== ACTIONS =====
+function randomizeAll() {
+  if (mode === 'atlas') {
+    cells = [];
+    // Will regenerate in draw via check
+    needsRegenerate = true;
+  } else {
+    let preset = document.getElementById('sel-preset').value;
+    let sc = parseInt(document.getElementById('sl-struts').value);
+    let pretension = parseFloat(document.getElementById('sl-pretension').value);
+    let cWidth = canvasW;
+    let cHeight = canvasH;
+    let cx = cWidth / 2;
+    let cy = cHeight / 2;
+    let radius = Math.min(cWidth, cHeight) * 0.3;
+    let s = generateStructure(cx, cy, radius, preset, sc, pretension);
+    s.cx = cx; s.cy = cy; s.w = cWidth; s.h = cHeight; s.radius = radius;
+    if (selectedIdx >= 0 && selectedIdx < cells.length) {
+      cells[selectedIdx] = s;
+    } else {
+      cells = [s];
+      selectedIdx = 0;
+    }
+  }
+}
+
+function mutateAll() {
+  let pretension = parseFloat(document.getElementById('sl-pretension').value);
+  if (mode === 'atlas') {
+    for (let i = 0; i < cells.length; i++) {
+      // Mutate: perturb node positions and re-settle
+      for (let n of cells[i].nodes) {
+        if (!n.pinned) {
+          n.x += (Math.random() - 0.5) * 20;
+          n.y += (Math.random() - 0.5) * 20;
+          n.px = n.x; n.py = n.y;
+        }
+      }
+      settle(cells[i], 300);
+      cells[i].score = scoreStructure(cells[i]);
+      cells[i].stabilityRating = computeStability(cells[i]);
+    }
+  } else if (selectedIdx >= 0 && selectedIdx < cells.length) {
+    let s = cells[selectedIdx];
+    for (let n of s.nodes) {
+      if (!n.pinned) {
+        n.x += (Math.random() - 0.5) * 30;
+        n.y += (Math.random() - 0.5) * 30;
+        n.px = n.x; n.py = n.y;
+      }
+    }
+    settle(s, 300);
+    s.score = scoreStructure(s);
+    s.stabilityRating = computeStability(s);
+  }
+}
+
+function shakeAll() {
+  let target = (mode === 'single' && selectedIdx >= 0) ? [cells[selectedIdx]] : cells;
+  for (let s of target) {
+    if (!s) continue;
+    for (let n of s.nodes) {
+      if (!n.pinned) {
+        n.x += (Math.random() - 0.5) * 30;
+        n.y += (Math.random() - 0.5) * 30;
+      }
+    }
+  }
+}
+
+// ===== FIND BEAUTIFUL =====
+let findBeautifulBatch = [];
+let findBeautifulProgress = 0;
+
+function findBeautiful() {
+  if (findBeautifulRunning) return;
+  findBeautifulRunning = true;
+  findBeautifulBatch = [];
+  findBeautifulProgress = 0;
+  document.getElementById('btn-beautiful').disabled = true;
+  document.getElementById('progress-container').style.display = 'block';
+  findBeautifulStep();
+}
+
+function findBeautifulStep() {
+  let pretension = parseFloat(document.getElementById('sl-pretension').value);
+  for (let i = 0; i < FIND_BEAUTIFUL_CHUNK; i++) {
+    let preset = randomPreset();
+    let sc = (preset === 'random') ? randomStrutCount() : parseInt(document.getElementById('sl-struts').value);
+    let cx = canvasW / 2, cy = canvasH / 2;
+    let radius = Math.min(canvasW, canvasH) * (mode === 'atlas' ? 0.1 : 0.3);
+    // For atlas, use cell center positions
+    if (mode === 'atlas') {
+      let cellIdx = findBeautifulBatch.length % (COLS * ROWS);
+      let col = cellIdx % COLS, row = Math.floor(cellIdx / COLS);
+      cx = col * cw + cw / 2;
+      cy = row * ch + ch / 2;
+      radius = Math.min(cw, ch) * 0.35;
+    }
+    let s = generateStructure(cx, cy, radius, preset, sc, pretension);
+    s.cx = cx; s.cy = cy; s.w = cw; s.h = ch; s.radius = radius;
+    findBeautifulBatch.push(s);
+  }
+  findBeautifulProgress += FIND_BEAUTIFUL_CHUNK;
+  let pct = Math.min(100, (findBeautifulProgress / FIND_BEAUTIFUL_TOTAL) * 100);
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-text').textContent = findBeautifulProgress + '/' + FIND_BEAUTIFUL_TOTAL + ' tested';
+
+  if (findBeautifulProgress < FIND_BEAUTIFUL_TOTAL) {
+    setTimeout(findBeautifulStep, 10);
+  } else {
+    // Sort by score, pick top 16
+    findBeautifulBatch.sort((a, b) => b.score - a.score);
+    if (mode === 'atlas') {
+      cells = [];
+      for (let i = 0; i < COLS * ROWS && i < findBeautifulBatch.length; i++) {
+        let col = i % COLS, row = Math.floor(i / COLS);
+        let s = findBeautifulBatch[i];
+        s.cx = col * cw + cw / 2;
+        s.cy = row * ch + ch / 2;
+        s.w = cw; s.h = ch;
+        // Re-center nodes
+        let meanX = 0, meanY = 0;
+        for (let n of s.nodes) { meanX += n.x; meanY += n.y; }
+        meanX /= s.nodes.length; meanY /= s.nodes.length;
+        let dx = s.cx - meanX, dy = s.cy - meanY;
+        for (let n of s.nodes) { n.x += dx; n.y += dy; n.px += dx; n.py += dy; }
+        cells.push(s);
+      }
+    } else {
+      let best = findBeautifulBatch[0];
+      let cx = canvasW / 2, cy = canvasH / 2;
+      let meanX = 0, meanY = 0;
+      for (let n of best.nodes) { meanX += n.x; meanY += n.y; }
+      meanX /= best.nodes.length; meanY /= best.nodes.length;
+      let dx = cx - meanX, dy = cy - meanY;
+      for (let n of best.nodes) { n.x += dx; n.y += dy; n.px += dx; n.py += dy; }
+      best.cx = cx; best.cy = cy; best.w = canvasW; best.h = canvasH;
+      if (selectedIdx >= 0 && selectedIdx < cells.length) {
+        cells[selectedIdx] = best;
+      } else {
+        cells = [best];
+        selectedIdx = 0;
+      }
+    }
+    findBeautifulRunning = false;
+    document.getElementById('btn-beautiful').disabled = false;
+    document.getElementById('progress-container').style.display = 'none';
+  }
+}
+
+// ===== SLIDER WIRING =====
+function wireSlider(id, valId, onChange) {
+  let sl = document.getElementById(id);
+  let vl = document.getElementById(valId);
+  sl.addEventListener('input', () => {
+    let step = sl.step || '1';
+    let decimals = step.includes('.') ? (step.split('.')[1] || '').length : 0;
+    vl.textContent = parseFloat(sl.value).toFixed(decimals);
+    if (onChange) onChange(parseFloat(sl.value));
+  });
+}
+
+// ===== MAIN P5 SKETCH =====
+let canvasW = 100, canvasH = 100;
+let needsRegenerate = true;
+
+const sketch = (p) => {
+  p.setup = function () {
+    let container = document.getElementById('canvas-container');
+    canvasW = container.clientWidth;
+    canvasH = container.clientHeight;
+    p.createCanvas(canvasW, canvasH);
+    cw = canvasW / COLS;
+    ch = canvasH / ROWS;
+    generateCells(p);
+    needsRegenerate = false;
+    setMode('atlas');
+  };
+
+  p.windowResized = function () {
+    let container = document.getElementById('canvas-container');
+    canvasW = container.clientWidth;
+    canvasH = container.clientHeight;
+    p.resizeCanvas(canvasW, canvasH);
+    cw = canvasW / COLS;
+    ch = canvasH / ROWS;
+  };
+
+  p.draw = function () {
+    if (needsRegenerate) {
+      generateCells(p);
+      needsRegenerate = false;
+    }
+
+    p.background(250, 248, 243);
+    let damping = parseFloat(document.getElementById('sl-damping').value);
+    let gravVal = document.getElementById('cb-gravity').checked ? parseFloat(document.getElementById('sl-gravity').value) : 0;
+    let showStress = document.getElementById('cb-stress').checked;
+    let showLabels = document.getElementById('cb-labels').checked;
+
+    if (mode === 'atlas') {
+      drawAtlas(p, damping, gravVal, showStress);
+    } else {
+      drawSingle(p, damping, gravVal, showStress, showLabels);
+    }
+
+    // HUD
+    document.getElementById('hud-fps').textContent = Math.round(p.frameRate());
+    if (selectedIdx >= 0 && selectedIdx < cells.length) {
+      let s = cells[selectedIdx];
+      document.getElementById('hud-nodes').textContent = s.nodes.length;
+      document.getElementById('hud-struts').textContent = s.strutCount;
+      document.getElementById('hud-cables').textContent = s.cableCount;
+      document.getElementById('hud-stability').textContent = s.stabilityRating.toFixed(1);
+      document.getElementById('hud-score').textContent = s.score.toFixed(2);
+    }
+  };
+
+  function drawAtlas(p, damping, gravVal, showStress) {
+    hoverCell = -1;
+    let mx = p.mouseX, my = p.mouseY;
+
+    for (let i = 0; i < cells.length; i++) {
+      let col = i % COLS, row = Math.floor(i / COLS);
+      let x = col * cw, y = row * ch;
+
+      // Check hover
+      if (mx >= x && mx < x + cw && my >= y && my < y + ch) {
+        hoverCell = i;
+      }
+
+      // Step physics (light — 1 step per frame in atlas)
+      verletStep(cells[i].nodes, cells[i].constraints, gravVal, damping);
+
+      drawAtlasCell(p, cells[i], i, x, y, cw, ch);
+    }
+
+    // Grid lines
+    p.stroke(200, 195, 185);
+    p.strokeWeight(0.5);
+    for (let c = 1; c < COLS; c++) p.line(c * cw, 0, c * cw, canvasH);
+    for (let r = 1; r < ROWS; r++) p.line(0, r * ch, canvasW, r * ch);
+  }
+
+  function drawSingle(p, damping, gravVal, showStress, showLabels) {
+    if (selectedIdx < 0 || selectedIdx >= cells.length) return;
+    let s = cells[selectedIdx];
+
+    // Handle dragging
+    if (dragActive && dragNodeIdx >= 0 && dragNodeIdx < s.nodes.length) {
+      let n = s.nodes[dragNodeIdx];
+      n.x = p.mouseX;
+      n.y = p.mouseY;
+      n.px = n.x;
+      n.py = n.y;
+    }
+
+    // Pin ground nodes if enabled
+    let pinGround = document.getElementById('cb-ground').checked;
+    if (pinGround) {
+      let maxY = -Infinity;
+      for (let n of s.nodes) if (n.y > maxY) maxY = n.y;
+      for (let n of s.nodes) {
+        if (Math.abs(n.y - maxY) < 10) { n.pinned = true; n._groundPinned = true; }
+      }
+    } else {
+      // Unpin nodes that were ground-pinned
+      for (let n of s.nodes) {
+        if (n._groundPinned) { n.pinned = false; n._groundPinned = false; }
+      }
+    }
+
+    // Step physics (multiple substeps for single mode)
+    for (let step = 0; step < 3; step++) {
+      verletStep(s.nodes, s.constraints, gravVal, damping);
+    }
+
+    // Draw
+    drawStructure(p, s, 0, 0, 1, showStress, showLabels, false);
+
+    // Draw drag force arrow
+    if (dragActive && dragNodeIdx >= 0) {
+      let n = s.nodes[dragNodeIdx];
+      drawExternalLoad(p, s, 0, 0, 1, dragNodeIdx, p.mouseX - n.x, p.mouseY - n.y);
+    }
+
+    // Physics HUD
+    let stats = computeStats(s);
+    document.getElementById('ph-energy').textContent = stats.totalEnergy.toFixed(1);
+    document.getElementById('ph-tension').textContent = stats.maxTension.toFixed(2);
+    document.getElementById('ph-compress').textContent = stats.maxCompress.toFixed(2);
+    document.getElementById('ph-slack').textContent = stats.slackCount + '/' + stats.cableCount;
+    let driftPct = stats.totalEnergy > 1000 ? 'HIGH' : (stats.totalEnergy.toFixed(1) + '%');
+    document.getElementById('ph-drift').textContent = driftPct;
+
+    // Physics HUD warning state
+    let phud = document.getElementById('physics-hud');
+    phud.className = '';
+    if (stats.totalEnergy > 1000) phud.className = 'error';
+    else if (stats.totalEnergy > 100) phud.className = 'warn';
+  }
+
+  // ===== MOUSE INTERACTION =====
+  p.mousePressed = function () {
+    if (p.mouseX < 0 || p.mouseX > canvasW || p.mouseY < 0 || p.mouseY > canvasH) return;
+
+    if (mode === 'atlas') {
+      // Click cell to select
+      let col = Math.floor(p.mouseX / cw);
+      let row = Math.floor(p.mouseY / ch);
+      let idx = row * COLS + col;
+      if (idx >= 0 && idx < cells.length) {
+        selectedIdx = idx;
+        updateDetails(cells[idx]);
+      }
+    } else if (selectedIdx >= 0 && selectedIdx < cells.length) {
+      // Find nearest node to drag
+      let s = cells[selectedIdx];
+      let bestDist = 25;
+      let bestIdx = -1;
+      for (let i = 0; i < s.nodes.length; i++) {
+        let n = s.nodes[i];
+        let d = Math.sqrt((p.mouseX - n.x) * (p.mouseX - n.x) + (p.mouseY - n.y) * (p.mouseY - n.y));
+        if (d < bestDist) {
+          bestDist = d;
+          bestIdx = i;
+        }
+      }
+      if (bestIdx >= 0) {
+        dragActive = true;
+        dragNodeIdx = bestIdx;
+        s.nodes[bestIdx].pinned = true; // Temporarily pin while dragging
+      }
+    }
+  };
+
+  p.mouseReleased = function () {
+    if (dragActive && selectedIdx >= 0 && selectedIdx < cells.length) {
+      let s = cells[selectedIdx];
+      if (dragNodeIdx >= 0 && dragNodeIdx < s.nodes.length) {
+        let n = s.nodes[dragNodeIdx];
+        // Only unpin if it wasn't ground-pinned
+        if (!n._groundPinned) {
+          n.pinned = false;
+        }
+      }
+    }
+    dragActive = false;
+    dragNodeIdx = -1;
+  };
+
+  p.doubleClicked = function () {
+    if (mode === 'atlas' && hoverCell >= 0) {
+      selectedIdx = hoverCell;
+      // Transition to single mode: re-center structure
+      let s = cells[selectedIdx];
+      let meanX = 0, meanY = 0;
+      for (let n of s.nodes) { meanX += n.x; meanY += n.y; }
+      meanX /= s.nodes.length; meanY /= s.nodes.length;
+      let targetCx = canvasW / 2, targetCy = canvasH / 2;
+      let dx = targetCx - meanX, dy = targetCy - meanY;
+      // Scale up nodes from atlas to single
+      let atlasScale = Math.min(cw, ch) * 0.35;
+      let singleScale = Math.min(canvasW, canvasH) * 0.3;
+      let ratio = singleScale / atlasScale;
+      for (let n of s.nodes) {
+        n.x = targetCx + (n.x - meanX) * ratio;
+        n.y = targetCy + (n.y - meanY) * ratio;
+        n.px = n.x; n.py = n.y;
+      }
+      // Update constraint rest lengths to match new scale
+      for (let c of s.constraints) {
+        if (c.type === 'strut') {
+          c.restLen *= ratio;
+        } else {
+          c.maxLen *= ratio;
+        }
+      }
+      s.cx = targetCx; s.cy = targetCy; s.w = canvasW; s.h = canvasH;
+      s.radius = singleScale;
+      settle(s, 200);
+      setMode('single');
+      updateDetails(s);
+    }
+  };
+};
+
+function updateDetails(s) {
+  let list = document.getElementById('detail-list');
+  let html = '';
+  html += '<div class="detail-item">Nodes: ' + s.nodes.length + '</div>';
+  html += '<div class="detail-item">Struts: ' + s.strutCount + '</div>';
+  html += '<div class="detail-item">Cables: ' + s.cableCount + '</div>';
+  html += '<div class="detail-item">Stability: ' + s.stabilityRating.toFixed(2) + '</div>';
+  html += '<div class="detail-item">Score: ' + s.score.toFixed(3) + '</div>';
+  let stats = computeStats(s);
+  html += '<div class="detail-item">Energy: ' + stats.totalEnergy.toFixed(1) + '</div>';
+  html += '<div class="detail-item">Slack cables: ' + stats.slackCount + '/' + stats.cableCount + '</div>';
+  html += '<div class="detail-item" style="margin-top:4px;color:#999;">Strut constraints:</div>';
+  let si = 0;
+  for (let c of s.constraints) {
+    if (c.type === 'strut') {
+      html += '<div class="detail-item">&nbsp; S' + si + ': ' + c.a + '→' + c.b + ' L=' + c.restLen.toFixed(1) + ' σ=' + c.stress.toFixed(2) + '</div>';
+      si++;
+    }
+  }
+  list.innerHTML = html;
+}
+
+// ===== INIT =====
+wireSlider('sl-struts', 'v-struts');
+wireSlider('sl-pretension', 'v-pretension');
+wireSlider('sl-damping', 'v-damping');
+wireSlider('sl-gravity', 'v-gravity');
+
+document.getElementById('sel-preset').addEventListener('change', () => {
+  if (mode === 'single') randomizeAll();
+});
+
+new p5(sketch, 'canvas-container');
+</script>
+</body>
+</html>
