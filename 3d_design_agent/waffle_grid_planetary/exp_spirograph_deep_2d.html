@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Spirograph Deep Explorer — Nested Epicycles</title>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f5f3ee; overflow: hidden; font-family: 'Georgia', serif; display: flex; height: 100vh; }
+  #sidebar { width: 280px; min-width: 280px; background: #f0ede6; border-right: 1px solid #c8c0b0; overflow-y: auto; padding: 12px 14px; font-size: 12px; color: #444; }
+  #sidebar h1 { font-size: 14px; letter-spacing: 1.5px; color: #333; margin-bottom: 2px; font-weight: normal; }
+  #sidebar .subtitle { font-size: 10px; color: #888; margin-bottom: 12px; font-style: italic; }
+  .section-title { font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: #8b7355; margin-top: 14px; margin-bottom: 6px; border-bottom: 1px solid #d8d0c0; padding-bottom: 3px; }
+  .ctrl-row { display: flex; align-items: center; margin-bottom: 5px; }
+  .ctrl-row label { flex: 0 0 95px; font-size: 11px; color: #666; }
+  .ctrl-row input[type="range"] { flex: 1; height: 3px; accent-color: #8b4513; }
+  .ctrl-row .val { flex: 0 0 40px; text-align: right; font-size: 10px; color: #555; font-family: 'Consolas', monospace; }
+  select { width: 100%; padding: 4px 8px; font-size: 11px; font-family: 'Georgia', serif; background: #faf8f3; color: #555; border: 1px solid #c8c0b0; border-radius: 3px; margin-bottom: 4px; }
+  .btn-row { display: flex; gap: 5px; margin: 8px 0; flex-wrap: wrap; }
+  .btn { padding: 5px 10px; font-size: 10px; font-family: 'Georgia', serif; background: #555; color: #f5f3ee; border: none; cursor: pointer; letter-spacing: 0.5px; border-radius: 2px; transition: background 0.15s; }
+  .btn:hover { background: #333; }
+  .btn.active { background: #8b4513; }
+  .btn.accent { background: #2a6848; }
+  .btn.accent:hover { background: #1a4830; }
+  .btn.danger { background: #8b2020; }
+  .btn:disabled { background: #aaa; cursor: not-allowed; }
+  #canvas-container { flex: 1; position: relative; }
+  #info-bar { position: fixed; bottom: 0; left: 280px; right: 0; z-index: 100; background: rgba(245,243,238,0.92); border-top: 1px solid #bbb; padding: 4px 16px; font-size: 10px; color: #777; font-style: italic; }
+  #hud { position: absolute; top: 8px; right: 12px; background: rgba(245,243,238,0.9); border: 1px solid #c8c0b0; border-radius: 4px; padding: 8px 12px; font-size: 10px; line-height: 1.7; color: #666; min-width: 160px; pointer-events: none; }
+  #hud .hv { color: #444; font-family: 'Consolas', monospace; float: right; }
+  .progress-bar { width: 100%; height: 3px; background: #ddd; border-radius: 2px; margin: 4px 0; }
+  .progress-bar-fill { height: 100%; background: #8b4513; border-radius: 2px; transition: width 0.1s; }
+  .circle-list { max-height: 180px; overflow-y: auto; font-size: 9px; line-height: 1.6; margin-top: 4px; }
+  .circle-item { padding: 1px 0; color: #666; font-family: 'Consolas', monospace; }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #c8c0b0; border-radius: 2px; }
+</style>
+</head>
+<body>
+<div id="sidebar">
+  <h1>SPIROGRAPH DEEP</h1>
+  <div class="subtitle">Nested Epicycles &mdash; Up to 8 Rolling Circles</div>
+
+  <div class="section-title">Structure</div>
+  <div class="ctrl-row">
+    <label>Circles (N)</label>
+    <input type="range" id="sl-circles" min="2" max="8" step="1" value="4">
+    <span class="val" id="v-circles">4</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Pen Offset</label>
+    <input type="range" id="sl-pen" min="0" max="1.0" step="0.05" value="0.8">
+    <span class="val" id="v-pen">0.80</span>
+  </div>
+
+  <div class="section-title">Radius Mode</div>
+  <select id="sel-mode">
+    <option value="integer">Integer (closed curves)</option>
+    <option value="near-integer" selected>Near-Integer (most beautiful)</option>
+    <option value="irrational">Irrational (never-closing)</option>
+    <option value="golden">Golden Ratio (φ-based)</option>
+  </select>
+
+  <div class="section-title">Animation</div>
+  <div class="ctrl-row">
+    <label>Speed</label>
+    <input type="range" id="sl-speed" min="0.1" max="4.0" step="0.1" value="1.5">
+    <span class="val" id="v-speed">1.50</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Trail Length</label>
+    <input type="range" id="sl-trail" min="200" max="8000" step="200" value="3000">
+    <span class="val" id="v-trail">3000</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Trail Width</label>
+    <input type="range" id="sl-tw" min="0.3" max="3.0" step="0.1" value="1.0">
+    <span class="val" id="v-tw">1.00</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Show Circles</label>
+    <input type="range" id="sl-show" min="0" max="1" step="1" value="0">
+    <span class="val" id="v-show">OFF</span>
+  </div>
+
+  <div class="section-title">Actions</div>
+  <div class="btn-row">
+    <button class="btn active" id="btn-atlas" onclick="setMode('atlas')">Atlas</button>
+    <button class="btn" id="btn-single" onclick="setMode('single')">Single</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn accent" onclick="randomizeAll()">Randomize</button>
+    <button class="btn" onclick="mutateAll()">Mutate</button>
+    <button class="btn danger" id="btn-beautiful" onclick="findBeautiful()">Find Beautiful</button>
+  </div>
+  <div id="progress-container" style="display:none;">
+    <div class="progress-bar"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
+    <span style="font-size:9px;color:#888;" id="progress-text">Searching...</span>
+  </div>
+
+  <div class="section-title">Circles</div>
+  <div class="circle-list" id="circle-list">
+    <div class="circle-item" style="color:#999;">Click a cell to see circle params</div>
+  </div>
+</div>
+
+<div id="canvas-container">
+  <div id="hud">
+    <div>FPS <span class="hv" id="hud-fps">--</span></div>
+    <div>Mode <span class="hv" id="hud-mode">atlas</span></div>
+    <div>Circles <span class="hv" id="hud-n">--</span></div>
+    <div>Score <span class="hv" id="hud-score">--</span></div>
+  </div>
+</div>
+
+<div id="info-bar">
+  Plate IV. &mdash; Nested rolling circles (epicycles/hypocycloids). Each cell traces a unique compound spirograph curve. Click to inspect.
+</div>
+
+<script>
+// ========================================================
+// SPIROGRAPH DEEP EXPLORER — Nested Epicycles
+// ========================================================
+
+const COLS = 4, ROWS = 4;
+const ATLAS_TRAIL = 800;
+const SINGLE_TRAIL = 8000;
+const FIND_BEAUTIFUL_TOTAL = 200;
+const FIND_BEAUTIFUL_CHUNK = 30;
+const PHI = (1 + Math.sqrt(5)) / 2;
+
+let mode = 'atlas', cells = [], selectedIdx = -1, globalTime = 0, hoverCell = -1;
+let cw, ch, findBeautifulRunning = false;
+
+// ===== NESTED EPICYCLE COMPUTATION =====
+function spirographPoint(circles, t) {
+  let x = 0, y = 0;
+  for (let i = 0; i < circles.length; i++) {
+    let c = circles[i];
+    x += c.R * Math.cos(c.omega * t + c.phase);
+    y += c.R * Math.sin(c.omega * t + c.phase);
+  }
+  return { x, y };
+}
+
+// Circle centers for visualization
+function spirographCircleCenters(circles, t) {
+  let centers = [];
+  let cx = 0, cy = 0;
+  for (let i = 0; i < circles.length; i++) {
+    let c = circles[i];
+    let nx = cx + c.R * Math.cos(c.omega * t + c.phase);
+    let ny = cy + c.R * Math.sin(c.omega * t + c.phase);
+    centers.push({ cx, cy, nx, ny, R: c.R });
+    cx = nx; cy = ny;
+  }
+  return centers;
+}
+
+// Pre-compute full curve for scoring
+function computeFullCurve(circles, steps) {
+  let pts = [];
+  for (let i = 0; i < steps; i++) {
+    let t = (i / steps) * Math.PI * 2 * 20; // enough revolutions
+    pts.push(spirographPoint(circles, t));
+  }
+  return pts;
+}
+
+// ===== CONFIG GENERATOR =====
+function randomConfig() {
+  let numC = parseInt(document.getElementById('sl-circles').value);
+  let radiusMode = document.getElementById('sel-mode').value;
+  let penOffset = parseFloat(document.getElementById('sl-pen').value);
+
+  let circles = [];
+  let baseR = 50;
+
+  for (let i = 0; i < numC; i++) {
+    let R, omega, dir, phase;
+
+    dir = Math.random() < 0.5 ? 1 : -1;
+    phase = Math.random() * Math.PI * 2;
+
+    if (radiusMode === 'integer') {
+      let intR = Math.floor(Math.random() * 6 + 2) * 5; // 10,15,20,...40
+      R = intR * Math.pow(0.6, i); // decreasing
+      omega = dir * (i === 0 ? 1 : (circles[i - 1].R / R) * Math.abs(circles[i - 1].omega));
+    } else if (radiusMode === 'near-integer') {
+      let intR = Math.floor(Math.random() * 6 + 2) * 5;
+      let epsilon = (Math.random() - 0.5) * 0.8; // ±0.4
+      R = (intR + epsilon) * Math.pow(0.6, i);
+      omega = dir * (i === 0 ? 1 : (circles[i - 1].R / R) * Math.abs(circles[i - 1].omega));
+    } else if (radiusMode === 'irrational') {
+      R = (Math.random() * 30 + 5) * Math.pow(0.65, i);
+      omega = dir * (i === 0 ? 1 : (Math.random() * 3 + 0.5));
+    } else if (radiusMode === 'golden') {
+      R = baseR * Math.pow(1 / PHI, i + 1);
+      omega = dir * Math.pow(PHI, i);
+    }
+
+    // Pen offset on last circle
+    if (i === numC - 1) R *= penOffset;
+
+    circles.push({ R, omega, phase, dir });
+  }
+
+  return { circles, numCircles: numC, radiusMode };
+}
+
+function mutateConfig(config) {
+  let c = JSON.parse(JSON.stringify(config));
+  for (let circle of c.circles) {
+    circle.R *= (1 + (Math.random() - 0.5) * 0.15);
+    circle.R = Math.max(1, circle.R);
+    circle.phase += (Math.random() - 0.5) * 0.2;
+    if (Math.random() < 0.1) circle.dir *= -1;
+  }
+  return c;
+}
+
+// ===== BEAUTY SCORER =====
+function scoreCurve(pts) {
+  if (pts.length < 20) return 0;
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (let p of pts) { minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x); minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y); }
+  let w = maxX - minX, h = maxY - minY, area = w * h;
+  if (area < 1) return 0;
+
+  let perim = 0;
+  for (let i = 1; i < pts.length; i++) { let dx = pts[i].x - pts[i - 1].x, dy = pts[i].y - pts[i - 1].y; perim += Math.sqrt(dx * dx + dy * dy); }
+
+  let complexity = (perim / Math.sqrt(area)) * 3;
+
+  let inflections = 0;
+  for (let i = 3; i < pts.length; i++) {
+    let cross1 = (pts[i].x - pts[i - 1].x) * (pts[i - 1].y - pts[i - 2].y) - (pts[i].y - pts[i - 1].y) * (pts[i - 1].x - pts[i - 2].x);
+    let cross0 = (pts[i - 1].x - pts[i - 2].x) * (pts[i - 2].y - pts[i - 3].y) - (pts[i - 1].y - pts[i - 2].y) * (pts[i - 2].x - pts[i - 3].x);
+    if (cross1 * cross0 < 0) inflections++;
+  }
+
+  let aspect = Math.min(w, h) / Math.max(w, h);
+  let aspectBonus = aspect > 0.3 ? 10 : 0;
+
+  // Near-closure bonus
+  let dx = pts[pts.length - 1].x - pts[0].x, dy = pts[pts.length - 1].y - pts[0].y;
+  let closeDist = Math.sqrt(dx * dx + dy * dy);
+  let closureBonus = closeDist < perim * 0.02 ? 20 : (closeDist < perim * 0.05 ? 10 : 0);
+
+  // Self-intersections (sampled)
+  let crossings = 0;
+  let step = 4;
+  for (let i = step; i < pts.length && crossings < 15; i += step) {
+    for (let j = i + step * 2; j < pts.length && crossings < 15; j += step) {
+      if (segsIntersect(pts[i - step], pts[i], pts[j - step], pts[j])) crossings++;
+    }
+  }
+
+  return inflections * 1.5 + Math.min(crossings, 15) * 4 + complexity * 0.5 + aspectBonus + closureBonus;
+}
+
+function segsIntersect(a, b, c, d) {
+  let det = (b.x - a.x) * (d.y - c.y) - (b.y - a.y) * (d.x - c.x);
+  if (Math.abs(det) < 1e-10) return false;
+  let t = ((c.x - a.x) * (d.y - c.y) - (c.y - a.y) * (d.x - c.x)) / det;
+  let u = ((c.x - a.x) * (b.y - a.y) - (c.y - a.y) * (b.x - a.x)) / det;
+  return t > 0.01 && t < 0.99 && u > 0.01 && u < 0.99;
+}
+
+// ===== ACTIONS =====
+function makeCell(config) {
+  return { config, trail: [], score: 0 };
+}
+
+function randomizeAll() {
+  cells = [];
+  for (let i = 0; i < COLS * ROWS; i++) cells.push(makeCell(randomConfig()));
+  globalTime = 0;
+}
+
+function mutateAll() {
+  for (let cell of cells) {
+    cell.config = mutateConfig(cell.config);
+    cell.trail = [];
+  }
+  globalTime = 0;
+}
+
+function findBeautiful() {
+  if (findBeautifulRunning) return;
+  findBeautifulRunning = true;
+  document.getElementById('btn-beautiful').disabled = true;
+  document.getElementById('progress-container').style.display = 'block';
+  let candidates = [], processed = 0;
+
+  function chunk() {
+    let end = Math.min(processed + FIND_BEAUTIFUL_CHUNK, FIND_BEAUTIFUL_TOTAL);
+    for (let i = processed; i < end; i++) {
+      let config = randomConfig();
+      let pts = computeFullCurve(config.circles, 2000);
+      let score = scoreCurve(pts);
+      candidates.push({ config, score });
+    }
+    processed = end;
+    document.getElementById('progress-fill').style.width = Math.round(processed / FIND_BEAUTIFUL_TOTAL * 100) + '%';
+    document.getElementById('progress-text').textContent = `Scoring ${processed}/${FIND_BEAUTIFUL_TOTAL}...`;
+
+    if (processed < FIND_BEAUTIFUL_TOTAL) setTimeout(chunk, 0);
+    else {
+      candidates.sort((a, b) => b.score - a.score);
+      cells = candidates.slice(0, COLS * ROWS).map(c => { let cell = makeCell(c.config); cell.score = c.score; return cell; });
+      globalTime = 0;
+      findBeautifulRunning = false;
+      document.getElementById('btn-beautiful').disabled = false;
+      document.getElementById('progress-container').style.display = 'none';
+    }
+  }
+  chunk();
+}
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-atlas').classList.toggle('active', m === 'atlas');
+  document.getElementById('btn-single').classList.toggle('active', m === 'single');
+  document.getElementById('hud-mode').textContent = m;
+  if (m === 'atlas') selectedIdx = -1;
+}
+
+// Slider wiring
+['sl-circles:v-circles:int', 'sl-pen:v-pen:', 'sl-speed:v-speed:', 'sl-trail:v-trail:int', 'sl-tw:v-tw:', 'sl-show:v-show:bool'].forEach(s => {
+  let [id, vid, fmt] = s.split(':');
+  document.getElementById(id).addEventListener('input', () => {
+    let v = parseFloat(document.getElementById(id).value);
+    document.getElementById(vid).textContent = fmt === 'int' ? Math.round(v) : fmt === 'bool' ? (v > 0.5 ? 'ON' : 'OFF') : v.toFixed(2);
+  });
+});
+
+// ===== P5.JS SKETCH =====
+const sketch = (p) => {
+  p.setup = () => {
+    let c = document.getElementById('canvas-container');
+    cw = c.clientWidth; ch = c.clientHeight;
+    p.createCanvas(cw, ch).parent(c);
+    p.textFont('Georgia');
+    randomizeAll();
+  };
+  p.windowResized = () => {
+    let c = document.getElementById('canvas-container');
+    cw = c.clientWidth; ch = c.clientHeight; p.resizeCanvas(cw, ch);
+  };
+  p.draw = () => {
+    p.background(245, 243, 238);
+    let speed = parseFloat(document.getElementById('sl-speed').value);
+    globalTime += speed * 0.03;
+    if (mode === 'atlas') drawAtlas(p); else drawSingle(p);
+    document.getElementById('hud-fps').textContent = Math.round(p.frameRate());
+  };
+  p.mousePressed = () => {
+    if (p.mouseX < 0 || p.mouseX > cw || p.mouseY < 0 || p.mouseY > ch) return;
+    if (mode === 'atlas') {
+      let cellW = cw / COLS, cellH = ch / ROWS;
+      let col = Math.floor(p.mouseX / cellW), row = Math.floor(p.mouseY / cellH);
+      if (col >= 0 && col < COLS && row >= 0 && row < ROWS) {
+        selectedIdx = row * COLS + col;
+        if (selectedIdx < cells.length) {
+          setMode('single');
+          cells[selectedIdx].trail = [];
+          updateCircleList(cells[selectedIdx].config);
+        }
+      }
+    }
+  };
+  p.mouseMoved = () => {
+    if (mode === 'atlas') {
+      let cellW = cw / COLS, cellH = ch / ROWS;
+      let col = Math.floor(p.mouseX / cellW), row = Math.floor(p.mouseY / cellH);
+      hoverCell = (col >= 0 && col < COLS && row >= 0 && row < ROWS) ? row * COLS + col : -1;
+    }
+  };
+};
+
+// ===== ATLAS =====
+function drawAtlas(p) {
+  let cellW = cw / COLS, cellH = ch / ROWS;
+  let trailW = parseFloat(document.getElementById('sl-tw').value);
+
+  for (let idx = 0; idx < cells.length; idx++) {
+    let col = idx % COLS, row = Math.floor(idx / COLS);
+    let cx = col * cellW, cy = row * cellH;
+
+    p.noFill(); p.stroke(200, 190, 175); p.strokeWeight(0.5);
+    p.rect(cx, cy, cellW, cellH);
+    if (idx === hoverCell) { p.fill(255, 255, 255, 30); p.noStroke(); p.rect(cx, cy, cellW, cellH); }
+
+    let cell = cells[idx];
+    let pt = spirographPoint(cell.config.circles, globalTime);
+    cell.trail.push(pt);
+    if (cell.trail.length > ATLAS_TRAIL) cell.trail.shift();
+
+    // Auto-scale
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (let tp of cell.trail) { minX = Math.min(minX, tp.x); maxX = Math.max(maxX, tp.x); minY = Math.min(minY, tp.y); maxY = Math.max(maxY, tp.y); }
+    let tw = maxX - minX || 1, th = maxY - minY || 1;
+    let scale = Math.min((cellW - 16) / tw, (cellH - 16) / th) * 0.85;
+    scale = Math.min(scale, 3);
+    let offX = cx + cellW / 2 - (minX + maxX) / 2 * scale;
+    let offY = cy + cellH / 2 - (minY + maxY) / 2 * scale;
+
+    // Draw trail
+    if (cell.trail.length > 2) {
+      for (let i = 1; i < cell.trail.length; i++) {
+        let t = i / cell.trail.length;
+        // Color gradient: deep brown → warm amber
+        let r = 139 + t * 40, g = 69 + t * 50, b = 19 + t * 30;
+        p.stroke(r, g, b, t * 200 + 30);
+        p.strokeWeight(trailW * t + 0.2);
+        p.line(offX + cell.trail[i - 1].x * scale, offY + cell.trail[i - 1].y * scale,
+               offX + cell.trail[i].x * scale, offY + cell.trail[i].y * scale);
+      }
+    }
+
+    // Pen dot
+    let penSX = offX + pt.x * scale, penSY = offY + pt.y * scale;
+    p.fill(200, 50, 50); p.noStroke(); p.circle(penSX, penSY, 3);
+
+    // Label
+    p.fill(180, 170, 155); p.textSize(8); p.textAlign(p.LEFT, p.TOP);
+    p.text(`${cell.config.numCircles}C`, cx + 4, cy + 3);
+  }
+}
+
+// ===== SINGLE =====
+function drawSingle(p) {
+  if (selectedIdx < 0 || selectedIdx >= cells.length) return;
+  let cell = cells[selectedIdx];
+  let config = cell.config;
+  let showCircles = parseFloat(document.getElementById('sl-show').value) > 0.5;
+  let trailW = parseFloat(document.getElementById('sl-tw').value);
+  let maxTrail = Math.min(parseInt(document.getElementById('sl-trail').value), SINGLE_TRAIL);
+
+  let pt = spirographPoint(config.circles, globalTime);
+  cell.trail.push(pt);
+  if (cell.trail.length > maxTrail) cell.trail.shift();
+
+  // Auto-scale
+  let totalR = 0;
+  for (let c of config.circles) totalR += Math.abs(c.R);
+  let scale = Math.min(cw, ch) * 0.35 / totalR;
+  scale = Math.min(scale, 5);
+  let offX = cw / 2, offY = ch / 2;
+
+  // Draw circle hierarchy
+  if (showCircles) {
+    let centers = spirographCircleCenters(config.circles, globalTime);
+    let circleColors = [[100, 140, 180], [180, 100, 100], [100, 180, 100], [180, 140, 100],
+                        [140, 100, 180], [100, 180, 140], [180, 180, 100], [180, 100, 180]];
+    for (let i = 0; i < centers.length; i++) {
+      let c = centers[i];
+      let cc = circleColors[i % circleColors.length];
+      p.noFill(); p.stroke(...cc, 80); p.strokeWeight(0.8);
+      p.circle(offX + c.cx * scale, offY + c.cy * scale, Math.abs(config.circles[i].R) * scale * 2);
+      // Arm from center to next center
+      p.stroke(...cc, 120); p.strokeWeight(0.5);
+      p.line(offX + c.cx * scale, offY + c.cy * scale, offX + c.nx * scale, offY + c.ny * scale);
+    }
+  }
+
+  // Draw trail
+  if (cell.trail.length > 2) {
+    for (let i = 1; i < cell.trail.length; i++) {
+      let t = i / cell.trail.length;
+      let r = 139 + t * 40, g = 69 + t * 50, b = 19 + t * 30;
+      p.stroke(r, g, b, t * 220 + 20);
+      p.strokeWeight(trailW * 1.5 * t + 0.3);
+      p.line(offX + cell.trail[i - 1].x * scale, offY + cell.trail[i - 1].y * scale,
+             offX + cell.trail[i].x * scale, offY + cell.trail[i].y * scale);
+    }
+  }
+
+  // Pen
+  p.fill(200, 50, 50); p.noStroke();
+  p.circle(offX + pt.x * scale, offY + pt.y * scale, 6);
+
+  // Score
+  if (!cell.score && cell.trail.length > 500) {
+    cell.score = scoreCurve(cell.trail);
+  }
+
+  document.getElementById('hud-n').textContent = config.numCircles;
+  document.getElementById('hud-score').textContent = cell.score ? cell.score.toFixed(1) : '--';
+
+  document.getElementById('info-bar').textContent =
+    `Cell ${selectedIdx + 1} \u2014 ${config.numCircles} circles, ${config.radiusMode} mode. Score: ${cell.score ? cell.score.toFixed(1) : '...'}`;
+
+  p.fill(150); p.noStroke(); p.textSize(10); p.textAlign(p.LEFT, p.BOTTOM);
+  p.text('\u2190 Press Atlas to return', 10, ch - 30);
+}
+
+function updateCircleList(config) {
+  let html = '';
+  for (let i = 0; i < config.circles.length; i++) {
+    let c = config.circles[i];
+    html += `<div class="circle-item">C${i}: R=${c.R.toFixed(1)} ω=${c.omega.toFixed(2)} φ=${(c.phase * 180 / Math.PI).toFixed(0)}° ${c.dir > 0 ? 'CW' : 'CCW'}</div>`;
+  }
+  document.getElementById('circle-list').innerHTML = html;
+}
+
+new p5(sketch, 'canvas-container');
+</script>
+</body>
+</html>
