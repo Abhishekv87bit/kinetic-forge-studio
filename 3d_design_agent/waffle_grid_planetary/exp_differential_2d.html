@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Differential Mechanism Explorer — 2 Inputs &rarr; 1 Output</title>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f5f3ee; overflow: hidden; font-family: 'Georgia', serif; display: flex; height: 100vh; }
+  #sidebar { width: 280px; min-width: 280px; background: #f0ede6; border-right: 1px solid #c8c0b0; overflow-y: auto; padding: 12px 14px; font-size: 12px; color: #444; }
+  #sidebar h1 { font-size: 14px; letter-spacing: 1.5px; color: #333; margin-bottom: 2px; font-weight: normal; }
+  #sidebar .subtitle { font-size: 10px; color: #888; margin-bottom: 12px; font-style: italic; }
+  .section-title { font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: #8b7355; margin-top: 14px; margin-bottom: 6px; border-bottom: 1px solid #d8d0c0; padding-bottom: 3px; }
+  .ctrl-row { display: flex; align-items: center; margin-bottom: 5px; }
+  .ctrl-row label { flex: 0 0 95px; font-size: 11px; color: #666; }
+  .ctrl-row input[type="range"] { flex: 1; height: 3px; accent-color: #8b4513; }
+  .ctrl-row .val { flex: 0 0 40px; text-align: right; font-size: 10px; color: #555; font-family: 'Consolas', monospace; }
+  select { width: 100%; padding: 4px 8px; font-size: 11px; font-family: 'Georgia', serif; background: #faf8f3; color: #555; border: 1px solid #c8c0b0; border-radius: 3px; margin-bottom: 4px; }
+  .btn-row { display: flex; gap: 5px; margin: 8px 0; flex-wrap: wrap; }
+  .btn { padding: 5px 10px; font-size: 10px; font-family: 'Georgia', serif; background: #555; color: #f5f3ee; border: none; cursor: pointer; letter-spacing: 0.5px; border-radius: 2px; transition: background 0.15s; }
+  .btn:hover { background: #333; }
+  .btn.active { background: #8b4513; }
+  .btn.accent { background: #2a6848; }
+  .btn.accent:hover { background: #1a4830; }
+  .btn:disabled { background: #aaa; cursor: not-allowed; }
+  #canvas-container { flex: 1; position: relative; }
+  #canvas-container canvas { display: block; }
+  #info-bar { position: fixed; bottom: 0; left: 280px; right: 0; z-index: 100; background: rgba(245,243,238,0.92); border-top: 1px solid #bbb; padding: 4px 16px; font-size: 10px; color: #777; font-style: italic; }
+  #hud { position: absolute; top: 8px; right: 12px; background: rgba(245,243,238,0.9); border: 1px solid #c8c0b0; border-radius: 4px; padding: 8px 12px; font-size: 10px; line-height: 1.7; color: #666; min-width: 160px; pointer-events: none; }
+  #hud .hv { color: #444; font-family: 'Consolas', monospace; float: right; }
+  .progress-bar { width: 100%; height: 3px; background: #ddd; border-radius: 2px; margin: 4px 0; }
+  .progress-bar-fill { height: 100%; background: #8b4513; border-radius: 2px; transition: width 0.1s; }
+  .stage-info { max-height: 180px; overflow-y: auto; font-size: 9px; line-height: 1.6; margin-top: 4px; }
+  .stage-item { padding: 1px 0; color: #666; font-family: 'Consolas', monospace; }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #c8c0b0; border-radius: 2px; }
+</style>
+</head>
+<body>
+<div id="sidebar">
+  <h1>DIFFERENTIAL</h1>
+  <div class="subtitle">2 Inputs &rarr; 1 Output &mdash; Bevel Gear Blending</div>
+  <div class="section-title">Configuration</div>
+  <div class="ctrl-row"><label>Stages</label><input type="range" id="numStages" min="1" max="3" value="1" step="1"><span class="val" id="numStagesVal">1</span></div>
+  <div class="ctrl-row"><label>Input 1 Speed</label><input type="range" id="speed1" min="0.1" max="4.0" value="1.0" step="0.1"><span class="val" id="speed1Val">1.0</span></div>
+  <div class="ctrl-row"><label>Input 2 Speed</label><input type="range" id="speed2" min="0.1" max="4.0" value="1.5" step="0.1"><span class="val" id="speed2Val">1.5</span></div>
+  <div class="ctrl-row"><label>Input 3 Speed</label><input type="range" id="speed3" min="0.1" max="4.0" value="0.8" step="0.1"><span class="val" id="speed3Val">0.8</span></div>
+  <div class="ctrl-row"><label>Anim Speed</label><input type="range" id="animSpeed" min="0.1" max="3.0" value="1.0" step="0.1"><span class="val" id="animSpeedVal">1.0</span></div>
+  <div class="section-title">Mode</div>
+  <div class="btn-row">
+    <button class="btn active" id="btnAtlas" onclick="setMode('atlas')">Atlas 4&times;4</button>
+    <button class="btn" id="btnSingle" onclick="setMode('single')">Single</button>
+  </div>
+  <div class="section-title">Actions</div>
+  <div class="btn-row">
+    <button class="btn" onclick="randomizeAll()">Randomize</button>
+    <button class="btn" onclick="mutateSelected()">Mutate</button>
+    <button class="btn accent" id="btnFind" onclick="findBeautiful()">Find Beautiful</button>
+  </div>
+  <div class="progress-bar" id="progressWrap" style="display:none;"><div class="progress-bar-fill" id="progressFill" style="width:0%"></div></div>
+  <div class="section-title">Stage Info</div>
+  <div class="stage-info" id="stageInfo"></div>
+</div>
+<div id="canvas-container"><div id="hud"></div></div>
+<div id="info-bar">Differential Mechanism Explorer &mdash; blending input speeds through bevel gear ratios</div>
+
+<script>
+const sketch = (p) => {
+  const ATLAS_COLS = 4, ATLAS_ROWS = 4;
+  let mode = 'atlas', configs = [], selectedIdx = 0, time = 0;
+  let cW, cH, fps = 60, fpsFrames = 0, fpsLast = 0;
+  let outputHistory = [];
+
+  function makeConfig() {
+    let nStages = parseInt(document.getElementById('numStages').value);
+    let stages = [];
+    for (let i = 0; i < nStages; i++) {
+      stages.push({
+        r1: p.random(0.3, 3.0), // bevel gear ratio 1
+        r2: p.random(0.3, 3.0), // bevel gear ratio 2
+      });
+    }
+    let inputs = [
+      p.random(0.3, 3.0),
+      p.random(0.3, 3.0),
+      p.random(0.3, 3.0)
+    ];
+    return { stages, inputs };
+  }
+
+  function computeOutput(cfg, t) {
+    // Stage 1: out1 = (r1*in1 + r2*in2) / (r1+r2)
+    let in1 = cfg.inputs[0] * t;
+    let in2 = cfg.inputs[1] * t;
+    let in3 = cfg.inputs[2] * t;
+
+    let omega1 = cfg.inputs[0], omega2 = cfg.inputs[1], omega3 = cfg.inputs[2];
+    let result = omega1; // default
+
+    if (cfg.stages.length >= 1) {
+      let s = cfg.stages[0];
+      result = (s.r1 * omega1 + s.r2 * omega2) / (s.r1 + s.r2);
+    }
+    if (cfg.stages.length >= 2) {
+      let s = cfg.stages[1];
+      result = (s.r1 * result + s.r2 * omega3) / (s.r1 + s.r2);
+    }
+    if (cfg.stages.length >= 3) {
+      let s = cfg.stages[2];
+      // Third stage uses modulated input
+      let mod = omega1 * Math.sin(omega2 * t * 0.5);
+      result = (s.r1 * result + s.r2 * mod) / (s.r1 + s.r2);
+    }
+    return result;
+  }
+
+  function scoreConfig(cfg) {
+    // Score based on output complexity
+    let samples = [];
+    for (let t = 0; t < 100; t++) {
+      samples.push(computeOutput(cfg, t * 0.05));
+    }
+    // Variance of output
+    let mean = samples.reduce((a, b) => a + b) / samples.length;
+    let variance = samples.reduce((a, b) => a + (b - mean) * (b - mean), 0) / samples.length;
+    // Number of stages bonus
+    let stageBonus = cfg.stages.length * 15;
+    // Ratio diversity
+    let ratios = cfg.stages.map(s => s.r1 / s.r2);
+    let ratioVar = 0;
+    if (ratios.length > 1) {
+      let rm = ratios.reduce((a, b) => a + b) / ratios.length;
+      ratioVar = ratios.reduce((a, b) => a + (b - rm) * (b - rm), 0) / ratios.length;
+    }
+    return Math.min(variance * 100, 40) + stageBonus + ratioVar * 20;
+  }
+
+  function mutateConfig(cfg) {
+    return {
+      stages: cfg.stages.map(s => ({
+        r1: Math.max(0.2, s.r1 * (1 + (p.random() - 0.5) * 0.3)),
+        r2: Math.max(0.2, s.r2 * (1 + (p.random() - 0.5) * 0.3))
+      })),
+      inputs: cfg.inputs.map(v => Math.max(0.1, v * (1 + (p.random() - 0.5) * 0.3)))
+    };
+  }
+
+  function drawDifferential(p, cfg, cx, cy, w, h, t, showLabels) {
+    let nS = cfg.stages.length;
+    let stageW = w / (nS + 2);
+
+    // Draw input shafts
+    let inY1 = cy - h * 0.25, inY2 = cy + h * 0.25, inY3 = cy;
+    let inX = cx - w / 2 + stageW * 0.3;
+
+    // Input 1 gear
+    let angle1 = cfg.inputs[0] * t;
+    drawSimpleGear(p, inX, inY1, 15, angle1, [80, 140, 80]);
+    // Input 2 gear
+    let angle2 = cfg.inputs[1] * t;
+    drawSimpleGear(p, inX, inY2, 15, angle2, [80, 80, 140]);
+
+    if (showLabels) {
+      p.noStroke(); p.fill(80, 140, 80); p.textSize(9); p.textAlign(p.CENTER);
+      p.text('IN1: ' + cfg.inputs[0].toFixed(1), inX, inY1 - 22);
+      p.fill(80, 80, 140);
+      p.text('IN2: ' + cfg.inputs[1].toFixed(1), inX, inY2 + 28);
+    }
+
+    // Stages
+    let prevOmega = computeOutput(cfg, 0); // constant for non-modulated
+    for (let si = 0; si < nS; si++) {
+      let sx = cx - w / 2 + (si + 1.2) * stageW;
+      let s = cfg.stages[si];
+
+      // Housing circle (ring gear)
+      p.noFill();
+      p.stroke(160, 140, 120);
+      p.strokeWeight(2);
+      p.ellipse(sx, cy, 50, 50);
+
+      // Cross-shaped spider gear
+      let spiderAngle = computeOutput(cfg, t) * t * 0.3;
+      p.push();
+      p.translate(sx, cy);
+      p.rotate(spiderAngle);
+      p.stroke(139, 69, 19);
+      p.strokeWeight(2);
+      p.line(-12, 0, 12, 0);
+      p.line(0, -12, 0, 12);
+      p.fill(139, 69, 19);
+      p.ellipse(0, 0, 6, 6);
+      p.pop();
+
+      // Bevel gear indicators
+      let bevelR1 = s.r1 / (s.r1 + s.r2) * 20;
+      let bevelR2 = s.r2 / (s.r1 + s.r2) * 20;
+      drawSimpleGear(p, sx, cy - 18, bevelR1, angle1, [180, 140, 100]);
+      drawSimpleGear(p, sx, cy + 18, bevelR2, angle2, [100, 140, 180]);
+
+      if (showLabels) {
+        p.noStroke(); p.fill(140); p.textSize(7); p.textAlign(p.CENTER);
+        p.text('r1=' + s.r1.toFixed(1), sx, cy - 33);
+        p.text('r2=' + s.r2.toFixed(1), sx, cy + 38);
+        p.fill(120); p.textSize(8);
+        p.text('Stage ' + (si + 1), sx, cy - 42);
+      }
+
+      // Connection lines
+      p.stroke(160, 150, 140);
+      p.strokeWeight(1);
+      if (si === 0) {
+        p.line(inX + 18, inY1, sx, cy - 18);
+        p.line(inX + 18, inY2, sx, cy + 18);
+      }
+    }
+
+    // Output shaft
+    let outX = cx + w / 2 - stageW * 0.3;
+    let outOmega = computeOutput(cfg, 1);
+    let outAngle = outOmega * t;
+    drawSimpleGear(p, outX, cy, 18, outAngle, [180, 80, 80]);
+
+    if (showLabels) {
+      p.noStroke(); p.fill(180, 80, 80); p.textSize(9); p.textAlign(p.CENTER);
+      p.text('OUT: ' + outOmega.toFixed(2), outX, cy - 28);
+    }
+
+    // Connection from last stage to output
+    if (nS > 0) {
+      let lastX = cx - w / 2 + nS * stageW + stageW * 0.2;
+      p.stroke(160, 150, 140);
+      p.strokeWeight(1.5);
+      p.line(lastX + 25, cy, outX - 20, cy);
+    }
+  }
+
+  function drawSimpleGear(p, x, y, r, angle, color) {
+    p.push();
+    p.translate(x, y);
+    p.rotate(angle);
+    p.fill(color[0], color[1], color[2], 50);
+    p.stroke(color[0], color[1], color[2]);
+    p.strokeWeight(1);
+    let teeth = Math.max(6, Math.round(r * 0.8));
+    p.beginShape();
+    for (let i = 0; i < teeth; i++) {
+      let a1 = (i / teeth) * Math.PI * 2;
+      let a2 = ((i + 0.5) / teeth) * Math.PI * 2;
+      p.vertex((r - 2) * Math.cos(a1), (r - 2) * Math.sin(a1));
+      p.vertex((r + 2) * Math.cos(a2), (r + 2) * Math.sin(a2));
+    }
+    p.endShape(p.CLOSE);
+    p.fill(color[0], color[1], color[2]);
+    p.noStroke();
+    p.ellipse(0, 0, 4, 4);
+    p.pop();
+  }
+
+  function drawOutputGraph(p, cfg, x, y, w, h) {
+    p.push(); p.translate(x, y);
+    p.fill(250, 248, 242); p.stroke(180); p.strokeWeight(0.5);
+    p.rect(0, 0, w, h, 2);
+
+    // Plot output omega over varying input ratios
+    p.stroke(180, 80, 80); p.strokeWeight(1.5); p.noFill();
+    p.beginShape();
+    for (let px = 0; px < w; px++) {
+      let t = (px / w) * Math.PI * 4;
+      let omega = computeOutput(cfg, t);
+      let ny = h / 2 - omega * h / 8;
+      ny = Math.max(5, Math.min(h - 5, ny));
+      p.vertex(px, ny);
+    }
+    p.endShape();
+
+    // Zero line
+    p.stroke(200); p.strokeWeight(0.3);
+    p.line(0, h / 2, w, h / 2);
+
+    // Labels
+    p.noStroke(); p.fill(120); p.textSize(7); p.textAlign(p.LEFT);
+    p.text('Output \u03C9', 4, 12);
+    p.pop();
+  }
+
+  function getAtlasCell(mx, my) {
+    let cellW = cW / ATLAS_COLS, cellH = cH / ATLAS_ROWS;
+    let col = Math.floor(mx / cellW), row = Math.floor(my / cellH);
+    if (col < 0 || col >= ATLAS_COLS || row < 0 || row >= ATLAS_ROWS) return -1;
+    return row * ATLAS_COLS + col;
+  }
+
+  p.setup = function() {
+    let c = document.getElementById('canvas-container');
+    cW = c.clientWidth; cH = c.clientHeight;
+    p.createCanvas(cW, cH).parent('canvas-container');
+    randomizeAll(); fpsLast = p.millis();
+  };
+
+  p.windowResized = function() {
+    let c = document.getElementById('canvas-container');
+    cW = c.clientWidth; cH = c.clientHeight; p.resizeCanvas(cW, cH);
+  };
+
+  p.draw = function() {
+    p.background(245, 243, 238);
+    let spd = parseFloat(document.getElementById('animSpeed').value);
+    time += 0.02 * spd;
+
+    fpsFrames++;
+    let now = p.millis();
+    if (now - fpsLast > 500) { fps = Math.round(fpsFrames / ((now - fpsLast) / 1000)); fpsFrames = 0; fpsLast = now; }
+
+    if (mode === 'atlas') {
+      let cellW = cW / ATLAS_COLS, cellH = cH / ATLAS_ROWS;
+      for (let i = 0; i < Math.min(configs.length, 16); i++) {
+        let row = Math.floor(i / ATLAS_COLS), col = i % ATLAS_COLS;
+        let cx = col * cellW, cy = row * cellH;
+        p.noStroke(); p.fill(252, 250, 245);
+        p.rect(cx + 2, cy + 2, cellW - 4, cellH - 4, 3);
+        if (configs[i]) drawDifferential(p, configs[i], cx + cellW / 2, cy + cellH / 2, cellW - 20, cellH - 20, time, false);
+        p.fill(180); p.textSize(9); p.textAlign(p.RIGHT);
+        let rom = ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV','XVI'];
+        p.text(rom[i], cx + cellW - 6, cy + 14);
+        if (configs[i]) { p.fill(120); p.textSize(7); p.textAlign(p.LEFT); p.text('out=' + computeOutput(configs[i], 1).toFixed(2), cx + 5, cy + cellH - 6); }
+        if (i === selectedIdx) { p.noFill(); p.stroke(139, 69, 19); p.strokeWeight(2); p.rect(cx + 2, cy + 2, cellW - 4, cellH - 4, 3); }
+      }
+      p.stroke(200, 190, 175); p.strokeWeight(0.5);
+      for (let c = 1; c < ATLAS_COLS; c++) p.line(c * cellW, 0, c * cellW, cH);
+      for (let r = 1; r < ATLAS_ROWS; r++) p.line(0, r * cellH, cW, r * cellH);
+    } else {
+      let cfg = configs[selectedIdx];
+      if (cfg) {
+        drawDifferential(p, cfg, cW / 2, cH * 0.35, cW - 60, cH * 0.45, time, true);
+        drawOutputGraph(p, cfg, 40, cH * 0.65, cW - 80, cH * 0.25);
+        let el = document.getElementById('stageInfo');
+        let lines = cfg.stages.map((s, i) => `<div class="stage-item">Stage ${i + 1}: r1=${s.r1.toFixed(2)} r2=${s.r2.toFixed(2)} ratio=${(s.r1/s.r2).toFixed(2)}</div>`);
+        lines.push(`<div class="stage-item">Output \u03C9: ${computeOutput(cfg, 1).toFixed(4)}</div>`);
+        el.innerHTML = lines.join('');
+      }
+    }
+
+    let hud = document.getElementById('hud');
+    hud.innerHTML = `FPS <span class="hv">${fps}</span>` + (mode === 'single' && configs[selectedIdx] ? `<br>Stages <span class="hv">${configs[selectedIdx].stages.length}</span><br>Out \u03C9 <span class="hv">${computeOutput(configs[selectedIdx], 1).toFixed(3)}</span>` : '');
+  };
+
+  p.mousePressed = function() {
+    if (mode === 'atlas') { let idx = getAtlasCell(p.mouseX, p.mouseY); if (idx >= 0 && idx < configs.length) { selectedIdx = idx; setMode('single'); } }
+  };
+
+  window.setMode = function(m) { mode = m; document.getElementById('btnAtlas').classList.toggle('active', m === 'atlas'); document.getElementById('btnSingle').classList.toggle('active', m === 'single'); };
+  window.randomizeAll = function() { configs = []; for (let i = 0; i < 16; i++) configs.push(makeConfig()); selectedIdx = 0; };
+  window.mutateSelected = function() { if (configs[selectedIdx]) configs[selectedIdx] = mutateConfig(configs[selectedIdx]); };
+  window.findBeautiful = function() {
+    let btn = document.getElementById('btnFind'); btn.disabled = true;
+    let wrap = document.getElementById('progressWrap'), fill = document.getElementById('progressFill');
+    wrap.style.display = 'block'; fill.style.width = '0%';
+    let candidates = [], total = 200, perChunk = 25, done = 0;
+    function chunk() {
+      for (let i = done; i < Math.min(done + perChunk, total); i++) { let c = makeConfig(); candidates.push({ cfg: c, score: scoreConfig(c) }); }
+      done = Math.min(done + perChunk, total); fill.style.width = (done / total * 100) + '%';
+      if (done < total) setTimeout(chunk, 0);
+      else { candidates.sort((a, b) => b.score - a.score); configs = candidates.slice(0, 16).map(c => c.cfg); selectedIdx = 0; btn.disabled = false; wrap.style.display = 'none'; }
+    }
+    setTimeout(chunk, 0);
+  };
+
+  ['numStages', 'speed1', 'speed2', 'speed3', 'animSpeed'].forEach(id => {
+    let el = document.getElementById(id), val = document.getElementById(id + 'Val');
+    el.addEventListener('input', () => { val.textContent = el.value; });
+  });
+};
+new p5(sketch, 'canvas-container');
+</script>
+</body>
+</html>
