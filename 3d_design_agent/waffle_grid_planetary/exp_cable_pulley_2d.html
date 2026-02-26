@@ -2,110 +2,90 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Cable/Pulley Network Explorer — Mechanical Advantage Discovery</title>
+<title>Cable/Pulley Verlet Physics — Mechanical Advantage Discovery</title>
 <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: #f5f3ee; overflow: hidden; font-family: 'Georgia', serif; display: flex; height: 100vh; }
-
-  #sidebar {
-    width: 280px; min-width: 280px; background: #f0ede6;
-    border-right: 1px solid #c8c0b0; overflow-y: auto; padding: 12px 14px;
-    font-size: 12px; color: #444;
-  }
+  #sidebar { width: 280px; min-width: 280px; background: #f0ede6; border-right: 1px solid #c8c0b0; overflow-y: auto; padding: 12px 14px; font-size: 12px; color: #444; }
   #sidebar h1 { font-size: 14px; letter-spacing: 1.5px; color: #333; margin-bottom: 2px; font-weight: normal; }
   #sidebar .subtitle { font-size: 10px; color: #888; margin-bottom: 12px; font-style: italic; }
-
-  .section-title {
-    font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: #8b7355;
-    margin-top: 14px; margin-bottom: 6px; border-bottom: 1px solid #d8d0c0; padding-bottom: 3px;
-  }
+  .section-title { font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: #8b7355; margin-top: 14px; margin-bottom: 6px; border-bottom: 1px solid #d8d0c0; padding-bottom: 3px; }
   .ctrl-row { display: flex; align-items: center; margin-bottom: 5px; }
   .ctrl-row label { flex: 0 0 95px; font-size: 11px; color: #666; }
   .ctrl-row input[type="range"] { flex: 1; height: 3px; accent-color: #8b4513; }
   .ctrl-row .val { flex: 0 0 40px; text-align: right; font-size: 10px; color: #555; font-family: 'Consolas', monospace; }
-
-  .toggle-row { display: flex; align-items: center; margin-bottom: 5px; gap: 8px; }
-  .toggle-row label { font-size: 11px; color: #666; }
-  .toggle-row input[type="checkbox"] { accent-color: #8b4513; }
-
+  select { width: 100%; padding: 4px 8px; font-size: 11px; font-family: 'Georgia', serif; background: #faf8f3; color: #555; border: 1px solid #c8c0b0; border-radius: 3px; margin-bottom: 4px; }
   .btn-row { display: flex; gap: 5px; margin: 8px 0; flex-wrap: wrap; }
-  .btn {
-    padding: 5px 10px; font-size: 10px; font-family: 'Georgia', serif;
-    background: #555; color: #f5f3ee; border: none; cursor: pointer;
-    letter-spacing: 0.5px; border-radius: 2px; transition: background 0.15s;
-  }
+  .btn { padding: 5px 10px; font-size: 10px; font-family: 'Georgia', serif; background: #555; color: #f5f3ee; border: none; cursor: pointer; letter-spacing: 0.5px; border-radius: 2px; transition: background 0.15s; }
   .btn:hover { background: #333; }
   .btn.active { background: #8b4513; }
   .btn.accent { background: #2a6848; }
   .btn.accent:hover { background: #1a4830; }
   .btn.danger { background: #8b2020; }
   .btn:disabled { background: #aaa; cursor: not-allowed; }
-
   #canvas-container { flex: 1; position: relative; }
   #canvas-container canvas { display: block; }
-
-  #info-bar {
-    position: fixed; bottom: 0; left: 280px; right: 0; z-index: 100;
-    background: rgba(245,243,238,0.92); border-top: 1px solid #bbb;
-    padding: 4px 16px; font-size: 10px; color: #777; font-style: italic;
-  }
-
-  #hud {
-    position: absolute; top: 8px; right: 12px; background: rgba(245,243,238,0.9);
-    border: 1px solid #c8c0b0; border-radius: 4px; padding: 8px 12px;
-    font-size: 10px; line-height: 1.7; color: #666; min-width: 160px; pointer-events: none;
-  }
+  #info-bar { position: fixed; bottom: 0; left: 280px; right: 0; z-index: 100; background: rgba(245,243,238,0.92); border-top: 1px solid #bbb; padding: 4px 16px; font-size: 10px; color: #777; font-style: italic; }
+  #hud { position: absolute; top: 8px; right: 12px; background: rgba(245,243,238,0.9); border: 1px solid #c8c0b0; border-radius: 4px; padding: 8px 12px; font-size: 10px; line-height: 1.7; color: #666; min-width: 160px; pointer-events: none; }
   #hud .hv { color: #444; font-family: 'Consolas', monospace; float: right; }
-
   .progress-bar { width: 100%; height: 3px; background: #ddd; border-radius: 2px; margin: 4px 0; }
   .progress-bar-fill { height: 100%; background: #8b4513; border-radius: 2px; transition: width 0.1s; }
-
-  .detail-list { max-height: 180px; overflow-y: auto; font-size: 9px; line-height: 1.5; margin-top: 4px; }
-  .detail-item { padding: 1px 0; color: #666; font-family: 'Consolas', monospace; }
-
   ::-webkit-scrollbar { width: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: #c8c0b0; border-radius: 2px; }
+
+  #physics-hud { position: absolute; top: 8px; left: 290px; background: rgba(245,243,238,0.9); border: 1px solid #c8c0b0; border-radius: 4px; padding: 6px 10px; font-size: 9px; line-height: 1.6; color: #666; min-width: 140px; pointer-events: none; font-family: 'Consolas', monospace; }
+  #physics-hud.warn { border-color: #cc8800; background: rgba(255,240,200,0.9); }
+  #physics-hud.error { border-color: #cc2020; background: rgba(255,220,220,0.9); }
+
+  .detail-list { max-height: 180px; overflow-y: auto; font-size: 9px; line-height: 1.5; margin-top: 4px; }
+  .detail-item { padding: 1px 0; color: #666; font-family: 'Consolas', monospace; }
 </style>
 </head>
 <body>
 
 <div id="sidebar">
   <h1>CABLE &amp; PULLEY</h1>
-  <div class="subtitle">Network Explorer &mdash; Mechanical Advantage Discovery</div>
+  <div class="subtitle">Verlet Physics &mdash; Mechanical Advantage Discovery</div>
 
   <div class="section-title">Topology</div>
   <div class="ctrl-row">
     <label>Num Pulleys</label>
-    <input type="range" id="sl-pulleys" min="3" max="10" step="1" value="5">
+    <input type="range" id="sl-pulleys" min="3" max="8" step="1" value="5">
     <span class="val" id="v-pulleys">5</span>
   </div>
   <div class="ctrl-row">
     <label>Fixed Pulleys</label>
-    <input type="range" id="sl-fixed" min="1" max="9" step="1" value="2">
-    <span class="val" id="v-fixed">2</span>
+    <input type="range" id="sl-fixed" min="1" max="7" step="1" value="3">
+    <span class="val" id="v-fixed">3</span>
   </div>
   <div class="ctrl-row">
     <label>Min Radius</label>
-    <input type="range" id="sl-rmin" min="5" max="15" step="1" value="8">
-    <span class="val" id="v-rmin">8</span>
+    <input type="range" id="sl-rmin" min="10" max="25" step="1" value="15">
+    <span class="val" id="v-rmin">15</span>
   </div>
   <div class="ctrl-row">
     <label>Max Radius</label>
-    <input type="range" id="sl-rmax" min="16" max="35" step="1" value="25">
-    <span class="val" id="v-rmax">25</span>
+    <input type="range" id="sl-rmax" min="20" max="40" step="1" value="35">
+    <span class="val" id="v-rmax">35</span>
   </div>
 
   <div class="section-title">Physics</div>
-  <div class="toggle-row">
-    <input type="checkbox" id="chk-sag">
-    <label for="chk-sag">Cable sag (weight)</label>
+  <div class="ctrl-row">
+    <label>Gravity</label>
+    <input type="range" id="sl-gravity" min="0" max="2000" step="10" value="600">
+    <span class="val" id="v-gravity">600</span>
   </div>
   <div class="ctrl-row">
-    <label>Speed</label>
-    <input type="range" id="sl-speed" min="0.1" max="3.0" step="0.05" value="0.8">
-    <span class="val" id="v-speed">0.80</span>
+    <label>Stiffness</label>
+    <input type="range" id="sl-stiffness" min="0.2" max="1.0" step="0.05" value="0.85">
+    <span class="val" id="v-stiffness">0.85</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Iterations</label>
+    <input type="range" id="sl-iters" min="5" max="30" step="1" value="15">
+    <span class="val" id="v-iters">15</span>
   </div>
 
   <div class="section-title">View</div>
@@ -116,7 +96,7 @@
   <div class="btn-row">
     <button class="btn accent" onclick="randomizeAll()">Randomize</button>
     <button class="btn" onclick="mutateAll()">Mutate</button>
-    <button class="btn danger" id="btn-beautiful" onclick="findBeautiful()">Find Beautiful</button>
+    <button class="btn danger" id="btn-beautiful" onclick="findBeautiful()">Find Beautiful v2</button>
   </div>
   <div id="progress-container" style="display:none;">
     <div class="progress-bar"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
@@ -137,20 +117,31 @@
     <div>MA <span class="hv" id="hud-ma">--</span></div>
     <div>Score <span class="hv" id="hud-score">--</span></div>
   </div>
+  <div id="physics-hud" style="display:none;"></div>
 </div>
 
 <div id="info-bar">
-  Plate VII. &mdash; Cable/pulley networks with varying mechanical advantage. Fixed pulleys (gray, triangles) redirect cable; free pulleys (brown) respond to gravity and tension. Click to inspect.
+  Plate VII. &mdash; Cable/pulley networks with Verlet particle physics. Fixed pulleys (gray, triangles) redirect cable; free pulleys (brown, weight blocks) respond to gravity and tension. Drag red handle to apply force. Click cell to inspect.
 </div>
 
 <script>
 // ========================================================
-// CABLE/PULLEY NETWORK EXPLORER — Mechanical Advantage
+// CABLE/PULLEY VERLET PHYSICS — Mechanical Advantage Discovery
+// Complete rewrite using Verlet integration for cable particles
 // ========================================================
+
+// ANALYTICAL CHECK: Single free pulley with 2 supporting segments
+// MA = 2 (force divides equally between 2 cable segments)
+// Cable sag between pulleys approximates parabola for uniform load
+// See physics_verify/verify_verlet_cable_results.json
 
 const COLS = 4, ROWS = 4;
 const FIND_BEAUTIFUL_TOTAL = 200;
 const FIND_BEAUTIFUL_CHUNK = 25;
+
+// Particle counts
+const PARTICLE_COUNT_FULL = 60;
+const PARTICLE_COUNT_ATLAS = 30;
 
 // ===== STATE =====
 let mode = 'atlas';
@@ -159,217 +150,342 @@ let selectedIdx = -1;
 let hoverCell = -1;
 let cw, ch;
 let findBeautifulRunning = false;
-let globalTime = 0;
-let dragPulleyIdx = -1; // for single mode input drag
-let inputY = 0;         // normalized input position 0..1
+let draggingHandle = false;
+let handleY = 0.5; // normalized 0..1
 
-// ===== CABLE/PULLEY PHYSICS =====
+// ===== VERLET PHYSICS CORE =====
 
-// Tangent points between two circles (external tangent, same-side wrap)
-function tangentPoints(p1, r1, p2, r2) {
-  let dx = p2.x - p1.x, dy = p2.y - p1.y;
+function makeParticle(x, y, pinned) {
+  return { x: x, y: y, ox: x, oy: y, fx: 0, fy: 0, pinned: pinned || false, mass: 1.0 };
+}
+
+function verletIntegrate(particles, dt, gravity) {
+  for (let p of particles) {
+    if (p.pinned) continue;
+    let vx = p.x - p.ox;
+    let vy = p.y - p.oy;
+    p.ox = p.x;
+    p.oy = p.y;
+    p.x += vx * 0.999 + p.fx / p.mass * dt * dt;
+    p.y += vy * 0.999 + (p.fy / p.mass + gravity) * dt * dt;
+    p.fx = 0; p.fy = 0;
+  }
+}
+
+function enforceDistanceConstraint(p1, p2, restLength, stiffness) {
+  let dx = p2.x - p1.x;
+  let dy = p2.y - p1.y;
   let dist = Math.sqrt(dx * dx + dy * dy);
-  if (dist < 0.001) return null;
-  let angle = Math.atan2(dy, dx);
-  // For same-side wrap (cable wraps same direction on both)
-  let dr = r1 - r2;
-  let sinA = dr / dist;
-  if (Math.abs(sinA) > 1) sinA = Math.sign(sinA);
-  let cosA = Math.sqrt(Math.max(0, 1 - sinA * sinA));
-  let tangentAngle = angle - Math.asin(sinA);
+  if (dist < 0.0001) return;
+  let diff = (dist - restLength) / dist;
+  let moveX = dx * diff * 0.5 * stiffness;
+  let moveY = dy * diff * 0.5 * stiffness;
+  if (!p1.pinned) { p1.x += moveX; p1.y += moveY; }
+  if (!p2.pinned) { p2.x -= moveX; p2.y -= moveY; }
+}
+
+// Project particle outside pulley circle onto surface (wrap constraint)
+function enforcePulleyWrap(particle, pulley) {
+  if (particle.pinned) return;
+  let dx = particle.x - pulley.x;
+  let dy = particle.y - pulley.y;
+  let dist = Math.sqrt(dx * dx + dy * dy);
+  let minR = pulley.radius + 1.0; // slight offset so cable rides on surface
+  if (dist < minR && dist > 0.0001) {
+    // Push particle to circumference — allows tangential sliding
+    let nx = dx / dist;
+    let ny = dy / dist;
+    particle.x = pulley.x + nx * minR;
+    particle.y = pulley.y + ny * minR;
+  }
+}
+
+// ===== CABLE SIMULATION =====
+
+function createCableSim(config, particleCount, areaW, areaH, offsetX, offsetY) {
+  let pulleys = config.pulleys;
+  let routing = config.routing;
+
+  // Compute total cable path length through routing
+  let waypoints = [];
+
+  // Start anchor: top-left area
+  let startX = offsetX + 15;
+  let startY = offsetY + areaH * 0.15;
+  waypoints.push({ x: startX, y: startY });
+
+  // Through each pulley in routing order
+  for (let i = 0; i < routing.length; i++) {
+    let p = pulleys[routing[i]];
+    waypoints.push({ x: p.x + offsetX, y: p.y + offsetY });
+  }
+
+  // End anchor: cable end (handle position for single, top-right for atlas)
+  let endX = offsetX + areaW - 15;
+  let endY = offsetY + areaH * 0.15;
+  waypoints.push({ x: endX, y: endY });
+
+  // Total path length along waypoints
+  let totalLength = 0;
+  for (let i = 1; i < waypoints.length; i++) {
+    let dx = waypoints[i].x - waypoints[i - 1].x;
+    let dy = waypoints[i].y - waypoints[i - 1].y;
+    totalLength += Math.sqrt(dx * dx + dy * dy);
+  }
+
+  // Add slack for sag
+  totalLength *= 1.05;
+
+  let restSpacing = totalLength / (particleCount - 1);
+  let particles = [];
+
+  // Distribute particles along waypoint path
+  let accumulated = 0;
+  let wpIdx = 0;
+  let wpProgress = 0;
+  for (let i = 0; i < particleCount; i++) {
+    let targetDist = (i / (particleCount - 1)) * totalLength;
+    // Walk along waypoints
+    while (wpIdx < waypoints.length - 1) {
+      let dx = waypoints[wpIdx + 1].x - waypoints[wpIdx].x;
+      let dy = waypoints[wpIdx + 1].y - waypoints[wpIdx].y;
+      let segLen = Math.sqrt(dx * dx + dy * dy);
+      if (accumulated + segLen >= targetDist || wpIdx === waypoints.length - 2) {
+        let t = segLen > 0.001 ? (targetDist - accumulated) / segLen : 0;
+        t = Math.max(0, Math.min(1, t));
+        let px = waypoints[wpIdx].x + dx * t;
+        let py = waypoints[wpIdx].y + dy * t;
+        let pinned = (i === 0 || i === particleCount - 1);
+        particles.push(makeParticle(px, py, pinned));
+        break;
+      }
+      accumulated += segLen;
+      wpIdx++;
+    }
+    if (particles.length <= i) {
+      // Fallback: place at last waypoint
+      let last = waypoints[waypoints.length - 1];
+      particles.push(makeParticle(last.x, last.y, i === particleCount - 1));
+    }
+  }
+
+  // Scale pulley positions into simulation space
+  let simPulleys = [];
+  for (let p of pulleys) {
+    simPulleys.push({
+      x: p.x + offsetX,
+      y: p.y + offsetY,
+      radius: p.radius,
+      fixed: p.fixed,
+      mass: p.mass || 1.0,
+      vy: 0, // velocity for free pulleys
+      oy: p.y + offsetY // old y for free pulley verlet
+    });
+  }
+
   return {
-    exit: { x: p1.x + r1 * Math.cos(tangentAngle + Math.PI / 2), y: p1.y + r1 * Math.sin(tangentAngle + Math.PI / 2) },
-    entry: { x: p2.x + r2 * Math.cos(tangentAngle + Math.PI / 2), y: p2.y + r2 * Math.sin(tangentAngle + Math.PI / 2) },
-    angle: tangentAngle,
-    dist: dist
+    particles: particles,
+    restSpacing: restSpacing,
+    simPulleys: simPulleys,
+    routing: routing,
+    startAnchorX: startX,
+    startAnchorY: startY,
+    endAnchorX: endX,
+    endAnchorY: endY,
+    totalLength: totalLength,
+    initialEnergy: null,
+    settled: false,
+    settleFrames: 0
   };
 }
 
-// Compute the full cable path through ordered pulleys
-function computeCablePath(pulleys, routing) {
-  let segments = [];
-  let totalLength = 0;
+function stepCableSim(sim, gravity, stiffness, iterations, dt) {
+  let particles = sim.particles;
+  let pulleys = sim.simPulleys;
 
-  for (let i = 0; i < routing.length; i++) {
-    let pIdx = routing[i];
-    let p = pulleys[pIdx];
+  // Pin first particle to start anchor
+  particles[0].x = sim.startAnchorX;
+  particles[0].y = sim.startAnchorY;
+  particles[0].pinned = true;
 
-    if (i > 0) {
-      let prevIdx = routing[i - 1];
-      let prev = pulleys[prevIdx];
-      let dx = p.x - prev.x, dy = p.y - prev.y;
+  // Pin last particle to end anchor
+  let last = particles[particles.length - 1];
+  last.x = sim.endAnchorX;
+  last.y = sim.endAnchorY;
+  last.pinned = true;
+
+  // Apply gravity to particles
+  for (let p of particles) {
+    if (!p.pinned) {
+      p.fy += gravity * p.mass;
+    }
+  }
+
+  // Verlet integrate particles
+  verletIntegrate(particles, dt, 0); // gravity already in fy
+
+  // Constraint solver iterations
+  for (let iter = 0; iter < iterations; iter++) {
+    // Distance constraints (cable inextensibility)
+    for (let i = 0; i < particles.length - 1; i++) {
+      enforceDistanceConstraint(particles[i], particles[i + 1], sim.restSpacing, stiffness);
+    }
+
+    // Pulley wrap constraints: push particles out of pulley circles
+    for (let pi = 0; pi < pulleys.length; pi++) {
+      let pulley = pulleys[pi];
+      for (let j = 1; j < particles.length - 1; j++) {
+        enforcePulleyWrap(particles[j], pulley);
+      }
+    }
+
+    // Tension-only: if a segment is compressed, allow it to go slack
+    // (In practice the distance constraint already handles this for taut cables,
+    //  but we could add slack detection here for advanced behavior)
+  }
+
+  // Move free pulleys based on cable contact forces
+  for (let pi = 0; pi < pulleys.length; pi++) {
+    let pulley = pulleys[pi];
+    if (pulley.fixed) continue;
+
+    // Sum forces from cable particles touching this pulley
+    let contactForceX = 0;
+    let contactForceY = 0;
+    let contactCount = 0;
+    let minR = pulley.radius + 3.0;
+
+    for (let j = 1; j < particles.length - 1; j++) {
+      let dx = particles[j].x - pulley.x;
+      let dy = particles[j].y - pulley.y;
       let dist = Math.sqrt(dx * dx + dy * dy);
-      let angle = Math.atan2(dy, dx);
-
-      // Compute tangent departure and arrival
-      let perpAngle = angle + Math.PI / 2;
-      // Determine wrap direction from previous context
-      let wrapSign = (i % 2 === 0) ? 1 : -1;
-      let exitPt = {
-        x: prev.x + prev.radius * Math.cos(perpAngle * wrapSign),
-        y: prev.y + prev.radius * Math.sin(perpAngle * wrapSign)
-      };
-      let entryPt = {
-        x: p.x + p.radius * Math.cos(perpAngle * wrapSign),
-        y: p.y + p.radius * Math.sin(perpAngle * wrapSign)
-      };
-
-      // Simplified: straight line between pulley edges along the connecting direction
-      let offAngle = angle + Math.PI / 2;
-      let side = (i % 2 === 0) ? 1 : -1;
-      let ex = prev.x + prev.radius * Math.cos(offAngle) * side;
-      let ey = prev.y + prev.radius * Math.sin(offAngle) * side;
-      let nx = p.x + p.radius * Math.cos(offAngle) * side;
-      let ny = p.y + p.radius * Math.sin(offAngle) * side;
-
-      let segLen = Math.sqrt((nx - ex) * (nx - ex) + (ny - ey) * (ny - ey));
-      totalLength += segLen;
-
-      segments.push({
-        type: 'line',
-        x1: ex, y1: ey,
-        x2: nx, y2: ny,
-        length: segLen,
-        fromPulley: prevIdx,
-        toPulley: pIdx
-      });
+      if (dist < minR && dist > 0.001) {
+        // This particle is in contact — it exerts inward force on pulley
+        let nx = dx / dist;
+        let ny = dy / dist;
+        // Cable tension pulls inward
+        contactForceX -= nx * stiffness * 50;
+        contactForceY -= ny * stiffness * 50;
+        contactCount++;
+      }
     }
 
-    // Arc wrap on pulley
-    if (i > 0 && i < routing.length - 1) {
-      let wrapAngle = Math.PI * 0.6; // approximate wrap
-      let arcLen = p.radius * wrapAngle;
-      totalLength += arcLen;
-      segments.push({
-        type: 'arc',
-        cx: p.x, cy: p.y,
-        r: p.radius,
-        pulleyIdx: pIdx,
-        arcLen: arcLen
-      });
-    }
+    // Free pulley Verlet integration (vertical only for simplicity)
+    let pulleyGravity = gravity * pulley.mass * 0.5;
+    let netForceY = contactForceY - pulleyGravity;
+
+    let newY = pulley.y;
+    let oldVy = pulley.y - pulley.oy;
+    pulley.oy = pulley.y;
+    newY += oldVy * 0.95 + netForceY * dt * dt * 0.01;
+
+    // Clamp to bounds
+    let topBound = pulley.radius + 10;
+    let botBound = sim.startAnchorY + 400; // approximate area
+    pulley.y = Math.max(topBound, Math.min(botBound, newY));
   }
 
-  return { segments, totalLength };
+  sim.settleFrames++;
 }
 
-// Compute mechanical advantage: count cable segments supporting free pulleys
-function computeMA(pulleys, routing) {
-  // For each free pulley, count how many cable segments touch it
-  // MA = number of cable segments supporting the load (last free pulley)
-
-  let freePulleys = pulleys.filter(p => !p.fixed);
-  if (freePulleys.length === 0) return 1;
-
-  // Count segments attached to free pulleys
-  let segmentCounts = {};
-  for (let p of pulleys) {
-    segmentCounts[pulleys.indexOf(p)] = 0;
-  }
-
-  for (let i = 0; i < routing.length; i++) {
-    segmentCounts[routing[i]]++;
-  }
-
-  // The load pulley is the lowest free pulley
-  let loadPulley = null;
-  let maxY = -Infinity;
-  for (let i = 0; i < pulleys.length; i++) {
-    if (!pulleys[i].fixed && pulleys[i].y > maxY) {
-      maxY = pulleys[i].y;
-      loadPulley = i;
-    }
-  }
-
-  if (loadPulley === null) return 1;
-
-  // MA = number of cable passes through the load block system
-  // Simple approximation: count occurrences in routing of free pulleys
-  let ma = 0;
-  for (let idx of routing) {
-    if (!pulleys[idx].fixed) ma++;
-  }
-  // Each free pulley visited once contributes ~2 supporting segments (entry + exit)
-  // but for simple systems: MA = number of cable segments pulling UP on free pulleys
-  // Simplified: MA = total cable contacts on all free pulleys
-  return Math.max(1, ma);
-}
-
-// Compute tension in each cable segment (simplified)
-function computeTensions(pulleys, routing, loadWeight) {
-  let ma = computeMA(pulleys, routing);
-  let inputTension = loadWeight / Math.max(1, ma);
+// Compute tensions per segment
+function computeSegmentTensions(sim, stiffness) {
   let tensions = [];
-  for (let i = 0; i < routing.length - 1; i++) {
-    // In an ideal frictionless system, tension is constant throughout
-    // With friction, it varies by e^(mu*theta) at each pulley
-    let frictionFactor = Math.pow(0.97, i); // slight loss per pulley
-    tensions.push(inputTension * frictionFactor);
+  for (let i = 0; i < sim.particles.length - 1; i++) {
+    let p1 = sim.particles[i];
+    let p2 = sim.particles[i + 1];
+    let dx = p2.x - p1.x;
+    let dy = p2.y - p1.y;
+    let dist = Math.sqrt(dx * dx + dy * dy);
+    let stretch = Math.abs(dist - sim.restSpacing);
+    let tension = stiffness * stretch / sim.restSpacing;
+    tensions.push(tension);
   }
   return tensions;
 }
 
-// ===== CONFIG GENERATOR =====
-function randomConfig(cellW, cellH) {
-  let numPulleys = parseInt(document.getElementById('sl-pulleys').value);
-  let numFixed = Math.min(parseInt(document.getElementById('sl-fixed').value), numPulleys - 1);
-  let rMin = parseInt(document.getElementById('sl-rmin').value);
-  let rMax = parseInt(document.getElementById('sl-rmax').value);
-
-  let pulleys = [];
-  let margin = rMax + 5;
-  let usableW = (cellW || 300) - margin * 2;
-  let usableH = (cellH || 300) - margin * 2;
-
-  // Place fixed pulleys in upper region, free pulleys in lower region
-  for (let i = 0; i < numPulleys; i++) {
-    let fixed = i < numFixed;
-    let radius = rMin + Math.random() * (rMax - rMin);
-    let x, y;
-    if (fixed) {
-      // Fixed pulleys spread across top half
-      x = margin + Math.random() * usableW;
-      y = margin + Math.random() * usableH * 0.4;
-    } else {
-      // Free pulleys in lower portion
-      x = margin + Math.random() * usableW;
-      y = margin + usableH * 0.4 + Math.random() * usableH * 0.5;
-    }
-    let mass = fixed ? 0 : 0.5 + Math.random() * 2.0;
-    pulleys.push({ x, y, radius, fixed, mass });
+// Compute energy
+function computeEnergy(sim, gravity) {
+  let ke = 0, pe_gravity = 0, pe_elastic = 0;
+  for (let p of sim.particles) {
+    if (p.pinned) continue;
+    let vx = p.x - p.ox;
+    let vy = p.y - p.oy;
+    ke += 0.5 * p.mass * (vx * vx + vy * vy);
+    pe_gravity += p.mass * gravity * p.y;
   }
-
-  // Generate a valid routing: visit each pulley at least once, zigzag between fixed and free
-  let fixedIndices = [], freeIndices = [];
-  for (let i = 0; i < pulleys.length; i++) {
-    if (pulleys[i].fixed) fixedIndices.push(i);
-    else freeIndices.push(i);
+  for (let i = 0; i < sim.particles.length - 1; i++) {
+    let p1 = sim.particles[i];
+    let p2 = sim.particles[i + 1];
+    let dx = p2.x - p1.x;
+    let dy = p2.y - p1.y;
+    let dist = Math.sqrt(dx * dx + dy * dy);
+    let stretch = dist - sim.restSpacing;
+    pe_elastic += 0.5 * 1000 * stretch * stretch;
   }
-
-  let routing = [];
-  // Interleave: fixed, free, fixed, free, ...
-  let fi = 0, fri = 0;
-  // Shuffle each group
-  shuffleArray(fixedIndices);
-  shuffleArray(freeIndices);
-
-  // Start with a fixed pulley
-  while (fi < fixedIndices.length || fri < freeIndices.length) {
-    if (fi < fixedIndices.length) routing.push(fixedIndices[fi++]);
-    if (fri < freeIndices.length) routing.push(freeIndices[fri++]);
-  }
-
-  // Ensure minimum length
-  if (routing.length < 3) {
-    // Duplicate some entries for more cable wraps
-    let extra = [...routing];
-    shuffleArray(extra);
-    routing = routing.concat(extra.slice(0, 2));
-  }
-
-  return { pulleys, routing, inputEnd: 'left' };
+  return { ke: ke, pe_gravity: pe_gravity, pe_elastic: pe_elastic, total: ke + pe_gravity + pe_elastic };
 }
 
+// Compute max constraint violation
+function maxConstraintViolation(sim) {
+  let maxV = 0;
+  for (let i = 0; i < sim.particles.length - 1; i++) {
+    let p1 = sim.particles[i];
+    let p2 = sim.particles[i + 1];
+    let dx = p2.x - p1.x;
+    let dy = p2.y - p1.y;
+    let dist = Math.sqrt(dx * dx + dy * dy);
+    let v = Math.abs(dist - sim.restSpacing);
+    if (v > maxV) maxV = v;
+  }
+  return maxV;
+}
+
+// Count cable segments touching a free pulley (for MA)
+function computeMA(sim) {
+  let pulleys = sim.simPulleys;
+  let particles = sim.particles;
+
+  // Find the lowest free pulley (load pulley)
+  let loadIdx = -1;
+  let maxY = -Infinity;
+  for (let i = 0; i < pulleys.length; i++) {
+    if (!pulleys[i].fixed && pulleys[i].y > maxY) {
+      maxY = pulleys[i].y;
+      loadIdx = i;
+    }
+  }
+  if (loadIdx < 0) return 1;
+
+  // Count distinct cable segments supporting free pulleys
+  // A "supporting segment" = a run of particles near the pulley
+  let totalSupportingSegments = 0;
+  for (let pi = 0; pi < pulleys.length; pi++) {
+    if (pulleys[pi].fixed) continue;
+    let pulley = pulleys[pi];
+    let touchR = pulley.radius + 5;
+    let inContact = false;
+    let segments = 0;
+    for (let j = 0; j < particles.length; j++) {
+      let dx = particles[j].x - pulley.x;
+      let dy = particles[j].y - pulley.y;
+      let dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < touchR) {
+        if (!inContact) {
+          segments++;
+          inContact = true;
+        }
+      } else {
+        inContact = false;
+      }
+    }
+    totalSupportingSegments += segments;
+  }
+
+  return Math.max(1, totalSupportingSegments);
+}
+
+// ===== CONFIG GENERATOR =====
 function shuffleArray(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
     let j = Math.floor(Math.random() * (i + 1));
@@ -377,26 +493,81 @@ function shuffleArray(arr) {
   }
 }
 
+function randomConfig(cellW, cellH) {
+  let numPulleys = parseInt(document.getElementById('sl-pulleys').value);
+  let numFixed = parseInt(document.getElementById('sl-fixed').value);
+  numFixed = Math.min(numFixed, numPulleys - 1);
+  numFixed = Math.max(1, numFixed);
+  let numFree = numPulleys - numFixed;
+  numFree = Math.max(1, numFree);
+  numPulleys = numFixed + numFree;
+
+  let rMin = parseInt(document.getElementById('sl-rmin').value);
+  let rMax = parseInt(document.getElementById('sl-rmax').value);
+
+  let pulleys = [];
+  let margin = rMax + 10;
+  let usableW = cellW - margin * 2;
+  let usableH = cellH - margin * 2;
+
+  // Place fixed pulleys in upper region, free pulleys in lower region
+  for (let i = 0; i < numPulleys; i++) {
+    let fixed = i < numFixed;
+    let radius = rMin + Math.random() * (rMax - rMin);
+    let x, y;
+    if (fixed) {
+      x = margin + (i / Math.max(1, numFixed - 1)) * usableW * 0.8 + Math.random() * usableW * 0.15;
+      y = margin + Math.random() * usableH * 0.3;
+    } else {
+      let fi = i - numFixed;
+      x = margin + (fi / Math.max(1, numFree - 1)) * usableW * 0.7 + usableW * 0.15 + Math.random() * usableW * 0.1;
+      y = margin + usableH * 0.45 + Math.random() * usableH * 0.4;
+    }
+    let mass = fixed ? 0 : (1.0 + Math.random() * 3.0);
+    pulleys.push({ x: x, y: y, radius: radius, fixed: fixed, mass: mass });
+  }
+
+  // Generate routing: zigzag between fixed and free
+  let fixedIndices = [], freeIndices = [];
+  for (let i = 0; i < pulleys.length; i++) {
+    if (pulleys[i].fixed) fixedIndices.push(i);
+    else freeIndices.push(i);
+  }
+  shuffleArray(fixedIndices);
+  shuffleArray(freeIndices);
+
+  let routing = [];
+  let fi = 0, fri = 0;
+  // Interleave: fixed, free, fixed, free...
+  while (fi < fixedIndices.length || fri < freeIndices.length) {
+    if (fi < fixedIndices.length) routing.push(fixedIndices[fi++]);
+    if (fri < freeIndices.length) routing.push(freeIndices[fri++]);
+  }
+  // If routing is too short, add extra passes
+  if (routing.length < 3 && pulleys.length >= 2) {
+    routing.push(routing[0]);
+  }
+
+  return { pulleys: pulleys, routing: routing };
+}
+
 function mutateConfig(config, cellW, cellH) {
   let c = JSON.parse(JSON.stringify(config));
-  let margin = 30;
-  let usableW = (cellW || 300) - margin * 2;
-  let usableH = (cellH || 300) - margin * 2;
+  let rMin = parseInt(document.getElementById('sl-rmin').value);
+  let rMax = parseInt(document.getElementById('sl-rmax').value);
+  let margin = rMax + 10;
+  let usableW = cellW - margin * 2;
+  let usableH = cellH - margin * 2;
 
   for (let p of c.pulleys) {
-    // Nudge positions
-    p.x += (Math.random() - 0.5) * usableW * 0.15;
-    p.y += (Math.random() - 0.5) * usableH * 0.15;
+    p.x += (Math.random() - 0.5) * usableW * 0.2;
+    p.y += (Math.random() - 0.5) * usableH * 0.2;
     p.x = Math.max(margin, Math.min(margin + usableW, p.x));
     p.y = Math.max(margin, Math.min(margin + usableH, p.y));
-    // Nudge radius
-    let rMin = parseInt(document.getElementById('sl-rmin').value);
-    let rMax = parseInt(document.getElementById('sl-rmax').value);
-    p.radius += (Math.random() - 0.5) * 5;
+    p.radius += (Math.random() - 0.5) * 6;
     p.radius = Math.max(rMin, Math.min(rMax, p.radius));
   }
 
-  // Occasionally swap two routing entries
   if (c.routing.length >= 2 && Math.random() < 0.4) {
     let a = Math.floor(Math.random() * c.routing.length);
     let b = Math.floor(Math.random() * c.routing.length);
@@ -406,87 +577,98 @@ function mutateConfig(config, cellW, cellH) {
   return c;
 }
 
-// ===== BEAUTY SCORER =====
-function scoreConfig(config) {
-  let ma = computeMA(config.pulleys, config.routing);
-
-  // Higher MA = more interesting
-  let maScore = ma * 10;
-
-  // Variety of pulley sizes
-  let radii = config.pulleys.map(p => p.radius);
-  let rRange = Math.max(...radii) - Math.min(...radii);
-  let varietyScore = rRange * 0.5;
-
-  // Spread of positions (higher = better layout)
-  let xs = config.pulleys.map(p => p.x);
-  let ys = config.pulleys.map(p => p.y);
-  let xSpread = Math.max(...xs) - Math.min(...xs);
-  let ySpread = Math.max(...ys) - Math.min(...ys);
-  let spreadScore = (xSpread + ySpread) * 0.05;
-
-  // Mix of fixed and free
-  let numFixed = config.pulleys.filter(p => p.fixed).length;
-  let numFree = config.pulleys.length - numFixed;
-  let mixScore = Math.min(numFixed, numFree) * 5;
-
-  // Penalty for pulleys too close together
-  let minDist = Infinity;
-  for (let i = 0; i < config.pulleys.length; i++) {
-    for (let j = i + 1; j < config.pulleys.length; j++) {
-      let dx = config.pulleys[i].x - config.pulleys[j].x;
-      let dy = config.pulleys[i].y - config.pulleys[j].y;
-      let d = Math.sqrt(dx * dx + dy * dy);
-      if (d < minDist) minDist = d;
-    }
-  }
-  let proximityPenalty = minDist < 30 ? -20 : 0;
-
-  return maScore + varietyScore + spreadScore + mixScore + proximityPenalty;
-}
-
 // ===== CELL MANAGEMENT =====
-function makeCell(config) {
-  let path = computeCablePath(config.pulleys, config.routing);
-  let ma = computeMA(config.pulleys, config.routing);
-  let score = scoreConfig(config);
-  return { config, path, ma, score };
+
+function makeCell(config, cellW, cellH, isAtlas) {
+  let pc = isAtlas ? PARTICLE_COUNT_ATLAS : PARTICLE_COUNT_FULL;
+  let sim = createCableSim(config, pc, cellW, cellH, 0, 0);
+
+  // Settle the simulation for a few frames
+  let gravity = parseFloat(document.getElementById('sl-gravity').value);
+  let stiffness = parseFloat(document.getElementById('sl-stiffness').value);
+  let iters = parseInt(document.getElementById('sl-iters').value);
+  for (let s = 0; s < 60; s++) {
+    stepCableSim(sim, gravity, stiffness, iters, 0.016);
+  }
+
+  let ma = computeMA(sim);
+  return { config: config, sim: sim, ma: ma, cellW: cellW, cellH: cellH };
 }
 
 function randomizeAll() {
   cells = [];
-  let cellW = cw ? cw / COLS : 300;
-  let cellH = ch ? ch / ROWS : 250;
+  let container = document.getElementById('canvas-container');
+  let totalW = container.clientWidth;
+  let totalH = container.clientHeight;
+  let cellW = totalW / COLS;
+  let cellH = totalH / ROWS;
+
   for (let i = 0; i < COLS * ROWS; i++) {
     let config = randomConfig(cellW, cellH);
-    cells.push(makeCell(config));
+    cells.push(makeCell(config, cellW, cellH, true));
   }
-  globalTime = 0;
-  inputY = 0.5;
+  handleY = 0.5;
 }
 
 function mutateAll() {
-  let cellW = cw ? cw / COLS : 300;
-  let cellH = ch ? ch / ROWS : 250;
-  for (let cell of cells) {
-    let m = mutateConfig(cell.config, cellW, cellH);
-    cell.config = m;
-    cell.path = computeCablePath(m.pulleys, m.routing);
-    cell.ma = computeMA(m.pulleys, m.routing);
-    cell.score = scoreConfig(m);
+  let container = document.getElementById('canvas-container');
+  let totalW = container.clientWidth;
+  let totalH = container.clientHeight;
+  let cellW = totalW / COLS;
+  let cellH = totalH / ROWS;
+
+  for (let i = 0; i < cells.length; i++) {
+    let m = mutateConfig(cells[i].config, cellW, cellH);
+    cells[i] = makeCell(m, cellW, cellH, true);
   }
-  globalTime = 0;
 }
 
-// ===== FIND BEAUTIFUL (chunked non-blocking) =====
+// ===== FIND BEAUTIFUL v2 =====
+// Score: MA * cable_path_efficiency * stability
+function scoreConfig(config, cellW, cellH) {
+  let pc = PARTICLE_COUNT_ATLAS;
+  let sim = createCableSim(config, pc, cellW, cellH, 0, 0);
+
+  let gravity = parseFloat(document.getElementById('sl-gravity').value);
+  let stiffness = parseFloat(document.getElementById('sl-stiffness').value);
+  let iters = parseInt(document.getElementById('sl-iters').value);
+
+  // Settle for 200 frames to measure stability
+  for (let s = 0; s < 200; s++) {
+    stepCableSim(sim, gravity, stiffness, iters, 0.016);
+  }
+
+  let ma = computeMA(sim);
+  let pathEfficiency = 1.0 / Math.max(1, sim.totalLength);
+  // Measure oscillation: take 20 more steps, track max particle movement
+  let maxOsc = 0;
+  for (let s = 0; s < 20; s++) {
+    stepCableSim(sim, gravity, stiffness, iters, 0.016);
+    for (let p of sim.particles) {
+      if (p.pinned) continue;
+      let mvx = Math.abs(p.x - p.ox);
+      let mvy = Math.abs(p.y - p.oy);
+      let mv = mvx + mvy;
+      if (mv > maxOsc) maxOsc = mv;
+    }
+  }
+  let stability = 1.0 / (1.0 + maxOsc);
+
+  return ma * pathEfficiency * 10000 * stability;
+}
+
 function findBeautiful() {
   if (findBeautifulRunning) return;
   findBeautifulRunning = true;
   document.getElementById('btn-beautiful').disabled = true;
   document.getElementById('progress-container').style.display = 'block';
 
-  let cellW = cw ? cw / COLS : 300;
-  let cellH = ch ? ch / ROWS : 250;
+  let container = document.getElementById('canvas-container');
+  let totalW = container.clientWidth;
+  let totalH = container.clientHeight;
+  let cellW = totalW / COLS;
+  let cellH = totalH / ROWS;
+
   let candidates = [];
   let processed = 0;
 
@@ -494,21 +676,23 @@ function findBeautiful() {
     let chunkEnd = Math.min(processed + FIND_BEAUTIFUL_CHUNK, FIND_BEAUTIFUL_TOTAL);
     for (let i = processed; i < chunkEnd; i++) {
       let config = randomConfig(cellW, cellH);
-      let score = scoreConfig(config);
-      candidates.push({ config, score });
+      let score = scoreConfig(config, cellW, cellH);
+      candidates.push({ config: config, score: score });
     }
     processed = chunkEnd;
 
     let pct = Math.round((processed / FIND_BEAUTIFUL_TOTAL) * 100);
     document.getElementById('progress-fill').style.width = pct + '%';
-    document.getElementById('progress-text').textContent = `Scoring ${processed}/${FIND_BEAUTIFUL_TOTAL}...`;
+    document.getElementById('progress-text').textContent = 'Scoring ' + processed + '/' + FIND_BEAUTIFUL_TOTAL + '...';
 
     if (processed < FIND_BEAUTIFUL_TOTAL) {
       setTimeout(processChunk, 0);
     } else {
-      candidates.sort((a, b) => b.score - a.score);
-      cells = candidates.slice(0, COLS * ROWS).map(c => makeCell(c.config));
-      globalTime = 0;
+      candidates.sort(function(a, b) { return b.score - a.score; });
+      cells = [];
+      for (let i = 0; i < COLS * ROWS && i < candidates.length; i++) {
+        cells.push(makeCell(candidates[i].config, cellW, cellH, true));
+      }
       findBeautifulRunning = false;
       document.getElementById('btn-beautiful').disabled = false;
       document.getElementById('progress-container').style.display = 'none';
@@ -517,17 +701,19 @@ function findBeautiful() {
   processChunk();
 }
 
-// ===== MODE SWITCHING =====
+// ===== MODE =====
 function setMode(m) {
   mode = m;
   document.getElementById('btn-atlas').classList.toggle('active', m === 'atlas');
   document.getElementById('btn-single').classList.toggle('active', m === 'single');
   document.getElementById('hud-mode').textContent = m;
+  document.getElementById('physics-hud').style.display = (m === 'single') ? 'block' : 'none';
+
   if (m === 'atlas') {
     selectedIdx = -1;
-    dragPulleyIdx = -1;
+    draggingHandle = false;
     document.getElementById('info-bar').textContent =
-      'Plate VII. \u2014 Cable/pulley networks with varying mechanical advantage. Fixed pulleys (gray, triangles) redirect cable; free pulleys (brown) respond to gravity and tension. Click to inspect.';
+      'Plate VII. \u2014 Cable/pulley networks with Verlet particle physics. Fixed pulleys (gray, triangles) redirect cable; free pulleys (brown, weight blocks) respond to gravity and tension. Click cell to inspect.';
   }
 }
 
@@ -535,7 +721,7 @@ function setMode(m) {
 function wireSlider(id, valId, fmt) {
   let sl = document.getElementById(id);
   let vl = document.getElementById(valId);
-  sl.addEventListener('input', () => {
+  sl.addEventListener('input', function() {
     let v = parseFloat(sl.value);
     if (fmt === 'int') vl.textContent = Math.round(v);
     else vl.textContent = v.toFixed(2);
@@ -545,10 +731,11 @@ wireSlider('sl-pulleys', 'v-pulleys', 'int');
 wireSlider('sl-fixed', 'v-fixed', 'int');
 wireSlider('sl-rmin', 'v-rmin', 'int');
 wireSlider('sl-rmax', 'v-rmax', 'int');
-wireSlider('sl-speed', 'v-speed');
+wireSlider('sl-gravity', 'v-gravity', 'int');
+wireSlider('sl-stiffness', 'v-stiffness');
+wireSlider('sl-iters', 'v-iters', 'int');
 
-// Keep fixed slider max in sync with pulley count
-document.getElementById('sl-pulleys').addEventListener('input', () => {
+document.getElementById('sl-pulleys').addEventListener('input', function() {
   let n = parseInt(document.getElementById('sl-pulleys').value);
   let fixedSl = document.getElementById('sl-fixed');
   fixedSl.max = n - 1;
@@ -559,34 +746,42 @@ document.getElementById('sl-pulleys').addEventListener('input', () => {
 });
 
 // ===== P5.JS SKETCH =====
-const sketch = (p) => {
-  p.setup = () => {
+const sketch = function(p) {
+  p.setup = function() {
     let container = document.getElementById('canvas-container');
-    cw = container.clientWidth; ch = container.clientHeight;
+    cw = container.clientWidth;
+    ch = container.clientHeight;
     p.createCanvas(cw, ch).parent(container);
     p.textFont('Georgia');
     randomizeAll();
   };
 
-  p.windowResized = () => {
+  p.windowResized = function() {
     let container = document.getElementById('canvas-container');
-    cw = container.clientWidth; ch = container.clientHeight;
+    cw = container.clientWidth;
+    ch = container.clientHeight;
     p.resizeCanvas(cw, ch);
   };
 
-  p.draw = () => {
+  p.draw = function() {
     p.background(245, 243, 238);
-    let speed = parseFloat(document.getElementById('sl-speed').value);
-    globalTime += speed * 0.01;
 
-    if (mode === 'atlas') drawAtlas(p);
-    else drawSingle(p);
+    let gravity = parseFloat(document.getElementById('sl-gravity').value);
+    let stiffness = parseFloat(document.getElementById('sl-stiffness').value);
+    let iters = parseInt(document.getElementById('sl-iters').value);
+
+    if (mode === 'atlas') {
+      drawAtlas(p, gravity, stiffness, iters);
+    } else {
+      drawSingle(p, gravity, stiffness, iters);
+    }
 
     document.getElementById('hud-fps').textContent = Math.round(p.frameRate());
   };
 
-  p.mousePressed = () => {
+  p.mousePressed = function() {
     if (p.mouseX < 0 || p.mouseX > cw || p.mouseY < 0 || p.mouseY > ch) return;
+
     if (mode === 'atlas') {
       let cellW = cw / COLS, cellH = ch / ROWS;
       let col = Math.floor(p.mouseX / cellW);
@@ -594,34 +789,55 @@ const sketch = (p) => {
       if (col >= 0 && col < COLS && row >= 0 && row < ROWS) {
         selectedIdx = row * COLS + col;
         if (selectedIdx < cells.length) {
-          // Rescale pulley positions to fill single-mode canvas
-          rescaleForSingle(cells[selectedIdx]);
+          // Rebuild sim for single mode (full particle count, full canvas area)
+          let config = cells[selectedIdx].config;
+          let singleW = cw * 0.62;
+          let singleH = ch - 40;
+          let singleSim = createCableSim(config, PARTICLE_COUNT_FULL, singleW, singleH, 50, 20);
+          // Settle
+          let gravity = parseFloat(document.getElementById('sl-gravity').value);
+          let stiffness = parseFloat(document.getElementById('sl-stiffness').value);
+          let itersVal = parseInt(document.getElementById('sl-iters').value);
+          for (let s = 0; s < 120; s++) {
+            stepCableSim(singleSim, gravity, stiffness, itersVal, 0.016);
+          }
+          cells[selectedIdx].sim = singleSim;
+          cells[selectedIdx].ma = computeMA(singleSim);
           setMode('single');
           updateDetailList(cells[selectedIdx]);
         }
       }
     } else {
-      // Check if clicking near the input cable handle
-      let handleX = 30;
-      let handleY = ch * 0.15 + inputY * ch * 0.7;
-      let dx = p.mouseX - handleX, dy = p.mouseY - handleY;
-      if (dx * dx + dy * dy < 400) {
-        dragPulleyIdx = -2; // special: dragging input handle
+      // Check drag on handle
+      if (selectedIdx >= 0 && selectedIdx < cells.length) {
+        let sim = cells[selectedIdx].sim;
+        let lastP = sim.particles[sim.particles.length - 1];
+        let dx = p.mouseX - lastP.x;
+        let dy = p.mouseY - lastP.y;
+        if (dx * dx + dy * dy < 400) {
+          draggingHandle = true;
+        }
       }
     }
   };
 
-  p.mouseDragged = () => {
-    if (mode === 'single' && dragPulleyIdx === -2) {
-      inputY = Math.max(0, Math.min(1, (p.mouseY - ch * 0.15) / (ch * 0.7)));
+  p.mouseDragged = function() {
+    if (mode === 'single' && draggingHandle && selectedIdx >= 0 && selectedIdx < cells.length) {
+      let sim = cells[selectedIdx].sim;
+      let lastP = sim.particles[sim.particles.length - 1];
+      // Constrain handle to right side region
+      lastP.x = Math.max(50, Math.min(cw * 0.6, p.mouseX));
+      lastP.y = Math.max(20, Math.min(ch - 40, p.mouseY));
+      sim.endAnchorX = lastP.x;
+      sim.endAnchorY = lastP.y;
     }
   };
 
-  p.mouseReleased = () => {
-    dragPulleyIdx = -1;
+  p.mouseReleased = function() {
+    draggingHandle = false;
   };
 
-  p.mouseMoved = () => {
+  p.mouseMoved = function() {
     if (mode === 'atlas') {
       let cellW = cw / COLS, cellH = ch / ROWS;
       let col = Math.floor(p.mouseX / cellW);
@@ -631,50 +847,19 @@ const sketch = (p) => {
   };
 };
 
-// Rescale config pulleys to fill the single-mode display area
-function rescaleForSingle(cell) {
-  let config = cell.config;
-  let ps = config.pulleys;
-  if (ps.length === 0) return;
-
-  // Find bounding box of current positions
-  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-  for (let p of ps) {
-    if (p.x - p.radius < minX) minX = p.x - p.radius;
-    if (p.x + p.radius > maxX) maxX = p.x + p.radius;
-    if (p.y - p.radius < minY) minY = p.y - p.radius;
-    if (p.y + p.radius > maxY) maxY = p.y + p.radius;
-  }
-
-  let srcW = maxX - minX || 1;
-  let srcH = maxY - minY || 1;
-
-  // Target area in single mode: leave space for input cable on left, info on right
-  let targetX = 100, targetY = 60;
-  let targetW = cw * 0.6 - 120;
-  let targetH = ch - 140;
-
-  let scale = Math.min(targetW / srcW, targetH / srcH) * 0.85;
-
-  for (let p of ps) {
-    p.x = targetX + ((p.x - minX) / srcW) * targetW;
-    p.y = targetY + ((p.y - minY) / srcH) * targetH;
-    p.radius = Math.max(8, p.radius * scale);
-    p.radius = Math.min(30, p.radius);
-  }
-
-  cell.path = computeCablePath(config.pulleys, config.routing);
-}
-
 // ===== DRAWING: ATLAS MODE =====
-function drawAtlas(p) {
+function drawAtlas(p, gravity, stiffness, iters) {
   let cellW = cw / COLS, cellH = ch / ROWS;
 
   for (let idx = 0; idx < cells.length; idx++) {
     let col = idx % COLS, row = Math.floor(idx / COLS);
     let cx = col * cellW, cy = row * cellH;
     let cell = cells[idx];
-    let config = cell.config;
+    let sim = cell.sim;
+
+    // Step physics
+    stepCableSim(sim, gravity, stiffness, Math.min(iters, 10), 0.016);
+    cell.ma = computeMA(sim);
 
     // Cell border
     p.noFill(); p.stroke(200, 190, 175); p.strokeWeight(0.5);
@@ -685,260 +870,197 @@ function drawAtlas(p) {
       p.rect(cx, cy, cellW, cellH);
     }
 
-    // Scale pulleys to fit cell
-    let ps = config.pulleys;
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    for (let pp of ps) {
-      if (pp.x - pp.radius < minX) minX = pp.x - pp.radius;
-      if (pp.x + pp.radius > maxX) maxX = pp.x + pp.radius;
-      if (pp.y - pp.radius < minY) minY = pp.y - pp.radius;
-      if (pp.y + pp.radius > maxY) maxY = pp.y + pp.radius;
-    }
-    let srcW = maxX - minX || 1;
-    let srcH = maxY - minY || 1;
-    let margin = 12;
-    let scaleX = (cellW - margin * 2) / srcW;
-    let scaleY = (cellH - margin * 2 - 30) / srcH;
-    let sc = Math.min(scaleX, scaleY);
+    // Draw offset for this cell
+    let offX = cx;
+    let offY = cy;
 
-    let offX = cx + (cellW - srcW * sc) / 2 - minX * sc;
-    let offY = cy + (cellH - 30 - srcH * sc) / 2 - minY * sc;
-
-    // Draw cable (brown lines between pulleys in routing order)
-    p.stroke(139, 90, 43); p.strokeWeight(1.2); p.noFill();
-    let showSag = document.getElementById('chk-sag').checked;
-    for (let i = 0; i < config.routing.length - 1; i++) {
-      let a = ps[config.routing[i]];
-      let b = ps[config.routing[i + 1]];
-      let ax = a.x * sc + offX, ay = a.y * sc + offY;
-      let bx = b.x * sc + offX, by = b.y * sc + offY;
-
-      if (showSag) {
-        // Draw cable with slight catenary sag
-        let midX = (ax + bx) / 2;
-        let midY = (ay + by) / 2 + Math.sqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay)) * 0.06;
-        p.beginShape();
-        p.vertex(ax, ay);
-        p.quadraticVertex(midX, midY, bx, by);
-        p.endShape();
-      } else {
-        p.line(ax, ay, bx, by);
-      }
+    // Draw cable (brown line following particle chain)
+    let tensions = computeSegmentTensions(sim, stiffness);
+    for (let i = 0; i < sim.particles.length - 1; i++) {
+      let pa = sim.particles[i];
+      let pb = sim.particles[i + 1];
+      let t = tensions[i] || 0;
+      // Color: blue (low) to red (high)
+      let tNorm = Math.min(1, t * 5);
+      let r = Math.floor(60 + tNorm * 139);
+      let g = Math.floor(40 + (1 - tNorm) * 50);
+      let b = Math.floor(20 + (1 - tNorm) * 100);
+      p.stroke(r, g, b); p.strokeWeight(1.0 + tNorm * 0.8);
+      p.line(pa.x, pa.y, pb.x, pb.y);
     }
 
     // Draw pulleys
-    for (let i = 0; i < ps.length; i++) {
-      let pp = ps[i];
-      let px = pp.x * sc + offX;
-      let py = pp.y * sc + offY;
-      let pr = pp.radius * sc;
+    let config = cell.config;
+    for (let i = 0; i < sim.simPulleys.length; i++) {
+      let sp = sim.simPulleys[i];
 
-      if (pp.fixed) {
-        // Fixed: gray circle with triangle support above
+      if (sp.fixed) {
+        // Fixed: gray circle with triangle bracket above
         p.fill(170, 165, 155); p.stroke(120, 115, 105); p.strokeWeight(0.8);
-        p.circle(px, py, pr * 2);
-        // Triangle bracket
+        p.circle(sp.x, sp.y, sp.radius * 2);
+        // Triangle
         p.fill(140, 135, 125); p.noStroke();
-        p.triangle(px - pr * 0.6, py - pr, px + pr * 0.6, py - pr, px, py - pr * 1.8);
-        // Axle dot
-        p.fill(80); p.circle(px, py, 2);
+        p.triangle(sp.x - sp.radius * 0.5, sp.y - sp.radius,
+                   sp.x + sp.radius * 0.5, sp.y - sp.radius,
+                   sp.x, sp.y - sp.radius * 1.6);
+        // Axle
+        p.fill(80); p.circle(sp.x, sp.y, 2);
       } else {
-        // Free: brown circle, heavier look
-        p.fill(160, 110, 60, 180); p.stroke(120, 80, 40); p.strokeWeight(0.8);
-        p.circle(px, py, pr * 2);
-        // Axle dot
-        p.fill(60); p.noStroke(); p.circle(px, py, 2);
-        // Weight indicator (small arrow down)
-        p.stroke(120, 80, 40, 150); p.strokeWeight(0.5);
-        p.line(px, py + pr, px, py + pr + 4);
-        p.line(px - 2, py + pr + 2, px, py + pr + 4);
-        p.line(px + 2, py + pr + 2, px, py + pr + 4);
+        // Free: brown circle with weight block below
+        p.fill(160, 110, 60, 200); p.stroke(120, 80, 40); p.strokeWeight(0.8);
+        p.circle(sp.x, sp.y, sp.radius * 2);
+        // Axle
+        p.fill(60); p.noStroke(); p.circle(sp.x, sp.y, 2);
+        // Weight block
+        let wS = 5 + sp.mass * 2;
+        p.fill(100, 80, 60); p.stroke(80, 60, 40); p.strokeWeight(0.5);
+        p.line(sp.x, sp.y + sp.radius, sp.x, sp.y + sp.radius + 4);
+        p.rect(sp.x - wS / 2, sp.y + sp.radius + 4, wS, wS * 0.6, 1);
       }
     }
 
-    // Animate: oscillate input end slightly
-    let animDisp = Math.sin(globalTime * 3) * 5 * sc;
-    let firstP = ps[config.routing[0]];
-    let fpx = firstP.x * sc + offX;
-    let fpy = firstP.y * sc + offY;
-    // Input cable coming from left
-    p.stroke(139, 69, 19, 180); p.strokeWeight(1);
-    p.line(cx + 3, fpy + animDisp, fpx, fpy);
+    // Anchors
+    // Start anchor
+    let startP = sim.particles[0];
+    p.fill(100); p.noStroke();
+    p.triangle(startP.x - 4, startP.y, startP.x + 4, startP.y, startP.x, startP.y - 7);
+    p.rect(startP.x - 5, startP.y - 9, 10, 2);
+
+    // End anchor
+    let endP = sim.particles[sim.particles.length - 1];
+    p.fill(100); p.noStroke();
+    p.triangle(endP.x - 4, endP.y, endP.x + 4, endP.y, endP.x, endP.y - 7);
+    p.rect(endP.x - 5, endP.y - 9, 10, 2);
 
     // MA label
     p.noStroke(); p.fill(139, 69, 19); p.textSize(11); p.textAlign(p.RIGHT, p.BOTTOM);
     p.text('MA: ' + cell.ma, cx + cellW - 4, cy + cellH - 3);
 
     // Pulley count label
-    p.fill(180, 170, 155); p.textSize(8); p.textAlign(p.LEFT, p.TOP);
-    let nFix = config.pulleys.filter(pp => pp.fixed).length;
+    let nFix = config.pulleys.filter(function(pp) { return pp.fixed; }).length;
     let nFree = config.pulleys.length - nFix;
-    p.text(`${nFix}F+${nFree}f`, cx + 4, cy + 3);
+    p.fill(180, 170, 155); p.textSize(8); p.textAlign(p.LEFT, p.TOP);
+    p.text(nFix + 'F+' + nFree + 'f', cx + 4, cy + 3);
   }
 }
 
 // ===== DRAWING: SINGLE MODE =====
-function drawSingle(p) {
+function drawSingle(p, gravity, stiffness, iters) {
   if (selectedIdx < 0 || selectedIdx >= cells.length) return;
   let cell = cells[selectedIdx];
   let config = cell.config;
-  let ps = config.pulleys;
-  let routing = config.routing;
-  let showSag = document.getElementById('chk-sag').checked;
+  let sim = cell.sim;
 
-  // --- Input cable handle on left side ---
-  let handleX = 30;
-  let handleMinY = ch * 0.15;
-  let handleMaxY = ch * 0.85;
-  let handleY = handleMinY + inputY * (handleMaxY - handleMinY);
-
-  // Draw input rail
-  p.stroke(180, 170, 160); p.strokeWeight(1);
-  p.line(handleX, handleMinY, handleX, handleMaxY);
-  // Handle
-  p.fill(200, 60, 60); p.stroke(160, 40, 40); p.strokeWeight(1.5);
-  p.circle(handleX, handleY, 14);
-  p.fill(255, 200, 200); p.noStroke(); p.textSize(7); p.textAlign(p.CENTER, p.CENTER);
-  p.text('IN', handleX, handleY);
-
-  // Apply input displacement to free pulleys
-  let baseInputY = 0.5;
-  let inputDelta = (inputY - baseInputY) * 200;
-  // Also add animation oscillation
-  let animDelta = Math.sin(globalTime * 3) * 30;
-  let totalDelta = inputDelta + animDelta;
-
-  // Compute free pulley equilibrium positions based on input
-  // In a real system, free pulleys move based on cable constraint
-  // Simplified: free pulleys shift proportionally to MA division
+  // Step physics
+  stepCableSim(sim, gravity, stiffness, iters, 0.016);
+  cell.ma = computeMA(sim);
   let ma = cell.ma;
-  let freePulleyDisp = totalDelta / Math.max(1, ma);
 
-  // Draw cable through routing
-  let tensions = computeTensions(ps, routing, 100);
+  // Draw cable with tension coloring and thickness
+  let tensions = computeSegmentTensions(sim, stiffness);
+  let maxTension = 0.001;
+  for (let t of tensions) if (t > maxTension) maxTension = t;
 
-  // First: cable from input handle to first routed pulley
-  let firstP = ps[routing[0]];
-  let firstPY = firstP.y + (firstP.fixed ? 0 : freePulleyDisp);
-  p.stroke(139, 90, 43); p.strokeWeight(2); p.noFill();
-  if (showSag) {
-    let midX = (handleX + firstP.x) / 2;
-    let midY = (handleY + firstPY) / 2 + 8;
-    p.beginShape();
-    p.vertex(handleX, handleY);
-    p.quadraticVertex(midX, midY, firstP.x, firstPY);
-    p.endShape();
-  } else {
-    p.line(handleX, handleY, firstP.x, firstPY);
-  }
+  for (let i = 0; i < sim.particles.length - 1; i++) {
+    let pa = sim.particles[i];
+    let pb = sim.particles[i + 1];
+    let t = tensions[i] || 0;
+    let tNorm = Math.min(1, t / maxTension);
 
-  // Cable between routed pulleys
-  for (let i = 0; i < routing.length - 1; i++) {
-    let a = ps[routing[i]];
-    let b = ps[routing[i + 1]];
-    let ay = a.y + (a.fixed ? 0 : freePulleyDisp);
-    let by = b.y + (b.fixed ? 0 : freePulleyDisp);
-
-    // Tension-based thickness
-    let tension = tensions[i] || 1;
-    let thick = p.map(tension, 0, 120, 1.2, 3);
-    p.stroke(139, 90, 43, 220); p.strokeWeight(thick);
-
-    if (showSag) {
-      let dist = Math.sqrt((b.x - a.x) * (b.x - a.x) + (by - ay) * (by - ay));
-      let sagAmount = dist * 0.04;
-      let midX = (a.x + b.x) / 2;
-      let midY = (ay + by) / 2 + sagAmount;
-      p.beginShape();
-      p.vertex(a.x, ay);
-      p.quadraticVertex(midX, midY, b.x, by);
-      p.endShape();
+    // Tension gradient: blue (low) -> brown (mid) -> red (high)
+    let r, g, b;
+    if (tNorm < 0.5) {
+      let f = tNorm * 2;
+      r = Math.floor(60 + f * 80);
+      g = Math.floor(80 + f * 20);
+      b = Math.floor(160 - f * 100);
     } else {
-      p.line(a.x, ay, b.x, by);
+      let f = (tNorm - 0.5) * 2;
+      r = Math.floor(140 + f * 80);
+      g = Math.floor(100 - f * 60);
+      b = Math.floor(60 - f * 40);
     }
 
-    // Tension label on segment midpoint
-    let labelX = (a.x + b.x) / 2;
-    let labelY = (ay + by) / 2 - 8;
-    p.noStroke(); p.fill(160, 120, 80); p.textSize(8); p.textAlign(p.CENTER, p.BOTTOM);
-    p.text(tension.toFixed(1) + 'N', labelX, labelY);
+    let thick = 1.5 + tNorm * 3.0;
+    p.stroke(r, g, b, 220); p.strokeWeight(thick);
+    p.line(pa.x, pa.y, pb.x, pb.y);
   }
 
-  // Cable from last pulley to anchor (right side)
-  let lastP = ps[routing[routing.length - 1]];
-  let lastPY = lastP.y + (lastP.fixed ? 0 : freePulleyDisp);
-  let anchorX = cw * 0.62;
-  let anchorY = ch * 0.12;
-  p.stroke(139, 90, 43); p.strokeWeight(2);
-  if (showSag) {
-    let midX = (lastP.x + anchorX) / 2;
-    let midY = (lastPY + anchorY) / 2 + 6;
-    p.beginShape();
-    p.vertex(lastP.x, lastPY);
-    p.quadraticVertex(midX, midY, anchorX, anchorY);
-    p.endShape();
-  } else {
-    p.line(lastP.x, lastPY, anchorX, anchorY);
+  // Draw particles (small dots along cable)
+  for (let i = 1; i < sim.particles.length - 1; i++) {
+    let pp = sim.particles[i];
+    p.noStroke(); p.fill(139, 90, 43, 80);
+    p.circle(pp.x, pp.y, 3);
   }
-  // Anchor symbol
-  p.fill(100); p.noStroke();
-  p.triangle(anchorX - 6, anchorY, anchorX + 6, anchorY, anchorX, anchorY - 10);
-  p.rect(anchorX - 8, anchorY - 12, 16, 3);
 
   // Draw pulleys
-  for (let i = 0; i < ps.length; i++) {
-    let pp = ps[i];
-    let py = pp.y + (pp.fixed ? 0 : freePulleyDisp);
+  for (let i = 0; i < sim.simPulleys.length; i++) {
+    let sp = sim.simPulleys[i];
 
-    if (pp.fixed) {
-      // Fixed: gray circle, triangle mount, labeled F
+    if (sp.fixed) {
+      // Fixed: gray with triangle bracket and hatching
       p.fill(180, 175, 165); p.stroke(130, 125, 115); p.strokeWeight(1.2);
-      p.circle(pp.x, py, pp.radius * 2);
-      // Groove line
+      p.circle(sp.x, sp.y, sp.radius * 2);
+      // Groove
       p.noFill(); p.stroke(150, 145, 135); p.strokeWeight(0.5);
-      p.circle(pp.x, py, pp.radius * 1.5);
+      p.circle(sp.x, sp.y, sp.radius * 1.5);
       // Triangle bracket
       p.fill(150, 145, 135); p.noStroke();
-      p.triangle(pp.x - pp.radius * 0.7, py - pp.radius, pp.x + pp.radius * 0.7, py - pp.radius, pp.x, py - pp.radius * 2);
-      // Hatching on bracket
+      p.triangle(sp.x - sp.radius * 0.7, sp.y - sp.radius,
+                 sp.x + sp.radius * 0.7, sp.y - sp.radius,
+                 sp.x, sp.y - sp.radius * 2);
+      // Hatching
       p.stroke(120, 115, 105); p.strokeWeight(0.4);
       for (let h = 0; h < 4; h++) {
-        let hx = pp.x - pp.radius * 0.4 + h * pp.radius * 0.25;
-        p.line(hx, py - pp.radius * 1.1, hx + pp.radius * 0.15, py - pp.radius * 1.6);
+        let hx = sp.x - sp.radius * 0.4 + h * sp.radius * 0.25;
+        p.line(hx, sp.y - sp.radius * 1.1, hx + sp.radius * 0.15, sp.y - sp.radius * 1.6);
       }
       // Axle
-      p.fill(70); p.noStroke(); p.circle(pp.x, py, 5);
+      p.fill(70); p.noStroke(); p.circle(sp.x, sp.y, 5);
       // Label
       p.fill(100); p.textSize(10); p.textAlign(p.CENTER, p.CENTER);
-      p.text('F', pp.x, py + pp.radius + 12);
+      p.text('F' + (i + 1), sp.x, sp.y + sp.radius + 14);
     } else {
-      // Free: brown, with weight hook below, labeled with number
+      // Free: brown with weight block below
       p.fill(170, 120, 65, 200); p.stroke(130, 85, 40); p.strokeWeight(1.2);
-      p.circle(pp.x, py, pp.radius * 2);
+      p.circle(sp.x, sp.y, sp.radius * 2);
       // Groove
       p.noFill(); p.stroke(140, 95, 50, 100); p.strokeWeight(0.5);
-      p.circle(pp.x, py, pp.radius * 1.5);
+      p.circle(sp.x, sp.y, sp.radius * 1.5);
       // Axle
-      p.fill(60); p.noStroke(); p.circle(pp.x, py, 5);
-      // Weight hook
+      p.fill(60); p.noStroke(); p.circle(sp.x, sp.y, 5);
+      // Hook line
       p.stroke(130, 85, 40); p.strokeWeight(1.5);
-      p.line(pp.x, py + pp.radius, pp.x, py + pp.radius + 20);
+      p.line(sp.x, sp.y + sp.radius, sp.x, sp.y + sp.radius + 20);
       // Weight block
-      let wSize = 8 + pp.mass * 4;
+      let wSize = 8 + sp.mass * 4;
       p.fill(100, 80, 60); p.stroke(80, 60, 40); p.strokeWeight(0.8);
-      p.rect(pp.x - wSize / 2, py + pp.radius + 20, wSize, wSize * 0.7, 2);
-      // Mass label
+      p.rect(sp.x - wSize / 2, sp.y + sp.radius + 20, wSize, wSize * 0.7, 2);
+      // Mass label on block
       p.fill(220); p.noStroke(); p.textSize(7); p.textAlign(p.CENTER, p.CENTER);
-      p.text(pp.mass.toFixed(1), pp.x, py + pp.radius + 20 + wSize * 0.35);
-      // Pulley number
+      p.text(sp.mass.toFixed(1), sp.x, sp.y + sp.radius + 20 + wSize * 0.35);
+      // Pulley label
       p.fill(130, 85, 40); p.textSize(10); p.textAlign(p.CENTER, p.CENTER);
-      p.text(i + 1, pp.x, py + pp.radius + wSize + 30);
+      p.text('P' + (i + 1), sp.x, sp.y + sp.radius + wSize + 32);
     }
   }
 
+  // Start anchor
+  let startP = sim.particles[0];
+  p.fill(100); p.noStroke();
+  p.triangle(startP.x - 6, startP.y, startP.x + 6, startP.y, startP.x, startP.y - 10);
+  p.rect(startP.x - 8, startP.y - 12, 16, 3);
+
+  // End anchor / drag handle (red circle)
+  let endP = sim.particles[sim.particles.length - 1];
+  p.fill(200, 60, 60); p.stroke(160, 40, 40); p.strokeWeight(1.5);
+  p.circle(endP.x, endP.y, 16);
+  p.fill(255, 200, 200); p.noStroke(); p.textSize(7); p.textAlign(p.CENTER, p.CENTER);
+  p.text('PULL', endP.x, endP.y);
+
   // === MA Display (prominent) ===
-  let maBoxX = cw * 0.68, maBoxY = ch * 0.35;
-  let maBoxW = cw * 0.28, maBoxH = 120;
+  let maBoxX = cw * 0.66, maBoxY = ch * 0.08;
+  let maBoxW = cw * 0.30, maBoxH = 120;
   p.noFill(); p.stroke(200, 190, 175); p.strokeWeight(0.5);
   p.rect(maBoxX, maBoxY, maBoxW, maBoxH, 4);
 
@@ -950,58 +1072,98 @@ function drawSingle(p) {
   p.text(ma, maBoxX + maBoxW / 2, maBoxY + maBoxH / 2 + 5);
 
   p.fill(130); p.textSize(9); p.textAlign(p.CENTER, p.BOTTOM);
-  p.text(ma + ' cable segments support the load', maBoxX + maBoxW / 2, maBoxY + maBoxH - 6);
+  p.text(ma + ' cable segments support load', maBoxX + maBoxW / 2, maBoxY + maBoxH - 6);
 
-  // === Network summary ===
-  let nFix = ps.filter(pp => pp.fixed).length;
-  let nFree = ps.length - nFix;
-  let sumBoxY = maBoxY + maBoxH + 20;
+  // === Force diagram ===
+  let fdX = cw * 0.66, fdY = maBoxY + maBoxH + 20;
+  let fdW = cw * 0.30;
+  p.fill(100); p.noStroke(); p.textSize(10); p.textAlign(p.LEFT, p.TOP);
+  p.text('Force Diagram', fdX, fdY);
 
-  p.fill(100); p.textSize(10); p.textAlign(p.LEFT, p.TOP);
-  p.text('Network Summary', maBoxX, sumBoxY);
-  p.fill(130); p.textSize(9);
-  p.text(`Total pulleys: ${ps.length}`, maBoxX, sumBoxY + 18);
-  p.text(`Fixed (redirectors): ${nFix}`, maBoxX, sumBoxY + 32);
-  p.text(`Free (load-bearing): ${nFree}`, maBoxX, sumBoxY + 46);
-  p.text(`Routing length: ${routing.length} passes`, maBoxX, sumBoxY + 60);
-  p.text(`Input force: ${(100 / ma).toFixed(1)}N for 100N load`, maBoxX, sumBoxY + 74);
-
-  // === Force diagram (small) ===
-  let fdY = sumBoxY + 100;
-  p.fill(100); p.textSize(10); p.textAlign(p.LEFT, p.TOP);
-  p.text('Force Diagram', maBoxX, fdY);
-
-  // Input arrow (small)
-  let arrowY = fdY + 20;
-  let inputForce = 100 / ma;
   let loadForce = 100;
-  let maxArrowW = maBoxW - 20;
+  let inputForce = loadForce / Math.max(1, ma);
+  let maxArrowW = fdW - 20;
+  let arrowY = fdY + 20;
 
-  // Input force arrow
-  let inputArrowW = (inputForce / loadForce) * maxArrowW;
+  // Input force (green)
+  let inW = (inputForce / loadForce) * maxArrowW;
   p.fill(80, 140, 80); p.noStroke();
-  p.rect(maBoxX, arrowY, inputArrowW, 10, 2);
-  p.triangle(maBoxX + inputArrowW, arrowY - 2, maBoxX + inputArrowW, arrowY + 12, maBoxX + inputArrowW + 8, arrowY + 5);
+  p.rect(fdX, arrowY, inW, 10, 2);
+  p.triangle(fdX + inW, arrowY - 2, fdX + inW, arrowY + 12, fdX + inW + 8, arrowY + 5);
   p.fill(80); p.textSize(8); p.textAlign(p.LEFT, p.CENTER);
-  p.text(`Input: ${inputForce.toFixed(1)}N`, maBoxX + inputArrowW + 12, arrowY + 5);
+  p.text('Input: ' + inputForce.toFixed(1) + 'N', fdX + inW + 12, arrowY + 5);
 
-  // Load force arrow
-  let loadArrowW = maxArrowW;
+  // Load force (red)
   let loadArrowY = arrowY + 24;
   p.fill(180, 80, 80); p.noStroke();
-  p.rect(maBoxX, loadArrowY, loadArrowW, 10, 2);
-  p.triangle(maBoxX + loadArrowW, loadArrowY - 2, maBoxX + loadArrowW, loadArrowY + 12, maBoxX + loadArrowW + 8, loadArrowY + 5);
+  p.rect(fdX, loadArrowY, maxArrowW, 10, 2);
+  p.triangle(fdX + maxArrowW, loadArrowY - 2, fdX + maxArrowW, loadArrowY + 12, fdX + maxArrowW + 8, loadArrowY + 5);
   p.fill(80); p.textSize(8); p.textAlign(p.LEFT, p.CENTER);
-  p.text(`Load: ${loadForce.toFixed(0)}N`, maBoxX + loadArrowW + 12, loadArrowY + 5);
+  p.text('Load: ' + loadForce.toFixed(0) + 'N', fdX + maxArrowW + 12, loadArrowY + 5);
+
+  // === Network summary ===
+  let sumY = loadArrowY + 36;
+  let nFix = config.pulleys.filter(function(pp) { return pp.fixed; }).length;
+  let nFree = config.pulleys.length - nFix;
+  p.fill(100); p.textSize(10); p.textAlign(p.LEFT, p.TOP);
+  p.text('Network Summary', fdX, sumY);
+  p.fill(130); p.textSize(9);
+  p.text('Total pulleys: ' + config.pulleys.length, fdX, sumY + 18);
+  p.text('Fixed (redirectors): ' + nFix, fdX, sumY + 32);
+  p.text('Free (load-bearing): ' + nFree, fdX, sumY + 46);
+  p.text('Routing: ' + config.routing.length + ' passes', fdX, sumY + 60);
+  p.text('Particles: ' + sim.particles.length, fdX, sumY + 74);
+  p.text('Input force: ' + (loadForce / ma).toFixed(1) + 'N for 100N load', fdX, sumY + 88);
+
+  // Tension distribution mini chart
+  let chartY = sumY + 110;
+  p.fill(100); p.textSize(10); p.textAlign(p.LEFT, p.TOP);
+  p.text('Tension Distribution', fdX, chartY);
+  let chartH = 50;
+  let chartW = fdW;
+  p.noFill(); p.stroke(200, 190, 175); p.strokeWeight(0.5);
+  p.rect(fdX, chartY + 14, chartW, chartH);
+
+  if (tensions.length > 0) {
+    p.stroke(139, 69, 19); p.strokeWeight(1); p.noFill();
+    p.beginShape();
+    for (let i = 0; i < tensions.length; i++) {
+      let tx = fdX + (i / (tensions.length - 1)) * chartW;
+      let tNorm = Math.min(1, tensions[i] / maxTension);
+      let ty = chartY + 14 + chartH - tNorm * chartH;
+      p.vertex(tx, ty);
+    }
+    p.endShape();
+  }
+
+  // === Physics HUD ===
+  let energy = computeEnergy(sim, gravity);
+  if (sim.initialEnergy === null) sim.initialEnergy = energy.total;
+  let drift = sim.initialEnergy !== 0 ? Math.abs(energy.total - sim.initialEnergy) / Math.abs(sim.initialEnergy) * 100 : 0;
+  let violation = maxConstraintViolation(sim);
+
+  let phud = document.getElementById('physics-hud');
+  phud.innerHTML =
+    'Energy: ' + energy.total.toFixed(1) + '<br>' +
+    'KE: ' + energy.ke.toFixed(2) + '<br>' +
+    'PE(g): ' + energy.pe_gravity.toFixed(1) + '<br>' +
+    'PE(e): ' + energy.pe_elastic.toFixed(2) + '<br>' +
+    'Drift: ' + drift.toFixed(1) + '%<br>' +
+    'Max violation: ' + violation.toFixed(3) + '<br>' +
+    'dt: 0.016';
+
+  phud.className = '';
+  if (drift > 20) phud.className = 'error';
+  else if (drift > 5) phud.className = 'warn';
 
   // Update HUD
-  document.getElementById('hud-pulleys').textContent = ps.length;
+  document.getElementById('hud-pulleys').textContent = config.pulleys.length;
   document.getElementById('hud-ma').textContent = ma;
-  document.getElementById('hud-score').textContent = cell.score.toFixed(1);
+  document.getElementById('hud-score').textContent = '--';
 
   // Info bar
   document.getElementById('info-bar').textContent =
-    `Cell ${selectedIdx + 1} \u2014 ${ps.length} pulleys (${nFix} fixed, ${nFree} free), MA=${ma}, Score: ${cell.score.toFixed(1)}. Drag red handle to apply input force.`;
+    'Cell ' + (selectedIdx + 1) + ' \u2014 ' + config.pulleys.length + ' pulleys (' + nFix + ' fixed, ' + nFree + ' free), MA=' + ma + ', ' + sim.particles.length + ' Verlet particles. Drag red handle to apply force.';
 
   // Back hint
   p.fill(150); p.noStroke(); p.textSize(10); p.textAlign(p.LEFT, p.BOTTOM);
@@ -1014,14 +1176,16 @@ function updateDetailList(cell) {
   let config = cell.config;
   let html = '';
   for (let i = 0; i < config.pulleys.length; i++) {
-    let p = config.pulleys[i];
-    let type = p.fixed ? 'FIXED' : 'FREE';
-    html += `<div class="detail-item">P${i + 1} [${type}] r=${p.radius.toFixed(0)} ` +
-            `pos=(${p.x.toFixed(0)},${p.y.toFixed(0)})` +
-            (p.fixed ? '' : ` m=${p.mass.toFixed(1)}`) + `</div>`;
+    let pp = config.pulleys[i];
+    let type = pp.fixed ? 'FIXED' : 'FREE';
+    html += '<div class="detail-item">P' + (i + 1) + ' [' + type + '] r=' + pp.radius.toFixed(0) +
+            ' pos=(' + pp.x.toFixed(0) + ',' + pp.y.toFixed(0) + ')' +
+            (pp.fixed ? '' : ' m=' + pp.mass.toFixed(1)) + '</div>';
   }
-  html += `<div class="detail-item" style="color:#8b4513;">Route: ${config.routing.map(r => 'P' + (r + 1)).join('\u2192')}</div>`;
-  html += `<div class="detail-item" style="color:#8b4513;">MA: ${cell.ma}</div>`;
+  html += '<div class="detail-item" style="color:#8b4513;">Route: ' +
+          config.routing.map(function(r) { return 'P' + (r + 1); }).join('\u2192') + '</div>';
+  html += '<div class="detail-item" style="color:#8b4513;">MA: ' + cell.ma + '</div>';
+  html += '<div class="detail-item">Particles: ' + cell.sim.particles.length + '</div>';
   list.innerHTML = html;
 }
 
