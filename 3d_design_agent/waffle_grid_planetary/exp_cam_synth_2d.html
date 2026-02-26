@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Cam Profile Synthesizer — Fourier Cam Generation</title>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f5f3ee; overflow: hidden; font-family: 'Georgia', serif; display: flex; height: 100vh; }
+
+  #sidebar {
+    width: 280px; min-width: 280px; background: #f0ede6;
+    border-right: 1px solid #c8c0b0; overflow-y: auto; padding: 12px 14px;
+    font-size: 12px; color: #444;
+  }
+  #sidebar h1 { font-size: 14px; letter-spacing: 1.5px; color: #333; margin-bottom: 2px; font-weight: normal; }
+  #sidebar .subtitle { font-size: 10px; color: #888; margin-bottom: 12px; font-style: italic; }
+
+  .section-title {
+    font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: #8b7355;
+    margin-top: 14px; margin-bottom: 6px; border-bottom: 1px solid #d8d0c0; padding-bottom: 3px;
+  }
+  .ctrl-row { display: flex; align-items: center; margin-bottom: 5px; }
+  .ctrl-row label { flex: 0 0 95px; font-size: 11px; color: #666; }
+  .ctrl-row input[type="range"] { flex: 1; height: 3px; accent-color: #8b4513; }
+  .ctrl-row .val { flex: 0 0 40px; text-align: right; font-size: 10px; color: #555; font-family: 'Consolas', monospace; }
+
+  select {
+    width: 100%; padding: 4px 8px; font-size: 11px; font-family: 'Georgia', serif;
+    background: #faf8f3; color: #555; border: 1px solid #c8c0b0; border-radius: 3px; margin-bottom: 4px;
+  }
+
+  .btn-row { display: flex; gap: 5px; margin: 8px 0; flex-wrap: wrap; }
+  .btn {
+    padding: 5px 10px; font-size: 10px; font-family: 'Georgia', serif;
+    background: #555; color: #f5f3ee; border: none; cursor: pointer;
+    letter-spacing: 0.5px; border-radius: 2px; transition: background 0.15s;
+  }
+  .btn:hover { background: #333; }
+  .btn.active { background: #8b4513; }
+  .btn.accent { background: #2a6848; }
+  .btn.accent:hover { background: #1a4830; }
+  .btn.danger { background: #8b2020; }
+  .btn:disabled { background: #aaa; cursor: not-allowed; }
+
+  #canvas-container { flex: 1; position: relative; }
+  #canvas-container canvas { display: block; }
+
+  #info-bar {
+    position: fixed; bottom: 0; left: 280px; right: 0; z-index: 100;
+    background: rgba(245,243,238,0.92); border-top: 1px solid #bbb;
+    padding: 4px 16px; font-size: 10px; color: #777; font-style: italic;
+  }
+
+  #hud {
+    position: absolute; top: 8px; right: 12px; background: rgba(245,243,238,0.9);
+    border: 1px solid #c8c0b0; border-radius: 4px; padding: 8px 12px;
+    font-size: 10px; line-height: 1.7; color: #666; min-width: 160px; pointer-events: none;
+  }
+  #hud .hv { color: #444; font-family: 'Consolas', monospace; float: right; }
+
+  .progress-bar { width: 100%; height: 3px; background: #ddd; border-radius: 2px; margin: 4px 0; }
+  .progress-bar-fill { height: 100%; background: #8b4513; border-radius: 2px; transition: width 0.1s; }
+
+  .harmonic-list { max-height: 160px; overflow-y: auto; font-size: 9px; line-height: 1.5; margin-top: 4px; }
+  .harmonic-item { padding: 1px 0; color: #666; font-family: 'Consolas', monospace; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #c8c0b0; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h1>CAM SYNTHESIZER</h1>
+  <div class="subtitle">Fourier Cam Profile Generation &mdash; Random Cam Shapes</div>
+
+  <div class="section-title">Cam Profile</div>
+  <div class="ctrl-row">
+    <label>Harmonics (N)</label>
+    <input type="range" id="sl-harmonics" min="2" max="16" step="1" value="5">
+    <span class="val" id="v-harmonics">5</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Base Radius</label>
+    <input type="range" id="sl-base" min="30" max="80" step="2" value="50">
+    <span class="val" id="v-base">50</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Max Amplitude</label>
+    <input type="range" id="sl-amp" min="0.05" max="0.4" step="0.01" value="0.25">
+    <span class="val" id="v-amp">0.25</span>
+  </div>
+
+  <div class="section-title">Follower</div>
+  <select id="sel-follower">
+    <option value="flat">Flat Translating</option>
+    <option value="roller" selected>Roller</option>
+    <option value="oscillating">Oscillating Arm</option>
+  </select>
+  <div class="ctrl-row">
+    <label>Roller Radius</label>
+    <input type="range" id="sl-roller" min="3" max="15" step="1" value="6">
+    <span class="val" id="v-roller">6</span>
+  </div>
+
+  <div class="section-title">Animation</div>
+  <div class="ctrl-row">
+    <label>Speed</label>
+    <input type="range" id="sl-speed" min="0.1" max="3.0" step="0.05" value="0.8">
+    <span class="val" id="v-speed">0.80</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Trail Length</label>
+    <input type="range" id="sl-trail" min="50" max="3000" step="50" value="400">
+    <span class="val" id="v-trail">400</span>
+  </div>
+
+  <div class="section-title">Actions</div>
+  <div class="btn-row">
+    <button class="btn active" id="btn-atlas" onclick="setMode('atlas')">Atlas</button>
+    <button class="btn" id="btn-single" onclick="setMode('single')">Single</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn accent" onclick="randomizeAll()">Randomize</button>
+    <button class="btn" onclick="mutateAll()">Mutate</button>
+    <button class="btn danger" id="btn-beautiful" onclick="findBeautiful()">Find Beautiful</button>
+  </div>
+  <div id="progress-container" style="display:none;">
+    <div class="progress-bar"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
+    <span style="font-size:9px;color:#888;" id="progress-text">Searching...</span>
+  </div>
+
+  <div class="section-title">Harmonics</div>
+  <div class="harmonic-list" id="harmonic-list">
+    <div class="harmonic-item" style="color:#999;">Click a cell to see harmonics</div>
+  </div>
+</div>
+
+<div id="canvas-container">
+  <div id="hud">
+    <div>FPS <span class="hv" id="hud-fps">--</span></div>
+    <div>Mode <span class="hv" id="hud-mode">atlas</span></div>
+    <div>Harmonics <span class="hv" id="hud-harm">--</span></div>
+    <div>Max Pressure <span class="hv" id="hud-pressure">--</span></div>
+    <div>Score <span class="hv" id="hud-score">--</span></div>
+  </div>
+</div>
+
+<div id="info-bar">
+  Plate II. &mdash; Random cam profiles from Fourier synthesis. Each cell shows a unique cam shape driving a follower. Click to inspect.
+</div>
+
+<script>
+// ========================================================
+// CAM PROFILE SYNTHESIZER — Fourier Cam Generation
+// ========================================================
+
+const COLS = 4, ROWS = 4;
+const ATLAS_TRAIL_MAX = 400;
+const SINGLE_TRAIL_MAX = 3000;
+const CAM_PROFILE_STEPS = 180; // points per cam outline
+const FIND_BEAUTIFUL_TOTAL = 200;
+const FIND_BEAUTIFUL_CHUNK = 25;
+
+// ===== STATE =====
+let mode = 'atlas';
+let cells = [];
+let selectedIdx = -1;
+let globalAngle = 0;
+let hoverCell = -1;
+let cw, ch;
+let findBeautifulRunning = false;
+
+// ===== FOURIER CAM CORE =====
+function camRadius(theta, baseR, harmonics) {
+  let r = baseR;
+  for (let k = 0; k < harmonics.length; k++) {
+    r += harmonics[k].amp * Math.cos((k + 1) * theta + harmonics[k].phase);
+  }
+  return Math.max(r, baseR * 0.15); // clamp to prevent self-intersection
+}
+
+function camProfile(baseR, harmonics, steps) {
+  let pts = [];
+  for (let i = 0; i <= steps; i++) {
+    let theta = (i / steps) * Math.PI * 2;
+    let r = camRadius(theta, baseR, harmonics);
+    pts.push({ x: r * Math.cos(theta), y: r * Math.sin(theta), r: r, theta: theta });
+  }
+  return pts;
+}
+
+// Cam derivative for pressure angle calculation
+function camRadiusDeriv(theta, baseR, harmonics) {
+  let dr = 0;
+  for (let k = 0; k < harmonics.length; k++) {
+    dr -= harmonics[k].amp * (k + 1) * Math.sin((k + 1) * theta + harmonics[k].phase);
+  }
+  return dr;
+}
+
+// Pressure angle at given theta (flat follower)
+function pressureAngle(theta, baseR, harmonics) {
+  let r = camRadius(theta, baseR, harmonics);
+  let dr = camRadiusDeriv(theta, baseR, harmonics);
+  // pressure angle = atan(dr / r)
+  return Math.abs(Math.atan2(dr, r));
+}
+
+// Max pressure angle across full rotation
+function maxPressureAngle(baseR, harmonics) {
+  let maxPA = 0;
+  for (let i = 0; i < 72; i++) {
+    let theta = (i / 72) * Math.PI * 2;
+    let pa = pressureAngle(theta, baseR, harmonics);
+    if (pa > maxPA) maxPA = pa;
+  }
+  return maxPA;
+}
+
+// ===== FOLLOWER DISPLACEMENT =====
+function followerDisplacement(theta, baseR, harmonics, type, rollerR) {
+  if (type === 'flat') {
+    return camRadius(theta, baseR, harmonics) - baseR;
+  } else if (type === 'roller') {
+    // Roller rides on cam surface — effective radius = cam radius - roller radius at contact
+    let r = camRadius(theta, baseR, harmonics);
+    return r - baseR; // simplified — true roller offset is more complex
+  } else if (type === 'oscillating') {
+    // Oscillating arm: pivoted arm pushed by cam
+    let r = camRadius(theta, baseR, harmonics);
+    let armLen = baseR * 1.5;
+    let pivotDist = baseR * 2;
+    // Angle of arm from horizontal
+    let armAngle = Math.asin(Math.min(1, Math.max(-1, (r - pivotDist + armLen) / armLen)));
+    return armAngle * 30; // scale to reasonable displacement
+  }
+  return 0;
+}
+
+// Compute full displacement curve
+function computeDisplacementCurve(baseR, harmonics, type, rollerR, steps) {
+  let pts = [];
+  for (let i = 0; i < steps; i++) {
+    let theta = (i / steps) * Math.PI * 2;
+    let y = followerDisplacement(theta, baseR, harmonics, type, rollerR);
+    pts.push({ x: theta, y: y });
+  }
+  return pts;
+}
+
+// ===== CONFIG GENERATOR =====
+function randomConfig() {
+  let numH = parseInt(document.getElementById('sl-harmonics').value);
+  let baseR = parseFloat(document.getElementById('sl-base').value);
+  let maxAmpFrac = parseFloat(document.getElementById('sl-amp').value);
+  let followerType = document.getElementById('sel-follower').value;
+  let rollerR = parseFloat(document.getElementById('sl-roller').value);
+
+  let harmonics = [];
+  for (let k = 0; k < numH; k++) {
+    // Amplitude decreases with harmonic number (1/k decay + randomness)
+    let maxA = baseR * maxAmpFrac / (1 + k * 0.5);
+    let amp = Math.random() * maxA;
+    let phase = Math.random() * Math.PI * 2;
+    harmonics.push({ amp, phase });
+  }
+
+  return { baseR, harmonics, followerType, rollerR, numHarmonics: numH };
+}
+
+function mutateConfig(config) {
+  let c = JSON.parse(JSON.stringify(config));
+  let sigma = 0.12;
+
+  for (let h of c.harmonics) {
+    h.amp *= (1 + (Math.random() - 0.5) * 2 * sigma);
+    h.amp = Math.max(0, h.amp);
+    h.phase += (Math.random() - 0.5) * 0.3;
+  }
+  return c;
+}
+
+// ===== CAM VALIDITY =====
+function isValidCam(config) {
+  // Check: radius > 0 at all angles, pressure angle < 45°
+  for (let i = 0; i < 72; i++) {
+    let theta = (i / 72) * Math.PI * 2;
+    let r = camRadius(theta, config.baseR, config.harmonics);
+    if (r < config.baseR * 0.1) return false; // too concave
+    let pa = pressureAngle(theta, config.baseR, config.harmonics);
+    if (pa > Math.PI / 4) return false; // pressure angle > 45°
+  }
+  return true;
+}
+
+// ===== BEAUTY SCORER (applied to displacement curve) =====
+function scoreCamCurve(pts) {
+  if (pts.length < 10) return 0;
+  let minY = Infinity, maxY = -Infinity;
+  for (let p of pts) { if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y; }
+  let range = maxY - minY;
+  if (range < 0.1) return 0;
+
+  // Inflections
+  let inflections = 0;
+  for (let i = 2; i < pts.length; i++) {
+    let d1 = pts[i].y - pts[i - 1].y;
+    let d0 = pts[i - 1].y - pts[i - 2].y;
+    if (d1 * d0 < 0) inflections++;
+  }
+
+  // Dwell detection (regions where derivative ~ 0)
+  let dwellCount = 0;
+  let inDwell = false;
+  for (let i = 1; i < pts.length; i++) {
+    let deriv = Math.abs(pts[i].y - pts[i - 1].y);
+    if (deriv < range * 0.005) {
+      if (!inDwell) { dwellCount++; inDwell = true; }
+    } else {
+      inDwell = false;
+    }
+  }
+
+  // Asymmetry (rise time vs fall time)
+  let maxIdx = 0;
+  for (let i = 1; i < pts.length; i++) { if (pts[i].y > pts[maxIdx].y) maxIdx = i; }
+  let asymmetry = Math.abs(maxIdx / pts.length - 0.5) * 2; // 0=symmetric, 1=fully asymmetric
+
+  return inflections * 3 + dwellCount * 8 + range * 0.5 + asymmetry * 10;
+}
+
+// ===== ACTIONS =====
+function makeCell(config) {
+  return {
+    config: config,
+    profile: camProfile(config.baseR, config.harmonics, CAM_PROFILE_STEPS),
+    dispCurve: computeDisplacementCurve(config.baseR, config.harmonics, config.followerType, config.rollerR, 180),
+    trail: [],
+    score: 0
+  };
+}
+
+function randomizeAll() {
+  cells = [];
+  for (let i = 0; i < COLS * ROWS; i++) {
+    let config = null;
+    for (let t = 0; t < 50; t++) {
+      let c = randomConfig();
+      if (isValidCam(c)) { config = c; break; }
+    }
+    if (!config) {
+      // Fallback: simple 2-harmonic cam
+      config = { baseR: 50, harmonics: [{ amp: 10, phase: 0 }, { amp: 5, phase: 1 }], followerType: 'roller', rollerR: 6, numHarmonics: 2 };
+    }
+    cells.push(makeCell(config));
+  }
+  globalAngle = 0;
+}
+
+function mutateAll() {
+  for (let cell of cells) {
+    let m = null;
+    for (let t = 0; t < 30; t++) {
+      let mc = mutateConfig(cell.config);
+      if (isValidCam(mc)) { m = mc; break; }
+    }
+    if (m) {
+      cell.config = m;
+      cell.profile = camProfile(m.baseR, m.harmonics, CAM_PROFILE_STEPS);
+      cell.dispCurve = computeDisplacementCurve(m.baseR, m.harmonics, m.followerType, m.rollerR, 180);
+      cell.trail = [];
+    }
+  }
+  globalAngle = 0;
+}
+
+// ===== FIND BEAUTIFUL (chunked non-blocking) =====
+function findBeautiful() {
+  if (findBeautifulRunning) return;
+  findBeautifulRunning = true;
+  document.getElementById('btn-beautiful').disabled = true;
+  document.getElementById('progress-container').style.display = 'block';
+
+  let candidates = [];
+  let processed = 0;
+
+  function processChunk() {
+    let chunkEnd = Math.min(processed + FIND_BEAUTIFUL_CHUNK, FIND_BEAUTIFUL_TOTAL);
+    for (let i = processed; i < chunkEnd; i++) {
+      let config = null;
+      for (let t = 0; t < 50; t++) {
+        let c = randomConfig();
+        if (isValidCam(c)) { config = c; break; }
+      }
+      if (config) {
+        let disp = computeDisplacementCurve(config.baseR, config.harmonics, config.followerType, config.rollerR, 180);
+        let score = scoreCamCurve(disp);
+        candidates.push({ config, score });
+      }
+    }
+    processed = chunkEnd;
+
+    let pct = Math.round((processed / FIND_BEAUTIFUL_TOTAL) * 100);
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('progress-text').textContent = `Scoring ${processed}/${FIND_BEAUTIFUL_TOTAL}...`;
+
+    if (processed < FIND_BEAUTIFUL_TOTAL) {
+      setTimeout(processChunk, 0);
+    } else {
+      candidates.sort((a, b) => b.score - a.score);
+      cells = candidates.slice(0, COLS * ROWS).map(c => {
+        let cell = makeCell(c.config);
+        cell.score = c.score;
+        return cell;
+      });
+      globalAngle = 0;
+      findBeautifulRunning = false;
+      document.getElementById('btn-beautiful').disabled = false;
+      document.getElementById('progress-container').style.display = 'none';
+    }
+  }
+  processChunk();
+}
+
+// ===== MODE SWITCHING =====
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-atlas').classList.toggle('active', m === 'atlas');
+  document.getElementById('btn-single').classList.toggle('active', m === 'single');
+  document.getElementById('hud-mode').textContent = m;
+  if (m === 'atlas') {
+    selectedIdx = -1;
+    document.getElementById('info-bar').textContent =
+      'Plate II. \u2014 Random cam profiles from Fourier synthesis. Each cell shows a unique cam shape driving a follower. Click to inspect.';
+  }
+}
+
+// ===== SLIDER WIRING =====
+function wireSlider(id, valId, fmt) {
+  let sl = document.getElementById(id);
+  let vl = document.getElementById(valId);
+  sl.addEventListener('input', () => {
+    let v = parseFloat(sl.value);
+    if (fmt === 'int') vl.textContent = Math.round(v);
+    else vl.textContent = v.toFixed(2);
+  });
+}
+wireSlider('sl-harmonics', 'v-harmonics', 'int');
+wireSlider('sl-base', 'v-base', 'int');
+wireSlider('sl-amp', 'v-amp');
+wireSlider('sl-roller', 'v-roller', 'int');
+wireSlider('sl-speed', 'v-speed');
+wireSlider('sl-trail', 'v-trail', 'int');
+
+// ===== P5.JS SKETCH =====
+const sketch = (p) => {
+  p.setup = () => {
+    let container = document.getElementById('canvas-container');
+    cw = container.clientWidth; ch = container.clientHeight;
+    p.createCanvas(cw, ch).parent(container);
+    p.textFont('Georgia');
+    randomizeAll();
+  };
+
+  p.windowResized = () => {
+    let container = document.getElementById('canvas-container');
+    cw = container.clientWidth; ch = container.clientHeight;
+    p.resizeCanvas(cw, ch);
+  };
+
+  p.draw = () => {
+    p.background(245, 243, 238);
+    let speed = parseFloat(document.getElementById('sl-speed').value);
+    globalAngle += speed * 0.015;
+
+    if (mode === 'atlas') drawAtlas(p);
+    else drawSingle(p);
+
+    document.getElementById('hud-fps').textContent = Math.round(p.frameRate());
+  };
+
+  p.mousePressed = () => {
+    if (p.mouseX < 0 || p.mouseX > cw || p.mouseY < 0 || p.mouseY > ch) return;
+    if (mode === 'atlas') {
+      let cellW = cw / COLS, cellH = ch / ROWS;
+      let col = Math.floor(p.mouseX / cellW);
+      let row = Math.floor(p.mouseY / cellH);
+      if (col >= 0 && col < COLS && row >= 0 && row < ROWS) {
+        selectedIdx = row * COLS + col;
+        if (selectedIdx < cells.length) {
+          setMode('single');
+          cells[selectedIdx].trail = [];
+          updateHarmonicList(cells[selectedIdx].config);
+        }
+      }
+    }
+  };
+
+  p.mouseMoved = () => {
+    if (mode === 'atlas') {
+      let cellW = cw / COLS, cellH = ch / ROWS;
+      let col = Math.floor(p.mouseX / cellW);
+      let row = Math.floor(p.mouseY / cellH);
+      hoverCell = (col >= 0 && col < COLS && row >= 0 && row < ROWS) ? row * COLS + col : -1;
+    }
+  };
+};
+
+// ===== ATLAS RENDERER =====
+function drawAtlas(p) {
+  let cellW = cw / COLS, cellH = ch / ROWS;
+
+  for (let idx = 0; idx < cells.length; idx++) {
+    let col = idx % COLS, row = Math.floor(idx / COLS);
+    let cx = col * cellW, cy = row * cellH;
+    let centerX = cx + cellW / 2, centerY = cy + cellH * 0.4;
+
+    // Cell border
+    p.noFill(); p.stroke(200, 190, 175); p.strokeWeight(0.5);
+    p.rect(cx, cy, cellW, cellH);
+
+    if (idx === hoverCell) {
+      p.fill(255, 255, 255, 30); p.noStroke();
+      p.rect(cx, cy, cellW, cellH);
+    }
+
+    let cell = cells[idx];
+    let config = cell.config;
+    let camScale = Math.min(cellW, cellH * 0.6) / (config.baseR * 3);
+
+    // Draw cam profile (rotated by globalAngle)
+    p.push();
+    p.translate(centerX, centerY);
+    p.rotate(globalAngle);
+
+    // Cam body fill
+    p.fill(180, 160, 140, 60);
+    p.stroke(120, 100, 80);
+    p.strokeWeight(1);
+    p.beginShape();
+    for (let pt of cell.profile) {
+      p.vertex(pt.x * camScale, pt.y * camScale);
+    }
+    p.endShape(p.CLOSE);
+
+    // Center dot
+    p.fill(80); p.noStroke();
+    p.circle(0, 0, 3);
+
+    p.pop();
+
+    // Follower animation
+    let disp = followerDisplacement(globalAngle, config.baseR, config.harmonics, config.followerType, config.rollerR);
+    let followerY = centerY - (config.baseR + disp) * camScale;
+
+    // Follower indicator
+    p.fill(180, 50, 50); p.noStroke();
+    if (config.followerType === 'roller') {
+      p.circle(centerX, followerY, config.rollerR * camScale * 2);
+    } else {
+      p.rect(centerX - 8, followerY - 2, 16, 4);
+    }
+
+    // Follower trail (displacement over time)
+    cell.trail.push(disp);
+    if (cell.trail.length > ATLAS_TRAIL_MAX) cell.trail.shift();
+
+    // Mini displacement graph at bottom of cell
+    let graphY = cy + cellH * 0.75;
+    let graphH = cellH * 0.2;
+    let graphW = cellW - 10;
+    let graphX = cx + 5;
+
+    p.stroke(139, 69, 19, 120); p.strokeWeight(0.8); p.noFill();
+    p.beginShape();
+    let dispRange = config.baseR * 0.6;
+    for (let i = 0; i < cell.trail.length; i++) {
+      let tx = graphX + (i / ATLAS_TRAIL_MAX) * graphW;
+      let ty = graphY - (cell.trail[i] / dispRange) * graphH * 0.5;
+      p.vertex(tx, ty);
+    }
+    p.endShape();
+
+    // Zero line
+    p.stroke(180, 170, 160); p.strokeWeight(0.3);
+    p.line(graphX, graphY, graphX + graphW, graphY);
+
+    // Label
+    p.noStroke(); p.fill(180, 170, 155); p.textSize(8); p.textAlign(p.LEFT, p.TOP);
+    p.text(`${config.harmonics.length}H`, cx + 4, cy + 3);
+  }
+}
+
+// ===== SINGLE MODE RENDERER =====
+function drawSingle(p) {
+  if (selectedIdx < 0 || selectedIdx >= cells.length) return;
+  let cell = cells[selectedIdx];
+  let config = cell.config;
+  let maxTrail = Math.min(parseInt(document.getElementById('sl-trail').value), SINGLE_TRAIL_MAX);
+
+  // Layout: cam on left half, displacement graph on right half
+  let camCenterX = cw * 0.35, camCenterY = ch * 0.45;
+  let camScale = Math.min(cw * 0.3, ch * 0.4) / (config.baseR * 2.5);
+
+  // === Draw Cam ===
+  p.push();
+  p.translate(camCenterX, camCenterY);
+  p.rotate(globalAngle);
+
+  // Cam body
+  p.fill(180, 160, 140, 80);
+  p.stroke(100, 80, 60);
+  p.strokeWeight(1.5);
+  p.beginShape();
+  for (let pt of cell.profile) {
+    p.vertex(pt.x * camScale, pt.y * camScale);
+  }
+  p.endShape(p.CLOSE);
+
+  // Base circle (dashed effect)
+  p.noFill(); p.stroke(150, 140, 130, 100); p.strokeWeight(0.5);
+  p.circle(0, 0, config.baseR * camScale * 2);
+
+  // Center
+  p.fill(60); p.noStroke();
+  p.circle(0, 0, 6);
+
+  // Rotation direction indicator
+  p.stroke(180, 50, 50, 150); p.strokeWeight(1); p.noFill();
+  p.arc(0, 0, config.baseR * camScale * 0.6, config.baseR * camScale * 0.6, -0.3, 0.8);
+
+  p.pop();
+
+  // === Draw Follower ===
+  let disp = followerDisplacement(globalAngle, config.baseR, config.harmonics, config.followerType, config.rollerR);
+  let followerY = camCenterY - (config.baseR + disp) * camScale;
+
+  // Follower guide rail
+  p.stroke(160, 150, 140); p.strokeWeight(1);
+  p.line(camCenterX, camCenterY - config.baseR * camScale * 2.5, camCenterX, camCenterY - config.baseR * camScale * 0.5);
+
+  // Follower body
+  if (config.followerType === 'roller') {
+    p.fill(180, 50, 50, 150); p.stroke(150, 40, 40); p.strokeWeight(1);
+    p.circle(camCenterX, followerY, config.rollerR * camScale * 2);
+    p.fill(200, 80, 80); p.noStroke();
+    p.circle(camCenterX, followerY, 3);
+  } else if (config.followerType === 'flat') {
+    p.fill(180, 50, 50, 150); p.stroke(150, 40, 40); p.strokeWeight(1);
+    p.rect(camCenterX - 15, followerY - 3, 30, 6, 2);
+  } else {
+    // Oscillating arm
+    let armLen = 60;
+    let pivotX = camCenterX + config.baseR * camScale * 1.5;
+    let pivotY = camCenterY;
+    let armAngle = Math.atan2(followerY - pivotY, camCenterX - pivotX);
+    p.stroke(180, 50, 50); p.strokeWeight(2);
+    p.line(pivotX, pivotY, pivotX + armLen * Math.cos(armAngle), pivotY + armLen * Math.sin(armAngle));
+    p.fill(60); p.noStroke();
+    p.rect(pivotX - 3, pivotY - 3, 6, 6);
+  }
+
+  // === Displacement Graph (right half) ===
+  cell.trail.push(disp);
+  if (cell.trail.length > maxTrail) cell.trail.shift();
+
+  let graphX = cw * 0.58, graphY = ch * 0.15;
+  let graphW = cw * 0.38, graphH = ch * 0.65;
+  let dispRange = config.baseR * 0.6;
+
+  // Graph frame
+  p.noFill(); p.stroke(180, 170, 160); p.strokeWeight(0.5);
+  p.rect(graphX, graphY, graphW, graphH);
+
+  // Zero line
+  let zeroY = graphY + graphH / 2;
+  p.stroke(180, 170, 160, 150); p.strokeWeight(0.3);
+  p.line(graphX, zeroY, graphX + graphW, zeroY);
+
+  // Grid lines
+  for (let g = 1; g <= 4; g++) {
+    let gy = zeroY - (g / 4) * graphH / 2;
+    let gy2 = zeroY + (g / 4) * graphH / 2;
+    p.line(graphX, gy, graphX + graphW, gy);
+    p.line(graphX, gy2, graphX + graphW, gy2);
+  }
+
+  // Displacement trace
+  p.noFill(); p.strokeWeight(1.5);
+  p.beginShape();
+  for (let i = 0; i < cell.trail.length; i++) {
+    let t = i / cell.trail.length;
+    p.stroke(139, 69, 19, t * 200 + 50);
+    let tx = graphX + (i / maxTrail) * graphW;
+    let ty = zeroY - (cell.trail[i] / dispRange) * graphH * 0.4;
+    p.vertex(tx, ty);
+  }
+  p.endShape();
+
+  // Current value marker
+  let curX = graphX + ((cell.trail.length - 1) / maxTrail) * graphW;
+  let curY = zeroY - (disp / dispRange) * graphH * 0.4;
+  p.fill(200, 50, 50); p.noStroke();
+  p.circle(curX, curY, 6);
+
+  // Graph labels
+  p.fill(130); p.noStroke(); p.textSize(9); p.textAlign(p.CENTER, p.TOP);
+  p.text('Follower Displacement vs Time', graphX + graphW / 2, graphY - 14);
+  p.textSize(8); p.textAlign(p.RIGHT, p.CENTER);
+  p.text(`+${dispRange.toFixed(0)}`, graphX - 4, graphY);
+  p.text('0', graphX - 4, zeroY);
+  p.text(`-${dispRange.toFixed(0)}`, graphX - 4, graphY + graphH);
+
+  // Pressure angle display
+  let maxPA = maxPressureAngle(config.baseR, config.harmonics);
+  document.getElementById('hud-pressure').textContent = (maxPA * 180 / Math.PI).toFixed(1) + '°';
+
+  // Score
+  if (!cell.score) {
+    cell.score = scoreCamCurve(cell.dispCurve);
+  }
+  document.getElementById('hud-score').textContent = cell.score.toFixed(1);
+  document.getElementById('hud-harm').textContent = config.harmonics.length;
+
+  // Info bar
+  document.getElementById('info-bar').textContent =
+    `Cell ${selectedIdx + 1} \u2014 ${config.harmonics.length} harmonics, ${config.followerType} follower, base R=${config.baseR}. Score: ${cell.score.toFixed(1)}`;
+
+  // Back hint
+  p.fill(150); p.noStroke(); p.textSize(10); p.textAlign(p.LEFT, p.BOTTOM);
+  p.text('\u2190 Press Atlas to return', 10, ch - 30);
+}
+
+// ===== HELPERS =====
+function updateHarmonicList(config) {
+  let list = document.getElementById('harmonic-list');
+  let html = '';
+  for (let k = 0; k < config.harmonics.length; k++) {
+    let h = config.harmonics[k];
+    html += `<div class="harmonic-item">H${k + 1}: A=${h.amp.toFixed(1)} φ=${(h.phase * 180 / Math.PI).toFixed(0)}°</div>`;
+  }
+  html += `<div class="harmonic-item" style="color:#8b4513;">Base R: ${config.baseR}</div>`;
+  list.innerHTML = html;
+}
+
+// ===== LAUNCH =====
+new p5(sketch, 'canvas-container');
+</script>
+</body>
+</html>
