@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Magnetic Pendulum Basin Explorer — Fractal Attractor Boundaries</title>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f5f3ee; overflow: hidden; font-family: 'Georgia', serif; display: flex; height: 100vh; }
+
+  #sidebar {
+    width: 280px; min-width: 280px; background: #f0ede6;
+    border-right: 1px solid #c8c0b0; overflow-y: auto; padding: 12px 14px;
+    font-size: 12px; color: #444;
+  }
+  #sidebar h1 { font-size: 14px; letter-spacing: 1.5px; color: #333; margin-bottom: 2px; font-weight: normal; }
+  #sidebar .subtitle { font-size: 10px; color: #888; margin-bottom: 12px; font-style: italic; }
+
+  .section-title {
+    font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: #8b7355;
+    margin-top: 14px; margin-bottom: 6px; border-bottom: 1px solid #d8d0c0; padding-bottom: 3px;
+  }
+  .ctrl-row { display: flex; align-items: center; margin-bottom: 5px; }
+  .ctrl-row label { flex: 0 0 95px; font-size: 11px; color: #666; }
+  .ctrl-row input[type="range"] { flex: 1; height: 3px; accent-color: #8b4513; }
+  .ctrl-row .val { flex: 0 0 40px; text-align: right; font-size: 10px; color: #555; font-family: 'Consolas', monospace; }
+
+  select {
+    width: 100%; padding: 4px 8px; font-size: 11px; font-family: 'Georgia', serif;
+    background: #faf8f3; color: #555; border: 1px solid #c8c0b0; border-radius: 3px; margin-bottom: 4px;
+  }
+
+  .btn-row { display: flex; gap: 5px; margin: 8px 0; flex-wrap: wrap; }
+  .btn {
+    padding: 5px 10px; font-size: 10px; font-family: 'Georgia', serif;
+    background: #555; color: #f5f3ee; border: none; cursor: pointer;
+    letter-spacing: 0.5px; border-radius: 2px; transition: background 0.15s;
+  }
+  .btn:hover { background: #333; }
+  .btn.active { background: #8b4513; }
+  .btn.accent { background: #2a6848; }
+  .btn.accent:hover { background: #1a4830; }
+  .btn.danger { background: #8b2020; }
+  .btn:disabled { background: #aaa; cursor: not-allowed; }
+
+  #canvas-container { flex: 1; position: relative; }
+  #canvas-container canvas { display: block; }
+
+  #info-bar {
+    position: fixed; bottom: 0; left: 280px; right: 0; z-index: 100;
+    background: rgba(245,243,238,0.92); border-top: 1px solid #bbb;
+    padding: 4px 16px; font-size: 10px; color: #777; font-style: italic;
+  }
+
+  #hud {
+    position: absolute; top: 8px; right: 12px; background: rgba(245,243,238,0.9);
+    border: 1px solid #c8c0b0; border-radius: 4px; padding: 8px 12px;
+    font-size: 10px; line-height: 1.7; color: #666; min-width: 160px; pointer-events: none;
+  }
+  #hud .hv { color: #444; font-family: 'Consolas', monospace; float: right; }
+
+  .progress-bar { width: 100%; height: 3px; background: #ddd; border-radius: 2px; margin: 4px 0; }
+  .progress-bar-fill { height: 100%; background: #8b4513; border-radius: 2px; transition: width 0.1s; }
+
+  .param-list { max-height: 160px; overflow-y: auto; font-size: 9px; line-height: 1.5; margin-top: 4px; }
+  .param-item { padding: 1px 0; color: #666; font-family: 'Consolas', monospace; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #c8c0b0; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h1>MAGNETIC PENDULUM</h1>
+  <div class="subtitle">Basin of Attraction Explorer &mdash; Fractal Boundaries</div>
+
+  <div class="section-title">Magnets</div>
+  <div class="ctrl-row">
+    <label>Num Magnets</label>
+    <input type="range" id="sl-magnets" min="3" max="7" step="1" value="3">
+    <span class="val" id="v-magnets">3</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Strength</label>
+    <input type="range" id="sl-strength" min="0.5" max="3.0" step="0.05" value="1.5">
+    <span class="val" id="v-strength">1.50</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Height</label>
+    <input type="range" id="sl-height" min="5" max="30" step="1" value="15">
+    <span class="val" id="v-height">15</span>
+  </div>
+
+  <div class="section-title">Physics</div>
+  <div class="ctrl-row">
+    <label>Spring K</label>
+    <input type="range" id="sl-spring" min="0.01" max="0.10" step="0.005" value="0.03">
+    <span class="val" id="v-spring">0.030</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Damping</label>
+    <input type="range" id="sl-damping" min="0.01" max="0.10" step="0.005" value="0.02">
+    <span class="val" id="v-damping">0.020</span>
+  </div>
+
+  <div class="section-title">Rendering</div>
+  <div class="ctrl-row">
+    <label>Resolution</label>
+    <input type="range" id="sl-resolution" min="0" max="2" step="1" value="1">
+    <span class="val" id="v-resolution">128</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Speed</label>
+    <input type="range" id="sl-speed" min="0.5" max="5.0" step="0.25" value="2.0">
+    <span class="val" id="v-speed">2.00</span>
+  </div>
+
+  <div class="section-title">Actions</div>
+  <div class="btn-row">
+    <button class="btn active" id="btn-atlas" onclick="setMode('atlas')">Atlas 4&times;4</button>
+    <button class="btn" id="btn-single" onclick="setMode('single')">Single</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn accent" onclick="randomizeAll()">Randomize</button>
+    <button class="btn" onclick="mutateAll()">Mutate</button>
+    <button class="btn danger" id="btn-beautiful" onclick="findBeautiful()">Find Beautiful</button>
+  </div>
+  <div id="progress-container" style="display:none;">
+    <div class="progress-bar"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
+    <span style="font-size:9px;color:#888;" id="progress-text">Searching...</span>
+  </div>
+
+  <div class="section-title">Parameters</div>
+  <div class="param-list" id="param-list">
+    <div class="param-item" style="color:#999;">Click a cell to see parameters</div>
+  </div>
+</div>
+
+<div id="canvas-container">
+  <div id="hud">
+    <div>FPS <span class="hv" id="hud-fps">--</span></div>
+    <div>Mode <span class="hv" id="hud-mode">atlas</span></div>
+    <div>Magnets <span class="hv" id="hud-magnets">--</span></div>
+    <div>Basin Prog. <span class="hv" id="hud-basin">--</span></div>
+    <div>Score <span class="hv" id="hud-score">--</span></div>
+  </div>
+</div>
+
+<div id="info-bar">
+  Plate VII. &mdash; Magnetic pendulum basins of attraction. Each color shows which magnet captures the pendulum from that starting position. Fractal boundaries reveal chaotic sensitivity.
+</div>
+
+<script>
+// ========================================================
+// MAGNETIC PENDULUM BASIN EXPLORER
+// Fractal attractor boundary visualization
+// ========================================================
+
+const COLS = 4, ROWS = 4;
+const FIND_BEAUTIFUL_TOTAL = 200;
+const FIND_BEAUTIFUL_CHUNK = 25;
+const RESOLUTIONS = [64, 128, 256];
+const SIM_DOMAIN = 60; // simulation domain: -60 to +60
+const SIM_MAX_STEPS = 500;
+const SIM_DT = 0.15;
+const SIM_VEL_THRESHOLD = 0.02;
+const ATLAS_RES = 64; // fixed resolution for atlas cells
+
+// ===== STATE =====
+let mode = 'atlas';
+let cells = [];
+let selectedIdx = -1;
+let hoverCell = -1;
+let cw, ch;
+let findBeautifulRunning = false;
+
+// Single mode state
+let singleBasin = null; // pixel data for basin map
+let singleBasinRow = 0; // progressive rendering row
+let singleBasinRes = 128;
+let singleBasinDone = false;
+let livePendulum = null; // {x, y, vx, vy, trail:[]}
+
+// ===== MAGNET COLOR GENERATION =====
+function magnetColor(idx, total) {
+  let hue = (idx / total) * 360;
+  return hsvToRgb(hue, 0.7, 0.85);
+}
+
+function hsvToRgb(h, s, v) {
+  let c = v * s;
+  let x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  let m = v - c;
+  let r, g, b;
+  if (h < 60) { r = c; g = x; b = 0; }
+  else if (h < 120) { r = x; g = c; b = 0; }
+  else if (h < 180) { r = 0; g = c; b = x; }
+  else if (h < 240) { r = 0; g = x; b = c; }
+  else if (h < 300) { r = x; g = 0; b = c; }
+  else { r = c; g = 0; b = x; }
+  return { r: Math.round((r + m) * 255), g: Math.round((g + m) * 255), b: Math.round((b + m) * 255) };
+}
+
+// ===== PHYSICS SIMULATION =====
+// Simulate a pendulum bob from (startX, startY) with given config
+// Returns index of the nearest magnet it settles on, or -1 if unsettled
+function simulatePendulum(startX, startY, config) {
+  let x = startX, y = startY;
+  let vx = 0, vy = 0;
+  let k = config.springK;
+  let gamma = config.damping;
+  let h = config.magnetHeight;
+  let dt = SIM_DT;
+
+  for (let step = 0; step < SIM_MAX_STEPS; step++) {
+    // Spring restoring force toward origin
+    let fx = -k * x;
+    let fy = -k * y;
+
+    // Magnetic attraction from each magnet
+    for (let i = 0; i < config.magnets.length; i++) {
+      let mag = config.magnets[i];
+      let dx = mag.x - x;
+      let dy = mag.y - y;
+      let r2 = dx * dx + dy * dy + h * h;
+      let r = Math.sqrt(r2);
+      let r3 = r * r2;
+      let strength = mag.strength / r3;
+      fx += strength * dx;
+      fy += strength * dy;
+    }
+
+    // Damping
+    fx -= gamma * vx;
+    fy -= gamma * vy;
+
+    // Velocity Verlet integration
+    vx += fx * dt;
+    vy += fy * dt;
+    x += vx * dt;
+    y += vy * dt;
+
+    // Early termination: settled
+    if (vx * vx + vy * vy < SIM_VEL_THRESHOLD * SIM_VEL_THRESHOLD && step > 20) {
+      break;
+    }
+  }
+
+  // Find nearest magnet
+  let minDist = Infinity;
+  let nearest = 0;
+  for (let i = 0; i < config.magnets.length; i++) {
+    let dx = config.magnets[i].x - x;
+    let dy = config.magnets[i].y - y;
+    let d = dx * dx + dy * dy;
+    if (d < minDist) { minDist = d; nearest = i; }
+  }
+  return nearest;
+}
+
+// Full simulation returning trajectory (for live pendulum)
+function simulateStep(state, config, dt) {
+  let x = state.x, y = state.y;
+  let vx = state.vx, vy = state.vy;
+  let k = config.springK;
+  let gamma = config.damping;
+  let h = config.magnetHeight;
+
+  let fx = -k * x;
+  let fy = -k * y;
+
+  for (let i = 0; i < config.magnets.length; i++) {
+    let mag = config.magnets[i];
+    let dx = mag.x - x;
+    let dy = mag.y - y;
+    let r2 = dx * dx + dy * dy + h * h;
+    let r = Math.sqrt(r2);
+    let r3 = r * r2;
+    let strength = mag.strength / r3;
+    fx += strength * dx;
+    fy += strength * dy;
+  }
+
+  fx -= gamma * vx;
+  fy -= gamma * vy;
+
+  vx += fx * dt;
+  vy += fy * dt;
+  x += vx * dt;
+  y += vy * dt;
+
+  return { x, y, vx, vy };
+}
+
+// ===== BASIN MAP COMPUTATION =====
+// Returns a flat array of magnet indices for each pixel
+function computeBasinMap(config, res) {
+  let basin = new Int8Array(res * res);
+  for (let row = 0; row < res; row++) {
+    for (let col = 0; col < res; col++) {
+      let sx = (col / (res - 1)) * 2 * SIM_DOMAIN - SIM_DOMAIN;
+      let sy = (row / (res - 1)) * 2 * SIM_DOMAIN - SIM_DOMAIN;
+      basin[row * res + col] = simulatePendulum(sx, sy, config);
+    }
+  }
+  return basin;
+}
+
+// Compute a few rows of basin (for progressive rendering)
+function computeBasinRows(config, res, basin, startRow, numRows) {
+  let endRow = Math.min(startRow + numRows, res);
+  for (let row = startRow; row < endRow; row++) {
+    for (let col = 0; col < res; col++) {
+      let sx = (col / (res - 1)) * 2 * SIM_DOMAIN - SIM_DOMAIN;
+      let sy = (row / (res - 1)) * 2 * SIM_DOMAIN - SIM_DOMAIN;
+      basin[row * res + col] = simulatePendulum(sx, sy, config);
+    }
+  }
+  return endRow;
+}
+
+// ===== BEAUTY SCORING: fractal boundary complexity =====
+function scoreBasin(basin, res, numMagnets) {
+  if (!basin || res < 16) return 0;
+  let changes = 0;
+
+  // Horizontal scan lines
+  for (let row = 0; row < res; row++) {
+    for (let col = 1; col < res; col++) {
+      if (basin[row * res + col] !== basin[row * res + col - 1]) changes++;
+    }
+  }
+  // Vertical scan lines
+  for (let col = 0; col < res; col++) {
+    for (let row = 1; row < res; row++) {
+      if (basin[row * res + col] !== basin[(row - 1) * res + col]) changes++;
+    }
+  }
+
+  // Normalize by resolution to make scores comparable
+  return changes / res;
+}
+
+// ===== CONFIG GENERATOR =====
+function randomConfig() {
+  let numMagnets = parseInt(document.getElementById('sl-magnets').value);
+  let globalStrength = parseFloat(document.getElementById('sl-strength').value);
+  let magnetHeight = parseFloat(document.getElementById('sl-height').value);
+  let springK = parseFloat(document.getElementById('sl-spring').value);
+  let damping = parseFloat(document.getElementById('sl-damping').value);
+
+  let magnets = [];
+  for (let i = 0; i < numMagnets; i++) {
+    magnets.push({
+      x: (Math.random() - 0.5) * 100,
+      y: (Math.random() - 0.5) * 100,
+      strength: 0.5 + Math.random() * 2.5
+    });
+  }
+
+  return { numMagnets, magnets, magnetHeight, springK, damping, globalStrength };
+}
+
+function randomConfigFullRange() {
+  // For Find Beautiful: randomize ALL parameters
+  let numMagnets = 3 + Math.floor(Math.random() * 5); // 3-7
+  let magnets = [];
+  for (let i = 0; i < numMagnets; i++) {
+    magnets.push({
+      x: (Math.random() - 0.5) * 100,
+      y: (Math.random() - 0.5) * 100,
+      strength: 0.5 + Math.random() * 2.5
+    });
+  }
+  let springK = 0.01 + Math.random() * 0.09;
+  let damping = 0.01 + Math.random() * 0.09;
+  let magnetHeight = 5 + Math.random() * 25;
+  let globalStrength = 0.5 + Math.random() * 2.5;
+
+  return { numMagnets, magnets, magnetHeight, springK, damping, globalStrength };
+}
+
+function mutateConfig(config) {
+  let c = JSON.parse(JSON.stringify(config));
+  let sigma = 0.15;
+
+  c.springK *= (1 + (Math.random() - 0.5) * 2 * sigma);
+  c.springK = Math.max(0.01, Math.min(0.1, c.springK));
+  c.damping *= (1 + (Math.random() - 0.5) * 2 * sigma);
+  c.damping = Math.max(0.01, Math.min(0.1, c.damping));
+  c.magnetHeight += (Math.random() - 0.5) * 5;
+  c.magnetHeight = Math.max(5, Math.min(30, c.magnetHeight));
+
+  for (let mag of c.magnets) {
+    mag.x += (Math.random() - 0.5) * 15;
+    mag.y += (Math.random() - 0.5) * 15;
+    mag.x = Math.max(-50, Math.min(50, mag.x));
+    mag.y = Math.max(-50, Math.min(50, mag.y));
+    mag.strength *= (1 + (Math.random() - 0.5) * 2 * sigma);
+    mag.strength = Math.max(0.5, Math.min(3.0, mag.strength));
+  }
+  return c;
+}
+
+// ===== CELL =====
+function makeCell(config) {
+  let basin = computeBasinMap(config, ATLAS_RES);
+  let score = scoreBasin(basin, ATLAS_RES, config.numMagnets);
+  return { config, basin, res: ATLAS_RES, score };
+}
+
+// ===== ACTIONS =====
+function randomizeAll() {
+  cells = [];
+  for (let i = 0; i < COLS * ROWS; i++) {
+    cells.push(makeCell(randomConfig()));
+  }
+  resetSingleMode();
+}
+
+function mutateAll() {
+  for (let i = 0; i < cells.length; i++) {
+    let mc = mutateConfig(cells[i].config);
+    cells[i] = makeCell(mc);
+  }
+  resetSingleMode();
+}
+
+function resetSingleMode() {
+  singleBasin = null;
+  singleBasinRow = 0;
+  singleBasinDone = false;
+  livePendulum = null;
+}
+
+// ===== FIND BEAUTIFUL (chunked non-blocking) =====
+function findBeautiful() {
+  if (findBeautifulRunning) return;
+  findBeautifulRunning = true;
+  document.getElementById('btn-beautiful').disabled = true;
+  document.getElementById('progress-container').style.display = 'block';
+
+  let candidates = [];
+  let processed = 0;
+
+  function processChunk() {
+    let chunkEnd = Math.min(processed + FIND_BEAUTIFUL_CHUNK, FIND_BEAUTIFUL_TOTAL);
+    for (let i = processed; i < chunkEnd; i++) {
+      let config = randomConfigFullRange();
+      let basin = computeBasinMap(config, ATLAS_RES);
+      let score = scoreBasin(basin, ATLAS_RES, config.numMagnets);
+      candidates.push({ config, basin, score });
+    }
+    processed = chunkEnd;
+
+    let pct = Math.round((processed / FIND_BEAUTIFUL_TOTAL) * 100);
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('progress-text').textContent = `Scoring ${processed}/${FIND_BEAUTIFUL_TOTAL}...`;
+
+    if (processed < FIND_BEAUTIFUL_TOTAL) {
+      setTimeout(processChunk, 0);
+    } else {
+      candidates.sort((a, b) => b.score - a.score);
+      cells = candidates.slice(0, COLS * ROWS).map(c => ({
+        config: c.config, basin: c.basin, res: ATLAS_RES, score: c.score
+      }));
+      resetSingleMode();
+      findBeautifulRunning = false;
+      document.getElementById('btn-beautiful').disabled = false;
+      document.getElementById('progress-container').style.display = 'none';
+    }
+  }
+  processChunk();
+}
+
+// ===== MODE SWITCHING =====
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-atlas').classList.toggle('active', m === 'atlas');
+  document.getElementById('btn-single').classList.toggle('active', m === 'single');
+  document.getElementById('hud-mode').textContent = m;
+  if (m === 'atlas') {
+    selectedIdx = -1;
+    resetSingleMode();
+    document.getElementById('info-bar').textContent =
+      'Plate VII. \u2014 Magnetic pendulum basins of attraction. Each color shows which magnet captures the pendulum from that starting position. Click to inspect.';
+  } else if (m === 'single' && selectedIdx >= 0) {
+    startSingleBasin();
+  }
+}
+
+function startSingleBasin() {
+  if (selectedIdx < 0 || selectedIdx >= cells.length) return;
+  let resIdx = parseInt(document.getElementById('sl-resolution').value);
+  singleBasinRes = RESOLUTIONS[resIdx];
+  singleBasin = new Int8Array(singleBasinRes * singleBasinRes);
+  singleBasinRow = 0;
+  singleBasinDone = false;
+  livePendulum = {
+    x: (Math.random() - 0.5) * 80,
+    y: (Math.random() - 0.5) * 80,
+    vx: 0, vy: 0,
+    trail: []
+  };
+}
+
+// ===== SLIDER WIRING =====
+function wireSlider(id, valId, fmt) {
+  let sl = document.getElementById(id);
+  let vl = document.getElementById(valId);
+  sl.addEventListener('input', () => {
+    let v = parseFloat(sl.value);
+    if (fmt === 'int') vl.textContent = Math.round(v);
+    else if (fmt === 'res') vl.textContent = RESOLUTIONS[Math.round(v)];
+    else if (fmt === '3f') vl.textContent = v.toFixed(3);
+    else vl.textContent = v.toFixed(2);
+  });
+}
+wireSlider('sl-magnets', 'v-magnets', 'int');
+wireSlider('sl-strength', 'v-strength');
+wireSlider('sl-height', 'v-height', 'int');
+wireSlider('sl-spring', 'v-spring', '3f');
+wireSlider('sl-damping', 'v-damping', '3f');
+wireSlider('sl-resolution', 'v-resolution', 'res');
+wireSlider('sl-speed', 'v-speed');
+
+// ===== P5.JS SKETCH =====
+const sketch = (p) => {
+  p.setup = () => {
+    let container = document.getElementById('canvas-container');
+    cw = container.clientWidth; ch = container.clientHeight;
+    p.createCanvas(cw, ch).parent(container);
+    p.textFont('Georgia');
+    p.noSmooth();
+    randomizeAll();
+  };
+
+  p.windowResized = () => {
+    let container = document.getElementById('canvas-container');
+    cw = container.clientWidth; ch = container.clientHeight;
+    p.resizeCanvas(cw, ch);
+  };
+
+  p.draw = () => {
+    p.background(245, 243, 238);
+
+    if (mode === 'atlas') drawAtlas(p);
+    else drawSingle(p);
+
+    document.getElementById('hud-fps').textContent = Math.round(p.frameRate());
+  };
+
+  p.mousePressed = () => {
+    if (p.mouseX < 0 || p.mouseX > cw || p.mouseY < 0 || p.mouseY > ch) return;
+    if (mode === 'atlas') {
+      let cellW = cw / COLS, cellH = ch / ROWS;
+      let col = Math.floor(p.mouseX / cellW);
+      let row = Math.floor(p.mouseY / cellH);
+      if (col >= 0 && col < COLS && row >= 0 && row < ROWS) {
+        selectedIdx = row * COLS + col;
+        if (selectedIdx < cells.length) {
+          setMode('single');
+          startSingleBasin();
+          updateParamList(cells[selectedIdx].config);
+        }
+      }
+    } else if (mode === 'single' && selectedIdx >= 0) {
+      // Click in basin area to set pendulum start
+      let config = cells[selectedIdx].config;
+      let basinSize = Math.min(cw * 0.55, ch - 40);
+      let basinX = cw * 0.5 - basinSize / 2;
+      let basinY = 20;
+
+      if (p.mouseX >= basinX && p.mouseX <= basinX + basinSize &&
+          p.mouseY >= basinY && p.mouseY <= basinY + basinSize) {
+        let fracX = (p.mouseX - basinX) / basinSize;
+        let fracY = (p.mouseY - basinY) / basinSize;
+        let sx = fracX * 2 * SIM_DOMAIN - SIM_DOMAIN;
+        let sy = fracY * 2 * SIM_DOMAIN - SIM_DOMAIN;
+        livePendulum = {
+          x: sx, y: sy, vx: 0, vy: 0,
+          trail: [{ x: sx, y: sy }]
+        };
+      }
+    }
+  };
+
+  p.mouseMoved = () => {
+    if (mode === 'atlas') {
+      let cellW = cw / COLS, cellH = ch / ROWS;
+      let col = Math.floor(p.mouseX / cellW);
+      let row = Math.floor(p.mouseY / cellH);
+      hoverCell = (col >= 0 && col < COLS && row >= 0 && row < ROWS) ? row * COLS + col : -1;
+    }
+  };
+};
+
+// ===== ATLAS RENDERER =====
+function drawAtlas(p) {
+  let cellW = cw / COLS, cellH = ch / ROWS;
+
+  for (let idx = 0; idx < cells.length; idx++) {
+    let col = idx % COLS, row = Math.floor(idx / COLS);
+    let cx = col * cellW, cy = row * cellH;
+    let cell = cells[idx];
+    let config = cell.config;
+    let res = cell.res;
+    let basin = cell.basin;
+
+    // Cell border
+    p.noFill(); p.stroke(200, 190, 175); p.strokeWeight(0.5);
+    p.rect(cx, cy, cellW, cellH);
+
+    if (idx === hoverCell) {
+      p.fill(255, 255, 255, 30); p.noStroke();
+      p.rect(cx, cy, cellW, cellH);
+    }
+
+    // Draw basin map as pixels
+    let mapSize = Math.min(cellW - 8, cellH - 22);
+    let mapX = cx + (cellW - mapSize) / 2;
+    let mapY = cy + 4;
+    let pixSize = mapSize / res;
+
+    for (let r = 0; r < res; r++) {
+      for (let c = 0; c < res; c++) {
+        let magIdx = basin[r * res + c];
+        let clr = magnetColor(magIdx, config.numMagnets);
+        p.noStroke();
+        p.fill(clr.r, clr.g, clr.b);
+        p.rect(mapX + c * pixSize, mapY + r * pixSize, pixSize + 0.5, pixSize + 0.5);
+      }
+    }
+
+    // Draw magnet positions as dots
+    for (let i = 0; i < config.magnets.length; i++) {
+      let mag = config.magnets[i];
+      let mx = mapX + ((mag.x + SIM_DOMAIN) / (2 * SIM_DOMAIN)) * mapSize;
+      let my = mapY + ((mag.y + SIM_DOMAIN) / (2 * SIM_DOMAIN)) * mapSize;
+      let clr = magnetColor(i, config.numMagnets);
+      p.fill(255); p.stroke(0); p.strokeWeight(1);
+      p.circle(mx, my, 6);
+      p.fill(clr.r, clr.g, clr.b); p.noStroke();
+      p.circle(mx, my, 4);
+    }
+
+    // Label
+    p.noStroke(); p.fill(180, 170, 155); p.textSize(8); p.textAlign(p.LEFT, p.BOTTOM);
+    p.text(`${config.numMagnets}M  s=${cell.score.toFixed(0)}`, cx + 4, cy + cellH - 2);
+  }
+}
+
+// ===== SINGLE MODE RENDERER =====
+function drawSingle(p) {
+  if (selectedIdx < 0 || selectedIdx >= cells.length) return;
+  let cell = cells[selectedIdx];
+  let config = cell.config;
+  let speed = parseFloat(document.getElementById('sl-speed').value);
+
+  // Progressive basin rendering: compute several rows per frame
+  if (!singleBasinDone && singleBasin) {
+    let rowsPerFrame = Math.max(1, Math.floor(speed * 3));
+    singleBasinRow = computeBasinRows(config, singleBasinRes, singleBasin, singleBasinRow, rowsPerFrame);
+    if (singleBasinRow >= singleBasinRes) {
+      singleBasinDone = true;
+    }
+    document.getElementById('hud-basin').textContent =
+      singleBasinDone ? 'Done' : Math.round((singleBasinRow / singleBasinRes) * 100) + '%';
+  }
+
+  // Layout
+  let basinSize = Math.min(cw * 0.55, ch - 40);
+  let basinX = cw * 0.5 - basinSize / 2;
+  let basinY = 20;
+
+  // Draw basin map
+  if (singleBasin) {
+    let res = singleBasinRes;
+    let pixSize = basinSize / res;
+    let drawRows = Math.min(singleBasinRow, res);
+
+    for (let r = 0; r < drawRows; r++) {
+      for (let c = 0; c < res; c++) {
+        let magIdx = singleBasin[r * res + c];
+        let clr = magnetColor(magIdx, config.numMagnets);
+        p.noStroke();
+        p.fill(clr.r, clr.g, clr.b);
+        p.rect(basinX + c * pixSize, basinY + r * pixSize, pixSize + 0.5, pixSize + 0.5);
+      }
+    }
+
+    // Unrendered area
+    if (!singleBasinDone) {
+      p.fill(230, 225, 218); p.noStroke();
+      p.rect(basinX, basinY + drawRows * pixSize, basinSize, basinSize - drawRows * pixSize);
+      // Scan line indicator
+      p.stroke(139, 69, 19, 180); p.strokeWeight(1);
+      p.line(basinX, basinY + drawRows * pixSize, basinX + basinSize, basinY + drawRows * pixSize);
+    }
+  }
+
+  // Draw magnet positions
+  for (let i = 0; i < config.magnets.length; i++) {
+    let mag = config.magnets[i];
+    let mx = basinX + ((mag.x + SIM_DOMAIN) / (2 * SIM_DOMAIN)) * basinSize;
+    let my = basinY + ((mag.y + SIM_DOMAIN) / (2 * SIM_DOMAIN)) * basinSize;
+    let clr = magnetColor(i, config.numMagnets);
+
+    // Outer ring
+    p.fill(255, 255, 255, 200); p.stroke(0); p.strokeWeight(1.5);
+    p.circle(mx, my, 12);
+    // Inner color
+    p.fill(clr.r, clr.g, clr.b); p.noStroke();
+    p.circle(mx, my, 8);
+    // Label
+    p.fill(255); p.textSize(7); p.textAlign(p.CENTER, p.CENTER);
+    p.text(i + 1, mx, my);
+  }
+
+  // Live pendulum simulation
+  if (livePendulum) {
+    let stepsPerFrame = Math.floor(speed * 4);
+    let liveDt = 0.08;
+    for (let s = 0; s < stepsPerFrame; s++) {
+      let next = simulateStep(livePendulum, config, liveDt);
+      livePendulum.x = next.x;
+      livePendulum.y = next.y;
+      livePendulum.vx = next.vx;
+      livePendulum.vy = next.vy;
+      livePendulum.trail.push({ x: next.x, y: next.y });
+      if (livePendulum.trail.length > 3000) livePendulum.trail.shift();
+    }
+
+    // Draw trail
+    p.noFill();
+    for (let i = 1; i < livePendulum.trail.length; i++) {
+      let t = i / livePendulum.trail.length;
+      let alpha = t * 200 + 20;
+      p.stroke(60, 40, 20, alpha); p.strokeWeight(0.8 + t * 1.2);
+      let px1 = basinX + ((livePendulum.trail[i - 1].x + SIM_DOMAIN) / (2 * SIM_DOMAIN)) * basinSize;
+      let py1 = basinY + ((livePendulum.trail[i - 1].y + SIM_DOMAIN) / (2 * SIM_DOMAIN)) * basinSize;
+      let px2 = basinX + ((livePendulum.trail[i].x + SIM_DOMAIN) / (2 * SIM_DOMAIN)) * basinSize;
+      let py2 = basinY + ((livePendulum.trail[i].y + SIM_DOMAIN) / (2 * SIM_DOMAIN)) * basinSize;
+      p.line(px1, py1, px2, py2);
+    }
+
+    // Draw bob
+    let bobX = basinX + ((livePendulum.x + SIM_DOMAIN) / (2 * SIM_DOMAIN)) * basinSize;
+    let bobY = basinY + ((livePendulum.y + SIM_DOMAIN) / (2 * SIM_DOMAIN)) * basinSize;
+    p.fill(40, 30, 20); p.stroke(255); p.strokeWeight(1.5);
+    p.circle(bobX, bobY, 10);
+
+    // Spring line from origin
+    let originX = basinX + basinSize / 2;
+    let originY = basinY + basinSize / 2;
+    p.stroke(100, 90, 80, 120); p.strokeWeight(0.5);
+    drawSpringLine(p, originX, originY, bobX, bobY, 8);
+  }
+
+  // Basin border
+  p.noFill(); p.stroke(120, 110, 100); p.strokeWeight(1);
+  p.rect(basinX, basinY, basinSize, basinSize);
+
+  // HUD updates
+  document.getElementById('hud-magnets').textContent = config.numMagnets;
+  let score = singleBasinDone ? scoreBasin(singleBasin, singleBasinRes, config.numMagnets) : cell.score;
+  document.getElementById('hud-score').textContent = score.toFixed(1);
+
+  // Info bar
+  document.getElementById('info-bar').textContent =
+    `Cell ${selectedIdx + 1} \u2014 ${config.numMagnets} magnets, K=${config.springK.toFixed(3)}, \u03b3=${config.damping.toFixed(3)}, h=${config.magnetHeight.toFixed(0)}. ` +
+    `Resolution: ${singleBasinRes}\u00d7${singleBasinRes}. Score: ${score.toFixed(1)}. Click to place pendulum.`;
+
+  // Back hint
+  p.fill(150); p.noStroke(); p.textSize(10); p.textAlign(p.LEFT, p.BOTTOM);
+  p.text('\u2190 Press Atlas to return', 10, ch - 30);
+}
+
+// ===== SPRING LINE DRAWING =====
+function drawSpringLine(p, x1, y1, x2, y2, coils) {
+  let dx = x2 - x1, dy = y2 - y1;
+  let len = Math.sqrt(dx * dx + dy * dy);
+  if (len < 1) return;
+  let nx = -dy / len, ny = dx / len;
+  let amp = 4;
+
+  p.beginShape();
+  p.vertex(x1, y1);
+  for (let i = 1; i < coils * 2; i++) {
+    let t = i / (coils * 2);
+    let side = (i % 2 === 0) ? -1 : 1;
+    let mx = x1 + dx * t + nx * side * amp;
+    let my = y1 + dy * t + ny * side * amp;
+    p.vertex(mx, my);
+  }
+  p.vertex(x2, y2);
+  p.endShape();
+}
+
+// ===== HELPERS =====
+function updateParamList(config) {
+  let list = document.getElementById('param-list');
+  let html = '';
+  html += `<div class="param-item" style="color:#8b4513;">Magnets: ${config.numMagnets}</div>`;
+  html += `<div class="param-item">Spring K: ${config.springK.toFixed(3)}</div>`;
+  html += `<div class="param-item">Damping: ${config.damping.toFixed(3)}</div>`;
+  html += `<div class="param-item">Height: ${config.magnetHeight.toFixed(1)}</div>`;
+  for (let i = 0; i < config.magnets.length; i++) {
+    let m = config.magnets[i];
+    let clr = magnetColor(i, config.numMagnets);
+    html += `<div class="param-item">M${i + 1}: (${m.x.toFixed(1)}, ${m.y.toFixed(1)}) s=${m.strength.toFixed(2)}</div>`;
+  }
+  list.innerHTML = html;
+}
+
+// ===== LAUNCH =====
+new p5(sketch, 'canvas-container');
+</script>
+</body>
+</html>
