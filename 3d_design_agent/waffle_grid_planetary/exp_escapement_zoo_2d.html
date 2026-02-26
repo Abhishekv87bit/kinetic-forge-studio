@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Escapement Zoo — Clock Mechanism Randomizer</title>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f5f3ee; overflow: hidden; font-family: 'Georgia', serif; display: flex; height: 100vh; }
+
+  #sidebar {
+    width: 280px; min-width: 280px; background: #f0ede6;
+    border-right: 1px solid #c8c0b0; overflow-y: auto; padding: 12px 14px;
+    font-size: 12px; color: #444;
+  }
+  #sidebar h1 { font-size: 14px; letter-spacing: 1.5px; color: #333; margin-bottom: 2px; font-weight: normal; }
+  #sidebar .subtitle { font-size: 10px; color: #888; margin-bottom: 12px; font-style: italic; }
+
+  .section-title {
+    font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: #8b7355;
+    margin-top: 14px; margin-bottom: 6px; border-bottom: 1px solid #d8d0c0; padding-bottom: 3px;
+  }
+  .ctrl-row { display: flex; align-items: center; margin-bottom: 5px; }
+  .ctrl-row label { flex: 0 0 95px; font-size: 11px; color: #666; }
+  .ctrl-row input[type="range"] { flex: 1; height: 3px; accent-color: #8b4513; }
+  .ctrl-row .val { flex: 0 0 40px; text-align: right; font-size: 10px; color: #555; font-family: 'Consolas', monospace; }
+
+  select {
+    width: 100%; padding: 4px 8px; font-size: 11px; font-family: 'Georgia', serif;
+    background: #faf8f3; color: #555; border: 1px solid #c8c0b0; border-radius: 3px; margin-bottom: 4px;
+  }
+
+  .btn-row { display: flex; gap: 5px; margin: 8px 0; flex-wrap: wrap; }
+  .btn {
+    padding: 5px 10px; font-size: 10px; font-family: 'Georgia', serif;
+    background: #555; color: #f5f3ee; border: none; cursor: pointer;
+    letter-spacing: 0.5px; border-radius: 2px; transition: background 0.15s;
+  }
+  .btn:hover { background: #333; }
+  .btn.active { background: #8b4513; }
+  .btn.accent { background: #2a6848; }
+  .btn.accent:hover { background: #1a4830; }
+  .btn.danger { background: #8b2020; }
+  .btn:disabled { background: #aaa; cursor: not-allowed; }
+
+  #canvas-container { flex: 1; position: relative; }
+  #canvas-container canvas { display: block; }
+
+  #info-bar {
+    position: fixed; bottom: 0; left: 280px; right: 0; z-index: 100;
+    background: rgba(245,243,238,0.92); border-top: 1px solid #bbb;
+    padding: 4px 16px; font-size: 10px; color: #777; font-style: italic;
+  }
+
+  #hud {
+    position: absolute; top: 8px; right: 12px; background: rgba(245,243,238,0.9);
+    border: 1px solid #c8c0b0; border-radius: 4px; padding: 8px 12px;
+    font-size: 10px; line-height: 1.7; color: #666; min-width: 160px; pointer-events: none;
+  }
+  #hud .hv { color: #444; font-family: 'Consolas', monospace; float: right; }
+
+  .progress-bar { width: 100%; height: 3px; background: #ddd; border-radius: 2px; margin: 4px 0; }
+  .progress-bar-fill { height: 100%; background: #8b4513; border-radius: 2px; transition: width 0.1s; }
+
+  .detail-list { max-height: 160px; overflow-y: auto; font-size: 9px; line-height: 1.5; margin-top: 4px; }
+  .detail-item { padding: 1px 0; color: #666; font-family: 'Consolas', monospace; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #c8c0b0; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h1>ESCAPEMENT ZOO</h1>
+  <div class="subtitle">Clock Mechanism Randomizer &mdash; Four Historical Escapements</div>
+
+  <div class="section-title">Escapement Type</div>
+  <select id="sel-type">
+    <option value="verge">Verge &amp; Foliot</option>
+    <option value="anchor" selected>Anchor (Recoil)</option>
+    <option value="deadbeat">Deadbeat</option>
+    <option value="grasshopper">Grasshopper (Harrison)</option>
+  </select>
+
+  <div class="section-title">Pendulum</div>
+  <div class="ctrl-row">
+    <label>Length</label>
+    <input type="range" id="sl-length" min="50" max="200" step="1" value="100">
+    <span class="val" id="v-length">100</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Teeth</label>
+    <input type="range" id="sl-teeth" min="8" max="30" step="1" value="15">
+    <span class="val" id="v-teeth">15</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Pallet Angle</label>
+    <input type="range" id="sl-pallet" min="2" max="15" step="0.5" value="7">
+    <span class="val" id="v-pallet">7.0&deg;</span>
+  </div>
+
+  <div class="section-title">Drive</div>
+  <div class="ctrl-row">
+    <label>Torque</label>
+    <input type="range" id="sl-torque" min="0.5" max="5.0" step="0.1" value="2.0">
+    <span class="val" id="v-torque">2.00</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Damping</label>
+    <input type="range" id="sl-damping" min="0.001" max="0.050" step="0.001" value="0.010">
+    <span class="val" id="v-damping">0.010</span>
+  </div>
+
+  <div class="section-title">Animation</div>
+  <div class="ctrl-row">
+    <label>Speed</label>
+    <input type="range" id="sl-speed" min="0.2" max="3.0" step="0.1" value="1.0">
+    <span class="val" id="v-speed">1.00</span>
+  </div>
+
+  <div class="section-title">View</div>
+  <div class="btn-row">
+    <button class="btn active" id="btn-atlas" onclick="setMode('atlas')">Atlas 4&times;4</button>
+    <button class="btn" id="btn-single" onclick="setMode('single')">Single</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn accent" onclick="randomizeAll()">Randomize</button>
+    <button class="btn" onclick="mutateAll()">Mutate</button>
+    <button class="btn danger" id="btn-beautiful" onclick="findBeautiful()">Find Beautiful</button>
+  </div>
+  <div id="progress-container" style="display:none;">
+    <div class="progress-bar"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
+    <span style="font-size:9px;color:#888;" id="progress-text">Searching...</span>
+  </div>
+
+  <div class="section-title">Details</div>
+  <div class="detail-list" id="detail-list">
+    <div class="detail-item" style="color:#999;">Click a cell to see parameters</div>
+  </div>
+</div>
+
+<div id="canvas-container">
+  <div id="hud">
+    <div>FPS <span class="hv" id="hud-fps">--</span></div>
+    <div>Mode <span class="hv" id="hud-mode">atlas</span></div>
+    <div>Type <span class="hv" id="hud-type">--</span></div>
+    <div>Ticks <span class="hv" id="hud-ticks">--</span></div>
+    <div>Avg Freq <span class="hv" id="hud-freq">--</span></div>
+  </div>
+</div>
+
+<div id="info-bar">
+  Plate VII. &mdash; Four historical escapements animated. Each cell shows a different type/config. Click any cell to inspect tick stability.
+</div>
+
+<script>
+// ========================================================
+// ESCAPEMENT ZOO — Clock Mechanism Randomizer
+// ========================================================
+
+const COLS = 4, ROWS = 4;
+const FIND_BEAUTIFUL_TOTAL = 200;
+const FIND_BEAUTIFUL_CHUNK = 25;
+const ESCAPEMENT_TYPES = ['verge', 'anchor', 'deadbeat', 'grasshopper'];
+
+// Type colors: verge=brown, anchor=blue, deadbeat=green, grasshopper=red
+const TYPE_COLORS = {
+  verge:       { r: 139, g:  90, b:  43, name: 'Verge & Foliot' },
+  anchor:      { r:  50, g:  90, b: 160, name: 'Anchor (Recoil)' },
+  deadbeat:    { r:  45, g: 130, b:  70, name: 'Deadbeat' },
+  grasshopper: { r: 180, g:  50, b:  50, name: 'Grasshopper' }
+};
+
+// ===== STATE =====
+let mode = 'atlas';
+let cells = [];
+let selectedIdx = -1;
+let hoverCell = -1;
+let cw, ch;
+let findBeautifulRunning = false;
+let simTime = 0;
+
+// ===== ESCAPEMENT CORE =====
+class Escapement {
+  constructor(type, params) {
+    this.type = type;
+    this.pendulumLen = params.L;
+    this.theta = params.initialAngle || 0.1;
+    this.omega = 0;
+    this.escapeTeeth = params.teeth;
+    this.palletAngle = params.palletAngle; // radians
+    this.torque = params.torque;
+    this.damping = params.damping;
+    this.escapeAngle = 0;
+    this.tickCount = 0;
+    this.tickTimes = [];
+    this.lastTickTime = 0;
+    this.prevTheta = this.theta;
+  }
+
+  step(dt, t) {
+    this.prevTheta = this.theta;
+
+    // Gravity restoring force
+    let alpha = -9.81 / this.pendulumLen * Math.sin(this.theta);
+
+    // Escapement impulse depends on type
+    let impulse = 0;
+    let engaged = Math.abs(this.theta) < this.palletAngle;
+
+    if (this.type === 'verge') {
+      if (engaged) impulse = this.torque * 0.3 * Math.sign(this.omega);
+    } else if (this.type === 'anchor') {
+      if (engaged) {
+        impulse = this.torque * Math.sign(this.omega);
+        // Recoil: slight reverse when tooth drops
+        if (Math.abs(this.theta) < this.palletAngle * 0.1) {
+          impulse -= this.torque * 0.15 * Math.sign(this.omega);
+        }
+      }
+    } else if (this.type === 'deadbeat') {
+      // Only impulse during narrow band, no recoil
+      if (engaged && Math.abs(this.theta) < this.palletAngle * 0.3) {
+        impulse = this.torque * Math.sign(this.omega);
+      }
+    } else if (this.type === 'grasshopper') {
+      // Compound impulse — two phases
+      if (engaged) {
+        let phase = this.theta / this.palletAngle;
+        impulse = this.torque * Math.sign(this.omega) * (1 + 0.5 * Math.sin(phase * Math.PI));
+      }
+    }
+
+    alpha += impulse - this.damping * this.omega;
+    this.omega += alpha * dt;
+    this.theta += this.omega * dt;
+
+    // Tick detection (zero crossing)
+    if (this.theta * this.prevTheta < 0) {
+      this.tickCount++;
+      this.tickTimes.push(t);
+      if (this.tickTimes.length > 100) this.tickTimes.shift();
+      this.escapeAngle += Math.PI * 2 / this.escapeTeeth;
+    }
+  }
+
+  getTickIntervals() {
+    let intervals = [];
+    for (let i = 1; i < this.tickTimes.length; i++) {
+      intervals.push(this.tickTimes[i] - this.tickTimes[i - 1]);
+    }
+    return intervals;
+  }
+
+  getAvgFrequency() {
+    let intervals = this.getTickIntervals();
+    if (intervals.length < 2) return 0;
+    let avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+    return avgInterval > 0 ? 1 / avgInterval : 0;
+  }
+
+  getTickVariance() {
+    let intervals = this.getTickIntervals();
+    if (intervals.length < 3) return Infinity;
+    let mean = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+    let variance = intervals.reduce((sum, v) => sum + (v - mean) * (v - mean), 0) / intervals.length;
+    return variance;
+  }
+}
+
+// ===== CONFIG =====
+function randomConfig() {
+  let type = ESCAPEMENT_TYPES[Math.floor(Math.random() * ESCAPEMENT_TYPES.length)];
+  let L = 50 + Math.random() * 150;
+  let teeth = 8 + Math.floor(Math.random() * 23);
+  let palletDeg = 2 + Math.random() * 13;
+  let torque = 0.5 + Math.random() * 4.5;
+  let damping = 0.001 + Math.random() * 0.049;
+  return { type, L, teeth, palletAngle: palletDeg * Math.PI / 180, palletDeg, torque, damping };
+}
+
+function configFromSliders() {
+  let type = document.getElementById('sel-type').value;
+  let L = parseFloat(document.getElementById('sl-length').value);
+  let teeth = parseInt(document.getElementById('sl-teeth').value);
+  let palletDeg = parseFloat(document.getElementById('sl-pallet').value);
+  let torque = parseFloat(document.getElementById('sl-torque').value);
+  let damping = parseFloat(document.getElementById('sl-damping').value);
+  return { type, L, teeth, palletAngle: palletDeg * Math.PI / 180, palletDeg, torque, damping };
+}
+
+function mutateConfig(config) {
+  let c = JSON.parse(JSON.stringify(config));
+  let sigma = 0.15;
+
+  // Occasionally mutate type
+  if (Math.random() < 0.2) {
+    c.type = ESCAPEMENT_TYPES[Math.floor(Math.random() * ESCAPEMENT_TYPES.length)];
+  }
+  c.L = Math.max(50, Math.min(200, c.L * (1 + (Math.random() - 0.5) * 2 * sigma)));
+  c.teeth = Math.max(8, Math.min(30, Math.round(c.teeth + (Math.random() - 0.5) * 4)));
+  c.palletDeg = Math.max(2, Math.min(15, c.palletDeg * (1 + (Math.random() - 0.5) * 2 * sigma)));
+  c.palletAngle = c.palletDeg * Math.PI / 180;
+  c.torque = Math.max(0.5, Math.min(5.0, c.torque * (1 + (Math.random() - 0.5) * 2 * sigma)));
+  c.damping = Math.max(0.001, Math.min(0.05, c.damping * (1 + (Math.random() - 0.5) * 2 * sigma)));
+  return c;
+}
+
+// ===== CELL =====
+function makeCell(config) {
+  let esc = new Escapement(config.type, {
+    L: config.L,
+    teeth: config.teeth,
+    palletAngle: config.palletAngle,
+    torque: config.torque,
+    damping: config.damping,
+    initialAngle: 0.08 + Math.random() * 0.04
+  });
+  return { config, esc, score: 0 };
+}
+
+// ===== ACTIONS =====
+function randomizeAll() {
+  cells = [];
+  simTime = 0;
+  for (let i = 0; i < COLS * ROWS; i++) {
+    cells.push(makeCell(randomConfig()));
+  }
+}
+
+function mutateAll() {
+  simTime = 0;
+  for (let i = 0; i < cells.length; i++) {
+    let mc = mutateConfig(cells[i].config);
+    cells[i] = makeCell(mc);
+  }
+}
+
+// ===== BEAUTY SCORER =====
+function scoreEscapement(config) {
+  let esc = new Escapement(config.type, {
+    L: config.L,
+    teeth: config.teeth,
+    palletAngle: config.palletAngle,
+    torque: config.torque,
+    damping: config.damping,
+    initialAngle: 0.1
+  });
+
+  let dt = 0.005;
+  let t = 0;
+  for (let i = 0; i < 200; i++) {
+    esc.step(dt, t);
+    t += dt;
+  }
+
+  let intervals = esc.getTickIntervals();
+  if (intervals.length < 3) return 0;
+
+  let mean = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+  let variance = intervals.reduce((sum, v) => sum + (v - mean) * (v - mean), 0) / intervals.length;
+
+  // Stability: low variance = good
+  let stabilityScore = variance > 0.0001 ? 1 / (variance * 1000) : 100;
+
+  // Reasonable frequency bonus (0.5 - 5 Hz is interesting clock range)
+  let freq = mean > 0 ? 1 / mean : 0;
+  let freqBonus = (freq > 0.3 && freq < 8) ? 5 : 1;
+
+  // Type variety bonus (different types have different visual character)
+  let typeBonus = 1;
+  if (config.type === 'grasshopper') typeBonus = 1.5;
+  else if (config.type === 'verge') typeBonus = 1.3;
+
+  return stabilityScore * freqBonus * typeBonus;
+}
+
+// ===== FIND BEAUTIFUL (chunked non-blocking) =====
+function findBeautiful() {
+  if (findBeautifulRunning) return;
+  findBeautifulRunning = true;
+  document.getElementById('btn-beautiful').disabled = true;
+  document.getElementById('progress-container').style.display = 'block';
+
+  let candidates = [];
+  let processed = 0;
+
+  function processChunk() {
+    let chunkEnd = Math.min(processed + FIND_BEAUTIFUL_CHUNK, FIND_BEAUTIFUL_TOTAL);
+    for (let i = processed; i < chunkEnd; i++) {
+      let config = randomConfig();
+      let score = scoreEscapement(config);
+      candidates.push({ config, score });
+    }
+    processed = chunkEnd;
+
+    let pct = Math.round((processed / FIND_BEAUTIFUL_TOTAL) * 100);
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('progress-text').textContent = `Scoring ${processed}/${FIND_BEAUTIFUL_TOTAL}...`;
+
+    if (processed < FIND_BEAUTIFUL_TOTAL) {
+      setTimeout(processChunk, 0);
+    } else {
+      candidates.sort((a, b) => b.score - a.score);
+      cells = candidates.slice(0, COLS * ROWS).map(c => {
+        let cell = makeCell(c.config);
+        cell.score = c.score;
+        return cell;
+      });
+      simTime = 0;
+      findBeautifulRunning = false;
+      document.getElementById('btn-beautiful').disabled = false;
+      document.getElementById('progress-container').style.display = 'none';
+    }
+  }
+  processChunk();
+}
+
+// ===== MODE SWITCHING =====
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-atlas').classList.toggle('active', m === 'atlas');
+  document.getElementById('btn-single').classList.toggle('active', m === 'single');
+  document.getElementById('hud-mode').textContent = m;
+  if (m === 'atlas') {
+    selectedIdx = -1;
+    document.getElementById('info-bar').textContent =
+      'Plate VII. \u2014 Four historical escapements animated. Each cell shows a different type/config. Click any cell to inspect tick stability.';
+  }
+}
+
+// ===== SLIDER WIRING =====
+function wireSlider(id, valId, fmt) {
+  let sl = document.getElementById(id);
+  let vl = document.getElementById(valId);
+  sl.addEventListener('input', () => {
+    let v = parseFloat(sl.value);
+    if (fmt === 'int') vl.textContent = Math.round(v);
+    else if (fmt === 'deg') vl.textContent = v.toFixed(1) + '\u00B0';
+    else if (fmt === 'f3') vl.textContent = v.toFixed(3);
+    else vl.textContent = v.toFixed(2);
+  });
+}
+wireSlider('sl-length', 'v-length', 'int');
+wireSlider('sl-teeth', 'v-teeth', 'int');
+wireSlider('sl-pallet', 'v-pallet', 'deg');
+wireSlider('sl-torque', 'v-torque');
+wireSlider('sl-damping', 'v-damping', 'f3');
+wireSlider('sl-speed', 'v-speed');
+
+// ===== P5.JS SKETCH =====
+const sketch = (p) => {
+  p.setup = () => {
+    let container = document.getElementById('canvas-container');
+    cw = container.clientWidth; ch = container.clientHeight;
+    p.createCanvas(cw, ch).parent(container);
+    p.textFont('Georgia');
+    randomizeAll();
+  };
+
+  p.windowResized = () => {
+    let container = document.getElementById('canvas-container');
+    cw = container.clientWidth; ch = container.clientHeight;
+    p.resizeCanvas(cw, ch);
+  };
+
+  p.draw = () => {
+    p.background(245, 243, 238);
+    let speed = parseFloat(document.getElementById('sl-speed').value);
+    let dt = 0.005 * speed;
+    simTime += dt;
+
+    // Step all escapements
+    for (let cell of cells) {
+      cell.esc.step(dt, simTime);
+    }
+
+    if (mode === 'atlas') drawAtlas(p);
+    else drawSingle(p);
+
+    document.getElementById('hud-fps').textContent = Math.round(p.frameRate());
+  };
+
+  p.mousePressed = () => {
+    if (p.mouseX < 0 || p.mouseX > cw || p.mouseY < 0 || p.mouseY > ch) return;
+    if (mode === 'atlas') {
+      let cellW = cw / COLS, cellH = ch / ROWS;
+      let col = Math.floor(p.mouseX / cellW);
+      let row = Math.floor(p.mouseY / cellH);
+      if (col >= 0 && col < COLS && row >= 0 && row < ROWS) {
+        selectedIdx = row * COLS + col;
+        if (selectedIdx < cells.length) {
+          setMode('single');
+          updateDetailList(cells[selectedIdx]);
+        }
+      }
+    }
+  };
+
+  p.mouseMoved = () => {
+    if (mode === 'atlas') {
+      let cellW = cw / COLS, cellH = ch / ROWS;
+      let col = Math.floor(p.mouseX / cellW);
+      let row = Math.floor(p.mouseY / cellH);
+      hoverCell = (col >= 0 && col < COLS && row >= 0 && row < ROWS) ? row * COLS + col : -1;
+    }
+  };
+};
+
+// ===== DRAWING HELPERS =====
+function typeColor(type, alpha) {
+  let c = TYPE_COLORS[type] || TYPE_COLORS.anchor;
+  return { r: c.r, g: c.g, b: c.b, a: alpha !== undefined ? alpha : 255 };
+}
+
+function drawEscapeWheel(p, cx, cy, radius, teeth, angle, tc) {
+  p.push();
+  p.translate(cx, cy);
+  p.rotate(angle);
+
+  // Wheel body
+  p.fill(tc.r, tc.g, tc.b, 30);
+  p.stroke(tc.r, tc.g, tc.b, 120);
+  p.strokeWeight(0.8);
+  p.circle(0, 0, radius * 2);
+
+  // Teeth as small triangles
+  let toothH = radius * 0.18;
+  let toothW = radius * 0.12;
+  p.fill(tc.r, tc.g, tc.b, 180);
+  p.noStroke();
+  for (let i = 0; i < teeth; i++) {
+    let a = (i / teeth) * Math.PI * 2;
+    p.push();
+    p.rotate(a);
+    p.triangle(
+      radius - 1, -toothW / 2,
+      radius - 1, toothW / 2,
+      radius + toothH, 0
+    );
+    p.pop();
+  }
+
+  // Axle
+  p.fill(80); p.noStroke();
+  p.circle(0, 0, radius * 0.12);
+
+  p.pop();
+}
+
+function drawPendulum(p, pivotX, pivotY, length, theta, scale, tc) {
+  let bobX = pivotX + Math.sin(theta) * length * scale;
+  let bobY = pivotY + Math.cos(theta) * length * scale;
+
+  // Rod
+  p.stroke(tc.r, tc.g, tc.b, 160);
+  p.strokeWeight(1.5);
+  p.line(pivotX, pivotY, bobX, bobY);
+
+  // Bob
+  let bobR = Math.max(5, length * scale * 0.08);
+  p.fill(tc.r, tc.g, tc.b, 200);
+  p.stroke(tc.r, tc.g, tc.b);
+  p.strokeWeight(0.8);
+  p.circle(bobX, bobY, bobR * 2);
+
+  // Pivot
+  p.fill(60); p.noStroke();
+  p.circle(pivotX, pivotY, 4);
+}
+
+function drawPallets(p, pivotX, pivotY, wheelRadius, palletAngle, theta, type, tc) {
+  let armLen = wheelRadius * 0.85;
+
+  if (type === 'verge') {
+    // Verge: two pallets on vertical shaft + foliot bar
+    let shaft = wheelRadius * 1.2;
+    p.stroke(tc.r, tc.g, tc.b, 140);
+    p.strokeWeight(2);
+    // Vertical shaft
+    p.line(pivotX, pivotY - shaft * 0.3, pivotX, pivotY + shaft * 0.3);
+    // Upper pallet
+    p.push();
+    p.translate(pivotX, pivotY - wheelRadius * 0.3);
+    p.rotate(theta * 0.8);
+    p.strokeWeight(2.5);
+    p.stroke(tc.r, tc.g, tc.b, 200);
+    p.line(0, 0, armLen * 0.5, 0);
+    p.pop();
+    // Lower pallet
+    p.push();
+    p.translate(pivotX, pivotY + wheelRadius * 0.3);
+    p.rotate(-theta * 0.8);
+    p.strokeWeight(2.5);
+    p.stroke(tc.r, tc.g, tc.b, 200);
+    p.line(0, 0, -armLen * 0.5, 0);
+    p.pop();
+    // Foliot bar at top
+    let foliotW = wheelRadius * 1.0;
+    p.push();
+    p.translate(pivotX, pivotY - shaft * 0.3);
+    p.rotate(theta * 0.5);
+    p.stroke(tc.r, tc.g, tc.b, 180);
+    p.strokeWeight(2);
+    p.line(-foliotW, 0, foliotW, 0);
+    // Foliot weights
+    p.fill(tc.r, tc.g, tc.b, 160); p.noStroke();
+    p.rect(-foliotW - 3, -3, 6, 6);
+    p.rect(foliotW - 3, -3, 6, 6);
+    p.pop();
+
+  } else if (type === 'anchor' || type === 'deadbeat') {
+    // Anchor: two pallet arms from above the wheel
+    let anchorPivotY = pivotY - wheelRadius * 1.1;
+    p.push();
+    p.translate(pivotX, anchorPivotY);
+    p.rotate(theta * 0.6);
+
+    // Left arm (entry pallet)
+    p.stroke(tc.r, tc.g, tc.b, 180);
+    p.strokeWeight(2);
+    let leftAngle = Math.PI / 2 + palletAngle * 2;
+    let rightAngle = Math.PI / 2 - palletAngle * 2;
+    p.line(0, 0, -Math.cos(leftAngle) * armLen, Math.sin(leftAngle) * armLen);
+    p.line(0, 0, Math.cos(rightAngle) * armLen, Math.sin(rightAngle) * armLen);
+
+    // Pallet faces
+    p.strokeWeight(3);
+    p.stroke(tc.r, tc.g, tc.b, 220);
+    let palletLen = armLen * 0.15;
+    // Left pallet tip
+    let lx = -Math.cos(leftAngle) * armLen;
+    let ly = Math.sin(leftAngle) * armLen;
+    if (type === 'deadbeat') {
+      // Deadbeat: flat locking face (perpendicular to arm)
+      let nx = -Math.sin(leftAngle) * palletLen;
+      let ny = Math.cos(leftAngle) * palletLen;
+      p.line(lx - nx, ly - ny, lx + nx, ly + ny);
+    } else {
+      // Recoil: curved face (small arc)
+      p.noFill();
+      p.arc(lx, ly, palletLen * 2, palletLen * 2, leftAngle - 0.3, leftAngle + 0.3);
+    }
+    // Right pallet tip
+    let rx = Math.cos(rightAngle) * armLen;
+    let ry = Math.sin(rightAngle) * armLen;
+    if (type === 'deadbeat') {
+      let nx = Math.sin(rightAngle) * palletLen;
+      let ny = -Math.cos(rightAngle) * palletLen;
+      p.line(rx - nx, ry - ny, rx + nx, ry + ny);
+    } else {
+      p.noFill();
+      p.arc(rx, ry, palletLen * 2, palletLen * 2, -rightAngle - 0.3, -rightAngle + 0.3);
+    }
+
+    // Pivot dot
+    p.fill(60); p.noStroke();
+    p.circle(0, 0, 4);
+    p.pop();
+
+  } else if (type === 'grasshopper') {
+    // Grasshopper: two pivoting arms with compound motion
+    let anchorPivotY = pivotY - wheelRadius * 1.0;
+    // Left arm
+    p.push();
+    p.translate(pivotX - wheelRadius * 0.4, anchorPivotY);
+    let leftSwing = theta * 0.7;
+    p.rotate(leftSwing);
+    p.stroke(tc.r, tc.g, tc.b, 180);
+    p.strokeWeight(1.8);
+    p.line(0, 0, armLen * 0.3, armLen * 0.9);
+    // Secondary segment
+    p.translate(armLen * 0.3, armLen * 0.9);
+    p.rotate(-leftSwing * 0.5);
+    p.strokeWeight(1.2);
+    p.line(0, 0, armLen * 0.15, armLen * 0.3);
+    // Pallet tip
+    p.fill(tc.r, tc.g, tc.b, 200); p.noStroke();
+    p.circle(armLen * 0.15, armLen * 0.3, 4);
+    p.pop();
+
+    // Right arm
+    p.push();
+    p.translate(pivotX + wheelRadius * 0.4, anchorPivotY);
+    let rightSwing = -theta * 0.7;
+    p.rotate(rightSwing);
+    p.stroke(tc.r, tc.g, tc.b, 180);
+    p.strokeWeight(1.8);
+    p.line(0, 0, -armLen * 0.3, armLen * 0.9);
+    p.translate(-armLen * 0.3, armLen * 0.9);
+    p.rotate(-rightSwing * 0.5);
+    p.strokeWeight(1.2);
+    p.line(0, 0, -armLen * 0.15, armLen * 0.3);
+    p.fill(tc.r, tc.g, tc.b, 200); p.noStroke();
+    p.circle(-armLen * 0.15, armLen * 0.3, 4);
+    p.pop();
+
+    // Connecting bar between pivots
+    p.stroke(tc.r, tc.g, tc.b, 100); p.strokeWeight(1);
+    p.line(pivotX - wheelRadius * 0.4, anchorPivotY, pivotX + wheelRadius * 0.4, anchorPivotY);
+
+    // Pivot dots
+    p.fill(60); p.noStroke();
+    p.circle(pivotX - wheelRadius * 0.4, anchorPivotY, 3);
+    p.circle(pivotX + wheelRadius * 0.4, anchorPivotY, 3);
+  }
+}
+
+// ===== ATLAS RENDERER =====
+function drawAtlas(p) {
+  let cellW = cw / COLS, cellH = ch / ROWS;
+
+  for (let idx = 0; idx < cells.length; idx++) {
+    let col = idx % COLS, row = Math.floor(idx / COLS);
+    let cx = col * cellW, cy = row * cellH;
+    let centerX = cx + cellW / 2;
+    let centerY = cy + cellH * 0.45;
+
+    // Cell border
+    p.noFill(); p.stroke(200, 190, 175); p.strokeWeight(0.5);
+    p.rect(cx, cy, cellW, cellH);
+
+    if (idx === hoverCell) {
+      p.fill(255, 255, 255, 30); p.noStroke();
+      p.rect(cx, cy, cellW, cellH);
+    }
+
+    let cell = cells[idx];
+    let esc = cell.esc;
+    let tc = typeColor(esc.type);
+    let wheelR = Math.min(cellW, cellH) * 0.16;
+    let pendScale = Math.min(cellW, cellH) * 0.0016;
+
+    // Draw escape wheel
+    drawEscapeWheel(p, centerX, centerY, wheelR, esc.escapeTeeth, esc.escapeAngle, tc);
+
+    // Draw pallets
+    drawPallets(p, centerX, centerY, wheelR, esc.palletAngle, esc.theta, esc.type, tc);
+
+    // Draw pendulum (below the wheel for anchor/deadbeat/grasshopper, side for verge)
+    let pendPivotX = centerX;
+    let pendPivotY = esc.type === 'verge' ? centerY - wheelR * 0.3 : centerY - wheelR * 1.1;
+    drawPendulum(p, pendPivotX, pendPivotY, esc.pendulumLen, esc.theta, pendScale, tc);
+
+    // Type label
+    p.noStroke(); p.fill(tc.r, tc.g, tc.b, 160); p.textSize(8); p.textAlign(p.LEFT, p.TOP);
+    p.text(TYPE_COLORS[esc.type].name, cx + 4, cy + 3);
+
+    // Tick interval display
+    let intervals = esc.getTickIntervals();
+    let lastN = intervals.slice(-8);
+    if (lastN.length > 0) {
+      let avgInt = lastN.reduce((a, b) => a + b, 0) / lastN.length;
+      p.fill(130); p.textSize(8); p.textAlign(p.CENTER, p.BOTTOM);
+      p.text(`${esc.tickCount} ticks  ${(1/avgInt).toFixed(1)}Hz`, cx + cellW / 2, cy + cellH - 4);
+    } else {
+      p.fill(160); p.textSize(8); p.textAlign(p.CENTER, p.BOTTOM);
+      p.text('starting...', cx + cellW / 2, cy + cellH - 4);
+    }
+  }
+}
+
+// ===== SINGLE MODE RENDERER =====
+function drawSingle(p) {
+  if (selectedIdx < 0 || selectedIdx >= cells.length) return;
+  let cell = cells[selectedIdx];
+  let esc = cell.esc;
+  let tc = typeColor(esc.type);
+
+  // Layout: escapement on left, tick interval chart on right
+  let wheelCX = cw * 0.3;
+  let wheelCY = ch * 0.4;
+  let wheelR = Math.min(cw * 0.2, ch * 0.25);
+  let pendScale = Math.min(cw, ch) * 0.0025;
+
+  // === Draw Escape Wheel ===
+  drawEscapeWheel(p, wheelCX, wheelCY, wheelR, esc.escapeTeeth, esc.escapeAngle, tc);
+
+  // === Draw Pallets ===
+  drawPallets(p, wheelCX, wheelCY, wheelR, esc.palletAngle, esc.theta, esc.type, tc);
+
+  // === Draw Pendulum ===
+  let pendPivotX = wheelCX;
+  let pendPivotY = esc.type === 'verge' ? wheelCY - wheelR * 0.3 : wheelCY - wheelR * 1.1;
+  drawPendulum(p, pendPivotX, pendPivotY, esc.pendulumLen, esc.theta, pendScale, tc);
+
+  // === Type Title ===
+  p.noStroke(); p.fill(tc.r, tc.g, tc.b); p.textSize(14); p.textAlign(p.CENTER, p.TOP);
+  p.text(TYPE_COLORS[esc.type].name, wheelCX, 12);
+
+  // === Theta indicator arc ===
+  p.noFill(); p.stroke(tc.r, tc.g, tc.b, 80); p.strokeWeight(1);
+  let arcR = wheelR * 0.5;
+  if (esc.theta > 0) {
+    p.arc(pendPivotX, pendPivotY, arcR * 2, arcR * 2, Math.PI / 2 - esc.theta, Math.PI / 2);
+  } else {
+    p.arc(pendPivotX, pendPivotY, arcR * 2, arcR * 2, Math.PI / 2, Math.PI / 2 - esc.theta);
+  }
+
+  // === Tick Interval Bar Chart (right side) ===
+  let intervals = esc.getTickIntervals();
+  let last50 = intervals.slice(-50);
+
+  let chartX = cw * 0.55;
+  let chartY = ch * 0.12;
+  let chartW = cw * 0.40;
+  let chartH = ch * 0.50;
+
+  // Chart frame
+  p.noFill(); p.stroke(180, 170, 160); p.strokeWeight(0.5);
+  p.rect(chartX, chartY, chartW, chartH);
+
+  // Title
+  p.noStroke(); p.fill(100); p.textSize(10); p.textAlign(p.CENTER, p.BOTTOM);
+  p.text('Tick Intervals (last 50)', chartX + chartW / 2, chartY - 4);
+
+  if (last50.length > 1) {
+    let maxInt = Math.max(...last50) * 1.1;
+    let minInt = Math.min(...last50) * 0.9;
+    if (maxInt - minInt < 0.001) { maxInt += 0.01; minInt -= 0.01; }
+    let barW = chartW / 50;
+
+    // Mean line
+    let meanInt = last50.reduce((a, b) => a + b, 0) / last50.length;
+    let meanY = chartY + chartH - ((meanInt - minInt) / (maxInt - minInt)) * chartH;
+    p.stroke(tc.r, tc.g, tc.b, 60); p.strokeWeight(0.5);
+    p.line(chartX, meanY, chartX + chartW, meanY);
+    p.noStroke(); p.fill(tc.r, tc.g, tc.b, 80); p.textSize(8); p.textAlign(p.LEFT, p.CENTER);
+    p.text('mean', chartX + chartW + 4, meanY);
+
+    // Bars
+    for (let i = 0; i < last50.length; i++) {
+      let val = last50[i];
+      let barH = ((val - minInt) / (maxInt - minInt)) * chartH;
+      let bx = chartX + i * barW;
+      let by = chartY + chartH - barH;
+
+      // Color by deviation from mean
+      let dev = Math.abs(val - meanInt) / meanInt;
+      let r = tc.r + dev * 200;
+      let g = tc.g * (1 - dev * 2);
+      let b = tc.b * (1 - dev * 2);
+      p.fill(Math.min(255, r), Math.max(0, g), Math.max(0, b), 180);
+      p.noStroke();
+      p.rect(bx + 1, by, Math.max(1, barW - 2), barH);
+    }
+
+    // Y-axis labels
+    p.fill(150); p.noStroke(); p.textSize(8); p.textAlign(p.RIGHT, p.CENTER);
+    p.text(maxInt.toFixed(3) + 's', chartX - 4, chartY);
+    p.text(minInt.toFixed(3) + 's', chartX - 4, chartY + chartH);
+  } else {
+    p.fill(160); p.noStroke(); p.textSize(11); p.textAlign(p.CENTER, p.CENTER);
+    p.text('Waiting for ticks...', chartX + chartW / 2, chartY + chartH / 2);
+  }
+
+  // === Summary stats below chart ===
+  let statsY = chartY + chartH + 20;
+  p.fill(80); p.noStroke(); p.textSize(11); p.textAlign(p.LEFT, p.TOP);
+  p.text(`Tick count: ${esc.tickCount}`, chartX, statsY);
+  let avgFreq = esc.getAvgFrequency();
+  p.text(`Avg frequency: ${avgFreq.toFixed(2)} Hz`, chartX, statsY + 16);
+  let variance = esc.getTickVariance();
+  let stability = variance < Infinity ? (variance < 0.0001 ? 'Excellent' : variance < 0.001 ? 'Good' : variance < 0.01 ? 'Fair' : 'Unstable') : '--';
+  p.text(`Stability: ${stability}`, chartX, statsY + 32);
+  p.text(`Variance: ${variance < Infinity ? variance.toFixed(6) : '--'}`, chartX, statsY + 48);
+
+  // Pendulum parameters
+  p.fill(120); p.textSize(9);
+  p.text(`L=${esc.pendulumLen.toFixed(0)}  T=${esc.escapeTeeth}  pallet=${(esc.palletAngle*180/Math.PI).toFixed(1)}\u00B0  torque=${esc.torque.toFixed(1)}  damp=${esc.damping.toFixed(3)}`, chartX, statsY + 68);
+
+  // HUD updates
+  document.getElementById('hud-type').textContent = TYPE_COLORS[esc.type].name;
+  document.getElementById('hud-ticks').textContent = esc.tickCount;
+  document.getElementById('hud-freq').textContent = avgFreq.toFixed(2) + ' Hz';
+
+  // Info bar
+  document.getElementById('info-bar').textContent =
+    `Cell ${selectedIdx + 1} \u2014 ${TYPE_COLORS[esc.type].name}, ${esc.escapeTeeth} teeth, L=${esc.pendulumLen.toFixed(0)}, ${esc.tickCount} ticks, ${avgFreq.toFixed(2)} Hz. ${stability} rhythm.`;
+
+  // Back hint
+  p.fill(150); p.noStroke(); p.textSize(10); p.textAlign(p.LEFT, p.BOTTOM);
+  p.text('\u2190 Press Atlas to return', 10, ch - 30);
+}
+
+// ===== HELPERS =====
+function updateDetailList(cell) {
+  let esc = cell.esc;
+  let list = document.getElementById('detail-list');
+  let html = '';
+  html += `<div class="detail-item" style="color:rgb(${TYPE_COLORS[esc.type].r},${TYPE_COLORS[esc.type].g},${TYPE_COLORS[esc.type].b});">${TYPE_COLORS[esc.type].name}</div>`;
+  html += `<div class="detail-item">Pendulum L: ${esc.pendulumLen.toFixed(1)}</div>`;
+  html += `<div class="detail-item">Teeth: ${esc.escapeTeeth}</div>`;
+  html += `<div class="detail-item">Pallet: ${(esc.palletAngle * 180 / Math.PI).toFixed(1)}\u00B0</div>`;
+  html += `<div class="detail-item">Torque: ${esc.torque.toFixed(2)}</div>`;
+  html += `<div class="detail-item">Damping: ${esc.damping.toFixed(4)}</div>`;
+  html += `<div class="detail-item">Ticks: ${esc.tickCount}</div>`;
+  let freq = esc.getAvgFrequency();
+  html += `<div class="detail-item">Freq: ${freq.toFixed(2)} Hz</div>`;
+  list.innerHTML = html;
+}
+
+// ===== LAUNCH =====
+new p5(sketch, 'canvas-container');
+</script>
+</body>
+</html>
