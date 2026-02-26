@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bistable Snap-Through Array — Cascade Propagation</title>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f5f3ee; overflow: hidden; font-family: 'Georgia', serif; display: flex; height: 100vh; }
+
+  #sidebar {
+    width: 280px; min-width: 280px; background: #f0ede6;
+    border-right: 1px solid #c8c0b0; overflow-y: auto; padding: 12px 14px;
+    font-size: 12px; color: #444;
+  }
+  #sidebar h1 { font-size: 14px; letter-spacing: 1.5px; color: #333; margin-bottom: 2px; font-weight: normal; }
+  #sidebar .subtitle { font-size: 10px; color: #888; margin-bottom: 12px; font-style: italic; }
+
+  .section-title {
+    font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: #8b7355;
+    margin-top: 14px; margin-bottom: 6px; border-bottom: 1px solid #d8d0c0; padding-bottom: 3px;
+  }
+  .ctrl-row { display: flex; align-items: center; margin-bottom: 5px; }
+  .ctrl-row label { flex: 0 0 95px; font-size: 11px; color: #666; }
+  .ctrl-row input[type="range"] { flex: 1; height: 3px; accent-color: #8b4513; }
+  .ctrl-row .val { flex: 0 0 40px; text-align: right; font-size: 10px; color: #555; font-family: 'Consolas', monospace; }
+
+  select {
+    width: 100%; padding: 4px 8px; font-size: 11px; font-family: 'Georgia', serif;
+    background: #faf8f3; color: #555; border: 1px solid #c8c0b0; border-radius: 3px; margin-bottom: 4px;
+  }
+
+  .btn-row { display: flex; gap: 5px; margin: 8px 0; flex-wrap: wrap; }
+  .btn {
+    padding: 5px 10px; font-size: 10px; font-family: 'Georgia', serif;
+    background: #555; color: #f5f3ee; border: none; cursor: pointer;
+    letter-spacing: 0.5px; border-radius: 2px; transition: background 0.15s;
+  }
+  .btn:hover { background: #333; }
+  .btn.active { background: #8b4513; }
+  .btn.accent { background: #2a6848; }
+  .btn.accent:hover { background: #1a4830; }
+  .btn.danger { background: #8b2020; }
+  .btn:disabled { background: #aaa; cursor: not-allowed; }
+
+  #canvas-container { flex: 1; position: relative; }
+  #canvas-container canvas { display: block; }
+
+  #info-bar {
+    position: fixed; bottom: 0; left: 280px; right: 0; z-index: 100;
+    background: rgba(245,243,238,0.92); border-top: 1px solid #bbb;
+    padding: 4px 16px; font-size: 10px; color: #777; font-style: italic;
+  }
+
+  #hud {
+    position: absolute; top: 8px; right: 12px; background: rgba(245,243,238,0.9);
+    border: 1px solid #c8c0b0; border-radius: 4px; padding: 8px 12px;
+    font-size: 10px; line-height: 1.7; color: #666; min-width: 160px; pointer-events: none;
+  }
+  #hud .hv { color: #444; font-family: 'Consolas', monospace; float: right; }
+
+  .progress-bar { width: 100%; height: 3px; background: #ddd; border-radius: 2px; margin: 4px 0; }
+  .progress-bar-fill { height: 100%; background: #8b4513; border-radius: 2px; transition: width 0.1s; }
+
+  .stats-list { max-height: 160px; overflow-y: auto; font-size: 9px; line-height: 1.5; margin-top: 4px; }
+  .stats-item { padding: 1px 0; color: #666; font-family: 'Consolas', monospace; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #c8c0b0; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h1>BISTABLE ARRAY</h1>
+  <div class="subtitle">Snap-Through Cascade Propagation &mdash; Double-Well Potential</div>
+
+  <div class="section-title">Network</div>
+  <div class="ctrl-row">
+    <label>Elements (N)</label>
+    <input type="range" id="sl-n" min="10" max="50" step="1" value="20">
+    <span class="val" id="v-n">20</span>
+  </div>
+  <select id="sel-topology">
+    <option value="line">Line (1D chain)</option>
+    <option value="ring">Ring (circular)</option>
+    <option value="grid" selected>Grid (2D NxN)</option>
+    <option value="random">Random (probabilistic)</option>
+  </select>
+  <div class="ctrl-row">
+    <label>Connect Prob</label>
+    <input type="range" id="sl-prob" min="0.1" max="0.8" step="0.05" value="0.3">
+    <span class="val" id="v-prob">0.30</span>
+  </div>
+
+  <div class="section-title">Physics</div>
+  <div class="ctrl-row">
+    <label>Barrier (a)</label>
+    <input type="range" id="sl-barrier" min="0.5" max="3.0" step="0.05" value="1.0">
+    <span class="val" id="v-barrier">1.00</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Coupling</label>
+    <input type="range" id="sl-coupling" min="0.1" max="2.0" step="0.05" value="0.80">
+    <span class="val" id="v-coupling">0.80</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Damping</label>
+    <input type="range" id="sl-damping" min="0.1" max="2.0" step="0.05" value="0.50">
+    <span class="val" id="v-damping">0.50</span>
+  </div>
+
+  <div class="section-title">Animation</div>
+  <div class="ctrl-row">
+    <label>Speed</label>
+    <input type="range" id="sl-speed" min="0.5" max="5.0" step="0.1" value="2.0">
+    <span class="val" id="v-speed">2.0</span>
+  </div>
+
+  <div class="section-title">Actions</div>
+  <div class="btn-row">
+    <button class="btn active" id="btn-atlas" onclick="setMode('atlas')">Atlas 4x4</button>
+    <button class="btn" id="btn-single" onclick="setMode('single')">Single</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn accent" onclick="randomizeAll()">Randomize</button>
+    <button class="btn" onclick="mutateAll()">Mutate</button>
+    <button class="btn danger" id="btn-beautiful" onclick="findBeautiful()">Find Beautiful</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn" onclick="resetSelected()">Reset States</button>
+  </div>
+  <div id="progress-container" style="display:none;">
+    <div class="progress-bar"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
+    <span style="font-size:9px;color:#888;" id="progress-text">Searching...</span>
+  </div>
+
+  <div class="section-title">Stats</div>
+  <div class="stats-list" id="stats-list">
+    <div class="stats-item" style="color:#999;">Click an element to trigger cascade</div>
+  </div>
+</div>
+
+<div id="canvas-container">
+  <div id="hud">
+    <div>FPS <span class="hv" id="hud-fps">--</span></div>
+    <div>Mode <span class="hv" id="hud-mode">atlas</span></div>
+    <div>Topology <span class="hv" id="hud-topo">grid</span></div>
+    <div>Snapped <span class="hv" id="hud-snapped">--</span></div>
+    <div>Score <span class="hv" id="hud-score">--</span></div>
+  </div>
+</div>
+
+<div id="info-bar">
+  Plate VII. &mdash; Bistable snap-through elements in coupled arrays. Each element sits in a double-well potential. Click to trigger cascade propagation.
+</div>
+
+<script>
+// ========================================================
+// BISTABLE SNAP-THROUGH ARRAY — Cascade Propagation
+// ========================================================
+
+const COLS = 4, ROWS = 4;
+const FIND_BEAUTIFUL_TOTAL = 200;
+const FIND_BEAUTIFUL_CHUNK = 25;
+
+// ===== STATE =====
+let mode = 'atlas';
+let cells = [];
+let selectedIdx = -1;
+let hoverCell = -1;
+let cw, ch;
+let findBeautifulRunning = false;
+
+// ===== BISTABLE ELEMENT =====
+// Double-well potential: U(x) = -a*x^2/2 + b*x^4/4
+// Force: F(x) = a*x - b*x^3
+// b is derived so that stable points are near +/-1: b = a (since at equilibrium a*x - b*x^3 = 0 => x^2 = a/b, for x=1 => b=a)
+
+function createBistableNetwork(config) {
+  let N = config.N;
+  let topo = config.topology;
+  let elements = [];
+  let connections = []; // connections[i] = array of neighbor indices
+  let positions = [];   // layout positions for rendering (normalized 0-1)
+
+  // Create elements
+  for (let i = 0; i < N; i++) {
+    let barrierI = config.barrierMean + (config.barrierSpread ? (gaussRand() * config.barrierSpread) : 0);
+    barrierI = Math.max(0.3, Math.min(4.0, barrierI));
+    let couplingI = config.couplingMean + (config.couplingSpread ? (gaussRand() * config.couplingSpread) : 0);
+    couplingI = Math.max(0.05, Math.min(3.0, couplingI));
+
+    elements.push({
+      x: -1.0 + (Math.random() - 0.5) * 0.05, // start near flat state with tiny noise
+      v: 0,
+      a: barrierI,      // barrier height parameter
+      b: barrierI,      // set b = a so stable points at +/-1
+      coupling: couplingI,
+      damping: config.damping,
+      snapTime: -1       // time step when this element snapped (for wave tracking)
+    });
+    connections.push([]);
+  }
+
+  // Build topology
+  if (topo === 'line') {
+    for (let i = 0; i < N; i++) {
+      if (i > 0) connections[i].push(i - 1);
+      if (i < N - 1) connections[i].push(i + 1);
+    }
+    // Layout: horizontal line
+    for (let i = 0; i < N; i++) {
+      positions.push({ x: 0.1 + 0.8 * i / (N - 1), y: 0.5 });
+    }
+  } else if (topo === 'ring') {
+    for (let i = 0; i < N; i++) {
+      connections[i].push((i + 1) % N);
+      connections[i].push((i - 1 + N) % N);
+    }
+    // Layout: circle
+    for (let i = 0; i < N; i++) {
+      let angle = (i / N) * Math.PI * 2 - Math.PI / 2;
+      positions.push({ x: 0.5 + 0.35 * Math.cos(angle), y: 0.5 + 0.35 * Math.sin(angle) });
+    }
+  } else if (topo === 'grid') {
+    let side = Math.ceil(Math.sqrt(N));
+    for (let i = 0; i < N; i++) {
+      let row = Math.floor(i / side);
+      let col = i % side;
+      // Cardinal neighbors
+      if (col > 0) connections[i].push(i - 1);
+      if (col < side - 1 && i + 1 < N) connections[i].push(i + 1);
+      if (row > 0 && i - side >= 0) connections[i].push(i - side);
+      if (i + side < N) connections[i].push(i + side);
+    }
+    // Layout: grid
+    let side2 = side;
+    for (let i = 0; i < N; i++) {
+      let row = Math.floor(i / side2);
+      let col = i % side2;
+      let rows = Math.ceil(N / side2);
+      positions.push({
+        x: 0.15 + 0.7 * col / Math.max(1, side2 - 1),
+        y: 0.15 + 0.7 * row / Math.max(1, rows - 1)
+      });
+    }
+  } else if (topo === 'random') {
+    // Each pair connected with probability p
+    let p = config.connectProb;
+    for (let i = 0; i < N; i++) {
+      for (let j = i + 1; j < N; j++) {
+        if (Math.random() < p) {
+          connections[i].push(j);
+          connections[j].push(i);
+        }
+      }
+    }
+    // Ensure connected: if any node has 0 connections, connect to nearest
+    for (let i = 0; i < N; i++) {
+      if (connections[i].length === 0) {
+        let best = (i + 1) % N;
+        connections[i].push(best);
+        connections[best].push(i);
+      }
+    }
+    // Layout: force-directed (simple spring iterations)
+    for (let i = 0; i < N; i++) {
+      positions.push({ x: 0.2 + Math.random() * 0.6, y: 0.2 + Math.random() * 0.6 });
+    }
+    forceDirectedLayout(positions, connections, 80);
+  }
+
+  return { elements, connections, positions, config, step: 0 };
+}
+
+function forceDirectedLayout(positions, connections, iterations) {
+  let N = positions.length;
+  for (let iter = 0; iter < iterations; iter++) {
+    let forces = [];
+    for (let i = 0; i < N; i++) forces.push({ x: 0, y: 0 });
+
+    // Repulsion
+    for (let i = 0; i < N; i++) {
+      for (let j = i + 1; j < N; j++) {
+        let dx = positions[i].x - positions[j].x;
+        let dy = positions[i].y - positions[j].y;
+        let dist = Math.sqrt(dx * dx + dy * dy) + 0.001;
+        let repForce = 0.002 / (dist * dist);
+        forces[i].x += dx / dist * repForce;
+        forces[i].y += dy / dist * repForce;
+        forces[j].x -= dx / dist * repForce;
+        forces[j].y -= dy / dist * repForce;
+      }
+    }
+
+    // Attraction along edges
+    for (let i = 0; i < N; i++) {
+      for (let j of connections[i]) {
+        if (j > i) continue; // avoid double
+        let dx = positions[j].x - positions[i].x;
+        let dy = positions[j].y - positions[i].y;
+        let dist = Math.sqrt(dx * dx + dy * dy) + 0.001;
+        let ideal = 0.15;
+        let attForce = (dist - ideal) * 0.05;
+        forces[i].x += dx / dist * attForce;
+        forces[i].y += dy / dist * attForce;
+        forces[j].x -= dx / dist * attForce;
+        forces[j].y -= dy / dist * attForce;
+      }
+    }
+
+    // Center gravity
+    for (let i = 0; i < N; i++) {
+      forces[i].x += (0.5 - positions[i].x) * 0.01;
+      forces[i].y += (0.5 - positions[i].y) * 0.01;
+    }
+
+    // Apply
+    for (let i = 0; i < N; i++) {
+      positions[i].x += forces[i].x;
+      positions[i].y += forces[i].y;
+      positions[i].x = Math.max(0.08, Math.min(0.92, positions[i].x));
+      positions[i].y = Math.max(0.08, Math.min(0.92, positions[i].y));
+    }
+  }
+}
+
+function gaussRand() {
+  // Box-Muller transform
+  let u1 = Math.random(), u2 = Math.random();
+  return Math.sqrt(-2 * Math.log(u1 + 0.0001)) * Math.cos(2 * Math.PI * u2);
+}
+
+// ===== PHYSICS STEP =====
+function physicsStep(net, dt) {
+  let els = net.elements;
+  let conns = net.connections;
+  for (let i = 0; i < els.length; i++) {
+    let e = els[i];
+    // Internal force from double-well: F = a*x - b*x^3
+    let F = e.a * e.x - e.b * e.x * e.x * e.x;
+    // Coupling force from neighbors
+    for (let j of conns[i]) {
+      F += els[j].coupling * (els[j].x - e.x);
+    }
+    // Damping
+    F -= e.damping * e.v;
+    // Euler integration
+    e.v += F * dt;
+    e.x += e.v * dt;
+    // Clamp to prevent blow-up
+    e.x = Math.max(-2, Math.min(2, e.x));
+    e.v = Math.max(-10, Math.min(10, e.v));
+    // Track snap time
+    if (e.snapTime < 0 && e.x > 0.5) {
+      e.snapTime = net.step;
+    }
+  }
+  net.step++;
+}
+
+// Trigger an element: apply strong impulse toward +1
+function triggerElement(net, idx) {
+  let e = net.elements[idx];
+  e.v += 3.0; // strong push
+  e.x = Math.max(e.x, 0.2); // nudge past barrier center
+}
+
+// Count snapped elements (x > 0.5)
+function countSnapped(net) {
+  let count = 0;
+  for (let e of net.elements) {
+    if (e.x > 0.5) count++;
+  }
+  return count;
+}
+
+// Reset all elements to flat state
+function resetNetwork(net) {
+  for (let e of net.elements) {
+    e.x = -1.0 + (Math.random() - 0.5) * 0.05;
+    e.v = 0;
+    e.snapTime = -1;
+  }
+  net.step = 0;
+}
+
+// ===== CONFIG GENERATOR =====
+function randomConfig() {
+  let N = parseInt(document.getElementById('sl-n').value);
+  let topology = document.getElementById('sel-topology').value;
+  let barrierMean = parseFloat(document.getElementById('sl-barrier').value);
+  let couplingMean = parseFloat(document.getElementById('sl-coupling').value);
+  let damping = parseFloat(document.getElementById('sl-damping').value);
+  let connectProb = parseFloat(document.getElementById('sl-prob').value);
+
+  return {
+    N: N,
+    topology: topology,
+    barrierMean: barrierMean,
+    barrierSpread: barrierMean * 0.15,
+    couplingMean: couplingMean,
+    couplingSpread: couplingMean * 0.1,
+    damping: damping,
+    connectProb: connectProb
+  };
+}
+
+function randomConfigVaried() {
+  // Fully randomized for atlas diversity
+  let topos = ['line', 'ring', 'grid', 'random'];
+  let N = 10 + Math.floor(Math.random() * 41); // 10-50
+  let topology = topos[Math.floor(Math.random() * topos.length)];
+  let barrierMean = 0.5 + Math.random() * 2.5;
+  let couplingMean = 0.1 + Math.random() * 1.9;
+  let damping = 0.1 + Math.random() * 1.9;
+  let connectProb = 0.1 + Math.random() * 0.7;
+
+  return {
+    N: N,
+    topology: topology,
+    barrierMean: barrierMean,
+    barrierSpread: barrierMean * 0.15,
+    couplingMean: couplingMean,
+    couplingSpread: couplingMean * 0.1,
+    damping: damping,
+    connectProb: connectProb
+  };
+}
+
+function mutateConfig(config) {
+  let c = JSON.parse(JSON.stringify(config));
+  // Perturb barrier +/-15%
+  c.barrierMean *= (1 + (Math.random() - 0.5) * 0.3);
+  c.barrierMean = Math.max(0.5, Math.min(3.0, c.barrierMean));
+  c.barrierSpread = c.barrierMean * 0.15;
+  // Perturb coupling +/-20%
+  c.couplingMean *= (1 + (Math.random() - 0.5) * 0.4);
+  c.couplingMean = Math.max(0.1, Math.min(2.0, c.couplingMean));
+  c.couplingSpread = c.couplingMean * 0.1;
+  // Perturb damping +/-15%
+  c.damping *= (1 + (Math.random() - 0.5) * 0.3);
+  c.damping = Math.max(0.1, Math.min(2.0, c.damping));
+  // Keep topology same 75% of time
+  if (Math.random() > 0.75) {
+    let topos = ['line', 'ring', 'grid', 'random'];
+    c.topology = topos[Math.floor(Math.random() * topos.length)];
+  }
+  return c;
+}
+
+// ===== CELL MANAGEMENT =====
+function makeCell(config) {
+  let net = createBistableNetwork(config);
+  // Auto-trigger a random element for atlas mode
+  let trigIdx = Math.floor(Math.random() * net.elements.length);
+  triggerElement(net, trigIdx);
+  return {
+    config: config,
+    net: net,
+    triggerIdx: trigIdx,
+    score: 0,
+    snapHistory: [] // track snapped count over time for time series
+  };
+}
+
+function randomizeAll() {
+  cells = [];
+  for (let i = 0; i < COLS * ROWS; i++) {
+    let config = randomConfigVaried();
+    cells.push(makeCell(config));
+  }
+}
+
+function mutateAll() {
+  for (let i = 0; i < cells.length; i++) {
+    let mc = mutateConfig(cells[i].config);
+    cells[i] = makeCell(mc);
+  }
+}
+
+function resetSelected() {
+  if (mode === 'single' && selectedIdx >= 0 && selectedIdx < cells.length) {
+    resetNetwork(cells[selectedIdx].net);
+    cells[selectedIdx].snapHistory = [];
+  } else {
+    for (let cell of cells) {
+      resetNetwork(cell.net);
+      cell.snapHistory = [];
+      let trigIdx = Math.floor(Math.random() * cell.net.elements.length);
+      triggerElement(cell.net, trigIdx);
+      cell.triggerIdx = trigIdx;
+    }
+  }
+}
+
+// ===== BEAUTY SCORER =====
+function scoreCascade(config) {
+  // Simulate cascade from random trigger for 200 steps
+  let net = createBistableNetwork(config);
+  let trigIdx = Math.floor(Math.random() * net.elements.length);
+  triggerElement(net, trigIdx);
+
+  let dt = 0.05;
+  for (let s = 0; s < 200; s++) {
+    physicsStep(net, dt);
+  }
+
+  let N = net.elements.length;
+  let snapped = countSnapped(net);
+  let cascadeFrac = snapped / N;
+
+  // Partial cascade scores highest
+  let partialScore = cascadeFrac * (1 - Math.abs(cascadeFrac - 0.5) * 2) * 100;
+
+  // Wave bonus: sequential snap times indicate wave-like propagation
+  let snapTimes = [];
+  for (let e of net.elements) {
+    if (e.snapTime >= 0) snapTimes.push(e.snapTime);
+  }
+  snapTimes.sort((a, b) => a - b);
+  let waveBonus = 0;
+  if (snapTimes.length > 2) {
+    // Check if snap times are spread out (not all at once)
+    let timeSpread = snapTimes[snapTimes.length - 1] - snapTimes[0];
+    if (timeSpread > 10) {
+      // Good wave-like propagation
+      waveBonus = Math.min(30, timeSpread * 0.3);
+    }
+  }
+
+  return partialScore + waveBonus;
+}
+
+// ===== FIND BEAUTIFUL (chunked) =====
+function findBeautiful() {
+  if (findBeautifulRunning) return;
+  findBeautifulRunning = true;
+  document.getElementById('btn-beautiful').disabled = true;
+  document.getElementById('progress-container').style.display = 'block';
+
+  let candidates = [];
+  let processed = 0;
+
+  function processChunk() {
+    let chunkEnd = Math.min(processed + FIND_BEAUTIFUL_CHUNK, FIND_BEAUTIFUL_TOTAL);
+    for (let i = processed; i < chunkEnd; i++) {
+      let config = randomConfigVaried();
+      let score = scoreCascade(config);
+      candidates.push({ config, score });
+    }
+    processed = chunkEnd;
+
+    let pct = Math.round((processed / FIND_BEAUTIFUL_TOTAL) * 100);
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('progress-text').textContent = `Scoring ${processed}/${FIND_BEAUTIFUL_TOTAL}...`;
+
+    if (processed < FIND_BEAUTIFUL_TOTAL) {
+      setTimeout(processChunk, 0);
+    } else {
+      candidates.sort((a, b) => b.score - a.score);
+      cells = candidates.slice(0, COLS * ROWS).map(c => {
+        let cell = makeCell(c.config);
+        cell.score = c.score;
+        return cell;
+      });
+      findBeautifulRunning = false;
+      document.getElementById('btn-beautiful').disabled = false;
+      document.getElementById('progress-container').style.display = 'none';
+    }
+  }
+  processChunk();
+}
+
+// ===== MODE SWITCHING =====
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-atlas').classList.toggle('active', m === 'atlas');
+  document.getElementById('btn-single').classList.toggle('active', m === 'single');
+  document.getElementById('hud-mode').textContent = m;
+  if (m === 'atlas') {
+    selectedIdx = -1;
+    document.getElementById('info-bar').textContent =
+      'Plate VII. \u2014 Bistable snap-through elements in coupled arrays. Each element sits in a double-well potential. Click to inspect.';
+  }
+}
+
+// ===== SLIDER WIRING =====
+function wireSlider(id, valId, fmt) {
+  let sl = document.getElementById(id);
+  let vl = document.getElementById(valId);
+  sl.addEventListener('input', () => {
+    let v = parseFloat(sl.value);
+    if (fmt === 'int') vl.textContent = Math.round(v);
+    else if (fmt === '1f') vl.textContent = v.toFixed(1);
+    else vl.textContent = v.toFixed(2);
+  });
+}
+wireSlider('sl-n', 'v-n', 'int');
+wireSlider('sl-prob', 'v-prob');
+wireSlider('sl-barrier', 'v-barrier');
+wireSlider('sl-coupling', 'v-coupling');
+wireSlider('sl-damping', 'v-damping');
+wireSlider('sl-speed', 'v-speed', '1f');
+
+// ===== DRAWING HELPERS =====
+function stateColor(x, p) {
+  // x from -1 (flat/gray) to +1 (snapped/red), yellow in transition
+  let t = (x + 1) / 2; // normalize to 0..1
+  t = Math.max(0, Math.min(1, t));
+  if (t < 0.35) {
+    // Gray (flat)
+    return p.color(160, 155, 150);
+  } else if (t < 0.65) {
+    // Yellow (transitioning)
+    let blend = (t - 0.35) / 0.3;
+    let r = 160 + blend * 95; // 160 -> 255
+    let g = 155 + blend * 45; // 155 -> 200
+    let b = 150 - blend * 110; // 150 -> 40
+    return p.color(r, g, b);
+  } else {
+    // Red (snapped)
+    let blend = (t - 0.65) / 0.35;
+    let r = 200 + blend * 30; // 200 -> 230
+    let g = 60 - blend * 20; // 60 -> 40
+    let b = 40 - blend * 10; // 40 -> 30
+    return p.color(r, g, b);
+  }
+}
+
+function elementSize(x, baseSize) {
+  // Pulse when transitioning
+  let t = Math.abs(x); // distance from 0
+  if (t < 0.5) {
+    // Transitioning: pulse bigger
+    return baseSize * (1 + (0.5 - t) * 0.8);
+  }
+  return baseSize;
+}
+
+// ===== P5.JS SKETCH =====
+const sketch = (p) => {
+  p.setup = () => {
+    let container = document.getElementById('canvas-container');
+    cw = container.clientWidth; ch = container.clientHeight;
+    p.createCanvas(cw, ch).parent(container);
+    p.textFont('Georgia');
+    randomizeAll();
+  };
+
+  p.windowResized = () => {
+    let container = document.getElementById('canvas-container');
+    cw = container.clientWidth; ch = container.clientHeight;
+    p.resizeCanvas(cw, ch);
+  };
+
+  p.draw = () => {
+    p.background(245, 243, 238);
+    let speed = parseFloat(document.getElementById('sl-speed').value);
+    let dt = 0.03 * speed;
+    let stepsPerFrame = Math.max(1, Math.round(speed));
+
+    // Step physics
+    for (let cell of cells) {
+      for (let s = 0; s < stepsPerFrame; s++) {
+        physicsStep(cell.net, dt / stepsPerFrame);
+      }
+      // Record snap history
+      let snapped = countSnapped(cell.net);
+      cell.snapHistory.push(snapped);
+      if (cell.snapHistory.length > 300) cell.snapHistory.shift();
+    }
+
+    if (mode === 'atlas') drawAtlas(p);
+    else drawSingle(p);
+
+    document.getElementById('hud-fps').textContent = Math.round(p.frameRate());
+  };
+
+  p.mousePressed = () => {
+    if (p.mouseX < 0 || p.mouseX > cw || p.mouseY < 0 || p.mouseY > ch) return;
+    if (mode === 'atlas') {
+      let cellW = cw / COLS, cellH = ch / ROWS;
+      let col = Math.floor(p.mouseX / cellW);
+      let row = Math.floor(p.mouseY / cellH);
+      if (col >= 0 && col < COLS && row >= 0 && row < ROWS) {
+        selectedIdx = row * COLS + col;
+        if (selectedIdx < cells.length) {
+          setMode('single');
+          // Reset and don't auto-trigger so user can click
+          resetNetwork(cells[selectedIdx].net);
+          cells[selectedIdx].snapHistory = [];
+          updateStatsList(cells[selectedIdx]);
+        }
+      }
+    } else if (mode === 'single' && selectedIdx >= 0 && selectedIdx < cells.length) {
+      // Click to trigger element in single mode
+      let cell = cells[selectedIdx];
+      let net = cell.net;
+      let closestIdx = -1;
+      let closestDist = Infinity;
+      let margin = 40;
+      let drawW = cw * 0.55 - margin * 2;
+      let drawH = ch - margin * 2 - 30;
+
+      for (let i = 0; i < net.positions.length; i++) {
+        let px = margin + net.positions[i].x * drawW;
+        let py = margin + net.positions[i].y * drawH;
+        let d = Math.sqrt((p.mouseX - px) ** 2 + (p.mouseY - py) ** 2);
+        if (d < closestDist) {
+          closestDist = d;
+          closestIdx = i;
+        }
+      }
+      if (closestIdx >= 0 && closestDist < 25) {
+        triggerElement(net, closestIdx);
+      }
+    }
+  };
+
+  p.mouseMoved = () => {
+    if (mode === 'atlas') {
+      let cellW = cw / COLS, cellH = ch / ROWS;
+      let col = Math.floor(p.mouseX / cellW);
+      let row = Math.floor(p.mouseY / cellH);
+      hoverCell = (col >= 0 && col < COLS && row >= 0 && row < ROWS) ? row * COLS + col : -1;
+    }
+  };
+};
+
+// ===== ATLAS RENDERER =====
+function drawAtlas(p) {
+  let cellW = cw / COLS, cellH = ch / ROWS;
+
+  for (let idx = 0; idx < cells.length; idx++) {
+    let col = idx % COLS, row = Math.floor(idx / COLS);
+    let cx = col * cellW, cy = row * cellH;
+
+    // Cell border
+    p.noFill(); p.stroke(200, 190, 175); p.strokeWeight(0.5);
+    p.rect(cx, cy, cellW, cellH);
+
+    if (idx === hoverCell) {
+      p.fill(255, 255, 255, 30); p.noStroke();
+      p.rect(cx, cy, cellW, cellH);
+    }
+
+    let cell = cells[idx];
+    let net = cell.net;
+    let N = net.elements.length;
+    let margin = 8;
+    let drawW = cellW - margin * 2;
+    let drawH = cellH * 0.72 - margin;
+
+    // Draw connections
+    p.stroke(200, 190, 180, 80); p.strokeWeight(0.5);
+    for (let i = 0; i < N; i++) {
+      for (let j of net.connections[i]) {
+        if (j > i) {
+          let x1 = cx + margin + net.positions[i].x * drawW;
+          let y1 = cy + margin + net.positions[i].y * drawH;
+          let x2 = cx + margin + net.positions[j].x * drawW;
+          let y2 = cy + margin + net.positions[j].y * drawH;
+          p.line(x1, y1, x2, y2);
+        }
+      }
+    }
+
+    // Draw elements
+    let baseSize = Math.max(3, Math.min(8, 80 / Math.sqrt(N)));
+    for (let i = 0; i < N; i++) {
+      let ex = cx + margin + net.positions[i].x * drawW;
+      let ey = cy + margin + net.positions[i].y * drawH;
+      let sz = elementSize(net.elements[i].x, baseSize);
+      p.fill(stateColor(net.elements[i].x, p));
+      p.noStroke();
+      p.circle(ex, ey, sz);
+    }
+
+    // Mini time series at bottom
+    let graphY = cy + cellH * 0.78;
+    let graphH = cellH * 0.18;
+    let graphW = cellW - 12;
+    let graphX = cx + 6;
+
+    if (cell.snapHistory.length > 1) {
+      p.stroke(139, 69, 19, 120); p.strokeWeight(0.8); p.noFill();
+      p.beginShape();
+      for (let i = 0; i < cell.snapHistory.length; i++) {
+        let tx = graphX + (i / 300) * graphW;
+        let ty = graphY + graphH - (cell.snapHistory[i] / N) * graphH;
+        p.vertex(tx, ty);
+      }
+      p.endShape();
+    }
+    // Zero line
+    p.stroke(180, 170, 160); p.strokeWeight(0.3);
+    p.line(graphX, graphY + graphH, graphX + graphW, graphY + graphH);
+
+    // Label
+    p.noStroke(); p.fill(180, 170, 155); p.textSize(7); p.textAlign(p.LEFT, p.TOP);
+    let snapped = countSnapped(net);
+    p.text(`${net.config.topology} N=${N} ${snapped}/${N}`, cx + 4, cy + 3);
+  }
+}
+
+// ===== SINGLE MODE RENDERER =====
+function drawSingle(p) {
+  if (selectedIdx < 0 || selectedIdx >= cells.length) return;
+  let cell = cells[selectedIdx];
+  let net = cell.net;
+  let N = net.elements.length;
+  let margin = 40;
+  let drawW = cw * 0.55 - margin * 2;
+  let drawH = ch - margin * 2 - 30;
+
+  // === Draw Network ===
+  // Draw connections with thickness = coupling
+  for (let i = 0; i < N; i++) {
+    for (let j of net.connections[i]) {
+      if (j > i) {
+        let x1 = margin + net.positions[i].x * drawW;
+        let y1 = margin + net.positions[i].y * drawH;
+        let x2 = margin + net.positions[j].x * drawW;
+        let y2 = margin + net.positions[j].y * drawH;
+        let avgCoupling = (net.elements[i].coupling + net.elements[j].coupling) / 2;
+        let thickness = 0.5 + avgCoupling * 1.5;
+        p.stroke(180, 170, 160, 120);
+        p.strokeWeight(thickness);
+        p.line(x1, y1, x2, y2);
+      }
+    }
+  }
+
+  // Draw elements
+  let baseSize = Math.max(8, Math.min(20, 200 / Math.sqrt(N)));
+  for (let i = 0; i < N; i++) {
+    let ex = margin + net.positions[i].x * drawW;
+    let ey = margin + net.positions[i].y * drawH;
+    let sz = elementSize(net.elements[i].x, baseSize);
+    let col = stateColor(net.elements[i].x, p);
+
+    // Outer ring for triggered element
+    if (i === cell.triggerIdx) {
+      p.noFill(); p.stroke(139, 69, 19, 150); p.strokeWeight(2);
+      p.circle(ex, ey, sz + 8);
+    }
+
+    p.fill(col); p.stroke(80, 70, 60, 60); p.strokeWeight(0.5);
+    p.circle(ex, ey, sz);
+
+    // Index label for small networks
+    if (N <= 30) {
+      p.fill(255, 255, 255, 180); p.noStroke(); p.textSize(7);
+      p.textAlign(p.CENTER, p.CENTER);
+      p.text(i, ex, ey);
+    }
+  }
+
+  // === Time Series Graph (right side) ===
+  let graphX = cw * 0.58;
+  let graphY = ch * 0.1;
+  let graphW = cw * 0.38;
+  let graphH = ch * 0.35;
+
+  // Frame
+  p.noFill(); p.stroke(180, 170, 160); p.strokeWeight(0.5);
+  p.rect(graphX, graphY, graphW, graphH);
+
+  // Title
+  p.fill(130); p.noStroke(); p.textSize(9); p.textAlign(p.CENTER, p.TOP);
+  p.text('Snapped Elements vs Time', graphX + graphW / 2, graphY - 14);
+
+  // Grid and labels
+  p.stroke(200, 195, 185); p.strokeWeight(0.3);
+  for (let g = 0; g <= 4; g++) {
+    let gy = graphY + (g / 4) * graphH;
+    p.line(graphX, gy, graphX + graphW, gy);
+  }
+  p.fill(150); p.textSize(8); p.textAlign(p.RIGHT, p.CENTER);
+  p.text(N, graphX - 4, graphY);
+  p.text('0', graphX - 4, graphY + graphH);
+  p.text(Math.round(N / 2), graphX - 4, graphY + graphH / 2);
+
+  // Plot snap history
+  if (cell.snapHistory.length > 1) {
+    p.noFill(); p.strokeWeight(1.5);
+    p.beginShape();
+    for (let i = 0; i < cell.snapHistory.length; i++) {
+      let t = i / cell.snapHistory.length;
+      p.stroke(139, 69, 19, t * 200 + 50);
+      let tx = graphX + (i / 300) * graphW;
+      let ty = graphY + graphH - (cell.snapHistory[i] / N) * graphH;
+      p.vertex(tx, ty);
+    }
+    p.endShape();
+
+    // Current marker
+    let lastIdx = cell.snapHistory.length - 1;
+    let curX = graphX + (lastIdx / 300) * graphW;
+    let curY = graphY + graphH - (cell.snapHistory[lastIdx] / N) * graphH;
+    p.fill(200, 50, 50); p.noStroke();
+    p.circle(curX, curY, 5);
+  }
+
+  // === Potential Energy Diagram (bottom right) ===
+  let potX = cw * 0.58;
+  let potY = ch * 0.55;
+  let potW = cw * 0.38;
+  let potH = ch * 0.3;
+
+  p.noFill(); p.stroke(180, 170, 160); p.strokeWeight(0.5);
+  p.rect(potX, potY, potW, potH);
+
+  p.fill(130); p.noStroke(); p.textSize(9); p.textAlign(p.CENTER, p.TOP);
+  p.text('Double-Well Potential U(x)', potX + potW / 2, potY - 14);
+
+  // Draw potential curve for average a parameter
+  let avgA = 0;
+  for (let e of net.elements) avgA += e.a;
+  avgA /= N;
+  let avgB = avgA;
+
+  p.stroke(100, 80, 60); p.strokeWeight(1); p.noFill();
+  p.beginShape();
+  let potMidY = potY + potH * 0.4;
+  let potScale = potH * 0.25;
+  for (let xi = 0; xi <= 100; xi++) {
+    let x = -1.8 + (xi / 100) * 3.6;
+    let U = -avgA * x * x / 2 + avgB * x * x * x * x / 4;
+    let px = potX + (xi / 100) * potW;
+    let py = potMidY + U * potScale;
+    p.vertex(px, py);
+  }
+  p.endShape();
+
+  // Draw markers for each element's current state on the potential
+  for (let i = 0; i < N; i++) {
+    let ex = net.elements[i].x;
+    let normX = (ex + 1.8) / 3.6;
+    let U = -avgA * ex * ex / 2 + avgB * ex * ex * ex * ex / 4;
+    let px = potX + normX * potW;
+    let py = potMidY + U * potScale;
+    p.fill(stateColor(ex, p));
+    p.noStroke();
+    p.circle(px, py, 4);
+  }
+
+  // Labels
+  p.fill(150); p.textSize(8); p.textAlign(p.CENTER, p.TOP);
+  p.text('x = -1 (flat)', potX + potW * 0.11, potY + potH - 14);
+  p.text('x = +1 (snapped)', potX + potW * 0.89, potY + potH - 14);
+
+  // === HUD updates ===
+  let snapped = countSnapped(net);
+  document.getElementById('hud-snapped').textContent = `${snapped}/${N}`;
+  document.getElementById('hud-topo').textContent = net.config.topology;
+  if (!cell.score) {
+    cell.score = scoreCascade(cell.config);
+  }
+  document.getElementById('hud-score').textContent = cell.score.toFixed(1);
+
+  // Info bar
+  document.getElementById('info-bar').textContent =
+    `Cell ${selectedIdx + 1} \u2014 ${net.config.topology} topology, N=${N}, barrier=${net.config.barrierMean.toFixed(2)}, coupling=${net.config.couplingMean.toFixed(2)}. Snapped: ${snapped}/${N}. Click an element to trigger.`;
+
+  // Hint
+  p.fill(150); p.noStroke(); p.textSize(10); p.textAlign(p.LEFT, p.BOTTOM);
+  p.text('\u2190 Press Atlas 4x4 to return. Click element to trigger.', 10, ch - 30);
+}
+
+// ===== HELPERS =====
+function updateStatsList(cell) {
+  let list = document.getElementById('stats-list');
+  let net = cell.net;
+  let N = net.elements.length;
+  let snapped = countSnapped(net);
+  let avgBarrier = 0, avgCoupling = 0;
+  for (let e of net.elements) {
+    avgBarrier += e.a;
+    avgCoupling += e.coupling;
+  }
+  avgBarrier /= N;
+  avgCoupling /= N;
+  let totalConns = 0;
+  for (let c of net.connections) totalConns += c.length;
+  totalConns /= 2;
+
+  let html = '';
+  html += `<div class="stats-item">Topology: ${net.config.topology}</div>`;
+  html += `<div class="stats-item">Elements: ${N}</div>`;
+  html += `<div class="stats-item">Connections: ${totalConns}</div>`;
+  html += `<div class="stats-item">Avg barrier: ${avgBarrier.toFixed(2)}</div>`;
+  html += `<div class="stats-item">Avg coupling: ${avgCoupling.toFixed(2)}</div>`;
+  html += `<div class="stats-item">Damping: ${net.config.damping.toFixed(2)}</div>`;
+  html += `<div class="stats-item">Snapped: ${snapped}/${N}</div>`;
+  html += `<div class="stats-item" style="color:#8b4513;">Score: ${cell.score.toFixed(1)}</div>`;
+  list.innerHTML = html;
+}
+
+// ===== LAUNCH =====
+new p5(sketch, 'canvas-container');
+</script>
+</body>
+</html>
