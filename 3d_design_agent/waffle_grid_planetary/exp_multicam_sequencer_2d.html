@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Multi-Cam Sequencer — N Cams on Shared Shaft</title>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f5f3ee; overflow: hidden; font-family: 'Georgia', serif; display: flex; height: 100vh; }
+
+  #sidebar {
+    width: 280px; min-width: 280px; background: #f0ede6;
+    border-right: 1px solid #c8c0b0; overflow-y: auto; padding: 12px 14px;
+    font-size: 12px; color: #444;
+  }
+  #sidebar h1 { font-size: 14px; letter-spacing: 1.5px; color: #333; margin-bottom: 2px; font-weight: normal; }
+  #sidebar .subtitle { font-size: 10px; color: #888; margin-bottom: 12px; font-style: italic; }
+
+  .section-title {
+    font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: #8b7355;
+    margin-top: 14px; margin-bottom: 6px; border-bottom: 1px solid #d8d0c0; padding-bottom: 3px;
+  }
+  .ctrl-row { display: flex; align-items: center; margin-bottom: 5px; }
+  .ctrl-row label { flex: 0 0 95px; font-size: 11px; color: #666; }
+  .ctrl-row input[type="range"] { flex: 1; height: 3px; accent-color: #8b4513; }
+  .ctrl-row .val { flex: 0 0 40px; text-align: right; font-size: 10px; color: #555; font-family: 'Consolas', monospace; }
+
+  select {
+    width: 100%; padding: 4px 8px; font-size: 11px; font-family: 'Georgia', serif;
+    background: #faf8f3; color: #555; border: 1px solid #c8c0b0; border-radius: 3px; margin-bottom: 4px;
+  }
+
+  .btn-row { display: flex; gap: 5px; margin: 8px 0; flex-wrap: wrap; }
+  .btn {
+    padding: 5px 10px; font-size: 10px; font-family: 'Georgia', serif;
+    background: #555; color: #f5f3ee; border: none; cursor: pointer;
+    letter-spacing: 0.5px; border-radius: 2px; transition: background 0.15s;
+  }
+  .btn:hover { background: #333; }
+  .btn.active { background: #8b4513; }
+  .btn.accent { background: #2a6848; }
+  .btn.accent:hover { background: #1a4830; }
+  .btn:disabled { background: #aaa; cursor: not-allowed; }
+
+  #canvas-container { flex: 1; position: relative; }
+  #canvas-container canvas { display: block; }
+
+  #info-bar {
+    position: fixed; bottom: 0; left: 280px; right: 0; z-index: 100;
+    background: rgba(245,243,238,0.92); border-top: 1px solid #bbb;
+    padding: 4px 16px; font-size: 10px; color: #777; font-style: italic;
+  }
+
+  #hud {
+    position: absolute; top: 8px; right: 12px; background: rgba(245,243,238,0.9);
+    border: 1px solid #c8c0b0; border-radius: 4px; padding: 8px 12px;
+    font-size: 10px; line-height: 1.7; color: #666; min-width: 160px; pointer-events: none;
+  }
+  #hud .hv { color: #444; font-family: 'Consolas', monospace; float: right; }
+
+  .progress-bar { width: 100%; height: 3px; background: #ddd; border-radius: 2px; margin: 4px 0; }
+  .progress-bar-fill { height: 100%; background: #8b4513; border-radius: 2px; transition: width 0.1s; }
+
+  .cam-list { max-height: 200px; overflow-y: auto; font-size: 9px; line-height: 1.5; margin-top: 4px; }
+  .cam-item { padding: 2px 0; color: #666; font-family: 'Consolas', monospace; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #c8c0b0; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h1>CAM SEQUENCER</h1>
+  <div class="subtitle">Multi-Cam Shaft &mdash; Al-Jazari Digitized</div>
+
+  <div class="section-title">Configuration</div>
+  <div class="ctrl-row">
+    <label>Num Cams</label>
+    <input type="range" id="numCams" min="3" max="8" value="5" step="1">
+    <span class="val" id="numCamsVal">5</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Harmonics</label>
+    <input type="range" id="numHarmonics" min="2" max="8" value="4" step="1">
+    <span class="val" id="numHarmonicsVal">4</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Speed</label>
+    <input type="range" id="speed" min="0.1" max="3.0" value="1.0" step="0.1">
+    <span class="val" id="speedVal">1.0</span>
+  </div>
+
+  <div class="section-title">Follower Type</div>
+  <select id="followerType">
+    <option value="translate">All Translating</option>
+    <option value="oscillate">All Oscillating</option>
+    <option value="mixed">Mixed</option>
+  </select>
+
+  <div class="section-title">View</div>
+  <select id="viewMode">
+    <option value="side">Side View (shaft + followers)</option>
+    <option value="waterfall">Waterfall (displacement curves)</option>
+    <option value="polar">Polar (cam profiles overlaid)</option>
+  </select>
+
+  <div class="section-title">Mode</div>
+  <div class="btn-row">
+    <button class="btn active" id="btnAtlas" onclick="setMode('atlas')">Atlas 4&times;4</button>
+    <button class="btn" id="btnSingle" onclick="setMode('single')">Single</button>
+  </div>
+
+  <div class="section-title">Actions</div>
+  <div class="btn-row">
+    <button class="btn" onclick="randomizeAll()">Randomize</button>
+    <button class="btn" onclick="mutateSelected()">Mutate</button>
+    <button class="btn accent" id="btnFind" onclick="findBeautiful()">Find Beautiful</button>
+  </div>
+  <div class="progress-bar" id="progressWrap" style="display:none;">
+    <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
+  </div>
+
+  <div class="section-title">Cam Details</div>
+  <div class="cam-list" id="camList"></div>
+</div>
+
+<div id="canvas-container">
+  <div id="hud"></div>
+</div>
+<div id="info-bar">Multi-Cam Sequencer &mdash; N cams on one shaft create motion sequences</div>
+
+<script>
+const sketch = (p) => {
+  const ATLAS_COLS = 4, ATLAS_ROWS = 4;
+  let mode = 'atlas';
+  let configs = [];
+  let selectedIdx = 0;
+  let shaftAngle = 0;
+  let cW, cH;
+  let fps = 60, fpsFrames = 0, fpsLast = 0;
+
+  // ─── Fourier cam profile ────────────────────────────────
+  function makeCamProfile(numH) {
+    let harmonics = [];
+    let baseR = 30;
+    for (let k = 0; k < numH; k++) {
+      harmonics.push({
+        amp: (p.random(0.1, 1.0) / (k + 1)) * 8,
+        phase: p.random(0, Math.PI * 2)
+      });
+    }
+    return { baseR, harmonics };
+  }
+
+  function camRadius(profile, angle) {
+    let r = profile.baseR;
+    for (let k = 0; k < profile.harmonics.length; k++) {
+      r += profile.harmonics[k].amp * Math.cos((k + 1) * angle + profile.harmonics[k].phase);
+    }
+    return Math.max(r, 5);
+  }
+
+  function followerDisplacement(profile, angle) {
+    // Displacement = camRadius - baseR
+    return camRadius(profile, angle) - profile.baseR;
+  }
+
+  // ─── config management ──────────────────────────────────
+  function makeConfig() {
+    let nCams = parseInt(document.getElementById('numCams').value);
+    let nHarm = parseInt(document.getElementById('numHarmonics').value);
+    let follType = document.getElementById('followerType').value;
+
+    let cams = [];
+    for (let i = 0; i < nCams; i++) {
+      let fType;
+      if (follType === 'mixed') {
+        fType = p.random() < 0.5 ? 'translate' : 'oscillate';
+      } else {
+        fType = follType;
+      }
+
+      cams.push({
+        profile: makeCamProfile(nHarm),
+        phaseOffset: (i / nCams) * Math.PI * 2 * p.random(0.3, 1.0),
+        followerType: fType,
+        amplitudeScale: p.random(0.5, 1.5),
+        color: p.color(
+          30 + i * (200 / nCams),
+          80 + Math.sin(i * 1.2) * 60,
+          120 + Math.cos(i * 0.8) * 80
+        )
+      });
+    }
+    return { cams };
+  }
+
+  function mutateConfig(cfg) {
+    let newCams = cfg.cams.map(c => {
+      let newProfile = {
+        baseR: c.profile.baseR,
+        harmonics: c.profile.harmonics.map(h => ({
+          amp: h.amp * (1 + (p.random() - 0.5) * 0.3),
+          phase: h.phase + (p.random() - 0.5) * 0.4
+        }))
+      };
+      return {
+        ...c,
+        profile: newProfile,
+        phaseOffset: c.phaseOffset + (p.random() - 0.5) * 0.3,
+        amplitudeScale: Math.max(0.3, c.amplitudeScale * (1 + (p.random() - 0.5) * 0.2))
+      };
+    });
+    return { cams: newCams };
+  }
+
+  function scoreConfig(cfg) {
+    // Score based on:
+    // 1. Phase diversity (spread of phase offsets)
+    // 2. Profile complexity (total harmonic content)
+    // 3. Rhythm — check displacement patterns for interesting beats
+    let phases = cfg.cams.map(c => c.phaseOffset % (Math.PI * 2));
+    let phaseSpread = 0;
+    for (let i = 0; i < phases.length; i++) {
+      for (let j = i + 1; j < phases.length; j++) {
+        let diff = Math.abs(phases[i] - phases[j]);
+        diff = Math.min(diff, Math.PI * 2 - diff);
+        phaseSpread += diff;
+      }
+    }
+    let phaseScore = phaseSpread * 5;
+
+    // Complexity: sum of harmonic amplitudes
+    let complexity = 0;
+    for (let c of cfg.cams) {
+      for (let h of c.profile.harmonics) complexity += Math.abs(h.amp);
+    }
+    let complexityScore = Math.min(complexity, 50) * 1.5;
+
+    // Rhythm: sample displacement curves and check for syncopation
+    let syncopation = 0;
+    for (let t = 0; t < 60; t++) {
+      let angle = (t / 60) * Math.PI * 2;
+      let peakCount = 0;
+      for (let c of cfg.cams) {
+        let d = followerDisplacement(c.profile, angle + c.phaseOffset);
+        if (d * c.amplitudeScale > c.profile.baseR * 0.3) peakCount++;
+      }
+      // Partial overlap is interesting (not all up or all down)
+      if (peakCount > 0 && peakCount < cfg.cams.length) syncopation++;
+    }
+    let rhythmScore = syncopation * 0.8;
+
+    return phaseScore + complexityScore + rhythmScore;
+  }
+
+  // ─── drawing ────────────────────────────────────────────
+  function drawSideView(p, cfg, cx, cy, w, h, time, showLabels) {
+    let nCams = cfg.cams.length;
+    let camSpacing = w / (nCams + 1);
+    let shaftY = cy - h * 0.1;
+    let followerBaseY = shaftY + 40;
+
+    // Shaft
+    p.stroke(120, 100, 80);
+    p.strokeWeight(3);
+    p.line(cx - w / 2 + 10, shaftY, cx + w / 2 - 10, shaftY);
+
+    // Each cam + follower
+    for (let i = 0; i < nCams; i++) {
+      let cam = cfg.cams[i];
+      let camX = cx - w / 2 + (i + 1) * camSpacing;
+      let angle = time + cam.phaseOffset;
+      let displacement = followerDisplacement(cam.profile, angle) * cam.amplitudeScale;
+
+      // Draw cam profile (small)
+      p.push();
+      p.translate(camX, shaftY);
+      p.rotate(time); // shaft rotation
+
+      p.noFill();
+      p.stroke(p.red(cam.color), p.green(cam.color), p.blue(cam.color));
+      p.strokeWeight(1.5);
+
+      let scale = 0.5;
+      p.beginShape();
+      for (let a = 0; a <= Math.PI * 2; a += 0.1) {
+        let r = camRadius(cam.profile, a + cam.phaseOffset) * scale;
+        p.vertex(r * Math.cos(a), r * Math.sin(a));
+      }
+      p.endShape(p.CLOSE);
+
+      // Shaft center
+      p.fill(60);
+      p.noStroke();
+      p.ellipse(0, 0, 4, 4);
+      p.pop();
+
+      // Follower
+      let followerY = followerBaseY - displacement * 0.8;
+      if (cam.followerType === 'translate') {
+        // Flat follower translating vertically
+        p.stroke(p.red(cam.color), p.green(cam.color), p.blue(cam.color));
+        p.strokeWeight(2);
+        p.line(camX - 8, followerY, camX + 8, followerY);
+        // Guide lines
+        p.stroke(180);
+        p.strokeWeight(0.5);
+        p.line(camX - 5, followerBaseY, camX - 5, followerBaseY + h * 0.3);
+        p.line(camX + 5, followerBaseY, camX + 5, followerBaseY + h * 0.3);
+        // Follower rod
+        p.stroke(100);
+        p.strokeWeight(1.5);
+        p.line(camX, followerY, camX, followerBaseY + h * 0.25);
+        // Tip marker
+        p.fill(p.red(cam.color), p.green(cam.color), p.blue(cam.color));
+        p.noStroke();
+        p.ellipse(camX, followerBaseY + h * 0.25, 6, 6);
+      } else {
+        // Oscillating arm
+        let armLen = h * 0.25;
+        let pivotX = camX, pivotY = followerBaseY + 5;
+        let swingAngle = displacement * 0.02;
+        let tipX = pivotX + armLen * Math.sin(swingAngle);
+        let tipY = pivotY + armLen * Math.cos(swingAngle);
+        p.stroke(p.red(cam.color), p.green(cam.color), p.blue(cam.color));
+        p.strokeWeight(2);
+        p.line(pivotX, pivotY, tipX, tipY);
+        p.fill(p.red(cam.color), p.green(cam.color), p.blue(cam.color));
+        p.noStroke();
+        p.ellipse(pivotX, pivotY, 5, 5);
+        p.ellipse(tipX, tipY, 5, 5);
+      }
+
+      // Label
+      if (showLabels) {
+        p.noStroke();
+        p.fill(100);
+        p.textSize(9);
+        p.textAlign(p.CENTER);
+        p.text('C' + (i + 1), camX, shaftY - 25);
+        p.textSize(7);
+        p.fill(140);
+        p.text(cam.followerType.charAt(0).toUpperCase(), camX, followerBaseY + h * 0.33);
+      }
+    }
+  }
+
+  function drawWaterfallView(p, cfg, cx, cy, w, h, time) {
+    let nCams = cfg.cams.length;
+    let laneH = h / nCams;
+    let graphW = w - 40;
+    let graphX = cx - w / 2 + 30;
+
+    for (let i = 0; i < nCams; i++) {
+      let cam = cfg.cams[i];
+      let laneY = cy - h / 2 + i * laneH;
+
+      // Lane background
+      p.noStroke();
+      p.fill(250, 248, 242, i % 2 === 0 ? 255 : 230);
+      p.rect(graphX, laneY + 2, graphW, laneH - 4, 2);
+
+      // Lane label
+      p.fill(100);
+      p.textSize(8);
+      p.textAlign(p.RIGHT);
+      p.text('C' + (i + 1), graphX - 4, laneY + laneH / 2 + 3);
+
+      // Displacement curve
+      p.noFill();
+      p.stroke(p.red(cam.color), p.green(cam.color), p.blue(cam.color));
+      p.strokeWeight(1.5);
+      let midY = laneY + laneH / 2;
+      let ampY = (laneH - 10) / 2;
+
+      p.beginShape();
+      let maxDisp = 0;
+      for (let a = 0; a <= Math.PI * 2; a += 0.05) {
+        maxDisp = Math.max(maxDisp, Math.abs(followerDisplacement(cam.profile, a + cam.phaseOffset) * cam.amplitudeScale));
+      }
+      if (maxDisp < 0.01) maxDisp = 1;
+
+      for (let px = 0; px < graphW; px++) {
+        let angle = (px / graphW) * Math.PI * 2;
+        let d = followerDisplacement(cam.profile, angle + cam.phaseOffset) * cam.amplitudeScale;
+        let y = midY - (d / maxDisp) * ampY;
+        p.vertex(graphX + px, y);
+      }
+      p.endShape();
+
+      // Current position marker
+      let currAngle = (time % (Math.PI * 2));
+      let currX = graphX + (currAngle / (Math.PI * 2)) * graphW;
+      let currD = followerDisplacement(cam.profile, currAngle + cam.phaseOffset) * cam.amplitudeScale;
+      let currY = midY - (currD / maxDisp) * ampY;
+
+      p.fill(p.red(cam.color), p.green(cam.color), p.blue(cam.color));
+      p.noStroke();
+      p.ellipse(currX, currY, 6, 6);
+
+      // Vertical sweep line
+      p.stroke(200, 100, 100, 120);
+      p.strokeWeight(0.5);
+      p.line(currX, laneY + 2, currX, laneY + laneH - 4);
+    }
+
+    // Time axis
+    p.stroke(150);
+    p.strokeWeight(0.5);
+    p.textSize(7);
+    p.fill(150);
+    p.textAlign(p.CENTER);
+    for (let deg = 0; deg <= 360; deg += 90) {
+      let x = graphX + (deg / 360) * graphW;
+      p.line(x, cy + h / 2 - 2, x, cy + h / 2 + 5);
+      p.text(deg + '\u00B0', x, cy + h / 2 + 13);
+    }
+  }
+
+  function drawPolarView(p, cfg, cx, cy, size, time) {
+    let maxR = 0;
+    for (let c of cfg.cams) {
+      for (let a = 0; a < Math.PI * 2; a += 0.1) {
+        maxR = Math.max(maxR, camRadius(c.profile, a + c.phaseOffset));
+      }
+    }
+    let scale = (size / 2 - 20) / maxR;
+
+    // Polar grid
+    p.stroke(220, 210, 200);
+    p.strokeWeight(0.3);
+    p.noFill();
+    for (let r = 10; r < size / 2; r += 20) {
+      p.ellipse(cx, cy, r * 2, r * 2);
+    }
+    for (let a = 0; a < Math.PI * 2; a += Math.PI / 6) {
+      p.line(cx, cy, cx + (size / 2) * Math.cos(a), cy + (size / 2) * Math.sin(a));
+    }
+
+    // Draw each cam profile
+    for (let i = 0; i < cfg.cams.length; i++) {
+      let cam = cfg.cams[i];
+      p.noFill();
+      p.stroke(p.red(cam.color), p.green(cam.color), p.blue(cam.color));
+      p.strokeWeight(1.5);
+
+      p.beginShape();
+      for (let a = 0; a <= Math.PI * 2; a += 0.05) {
+        let r = camRadius(cam.profile, a + cam.phaseOffset) * scale;
+        p.vertex(cx + r * Math.cos(a), cy + r * Math.sin(a));
+      }
+      p.endShape(p.CLOSE);
+
+      // Current position on profile
+      let currR = camRadius(cam.profile, time + cam.phaseOffset) * scale;
+      let dotX = cx + currR * Math.cos(time);
+      let dotY = cy + currR * Math.sin(time);
+      p.fill(p.red(cam.color), p.green(cam.color), p.blue(cam.color));
+      p.noStroke();
+      p.ellipse(dotX, dotY, 5, 5);
+    }
+
+    // Rotation indicator
+    p.stroke(140, 40, 40);
+    p.strokeWeight(1);
+    p.line(cx, cy, cx + 30 * Math.cos(time), cy + 30 * Math.sin(time));
+  }
+
+  // ─── atlas / single ─────────────────────────────────────
+  function getAtlasCell(mx, my) {
+    let cellW = cW / ATLAS_COLS, cellH = cH / ATLAS_ROWS;
+    let col = Math.floor(mx / cellW), row = Math.floor(my / cellH);
+    if (col < 0 || col >= ATLAS_COLS || row < 0 || row >= ATLAS_ROWS) return -1;
+    return row * ATLAS_COLS + col;
+  }
+
+  // ─── p5 lifecycle ───────────────────────────────────────
+  p.setup = function() {
+    let container = document.getElementById('canvas-container');
+    cW = container.clientWidth;
+    cH = container.clientHeight;
+    p.createCanvas(cW, cH).parent('canvas-container');
+    randomizeAll();
+    fpsLast = p.millis();
+  };
+
+  p.windowResized = function() {
+    let container = document.getElementById('canvas-container');
+    cW = container.clientWidth;
+    cH = container.clientHeight;
+    p.resizeCanvas(cW, cH);
+  };
+
+  p.draw = function() {
+    p.background(245, 243, 238);
+
+    let spd = parseFloat(document.getElementById('speed').value);
+    shaftAngle += 0.02 * spd;
+
+    // FPS
+    fpsFrames++;
+    let now = p.millis();
+    if (now - fpsLast > 500) {
+      fps = Math.round(fpsFrames / ((now - fpsLast) / 1000));
+      fpsFrames = 0;
+      fpsLast = now;
+    }
+
+    if (mode === 'atlas') {
+      drawAtlasMode();
+    } else {
+      drawSingleMode();
+    }
+
+    // HUD
+    let hud = document.getElementById('hud');
+    if (mode === 'atlas') {
+      hud.innerHTML = `FPS <span class="hv">${fps}</span><br>Configs <span class="hv">${configs.length}</span>`;
+    } else if (configs[selectedIdx]) {
+      let cfg = configs[selectedIdx];
+      hud.innerHTML = `FPS <span class="hv">${fps}</span><br>Cams <span class="hv">${cfg.cams.length}</span><br>Score <span class="hv">${scoreConfig(cfg).toFixed(1)}</span>`;
+    }
+  };
+
+  function drawAtlasMode() {
+    let cellW = cW / ATLAS_COLS, cellH = cH / ATLAS_ROWS;
+
+    for (let i = 0; i < Math.min(configs.length, 16); i++) {
+      let row = Math.floor(i / ATLAS_COLS), col = i % ATLAS_COLS;
+      let cx = col * cellW, cy = row * cellH;
+
+      // Cell bg
+      p.noStroke();
+      p.fill(252, 250, 245);
+      p.rect(cx + 2, cy + 2, cellW - 4, cellH - 4, 3);
+
+      let cfg = configs[i];
+      if (!cfg) continue;
+
+      // Draw small side view in each cell
+      drawSideView(p, cfg, cx + cellW / 2, cy + cellH / 2, cellW - 20, cellH - 20, shaftAngle, false);
+
+      // Score
+      p.noStroke();
+      p.fill(120);
+      p.textSize(7);
+      p.textAlign(p.LEFT);
+      p.text(cfg.cams.length + ' cams', cx + 5, cy + cellH - 6);
+
+      // Roman numeral
+      p.fill(180);
+      p.textSize(9);
+      p.textAlign(p.RIGHT);
+      let rom = ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV','XVI'];
+      p.text(rom[i], cx + cellW - 6, cy + 14);
+
+      // Selection
+      if (i === selectedIdx) {
+        p.noFill();
+        p.stroke(139, 69, 19);
+        p.strokeWeight(2);
+        p.rect(cx + 2, cy + 2, cellW - 4, cellH - 4, 3);
+      }
+    }
+
+    // Grid
+    p.stroke(200, 190, 175);
+    p.strokeWeight(0.5);
+    for (let c = 1; c < ATLAS_COLS; c++) p.line(c * cellW, 0, c * cellW, cH);
+    for (let r = 1; r < ATLAS_ROWS; r++) p.line(0, r * cellH, cW, r * cellH);
+  }
+
+  function drawSingleMode() {
+    let cfg = configs[selectedIdx];
+    if (!cfg) return;
+
+    let viewMode = document.getElementById('viewMode').value;
+
+    if (viewMode === 'side') {
+      drawSideView(p, cfg, cW / 2, cH / 2 - 20, cW - 40, cH - 60, shaftAngle, true);
+    } else if (viewMode === 'waterfall') {
+      drawWaterfallView(p, cfg, cW / 2, cH / 2, cW - 40, cH - 40, shaftAngle);
+    } else {
+      let size = Math.min(cW, cH) - 60;
+      drawPolarView(p, cfg, cW / 2, cH / 2, size, shaftAngle);
+    }
+
+    updateCamList(cfg);
+  }
+
+  function updateCamList(cfg) {
+    let el = document.getElementById('camList');
+    let lines = [];
+    for (let i = 0; i < cfg.cams.length; i++) {
+      let c = cfg.cams[i];
+      let nH = c.profile.harmonics.length;
+      lines.push(`<div class="cam-item">C${i + 1}: ${nH}H phase=${(c.phaseOffset * 180 / Math.PI).toFixed(0)}&deg; ${c.followerType}</div>`);
+    }
+    el.innerHTML = lines.join('');
+  }
+
+  // ─── interaction ────────────────────────────────────────
+  p.mousePressed = function() {
+    let mx = p.mouseX, my = p.mouseY;
+    if (mx < 0 || mx > cW || my < 0 || my > cH) return;
+
+    if (mode === 'atlas') {
+      let idx = getAtlasCell(mx, my);
+      if (idx >= 0 && idx < configs.length) {
+        selectedIdx = idx;
+        setMode('single');
+      }
+    }
+  };
+
+  // ─── globals ────────────────────────────────────────────
+  window.setMode = function(m) {
+    mode = m;
+    document.getElementById('btnAtlas').classList.toggle('active', m === 'atlas');
+    document.getElementById('btnSingle').classList.toggle('active', m === 'single');
+  };
+
+  window.randomizeAll = function() {
+    configs = [];
+    for (let i = 0; i < 16; i++) configs.push(makeConfig());
+    selectedIdx = 0;
+  };
+
+  window.mutateSelected = function() {
+    if (configs[selectedIdx]) {
+      configs[selectedIdx] = mutateConfig(configs[selectedIdx]);
+    }
+  };
+
+  window.findBeautiful = function() {
+    let btn = document.getElementById('btnFind');
+    btn.disabled = true;
+    let wrap = document.getElementById('progressWrap');
+    let fill = document.getElementById('progressFill');
+    wrap.style.display = 'block';
+    fill.style.width = '0%';
+
+    let candidates = [];
+    let total = 200, perChunk = 25, done = 0;
+
+    function processChunk() {
+      let chunkEnd = Math.min(done + perChunk, total);
+      for (let i = done; i < chunkEnd; i++) {
+        let cfg = makeConfig();
+        candidates.push({ cfg, score: scoreConfig(cfg) });
+      }
+      done = chunkEnd;
+      fill.style.width = (done / total * 100) + '%';
+
+      if (done < total) {
+        setTimeout(processChunk, 0);
+      } else {
+        candidates.sort((a, b) => b.score - a.score);
+        configs = candidates.slice(0, 16).map(c => c.cfg);
+        selectedIdx = 0;
+        btn.disabled = false;
+        wrap.style.display = 'none';
+      }
+    }
+    setTimeout(processChunk, 0);
+  };
+
+  // Slider hooks
+  ['numCams', 'numHarmonics', 'speed'].forEach(id => {
+    let el = document.getElementById(id);
+    let valEl = document.getElementById(id + 'Val');
+    el.addEventListener('input', () => { valEl.textContent = el.value; });
+  });
+};
+
+new p5(sketch, 'canvas-container');
+</script>
+</body>
+</html>
