@@ -1,0 +1,1302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Origami Deployable Mechanisms &mdash; Rigid Folding with 1-DOF Deployment</title>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f5f3ee; overflow: hidden; font-family: 'Georgia', serif; display: flex; height: 100vh; }
+
+  #sidebar {
+    width: 280px; min-width: 280px; background: #f0ede6;
+    border-right: 1px solid #c8c0b0; overflow-y: auto; padding: 12px 14px;
+    font-size: 12px; color: #444;
+  }
+  #sidebar h1 { font-size: 14px; letter-spacing: 1.5px; color: #333; margin-bottom: 2px; font-weight: normal; }
+  #sidebar .subtitle { font-size: 10px; color: #888; margin-bottom: 12px; font-style: italic; }
+
+  .section-title {
+    font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: #8b7355;
+    margin-top: 14px; margin-bottom: 6px; border-bottom: 1px solid #d8d0c0; padding-bottom: 3px;
+  }
+  .ctrl-row { display: flex; align-items: center; margin-bottom: 5px; }
+  .ctrl-row label { flex: 0 0 95px; font-size: 11px; color: #666; }
+  .ctrl-row input[type="range"] { flex: 1; height: 3px; accent-color: #8b4513; }
+  .ctrl-row .val { flex: 0 0 50px; text-align: right; font-size: 10px; color: #555; font-family: 'Consolas', monospace; }
+
+  select {
+    width: 100%; padding: 4px 8px; font-size: 11px; font-family: 'Georgia', serif;
+    background: #faf8f3; color: #555; border: 1px solid #c8c0b0; border-radius: 3px; margin-bottom: 4px;
+  }
+
+  .btn-row { display: flex; gap: 5px; margin: 8px 0; flex-wrap: wrap; }
+  .btn {
+    padding: 5px 10px; font-size: 10px; font-family: 'Georgia', serif;
+    background: #555; color: #f5f3ee; border: none; cursor: pointer;
+    letter-spacing: 0.5px; border-radius: 2px; transition: background 0.15s;
+  }
+  .btn:hover { background: #333; }
+  .btn.active { background: #8b4513; }
+  .btn.accent { background: #2a6848; }
+  .btn.accent:hover { background: #1a4830; }
+
+  #canvas-container { flex: 1; position: relative; }
+  #canvas-container canvas { display: block; }
+
+  #info-bar {
+    position: fixed; bottom: 0; left: 280px; right: 0; z-index: 100;
+    background: rgba(245,243,238,0.92); border-top: 1px solid #bbb;
+    padding: 4px 16px; font-size: 10px; color: #777; font-style: italic;
+  }
+
+  #hud {
+    position: absolute; top: 8px; right: 12px; background: rgba(245,243,238,0.9);
+    border: 1px solid #c8c0b0; border-radius: 4px; padding: 8px 12px;
+    font-size: 10px; line-height: 1.7; color: #666; min-width: 170px; pointer-events: none;
+  }
+  #hud .hv { color: #444; font-family: 'Consolas', monospace; float: right; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #c8c0b0; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h1>ORIGAMI DEPLOYABLE</h1>
+  <div class="subtitle">Rigid Folding Mechanisms &mdash; 1-DOF Deployment</div>
+
+  <div class="section-title">Fold Pattern</div>
+  <select id="sel-pattern">
+    <option value="miura" selected>Miura-Ori (Accordion)</option>
+    <option value="yoshizawa">Yoshizawa (Radial Flower)</option>
+    <option value="waterbomb">Waterbomb (Dome/Tube)</option>
+    <option value="random">Random Crease Pattern</option>
+  </select>
+
+  <div class="section-title">Grid / Geometry</div>
+  <div class="ctrl-row">
+    <label>Grid X</label>
+    <input type="range" id="sl-gridx" min="2" max="8" step="1" value="4">
+    <span class="val" id="v-gridx">4</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Grid Y</label>
+    <input type="range" id="sl-gridy" min="2" max="8" step="1" value="4">
+    <span class="val" id="v-gridy">4</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Aspect Ratio</label>
+    <input type="range" id="sl-aspect" min="0.5" max="2.0" step="0.05" value="1.0">
+    <span class="val" id="v-aspect">1.00</span>
+  </div>
+
+  <div class="section-title">Deployment</div>
+  <div class="ctrl-row">
+    <label>Deploy %</label>
+    <input type="range" id="sl-deploy" min="0" max="100" step="1" value="50">
+    <span class="val" id="v-deploy">50%</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Auto-deploy</label>
+    <input type="range" id="sl-auto" min="0" max="2.0" step="0.05" value="0.5">
+    <span class="val" id="v-auto">0.50</span>
+  </div>
+
+  <div class="section-title">Display</div>
+  <div class="ctrl-row">
+    <label><input type="checkbox" id="cb-folds" checked> Show Fold Lines</label>
+  </div>
+  <div class="ctrl-row">
+    <label><input type="checkbox" id="cb-meas" checked> Show Measurements</label>
+  </div>
+  <div class="ctrl-row">
+    <label><input type="checkbox" id="cb-autodeploy"> Auto-Deploy</label>
+  </div>
+
+  <div class="section-title">Mode</div>
+  <div class="btn-row">
+    <button class="btn active" id="btn-atlas" onclick="setMode('atlas')">Atlas</button>
+    <button class="btn" id="btn-single" onclick="setMode('single')">Single</button>
+  </div>
+
+  <div class="section-title">Actions</div>
+  <div class="btn-row">
+    <button class="btn accent" onclick="randomizeAll()">Randomize All</button>
+    <button class="btn accent" onclick="mutateAll()">Mutate</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn" onclick="findBeautiful()">Find Beautiful</button>
+  </div>
+
+  <div class="section-title">Presets</div>
+  <div class="btn-row">
+    <button class="btn" onclick="loadPreset('miura44')">Miura 4&times;4</button>
+    <button class="btn" onclick="loadPreset('yoshi6')">Yoshizawa 6</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn" onclick="loadPreset('water33')">Waterbomb 3&times;3</button>
+    <button class="btn" onclick="loadPreset('flat')">Flat Sheet</button>
+  </div>
+</div>
+
+<div id="canvas-container">
+  <div id="hud">
+    <div>Pattern <span class="hv" id="h-pattern">Miura-Ori</span></div>
+    <div>Deploy <span class="hv" id="h-deploy">50%</span></div>
+    <div>Fold Angle <span class="hv" id="h-angle">45.0&deg;</span></div>
+    <div>Compaction <span class="hv" id="h-compact">1.00</span></div>
+    <div>Panels <span class="hv" id="h-panels">16</span></div>
+    <div>Mountain <span class="hv" id="h-mtn">0</span></div>
+    <div>Valley <span class="hv" id="h-val">0</span></div>
+    <div>Max Fold <span class="hv" id="h-maxfold">0&deg;</span></div>
+    <div>FPS <span class="hv" id="h-fps">60</span></div>
+  </div>
+</div>
+
+<div id="info-bar">
+  Plate XIII. &mdash; Rigid origami deployment: single driver fold controls all panels via geometric constraints.
+  Click an atlas cell to inspect.
+</div>
+
+<script>
+// ================================================================
+//  ORIGAMI DEPLOYABLE MECHANISMS
+//  Four fold patterns with 1-DOF deployment control.
+//  Dual view: top-down crease pattern + side cross-section profile.
+// ================================================================
+
+// ---- Global State ----
+let mode = 'atlas';
+let patternType = 'miura';
+let gridX = 4, gridY = 4;
+let aspectRatio = 1.0;
+let deployPct = 50;
+let autoSpeed = 0.5;
+let showFolds = true;
+let showMeasurements = true;
+let autoDeploy = false;
+
+let ATLAS_COLS = 4, ATLAS_ROWS = 4;
+let atlasConfigs = [];
+let singleConfig = null;
+let selectedCell = -1;
+
+let autoPhase = 0;
+let fpsFrames = 0, fpsLast = 0, currentFps = 60;
+
+// ---- Pattern Colors ----
+const PANEL_COLORS = [
+  [245, 235, 220], [230, 220, 200], [240, 230, 215], [225, 215, 195],
+  [235, 225, 208], [220, 210, 190], [238, 228, 212], [228, 218, 198]
+];
+const MTN_COLOR = [180, 50, 50];   // red for mountain folds
+const VAL_COLOR = [50, 80, 180];   // blue for valley folds
+const PANEL_STROKE = [140, 120, 100];
+
+// ================================================================
+//  FOLD PATTERN GENERATORS
+// ================================================================
+
+function makeMiuraConfig(gx, gy, aspect, deploy) {
+  // Miura-ori: parallelogram grid, zigzag mountain/valley pattern
+  // deploy: 0..1 maps to fold angle 0..PI*0.85
+  let maxAngle = Math.PI * 0.85;
+  let theta = deploy * maxAngle;
+  let panelW = 1.0;
+  let panelH = panelW * aspect;
+  let skewAngle = Math.PI / 6; // 30deg parallelogram skew
+
+  let panels = [];
+  let folds = []; // {x1,y1,x2,y2, type:'mountain'|'valley'}
+  let mtnCount = 0, valCount = 0;
+
+  // Top-down view: panels foreshorten as cos(theta) in X direction
+  let cosT = Math.cos(theta);
+  let sinT = Math.sin(theta);
+  let effW = panelW * cosT; // foreshortened panel width
+
+  for (let row = 0; row < gy; row++) {
+    for (let col = 0; col < gx; col++) {
+      let isEvenRow = row % 2 === 0;
+      let isEvenCol = col % 2 === 0;
+
+      // Skew offset for parallelogram
+      let skewOff = isEvenRow ? 0 : panelW * 0.3 * cosT;
+
+      // Top-down panel corners (foreshortened)
+      let x0 = col * effW + skewOff;
+      let y0 = row * panelH;
+      let x1 = x0 + effW;
+      let y1 = y0;
+      let x2 = x1 + (isEvenRow ? 0 : -panelW * 0.15 * cosT);
+      let y2 = y0 + panelH;
+      let x3 = x0 + (isEvenRow ? 0 : -panelW * 0.15 * cosT);
+      let y3 = y0 + panelH;
+
+      let colorIdx = (row * gx + col) % PANEL_COLORS.length;
+      // Shade variation based on fold tilt
+      let tiltShade = (isEvenCol !== isEvenRow) ? 0.92 : 1.0;
+
+      panels.push({
+        topDown: [{x: x0, y: y0}, {x: x1, y: y1}, {x: x2, y: y2}, {x: x3, y: y3}],
+        color: PANEL_COLORS[colorIdx].map(c => c * tiltShade),
+        row, col
+      });
+
+      // Vertical fold lines (mountain/valley alternating by column)
+      if (col > 0) {
+        let fType = (col % 2 === 1) ? 'mountain' : 'valley';
+        folds.push({
+          x1: x0, y1: y0, x2: x3, y2: y3, type: fType
+        });
+        if (fType === 'mountain') mtnCount++; else valCount++;
+      }
+    }
+    // Horizontal fold lines between rows
+    if (row > 0) {
+      for (let col = 0; col < gx; col++) {
+        let skewOff = (row % 2 === 0) ? 0 : panelW * 0.3 * cosT;
+        let prevSkew = ((row - 1) % 2 === 0) ? 0 : panelW * 0.3 * cosT;
+        let x0 = col * effW + skewOff;
+        let x1 = (col + 1) * effW + skewOff;
+        let y = row * panelH;
+        folds.push({
+          x1: x0, y1: y, x2: x1, y2: y, type: (row % 2 === 0) ? 'valley' : 'mountain'
+        });
+        if ((row % 2 === 0)) valCount++; else mtnCount++;
+      }
+    }
+  }
+
+  // Side profile: zigzag cross-section
+  let sideProfile = [];
+  for (let col = 0; col <= gx; col++) {
+    let x = col * effW;
+    let z = 0;
+    if (col > 0 && col < gx) {
+      // Alternating up/down based on column parity
+      z = (col % 2 === 1) ? sinT * panelW * 0.5 : -sinT * panelW * 0.5;
+    }
+    sideProfile.push({x, z});
+  }
+
+  let flatWidth = gx * panelW;
+  let deployedWidth = gx * effW;
+  let compaction = flatWidth / Math.max(deployedWidth, 0.01);
+
+  return {
+    type: 'miura', panels, folds, sideProfile,
+    theta, mtnCount, valCount, compaction,
+    flatWidth, deployedWidth,
+    sideHeight: sinT * panelW,
+    gridX: gx, gridY: gy, aspect
+  };
+}
+
+function makeYoshizawaConfig(numPetals, aspect, deploy) {
+  let maxAngle = Math.PI * 0.45;
+  let theta = deploy * maxAngle;
+  let radius = 1.0;
+  let innerR = radius * 0.25;
+
+  let panels = [];
+  let folds = [];
+  let mtnCount = 0, valCount = 0;
+
+  let cosT = Math.cos(theta);
+  let sinT = Math.sin(theta);
+
+  for (let i = 0; i < numPetals; i++) {
+    let a0 = (i / numPetals) * Math.PI * 2;
+    let a1 = ((i + 1) / numPetals) * Math.PI * 2;
+    let aMid = (a0 + a1) / 2;
+
+    // Outer tip moves inward as deployment increases (perspective foreshortening)
+    let outerR = radius * (1.0 - 0.3 * (1 - cosT));
+    let midR = (innerR + outerR) * 0.5 * (1.0 - 0.15 * (1 - cosT));
+
+    let p0 = {x: innerR * Math.cos(a0), y: innerR * Math.sin(a0)};
+    let p1 = {x: innerR * Math.cos(a1), y: innerR * Math.sin(a1)};
+    let p2 = {x: outerR * Math.cos(a1), y: outerR * Math.sin(a1)};
+    let p3 = {x: outerR * Math.cos(aMid), y: outerR * Math.sin(aMid)};
+    let p4 = {x: outerR * Math.cos(a0), y: outerR * Math.sin(a0)};
+
+    let colorIdx = i % PANEL_COLORS.length;
+    let tiltShade = 0.95 + 0.05 * cosT;
+
+    // Main petal triangle
+    panels.push({
+      topDown: [p0, p1, p3],
+      color: PANEL_COLORS[colorIdx].map(c => c * tiltShade),
+      row: 0, col: i
+    });
+    // Left sub-panel
+    panels.push({
+      topDown: [p0, p3, p4],
+      color: PANEL_COLORS[(colorIdx + 1) % PANEL_COLORS.length].map(c => c * (tiltShade * 0.97)),
+      row: 0, col: i
+    });
+    // Right sub-panel
+    panels.push({
+      topDown: [p1, p2, p3],
+      color: PANEL_COLORS[(colorIdx + 2) % PANEL_COLORS.length].map(c => c * (tiltShade * 0.97)),
+      row: 0, col: i
+    });
+
+    // Radial mountain folds
+    folds.push({x1: p0.x, y1: p0.y, x2: p3.x, y2: p3.y, type: 'mountain'});
+    folds.push({x1: p1.x, y1: p1.y, x2: p3.x, y2: p3.y, type: 'mountain'});
+    mtnCount += 2;
+
+    // Valley folds between petals
+    folds.push({x1: p0.x, y1: p0.y, x2: p4.x, y2: p4.y, type: 'valley'});
+    folds.push({x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, type: 'valley'});
+    valCount += 2;
+  }
+
+  // Side profile: radial cross section shows petals lifting
+  let sideProfile = [];
+  let numPts = 20;
+  for (let i = 0; i <= numPts; i++) {
+    let t = i / numPts;
+    let r = innerR + (radius - innerR) * t;
+    let petalAngle = Math.sin(t * Math.PI) * theta; // lifts in middle
+    let x = r * Math.cos(petalAngle * 0.5);
+    let z = r * Math.sin(petalAngle * 0.3);
+    sideProfile.push({x: t * radius * 2 - radius, z});
+  }
+
+  let flatArea = Math.PI * radius * radius;
+  let deployedSpan = radius * 2 * (1.0 - 0.3 * (1 - cosT));
+  let compaction = (radius * 2) / Math.max(deployedSpan, 0.01);
+
+  return {
+    type: 'yoshizawa', panels, folds, sideProfile,
+    theta, mtnCount, valCount, compaction,
+    flatWidth: radius * 2, deployedWidth: deployedSpan,
+    sideHeight: sinT * radius * 0.5,
+    gridX: numPetals, gridY: 1, aspect
+  };
+}
+
+function makeWaterbombConfig(gx, gy, aspect, deploy) {
+  let maxAngle = Math.PI * 0.7;
+  let theta = deploy * maxAngle;
+  let cellW = 1.0;
+  let cellH = cellW * aspect;
+
+  let panels = [];
+  let folds = [];
+  let mtnCount = 0, valCount = 0;
+
+  let cosT = Math.cos(theta);
+  let sinT = Math.sin(theta);
+
+  // Waterbomb: each cell is an X of folds creating 4 triangles
+  // Cells contract toward center as deployment increases
+  for (let row = 0; row < gy; row++) {
+    for (let col = 0; col < gx; col++) {
+      let cx = (col - gx / 2 + 0.5) * cellW * cosT;
+      let cy = (row - gy / 2 + 0.5) * cellH * cosT;
+      let hw = cellW * 0.5 * cosT;
+      let hh = cellH * 0.5 * cosT;
+
+      let tl = {x: cx - hw, y: cy - hh};
+      let tr = {x: cx + hw, y: cy - hh};
+      let br = {x: cx + hw, y: cy + hh};
+      let bl = {x: cx - hw, y: cy + hh};
+      let center = {x: cx, y: cy};
+
+      let colorIdx = (row * gx + col) % PANEL_COLORS.length;
+
+      // 4 triangles per waterbomb cell
+      let tris = [
+        [tl, tr, center],  // top
+        [tr, br, center],  // right
+        [br, bl, center],  // bottom
+        [bl, tl, center]   // left
+      ];
+
+      for (let t = 0; t < 4; t++) {
+        let shade = 0.92 + (t % 2) * 0.08;
+        panels.push({
+          topDown: tris[t],
+          color: PANEL_COLORS[(colorIdx + t) % PANEL_COLORS.length].map(c => c * shade),
+          row, col
+        });
+      }
+
+      // Diagonal mountain folds (X pattern)
+      folds.push({x1: tl.x, y1: tl.y, x2: br.x, y2: br.y, type: 'mountain'});
+      folds.push({x1: tr.x, y1: tr.y, x2: bl.x, y2: bl.y, type: 'mountain'});
+      mtnCount += 2;
+
+      // Horizontal & vertical valley folds through center
+      folds.push({x1: cx - hw, y1: cy, x2: cx + hw, y2: cy, type: 'valley'});
+      folds.push({x1: cx, y1: cy - hh, x2: cx, y2: cy + hh, type: 'valley'});
+      valCount += 2;
+    }
+  }
+
+  // Side profile: dome shape
+  let sideProfile = [];
+  let totalW = gx * cellW;
+  let numPts = gx * 4;
+  for (let i = 0; i <= numPts; i++) {
+    let t = i / numPts;
+    let x = (t - 0.5) * totalW * cosT;
+    // Dome: max height in center, zero at edges
+    let envl = Math.sin(t * Math.PI);
+    let zigzag = Math.sin(t * gx * Math.PI * 2) * 0.15;
+    let z = envl * sinT * cellW * 0.6 + zigzag * sinT * cellW * 0.3;
+    sideProfile.push({x, z});
+  }
+
+  let flatWidth = gx * cellW;
+  let deployedWidth = gx * cellW * cosT;
+  let compaction = flatWidth / Math.max(deployedWidth, 0.01);
+
+  return {
+    type: 'waterbomb', panels, folds, sideProfile,
+    theta, mtnCount, valCount, compaction,
+    flatWidth, deployedWidth,
+    sideHeight: sinT * cellW * 0.6,
+    gridX: gx, gridY: gy, aspect
+  };
+}
+
+function makeRandomConfig(gx, gy, aspect, deploy) {
+  let maxAngle = Math.PI * 0.6;
+  let theta = deploy * maxAngle;
+  let cellW = 1.0;
+  let cellH = cellW * aspect;
+
+  let panels = [];
+  let folds = [];
+  let mtnCount = 0, valCount = 0;
+
+  let cosT = Math.cos(theta);
+  let sinT = Math.sin(theta);
+
+  // Generate random crease lines across the sheet
+  let sheetW = gx * cellW;
+  let sheetH = gy * cellH;
+
+  // Random interior vertices
+  let numVerts = gx * gy;
+  let verts = [];
+  // Use seeded-ish random based on gx*gy for reproducibility per config
+  let seed = gx * 137 + gy * 251 + Math.round(aspect * 1000);
+  function seededRand() {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    return (seed % 10000) / 10000;
+  }
+
+  // Corner vertices
+  verts.push({x: 0, y: 0});
+  verts.push({x: sheetW, y: 0});
+  verts.push({x: sheetW, y: sheetH});
+  verts.push({x: 0, y: sheetH});
+
+  // Interior random vertices
+  for (let i = 0; i < numVerts; i++) {
+    verts.push({
+      x: 0.1 * sheetW + seededRand() * sheetW * 0.8,
+      y: 0.1 * sheetH + seededRand() * sheetH * 0.8
+    });
+  }
+
+  // Simple triangulation: connect random vertex pairs as fold lines
+  let usedEdges = new Set();
+  for (let i = 0; i < verts.length; i++) {
+    // Connect to 2-3 nearest neighbors
+    let dists = [];
+    for (let j = 0; j < verts.length; j++) {
+      if (j === i) continue;
+      let dx = verts[j].x - verts[i].x;
+      let dy = verts[j].y - verts[i].y;
+      dists.push({j, d: Math.sqrt(dx * dx + dy * dy)});
+    }
+    dists.sort((a, b) => a.d - b.d);
+    let nConn = 2 + Math.floor(seededRand() * 2);
+    for (let k = 0; k < Math.min(nConn, dists.length); k++) {
+      let j = dists[k].j;
+      let edgeKey = Math.min(i, j) + '_' + Math.max(i, j);
+      if (!usedEdges.has(edgeKey)) {
+        usedEdges.add(edgeKey);
+        let isMtn = seededRand() > 0.5;
+        // Apply deployment: shift vertices based on fold
+        let v0 = verts[i];
+        let v1 = verts[j];
+        let fx0 = (v0.x / sheetW - 0.5) * sheetW * cosT + sheetW * 0.5;
+        let fy0 = (v0.y / sheetH - 0.5) * sheetH * cosT + sheetH * 0.5;
+        let fx1 = (v1.x / sheetW - 0.5) * sheetW * cosT + sheetW * 0.5;
+        let fy1 = (v1.y / sheetH - 0.5) * sheetH * cosT + sheetH * 0.5;
+
+        folds.push({
+          x1: fx0, y1: fy0, x2: fx1, y2: fy1,
+          type: isMtn ? 'mountain' : 'valley'
+        });
+        if (isMtn) mtnCount++; else valCount++;
+      }
+    }
+  }
+
+  // Create irregular polygon panels from triangulation
+  // Simplified: generate quads from grid subdivisions
+  let subX = Math.max(2, gx);
+  let subY = Math.max(2, gy);
+  for (let row = 0; row < subY; row++) {
+    for (let col = 0; col < subX; col++) {
+      let x0 = (col / subX) * sheetW * cosT;
+      let y0 = (row / subY) * sheetH * cosT;
+      let x1 = ((col + 1) / subX) * sheetW * cosT;
+      let y1 = ((row + 1) / subY) * sheetH * cosT;
+
+      // Jitter corners slightly for organic feel
+      let jx = sheetW * 0.02;
+      let jy = sheetH * 0.02;
+
+      let colorIdx = (row * subX + col) % PANEL_COLORS.length;
+      let shade = 0.88 + seededRand() * 0.12;
+
+      panels.push({
+        topDown: [
+          {x: x0 + seededRand() * jx, y: y0 + seededRand() * jy},
+          {x: x1 - seededRand() * jx, y: y0 + seededRand() * jy},
+          {x: x1 - seededRand() * jx, y: y1 - seededRand() * jy},
+          {x: x0 + seededRand() * jx, y: y1 - seededRand() * jy}
+        ],
+        color: PANEL_COLORS[colorIdx].map(c => c * shade),
+        row, col
+      });
+    }
+  }
+
+  // Side profile: random bumpy terrain
+  let sideProfile = [];
+  let numPts = 24;
+  for (let i = 0; i <= numPts; i++) {
+    let t = i / numPts;
+    let x = (t - 0.5) * sheetW * cosT;
+    // Multiple random bumps
+    let z = 0;
+    for (let h = 1; h <= 4; h++) {
+      z += Math.sin(t * h * Math.PI * 2 + h * 1.7) * sinT * cellW * 0.3 / h;
+    }
+    sideProfile.push({x, z});
+  }
+
+  let flatWidth = sheetW;
+  let deployedWidth = sheetW * cosT;
+  let compaction = flatWidth / Math.max(deployedWidth, 0.01);
+
+  return {
+    type: 'random', panels, folds, sideProfile,
+    theta, mtnCount, valCount, compaction,
+    flatWidth, deployedWidth,
+    sideHeight: sinT * cellW * 0.5,
+    gridX: gx, gridY: gy, aspect
+  };
+}
+
+// ---- Config generator dispatcher ----
+function makeConfig(type, gx, gy, aspect, deploy) {
+  switch (type) {
+    case 'miura': return makeMiuraConfig(gx, gy, aspect, deploy);
+    case 'yoshizawa': return makeYoshizawaConfig(Math.max(3, gx + gy), aspect, deploy);
+    case 'waterbomb': return makeWaterbombConfig(gx, gy, aspect, deploy);
+    case 'random': return makeRandomConfig(gx, gy, aspect, deploy);
+    default: return makeMiuraConfig(gx, gy, aspect, deploy);
+  }
+}
+
+// ================================================================
+//  ATLAS GENERATION
+// ================================================================
+
+const ATLAS_PATTERNS = ['miura', 'yoshizawa', 'waterbomb', 'random'];
+const ATLAS_GRID_SIZES = [
+  [3,3], [4,4], [5,3], [3,5], [6,4], [4,6], [5,5], [3,4],
+  [4,3], [6,3], [3,6], [5,4], [4,5], [7,3], [3,7], [8,4]
+];
+const ATLAS_ASPECTS = [0.6, 0.8, 1.0, 1.2, 1.5, 0.7, 1.1, 0.9, 1.3, 1.4, 0.5, 0.75, 1.25, 1.0, 0.85, 1.15];
+
+function initAtlas() {
+  atlasConfigs = [];
+  for (let i = 0; i < ATLAS_COLS * ATLAS_ROWS; i++) {
+    let pt = ATLAS_PATTERNS[i % ATLAS_PATTERNS.length];
+    let gs = ATLAS_GRID_SIZES[i % ATLAS_GRID_SIZES.length];
+    let asp = ATLAS_ASPECTS[i % ATLAS_ASPECTS.length];
+    atlasConfigs.push({patternType: pt, gx: gs[0], gy: gs[1], aspect: asp});
+  }
+}
+
+function randomizeAll() {
+  for (let i = 0; i < atlasConfigs.length; i++) {
+    let pt = ATLAS_PATTERNS[Math.floor(Math.random() * ATLAS_PATTERNS.length)];
+    let gx = 2 + Math.floor(Math.random() * 6);
+    let gy = 2 + Math.floor(Math.random() * 6);
+    let asp = 0.5 + Math.random() * 1.5;
+    atlasConfigs[i] = {patternType: pt, gx, gy, aspect: asp};
+  }
+}
+
+function mutateAll() {
+  for (let i = 0; i < atlasConfigs.length; i++) {
+    let c = atlasConfigs[i];
+    if (Math.random() < 0.3) c.patternType = ATLAS_PATTERNS[Math.floor(Math.random() * ATLAS_PATTERNS.length)];
+    c.gx = Math.max(2, Math.min(8, c.gx + Math.floor(Math.random() * 3) - 1));
+    c.gy = Math.max(2, Math.min(8, c.gy + Math.floor(Math.random() * 3) - 1));
+    c.aspect = Math.max(0.5, Math.min(2.0, c.aspect + (Math.random() - 0.5) * 0.3));
+  }
+}
+
+// ---- Beauty scoring ----
+function scoreConfig(cfg) {
+  let deployed = makeConfig(cfg.patternType, cfg.gx, cfg.gy, cfg.aspect, 0.7);
+  // compaction_ratio * deployment_smoothness * visual_complexity
+  let compactScore = Math.min(deployed.compaction, 5.0);
+
+  // Smoothness: check side profile for sudden jumps
+  let maxJump = 0;
+  for (let i = 1; i < deployed.sideProfile.length; i++) {
+    let dz = Math.abs(deployed.sideProfile[i].z - deployed.sideProfile[i - 1].z);
+    if (dz > maxJump) maxJump = dz;
+  }
+  let smoothness = 1.0 / (1.0 + maxJump * 10);
+
+  // Visual complexity: panel count * fold variety
+  let foldVariety = deployed.mtnCount > 0 && deployed.valCount > 0 ?
+    Math.min(deployed.mtnCount, deployed.valCount) / Math.max(deployed.mtnCount, deployed.valCount) : 0.1;
+  let complexity = deployed.panels.length * foldVariety;
+
+  return compactScore * smoothness * complexity;
+}
+
+let beautifulSearching = false;
+let beautifulChunk = 0;
+let beautifulBest = null;
+let beautifulBestScore = -1;
+let beautifulTotal = 0;
+
+function findBeautiful() {
+  if (beautifulSearching) return;
+  beautifulSearching = true;
+  beautifulChunk = 0;
+  beautifulBest = null;
+  beautifulBestScore = -1;
+  beautifulTotal = 200;
+  searchChunk();
+}
+
+function searchChunk() {
+  if (!beautifulSearching) return;
+  let chunkSize = 20;
+  for (let i = 0; i < chunkSize && beautifulChunk < beautifulTotal; i++, beautifulChunk++) {
+    let pt = ATLAS_PATTERNS[Math.floor(Math.random() * ATLAS_PATTERNS.length)];
+    let gx = 2 + Math.floor(Math.random() * 6);
+    let gy = 2 + Math.floor(Math.random() * 6);
+    let asp = 0.5 + Math.random() * 1.5;
+    let candidate = {patternType: pt, gx, gy, aspect: asp};
+    let sc = scoreConfig(candidate);
+    if (sc > beautifulBestScore) {
+      beautifulBestScore = sc;
+      beautifulBest = candidate;
+    }
+  }
+
+  if (beautifulChunk >= beautifulTotal) {
+    beautifulSearching = false;
+    if (beautifulBest) {
+      if (mode === 'single') {
+        singleConfig = beautifulBest;
+      } else {
+        // Replace worst cell
+        let worstIdx = 0, worstScore = Infinity;
+        for (let i = 0; i < atlasConfigs.length; i++) {
+          let sc = scoreConfig(atlasConfigs[i]);
+          if (sc < worstScore) { worstScore = sc; worstIdx = i; }
+        }
+        atlasConfigs[worstIdx] = beautifulBest;
+      }
+    }
+  } else {
+    setTimeout(searchChunk, 10);
+  }
+}
+
+// ---- Presets ----
+function loadPreset(name) {
+  switch (name) {
+    case 'miura44':
+      patternType = 'miura'; gridX = 4; gridY = 4; aspectRatio = 1.0;
+      break;
+    case 'yoshi6':
+      patternType = 'yoshizawa'; gridX = 6; gridY = 1; aspectRatio = 1.0;
+      break;
+    case 'water33':
+      patternType = 'waterbomb'; gridX = 3; gridY = 3; aspectRatio = 1.0;
+      break;
+    case 'flat':
+      patternType = 'miura'; gridX = 4; gridY = 4; aspectRatio = 1.0; deployPct = 0;
+      break;
+  }
+  updateSliders();
+  if (mode === 'single') {
+    singleConfig = {patternType, gx: gridX, gy: gridY, aspect: aspectRatio};
+  }
+}
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-atlas').className = 'btn' + (m === 'atlas' ? ' active' : '');
+  document.getElementById('btn-single').className = 'btn' + (m === 'single' ? ' active' : '');
+  if (m === 'single' && !singleConfig) {
+    singleConfig = selectedCell >= 0 ? atlasConfigs[selectedCell] :
+      {patternType, gx: gridX, gy: gridY, aspect: aspectRatio};
+  }
+}
+
+function updateSliders() {
+  document.getElementById('sel-pattern').value = patternType;
+  document.getElementById('sl-gridx').value = gridX;
+  document.getElementById('v-gridx').textContent = gridX;
+  document.getElementById('sl-gridy').value = gridY;
+  document.getElementById('v-gridy').textContent = gridY;
+  document.getElementById('sl-aspect').value = aspectRatio;
+  document.getElementById('v-aspect').textContent = aspectRatio.toFixed(2);
+  document.getElementById('sl-deploy').value = deployPct;
+  document.getElementById('v-deploy').textContent = deployPct + '%';
+}
+
+// ================================================================
+//  DRAWING FUNCTIONS
+// ================================================================
+
+function drawTopDown(p, cfg, cx, cy, scale) {
+  p.push();
+  p.translate(cx, cy);
+
+  // Draw panels
+  for (let panel of cfg.panels) {
+    let pts = panel.topDown;
+    p.fill(panel.color[0], panel.color[1], panel.color[2]);
+    p.stroke(PANEL_STROKE[0], PANEL_STROKE[1], PANEL_STROKE[2]);
+    p.strokeWeight(0.5);
+    p.beginShape();
+    for (let pt of pts) {
+      p.vertex(pt.x * scale, pt.y * scale);
+    }
+    p.endShape(p.CLOSE);
+  }
+
+  // Draw fold lines
+  if (showFolds) {
+    for (let fold of cfg.folds) {
+      if (fold.type === 'mountain') {
+        p.stroke(MTN_COLOR[0], MTN_COLOR[1], MTN_COLOR[2], 200);
+        p.strokeWeight(1.5);
+        drawDashed(p, fold.x1 * scale, fold.y1 * scale, fold.x2 * scale, fold.y2 * scale, 6, 3);
+      } else {
+        p.stroke(VAL_COLOR[0], VAL_COLOR[1], VAL_COLOR[2], 200);
+        p.strokeWeight(1.5);
+        drawDashed(p, fold.x1 * scale, fold.y1 * scale, fold.x2 * scale, fold.y2 * scale, 3, 3);
+      }
+    }
+  }
+
+  p.pop();
+}
+
+function drawDashed(p, x1, y1, x2, y2, dashLen, gapLen) {
+  let dx = x2 - x1, dy = y2 - y1;
+  let dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist < 1) return;
+  let ux = dx / dist, uy = dy / dist;
+  let pos = 0;
+  let drawing = true;
+  while (pos < dist) {
+    let segLen = drawing ? dashLen : gapLen;
+    let end = Math.min(pos + segLen, dist);
+    if (drawing) {
+      p.line(x1 + ux * pos, y1 + uy * pos, x1 + ux * end, y1 + uy * end);
+    }
+    pos = end;
+    drawing = !drawing;
+  }
+}
+
+function drawSideView(p, cfg, cx, cy, scaleX, scaleY) {
+  p.push();
+  p.translate(cx, cy);
+
+  let profile = cfg.sideProfile;
+  if (profile.length < 2) { p.pop(); return; }
+
+  // Ground reference line
+  p.stroke(180, 170, 155);
+  p.strokeWeight(0.5);
+  let minX = profile[0].x * scaleX;
+  let maxX = profile[profile.length - 1].x * scaleX;
+  p.line(minX - 10, 0, maxX + 10, 0);
+
+  // Panel thickness band
+  let thickness = scaleY * 0.03;
+  p.fill(230, 220, 200, 100);
+  p.noStroke();
+  p.beginShape();
+  for (let pt of profile) {
+    p.vertex(pt.x * scaleX, -pt.z * scaleY - thickness);
+  }
+  for (let i = profile.length - 1; i >= 0; i--) {
+    p.vertex(profile[i].x * scaleX, -profile[i].z * scaleY + thickness);
+  }
+  p.endShape(p.CLOSE);
+
+  // Profile line
+  p.stroke(120, 90, 60);
+  p.strokeWeight(2);
+  p.noFill();
+  p.beginShape();
+  for (let pt of profile) {
+    p.vertex(pt.x * scaleX, -pt.z * scaleY);
+  }
+  p.endShape();
+
+  // Hinge dots at fold points
+  if (showFolds) {
+    p.fill(MTN_COLOR[0], MTN_COLOR[1], MTN_COLOR[2]);
+    p.noStroke();
+    for (let i = 1; i < profile.length - 1; i++) {
+      let dz1 = profile[i].z - profile[i - 1].z;
+      let dz2 = profile[i + 1].z - profile[i].z;
+      if (Math.abs(dz2 - dz1) > 0.01) {
+        p.ellipse(profile[i].x * scaleX, -profile[i].z * scaleY, 4, 4);
+      }
+    }
+  }
+
+  // Measurements
+  if (showMeasurements && cfg.sideHeight > 0.01) {
+    // Height indicator
+    let maxZ = 0, minZ = 0;
+    for (let pt of profile) {
+      if (pt.z > maxZ) maxZ = pt.z;
+      if (pt.z < minZ) minZ = pt.z;
+    }
+    let hTop = -maxZ * scaleY;
+    let hBot = -minZ * scaleY;
+    let arrowX = maxX + 20;
+
+    p.stroke(100, 80, 60, 150);
+    p.strokeWeight(1);
+    p.line(arrowX, hTop, arrowX, hBot);
+    p.line(arrowX - 3, hTop + 5, arrowX, hTop);
+    p.line(arrowX + 3, hTop + 5, arrowX, hTop);
+    p.line(arrowX - 3, hBot - 5, arrowX, hBot);
+    p.line(arrowX + 3, hBot - 5, arrowX, hBot);
+
+    p.noStroke();
+    p.fill(100, 80, 60);
+    p.textSize(9);
+    p.textAlign(p.LEFT, p.CENTER);
+    let h = (maxZ - minZ);
+    p.text('h=' + h.toFixed(2), arrowX + 6, (hTop + hBot) / 2);
+
+    // Width indicator
+    p.stroke(100, 80, 60, 150);
+    p.strokeWeight(1);
+    let wY = Math.max(hBot, 0) + 15;
+    p.line(minX, wY, maxX, wY);
+    p.noStroke();
+    p.fill(100, 80, 60);
+    p.textAlign(p.CENTER, p.TOP);
+    p.text('w=' + (cfg.deployedWidth || 0).toFixed(2), (minX + maxX) / 2, wY + 3);
+  }
+
+  p.pop();
+}
+
+function drawCompactDual(p, cfg, x, y, w, h, label) {
+  // Compact version for atlas cells: top-down on top half, side on bottom half
+  let topH = h * 0.55;
+  let botH = h * 0.40;
+  let margin = 4;
+
+  // Background
+  p.fill(250, 248, 242);
+  p.stroke(200, 190, 175);
+  p.strokeWeight(0.5);
+  p.rect(x, y, w, h, 3);
+
+  // Compute bounding box of top-down panels for scaling
+  let minPX = Infinity, maxPX = -Infinity, minPY = Infinity, maxPY = -Infinity;
+  for (let panel of cfg.panels) {
+    for (let pt of panel.topDown) {
+      if (pt.x < minPX) minPX = pt.x;
+      if (pt.x > maxPX) maxPX = pt.x;
+      if (pt.y < minPY) minPY = pt.y;
+      if (pt.y > maxPY) maxPY = pt.y;
+    }
+  }
+  let rangeX = maxPX - minPX || 1;
+  let rangeY = maxPY - minPY || 1;
+  let topScale = Math.min((w - margin * 4) / rangeX, (topH - margin * 2) / rangeY);
+  let topCX = x + w / 2 - (minPX + maxPX) / 2 * topScale;
+  let topCY = y + margin + topH / 2 - (minPY + maxPY) / 2 * topScale;
+
+  drawTopDown(p, cfg, topCX, topCY, topScale);
+
+  // Divider
+  p.stroke(210, 200, 185);
+  p.strokeWeight(0.5);
+  p.line(x + margin, y + topH, x + w - margin, y + topH);
+
+  // Side view
+  let sMinX = Infinity, sMaxX = -Infinity;
+  for (let pt of cfg.sideProfile) {
+    if (pt.x < sMinX) sMinX = pt.x;
+    if (pt.x > sMaxX) sMaxX = pt.x;
+  }
+  let sRangeX = sMaxX - sMinX || 1;
+  let sMaxZ = 0;
+  for (let pt of cfg.sideProfile) {
+    if (Math.abs(pt.z) > sMaxZ) sMaxZ = Math.abs(pt.z);
+  }
+  sMaxZ = Math.max(sMaxZ, 0.1);
+  let sScaleX = (w - margin * 6) / sRangeX;
+  let sScaleY = (botH - margin * 2) / (sMaxZ * 2.5);
+  let sCX = x + w / 2 - (sMinX + sMaxX) / 2 * sScaleX;
+  let sCY = y + topH + botH / 2;
+
+  // Suppress measurements in atlas mode
+  let savedMeas = showMeasurements;
+  showMeasurements = false;
+  drawSideView(p, cfg, sCX, sCY, sScaleX, sScaleY);
+  showMeasurements = savedMeas;
+
+  // Label
+  p.noStroke();
+  p.fill(120, 100, 80);
+  p.textSize(8);
+  p.textAlign(p.LEFT, p.BOTTOM);
+  let typeLabel = cfg.type.charAt(0).toUpperCase() + cfg.type.slice(1);
+  p.text(typeLabel + ' ' + cfg.gridX + 'x' + cfg.gridY, x + 4, y + h - 3);
+
+  // Compaction badge
+  p.textAlign(p.RIGHT, p.BOTTOM);
+  p.fill(140, 90, 50);
+  p.text(cfg.compaction.toFixed(1) + 'x', x + w - 4, y + h - 3);
+}
+
+// ================================================================
+//  P5 SKETCH
+// ================================================================
+const sketch = (p) => {
+  let cw, ch;
+
+  p.setup = function() {
+    let container = document.getElementById('canvas-container');
+    cw = container.offsetWidth;
+    ch = container.offsetHeight;
+    p.createCanvas(cw, ch);
+    p.textFont('Georgia');
+    initAtlas();
+    singleConfig = {patternType, gx: gridX, gy: gridY, aspect: aspectRatio};
+  };
+
+  p.windowResized = function() {
+    let container = document.getElementById('canvas-container');
+    cw = container.offsetWidth;
+    ch = container.offsetHeight;
+    p.resizeCanvas(cw, ch);
+  };
+
+  p.draw = function() {
+    p.background(245, 243, 238);
+
+    // FPS tracking
+    fpsFrames++;
+    if (p.millis() - fpsLast > 500) {
+      currentFps = Math.round(fpsFrames * 1000 / (p.millis() - fpsLast));
+      fpsFrames = 0;
+      fpsLast = p.millis();
+    }
+
+    // Auto-deploy
+    if (autoDeploy) {
+      autoPhase += autoSpeed * 0.015;
+      deployPct = Math.round((Math.sin(autoPhase) * 0.5 + 0.5) * 100);
+      document.getElementById('sl-deploy').value = deployPct;
+      document.getElementById('v-deploy').textContent = deployPct + '%';
+    }
+
+    let deploy = deployPct / 100;
+
+    if (mode === 'atlas') {
+      drawAtlas(p, deploy);
+    } else {
+      drawSingle(p, deploy);
+    }
+
+    updateHUD(deploy);
+  };
+
+  function drawAtlas(p, deploy) {
+    let margin = 8;
+    let cellW = (cw - margin * (ATLAS_COLS + 1)) / ATLAS_COLS;
+    let cellH = (ch - margin * (ATLAS_ROWS + 1) - 24) / ATLAS_ROWS;
+
+    for (let row = 0; row < ATLAS_ROWS; row++) {
+      for (let col = 0; col < ATLAS_COLS; col++) {
+        let idx = row * ATLAS_COLS + col;
+        if (idx >= atlasConfigs.length) continue;
+
+        let ac = atlasConfigs[idx];
+        // Each atlas cell animates at slightly different phase
+        let cellDeploy = deploy;
+        if (autoDeploy) {
+          cellDeploy = (Math.sin(autoPhase + idx * 0.4) * 0.5 + 0.5);
+        }
+
+        let cfg = makeConfig(ac.patternType, ac.gx, ac.gy, ac.aspect, cellDeploy);
+
+        let cx = margin + col * (cellW + margin);
+        let cy = margin + row * (cellH + margin);
+
+        // Highlight selected
+        if (idx === selectedCell) {
+          p.stroke(139, 69, 19);
+          p.strokeWeight(2);
+          p.noFill();
+          p.rect(cx - 2, cy - 2, cellW + 4, cellH + 4, 4);
+        }
+
+        drawCompactDual(p, cfg, cx, cy, cellW, cellH);
+      }
+    }
+  }
+
+  function drawSingle(p, deploy) {
+    let cfg;
+    if (singleConfig) {
+      cfg = makeConfig(singleConfig.patternType, singleConfig.gx, singleConfig.gy, singleConfig.aspect, deploy);
+    } else {
+      cfg = makeConfig(patternType, gridX, gridY, aspectRatio, deploy);
+    }
+
+    let halfW = cw / 2;
+    let viewH = ch - 30;
+    let margin = 30;
+
+    // View labels
+    p.noStroke();
+    p.fill(140, 120, 100);
+    p.textSize(11);
+    p.textAlign(p.CENTER, p.TOP);
+    p.text('TOP-DOWN VIEW', halfW / 2, 8);
+    p.text('SIDE CROSS-SECTION', halfW + halfW / 2, 8);
+
+    // Divider
+    p.stroke(200, 190, 175);
+    p.strokeWeight(1);
+    p.line(halfW, 4, halfW, viewH);
+
+    // --- Top-down view ---
+    let minPX = Infinity, maxPX = -Infinity, minPY = Infinity, maxPY = -Infinity;
+    for (let panel of cfg.panels) {
+      for (let pt of panel.topDown) {
+        if (pt.x < minPX) minPX = pt.x;
+        if (pt.x > maxPX) maxPX = pt.x;
+        if (pt.y < minPY) minPY = pt.y;
+        if (pt.y > maxPY) maxPY = pt.y;
+      }
+    }
+    let rangeX = maxPX - minPX || 1;
+    let rangeY = maxPY - minPY || 1;
+    let topScale = Math.min((halfW - margin * 2) / rangeX, (viewH - margin * 2) / rangeY);
+    let topCX = halfW / 2 - (minPX + maxPX) / 2 * topScale;
+    let topCY = viewH / 2 + 10 - (minPY + maxPY) / 2 * topScale;
+
+    drawTopDown(p, cfg, topCX, topCY, topScale);
+
+    // --- Side view ---
+    let sMinX = Infinity, sMaxX = -Infinity, sMaxZ = 0;
+    for (let pt of cfg.sideProfile) {
+      if (pt.x < sMinX) sMinX = pt.x;
+      if (pt.x > sMaxX) sMaxX = pt.x;
+      if (Math.abs(pt.z) > sMaxZ) sMaxZ = Math.abs(pt.z);
+    }
+    sMaxZ = Math.max(sMaxZ, 0.1);
+    let sRangeX = sMaxX - sMinX || 1;
+    let sScaleX = (halfW - margin * 3) / sRangeX;
+    let sScaleY = (viewH - margin * 3) / (sMaxZ * 3);
+    let sCX = halfW + halfW / 2 - (sMinX + sMaxX) / 2 * sScaleX;
+    let sCY = viewH / 2 + 10;
+
+    drawSideView(p, cfg, sCX, sCY, sScaleX, sScaleY);
+
+    // Deployment progress bar
+    let barW = cw - 60;
+    let barY = viewH + 6;
+    p.fill(230, 225, 215);
+    p.noStroke();
+    p.rect(30, barY, barW, 8, 4);
+    // Filled portion
+    let fillColor = p.lerpColor(p.color(80, 140, 80), p.color(180, 80, 40), deploy);
+    p.fill(fillColor);
+    p.rect(30, barY, barW * deploy, 8, 4);
+    // Label
+    p.fill(120, 100, 80);
+    p.textSize(8);
+    p.textAlign(p.LEFT, p.CENTER);
+    p.text('FLAT', 30, barY + 16);
+    p.textAlign(p.RIGHT, p.CENTER);
+    p.text('DEPLOYED', 30 + barW, barY + 16);
+
+    // Fold legend
+    if (showFolds) {
+      let legendY = 28;
+      p.strokeWeight(2);
+      p.stroke(MTN_COLOR[0], MTN_COLOR[1], MTN_COLOR[2]);
+      drawDashed(p, 12, legendY, 50, legendY, 6, 3);
+      p.noStroke();
+      p.fill(MTN_COLOR[0], MTN_COLOR[1], MTN_COLOR[2]);
+      p.textSize(9);
+      p.textAlign(p.LEFT, p.CENTER);
+      p.text('Mountain', 55, legendY);
+
+      legendY += 14;
+      p.stroke(VAL_COLOR[0], VAL_COLOR[1], VAL_COLOR[2]);
+      p.strokeWeight(2);
+      drawDashed(p, 12, legendY, 50, legendY, 3, 3);
+      p.noStroke();
+      p.fill(VAL_COLOR[0], VAL_COLOR[1], VAL_COLOR[2]);
+      p.text('Valley', 55, legendY);
+    }
+
+    // Store for HUD
+    p._lastCfg = cfg;
+  }
+
+  p.mousePressed = function() {
+    if (mode === 'atlas') {
+      let margin = 8;
+      let cellW = (cw - margin * (ATLAS_COLS + 1)) / ATLAS_COLS;
+      let cellH = (ch - margin * (ATLAS_ROWS + 1) - 24) / ATLAS_ROWS;
+      let mx = p.mouseX, my = p.mouseY;
+
+      for (let row = 0; row < ATLAS_ROWS; row++) {
+        for (let col = 0; col < ATLAS_COLS; col++) {
+          let cx = margin + col * (cellW + margin);
+          let cy = margin + row * (cellH + margin);
+          if (mx >= cx && mx <= cx + cellW && my >= cy && my <= cy + cellH) {
+            let idx = row * ATLAS_COLS + col;
+            selectedCell = idx;
+            singleConfig = atlasConfigs[idx];
+            setMode('single');
+            return;
+          }
+        }
+      }
+    }
+  };
+
+  function updateHUD(deploy) {
+    let cfg;
+    if (mode === 'single' && p._lastCfg) {
+      cfg = p._lastCfg;
+    } else if (mode === 'single' && singleConfig) {
+      cfg = makeConfig(singleConfig.patternType, singleConfig.gx, singleConfig.gy, singleConfig.aspect, deploy);
+    } else {
+      cfg = makeConfig(patternType, gridX, gridY, aspectRatio, deploy);
+    }
+
+    let typeNames = {miura: 'Miura-Ori', yoshizawa: 'Yoshizawa', waterbomb: 'Waterbomb', random: 'Random'};
+    let typeName = typeNames[cfg.type] || cfg.type;
+    let angleDeg = (cfg.theta * 180 / Math.PI).toFixed(1);
+    let maxFold = angleDeg;
+
+    document.getElementById('h-pattern').textContent = typeName;
+    document.getElementById('h-deploy').textContent = deployPct + '%';
+    document.getElementById('h-angle').innerHTML = angleDeg + '&deg;';
+    document.getElementById('h-compact').textContent = cfg.compaction.toFixed(2);
+    document.getElementById('h-panels').textContent = cfg.panels.length;
+    document.getElementById('h-mtn').textContent = cfg.mtnCount;
+    document.getElementById('h-val').textContent = cfg.valCount;
+    document.getElementById('h-maxfold').innerHTML = maxFold + '&deg;';
+    document.getElementById('h-fps').textContent = currentFps;
+  }
+};
+
+new p5(sketch, 'canvas-container');
+
+// ================================================================
+//  SLIDER / CONTROL BINDINGS
+// ================================================================
+function bindSlider(id, vid, callback) {
+  let sl = document.getElementById(id);
+  if (!sl) return;
+  sl.addEventListener('input', () => {
+    let v = parseFloat(sl.value);
+    callback(v);
+  });
+}
+
+function bindSelect(id, callback) {
+  let sel = document.getElementById(id);
+  if (!sel) return;
+  sel.addEventListener('change', () => callback(sel.value));
+}
+
+bindSelect('sel-pattern', (v) => {
+  patternType = v;
+  if (mode === 'single' && singleConfig) singleConfig.patternType = v;
+});
+
+bindSlider('sl-gridx', 'v-gridx', (v) => {
+  gridX = Math.round(v);
+  document.getElementById('v-gridx').textContent = gridX;
+  if (mode === 'single' && singleConfig) singleConfig.gx = gridX;
+});
+
+bindSlider('sl-gridy', 'v-gridy', (v) => {
+  gridY = Math.round(v);
+  document.getElementById('v-gridy').textContent = gridY;
+  if (mode === 'single' && singleConfig) singleConfig.gy = gridY;
+});
+
+bindSlider('sl-aspect', 'v-aspect', (v) => {
+  aspectRatio = v;
+  document.getElementById('v-aspect').textContent = v.toFixed(2);
+  if (mode === 'single' && singleConfig) singleConfig.aspect = v;
+});
+
+bindSlider('sl-deploy', 'v-deploy', (v) => {
+  deployPct = Math.round(v);
+  document.getElementById('v-deploy').textContent = deployPct + '%';
+});
+
+bindSlider('sl-auto', 'v-auto', (v) => {
+  autoSpeed = v;
+  document.getElementById('v-auto').textContent = v.toFixed(2);
+});
+
+document.getElementById('cb-folds').addEventListener('change', (e) => {
+  showFolds = e.target.checked;
+});
+
+document.getElementById('cb-meas').addEventListener('change', (e) => {
+  showMeasurements = e.target.checked;
+});
+
+document.getElementById('cb-autodeploy').addEventListener('change', (e) => {
+  autoDeploy = e.target.checked;
+});
+</script>
+</body>
+</html>
