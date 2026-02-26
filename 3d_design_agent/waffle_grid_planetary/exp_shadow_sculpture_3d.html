@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Shadow Sculpture Explorer &mdash; 3D Form to 2D Shadow Projection</title>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f5f3ee; overflow: hidden; font-family: 'Georgia', serif; display: flex; height: 100vh; }
+
+  #sidebar {
+    width: 280px; min-width: 280px; background: #f0ede6;
+    border-right: 1px solid #c8c0b0; overflow-y: auto; padding: 12px 14px;
+    font-size: 12px; color: #444;
+  }
+  #sidebar h1 { font-size: 14px; letter-spacing: 1.5px; color: #333; margin-bottom: 2px; font-weight: normal; }
+  #sidebar .subtitle { font-size: 10px; color: #888; margin-bottom: 12px; font-style: italic; }
+
+  .section-title {
+    font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: #8b7355;
+    margin-top: 14px; margin-bottom: 6px; border-bottom: 1px solid #d8d0c0; padding-bottom: 3px;
+  }
+  .ctrl-row { display: flex; align-items: center; margin-bottom: 5px; }
+  .ctrl-row label { flex: 0 0 95px; font-size: 11px; color: #666; }
+  .ctrl-row input[type="range"] { flex: 1; height: 3px; accent-color: #8b4513; }
+  .ctrl-row .val { flex: 0 0 40px; text-align: right; font-size: 10px; color: #555; font-family: 'Consolas', monospace; }
+
+  select {
+    width: 100%; padding: 4px 8px; font-size: 11px; font-family: 'Georgia', serif;
+    background: #faf8f3; color: #555; border: 1px solid #c8c0b0; border-radius: 3px; margin-bottom: 4px;
+  }
+
+  .btn-row { display: flex; gap: 5px; margin: 8px 0; flex-wrap: wrap; }
+  .btn {
+    padding: 5px 10px; font-size: 10px; font-family: 'Georgia', serif;
+    background: #555; color: #f5f3ee; border: none; cursor: pointer;
+    letter-spacing: 0.5px; border-radius: 2px; transition: background 0.15s;
+  }
+  .btn:hover { background: #333; }
+  .btn.active { background: #8b4513; }
+  .btn.accent { background: #2a6848; }
+  .btn.accent:hover { background: #1a4830; }
+  .btn.danger { background: #8b2020; }
+  .btn:disabled { background: #aaa; cursor: not-allowed; }
+
+  #canvas-container { flex: 1; position: relative; }
+  #canvas-container canvas { display: block; }
+
+  #info-bar {
+    position: fixed; bottom: 0; left: 280px; right: 0; z-index: 100;
+    background: rgba(245,243,238,0.92); border-top: 1px solid #bbb;
+    padding: 4px 16px; font-size: 10px; color: #777; font-style: italic;
+  }
+
+  #hud {
+    position: absolute; top: 8px; right: 12px; background: rgba(245,243,238,0.9);
+    border: 1px solid #c8c0b0; border-radius: 4px; padding: 8px 12px;
+    font-size: 10px; line-height: 1.7; color: #666; min-width: 180px; pointer-events: none;
+  }
+  #hud .hv { color: #444; font-family: 'Consolas', monospace; float: right; }
+
+  .progress-bar { width: 100%; height: 3px; background: #ddd; border-radius: 2px; margin: 4px 0; }
+  .progress-bar-fill { height: 100%; background: #8b4513; border-radius: 2px; transition: width 0.1s; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #c8c0b0; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h1>SHADOW SCULPTURE</h1>
+  <div class="subtitle">3D Form &rarr; 2D Shadow Projection Explorer &mdash; WEBGL</div>
+
+  <div class="section-title">Shape</div>
+  <select id="sel-shape" onchange="onShapeTypeChange()">
+    <option value="voxels">Random Voxels</option>
+    <option value="wireframe">Wireframe Sculpture</option>
+    <option value="extruded">Extruded Profile</option>
+    <option value="boolean" selected>Boolean Primitives</option>
+  </select>
+  <div class="ctrl-row">
+    <label>Complexity</label>
+    <input type="range" id="sl-complexity" min="3" max="15" step="1" value="5">
+    <span class="val" id="v-complexity">5</span>
+  </div>
+
+  <div class="section-title">Light Direction</div>
+  <div class="ctrl-row">
+    <label>Azimuth</label>
+    <input type="range" id="sl-azimuth" min="0" max="360" step="1" value="45">
+    <span class="val" id="v-azimuth">45&deg;</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Elevation</label>
+    <input type="range" id="sl-elevation" min="10" max="80" step="1" value="45">
+    <span class="val" id="v-elevation">45&deg;</span>
+  </div>
+
+  <div class="section-title">Rotation</div>
+  <div class="ctrl-row">
+    <label>Speed</label>
+    <input type="range" id="sl-speed" min="0" max="2.0" step="0.05" value="0.5">
+    <span class="val" id="v-speed">0.50</span>
+  </div>
+  <select id="sel-axis">
+    <option value="Y" selected>Y Axis</option>
+    <option value="X">X Axis</option>
+    <option value="Z">Z Axis</option>
+    <option value="diagonal">Diagonal (1,1,1)</option>
+  </select>
+
+  <div class="section-title">Display</div>
+  <div class="btn-row">
+    <button class="btn" id="btn-light" onclick="toggleLight()">Light Arrow</button>
+    <button class="btn active" id="btn-outline" onclick="toggleOutline()">Shadow Outline</button>
+    <button class="btn" id="btn-grid-plane" onclick="toggleGridPlane()">Ground Grid</button>
+  </div>
+
+  <div class="section-title">Mode</div>
+  <div class="btn-row">
+    <button class="btn active" id="btn-atlas" onclick="setMode('atlas')">Atlas 4&times;4</button>
+    <button class="btn" id="btn-single" onclick="setMode('single')">Single</button>
+  </div>
+
+  <div class="section-title">Actions</div>
+  <div class="btn-row">
+    <button class="btn accent" onclick="randomizeAll()">Randomize</button>
+    <button class="btn" onclick="mutateAll()">Mutate</button>
+    <button class="btn danger" id="btn-beautiful" onclick="findBeautiful()">Find Beautiful</button>
+  </div>
+  <div id="progress-container" style="display:none;">
+    <div class="progress-bar"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
+    <span style="font-size:9px;color:#888;" id="progress-text">Searching...</span>
+  </div>
+
+  <div class="section-title">Shadow Profile</div>
+  <div id="shadow-profile" style="height:120px;background:#faf8f3;border:1px solid #d8d0c0;border-radius:3px;margin-top:4px;position:relative;overflow:hidden;">
+    <canvas id="shadow-canvas" width="250" height="120"></canvas>
+  </div>
+  <div style="font-size:9px;color:#999;margin-top:2px;">2D shadow silhouette from current light direction</div>
+</div>
+
+<div id="canvas-container">
+  <div id="hud">
+    <div>FPS <span class="hv" id="hud-fps">--</span></div>
+    <div>Mode <span class="hv" id="hud-mode">atlas</span></div>
+    <div>Shape <span class="hv" id="hud-shape">boolean</span></div>
+    <div>Primitives <span class="hv" id="hud-prims">--</span></div>
+    <div>Rotation <span class="hv" id="hud-rot">0.0&deg;</span></div>
+    <div>Shadow Area <span class="hv" id="hud-area">--</span></div>
+    <div>Complexity <span class="hv" id="hud-complexity">--</span></div>
+    <div>Variance <span class="hv" id="hud-variance">--</span></div>
+    <div>Light <span class="hv" id="hud-light">45&deg; / 45&deg;</span></div>
+  </div>
+</div>
+
+<div id="info-bar">
+  Plate XII. &mdash; Random 3D shapes cast shadows on a ground plane via parallel light projection. As the object rotates, shadow complexity changes. Click atlas cells to inspect.
+</div>
+
+<script>
+// ========================================================
+// SHADOW SCULPTURE EXPLORER
+// p5.js WEBGL. Y+ = DOWN, Y- = UP.
+// ========================================================
+
+const COLS = 4, ROWS = 4;
+const FIND_BEAUTIFUL_TOTAL = 120;
+const FIND_BEAUTIFUL_CHUNK = 15;
+
+// ===== STATE =====
+let mode = 'atlas';
+let cells = [];
+let selectedIdx = -1;
+let hoverCell = -1;
+let cw, ch;
+let findBeautifulRunning = false;
+let rotAngle = 0;
+let showLight = false;
+let showOutline = true;
+let showGridPlane = false;
+
+// Single mode orbit
+let orbitRotX = -0.45;
+let orbitRotY = 0.3;
+let orbitDragging = false;
+let orbitLastMX = 0, orbitLastMY = 0;
+let orbitZoom = 1.0;
+
+// 2D shadow canvas
+let shadowCtx = null;
+
+// ===== SHAPE GENERATION =====
+
+// Seeded random for reproducible shapes
+function seededRandom(seed) {
+  let s = seed;
+  return function() {
+    s = (s * 16807 + 0) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
+}
+
+function lightDirection() {
+  let az = parseFloat(document.getElementById('sl-azimuth').value) * Math.PI / 180;
+  let el = parseFloat(document.getElementById('sl-elevation').value) * Math.PI / 180;
+  return {
+    x: Math.cos(az) * Math.cos(el),
+    y: Math.sin(el),   // Y+ is down, positive = downward
+    z: Math.sin(az) * Math.cos(el)
+  };
+}
+
+function projectShadow(px, py, pz, ld, groundY) {
+  if (Math.abs(ld.y) < 0.001) return { x: px, z: pz };
+  let t = (groundY - py) / ld.y;
+  return { x: px + ld.x * t, z: pz + ld.z * t };
+}
+
+// -- Convex hull (Graham scan on 2D points) --
+function convexHull(points) {
+  if (points.length < 3) return points.slice();
+  // Find lowest point (highest y in screen coords, but we use x,z)
+  let pts = points.map(p => ({ x: p.x, z: p.z }));
+  pts.sort((a, b) => a.z - b.z || a.x - b.x);
+  let pivot = pts[0];
+
+  function cross(o, a, b) {
+    return (a.x - o.x) * (b.z - o.z) - (a.z - o.z) * (b.x - o.x);
+  }
+
+  let rest = pts.slice(1);
+  rest.sort((a, b) => {
+    let aa = Math.atan2(a.z - pivot.z, a.x - pivot.x);
+    let ba = Math.atan2(b.z - pivot.z, b.x - pivot.x);
+    if (Math.abs(aa - ba) > 1e-9) return aa - ba;
+    let da = (a.x - pivot.x) ** 2 + (a.z - pivot.z) ** 2;
+    let db = (b.x - pivot.x) ** 2 + (b.z - pivot.z) ** 2;
+    return da - db;
+  });
+
+  let hull = [pivot];
+  for (let p of rest) {
+    while (hull.length > 1 && cross(hull[hull.length - 2], hull[hull.length - 1], p) <= 0) {
+      hull.pop();
+    }
+    hull.push(p);
+  }
+  return hull;
+}
+
+function polygonArea(pts) {
+  if (pts.length < 3) return 0;
+  let area = 0;
+  for (let i = 0; i < pts.length; i++) {
+    let j = (i + 1) % pts.length;
+    area += pts[i].x * pts[j].z;
+    area -= pts[j].x * pts[i].z;
+  }
+  return Math.abs(area) / 2;
+}
+
+function polygonPerimeter(pts) {
+  if (pts.length < 2) return 0;
+  let peri = 0;
+  for (let i = 0; i < pts.length; i++) {
+    let j = (i + 1) % pts.length;
+    let dx = pts[j].x - pts[i].x;
+    let dz = pts[j].z - pts[i].z;
+    peri += Math.sqrt(dx * dx + dz * dz);
+  }
+  return peri;
+}
+
+function shadowComplexity(hullPts) {
+  let area = polygonArea(hullPts);
+  if (area < 1) return 0;
+  let peri = polygonPerimeter(hullPts);
+  return peri / Math.sqrt(area);
+}
+
+// -- Shape types --
+
+function generateVoxels(rng, count) {
+  let grid = {};
+  let positions = [];
+  // Start with one voxel at origin
+  let cx = 2, cy = 2, cz = 2;
+  grid[cx + ',' + cy + ',' + cz] = true;
+  positions.push({ x: cx, y: cy, z: cz });
+
+  let dirs = [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+  while (positions.length < count) {
+    let base = positions[Math.floor(rng() * positions.length)];
+    let d = dirs[Math.floor(rng() * dirs.length)];
+    let nx = base.x + d[0], ny = base.y + d[1], nz = base.z + d[2];
+    if (nx < 0 || nx > 4 || ny < 0 || ny > 4 || nz < 0 || nz > 4) continue;
+    let key = nx + ',' + ny + ',' + nz;
+    if (!grid[key]) {
+      grid[key] = true;
+      positions.push({ x: nx, y: ny, z: nz });
+    }
+  }
+
+  // Center
+  let mx = 0, my = 0, mz = 0;
+  for (let p of positions) { mx += p.x; my += p.y; mz += p.z; }
+  mx /= positions.length; my /= positions.length; mz /= positions.length;
+  return {
+    type: 'voxels',
+    positions: positions.map(p => ({ x: p.x - mx, y: p.y - my, z: p.z - mz })),
+    unitSize: 0.38
+  };
+}
+
+function generateWireframe(rng, vertCount) {
+  let verts = [];
+  for (let i = 0; i < vertCount; i++) {
+    // Random point on unit sphere
+    let theta = rng() * Math.PI * 2;
+    let phi = Math.acos(2 * rng() - 1);
+    let r = 0.5 + rng() * 0.5;
+    verts.push({
+      x: r * Math.sin(phi) * Math.cos(theta),
+      y: r * Math.sin(phi) * Math.sin(theta),
+      z: r * Math.cos(phi)
+    });
+  }
+
+  // Spanning tree for connectivity
+  let edges = [];
+  let connected = [0];
+  let remaining = [];
+  for (let i = 1; i < verts.length; i++) remaining.push(i);
+
+  while (remaining.length > 0) {
+    let bestDist = Infinity, bestC = -1, bestR = -1, bestRi = -1;
+    for (let ci of connected) {
+      for (let ri = 0; ri < remaining.length; ri++) {
+        let r = remaining[ri];
+        let dx = verts[ci].x - verts[r].x;
+        let dy = verts[ci].y - verts[r].y;
+        let dz = verts[ci].z - verts[r].z;
+        let d = dx * dx + dy * dy + dz * dz;
+        if (d < bestDist) { bestDist = d; bestC = ci; bestR = r; bestRi = ri; }
+      }
+    }
+    edges.push([bestC, bestR]);
+    connected.push(bestR);
+    remaining.splice(bestRi, 1);
+  }
+
+  // Add extra random edges
+  let extraCount = Math.floor(vertCount * 0.5);
+  for (let i = 0; i < extraCount; i++) {
+    let a = Math.floor(rng() * verts.length);
+    let b = Math.floor(rng() * verts.length);
+    if (a !== b) {
+      let exists = edges.some(e => (e[0] === a && e[1] === b) || (e[0] === b && e[1] === a));
+      if (!exists) edges.push([a, b]);
+    }
+  }
+
+  return { type: 'wireframe', vertices: verts, edges: edges };
+}
+
+function generateExtruded(rng, sides) {
+  let profile = [];
+  for (let i = 0; i < sides; i++) {
+    let angle = (i / sides) * Math.PI * 2;
+    let r = 0.3 + rng() * 0.7;
+    profile.push({ x: Math.cos(angle) * r, y: Math.sin(angle) * r });
+  }
+  let twist = (rng() - 0.5) * Math.PI;
+  let taperEnd = 0.3 + rng() * 0.7;
+  return { type: 'extruded', profile: profile, twist: twist, taper: taperEnd, slices: 12 };
+}
+
+function generateBoolean(rng, count) {
+  let primitives = [];
+  let types = ['box', 'sphere', 'cylinder'];
+  for (let i = 0; i < count; i++) {
+    let t = types[Math.floor(rng() * types.length)];
+    let sx = 0.2 + rng() * 0.6;
+    let sy = 0.2 + rng() * 0.6;
+    let sz = 0.2 + rng() * 0.6;
+    let px = (rng() - 0.5) * 0.8;
+    let py = (rng() - 0.5) * 0.8;
+    let pz = (rng() - 0.5) * 0.8;
+    let rx = rng() * Math.PI;
+    let ry = rng() * Math.PI;
+    primitives.push({ prim: t, sx, sy, sz, px, py, pz, rx, ry });
+  }
+  return { type: 'boolean', primitives: primitives };
+}
+
+function generateShape(shapeType, complexity, seed) {
+  let rng = seededRandom(seed);
+  switch (shapeType) {
+    case 'voxels': return generateVoxels(rng, Math.max(5, Math.min(15, complexity)));
+    case 'wireframe': return generateWireframe(rng, Math.max(8, Math.min(20, complexity + 5)));
+    case 'extruded': return generateExtruded(rng, Math.max(5, Math.min(8, complexity)));
+    case 'boolean': return generateBoolean(rng, Math.max(3, Math.min(7, complexity)));
+    default: return generateBoolean(rng, 5);
+  }
+}
+
+// ===== SAMPLE POINTS FOR SHADOW =====
+function getSamplePoints(shape) {
+  let pts = [];
+  let S = 1.0; // scale factor for rendering
+
+  if (shape.type === 'voxels') {
+    let u = shape.unitSize;
+    for (let pos of shape.positions) {
+      let cx = pos.x * u * 2, cy = pos.y * u * 2, cz = pos.z * u * 2;
+      // 8 corners of each cube
+      for (let dx of [-u, u]) {
+        for (let dy of [-u, u]) {
+          for (let dz of [-u, u]) {
+            pts.push({ x: cx + dx, y: cy + dy, z: cz + dz });
+          }
+        }
+      }
+    }
+  } else if (shape.type === 'wireframe') {
+    for (let v of shape.vertices) {
+      pts.push({ x: v.x, y: v.y, z: v.z });
+    }
+    // Also sample midpoints of edges
+    for (let e of shape.edges) {
+      let a = shape.vertices[e[0]], b = shape.vertices[e[1]];
+      pts.push({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, z: (a.z + b.z) / 2 });
+    }
+  } else if (shape.type === 'extruded') {
+    let nSlice = shape.slices;
+    for (let s = 0; s <= nSlice; s++) {
+      let frac = s / nSlice;
+      let z = (frac - 0.5) * 2;
+      let twistAngle = shape.twist * frac;
+      let taper = 1.0 + (shape.taper - 1.0) * frac;
+      for (let pv of shape.profile) {
+        let rx = pv.x * Math.cos(twistAngle) - pv.y * Math.sin(twistAngle);
+        let ry = pv.x * Math.sin(twistAngle) + pv.y * Math.cos(twistAngle);
+        pts.push({ x: rx * taper, y: ry * taper, z: z });
+      }
+    }
+  } else if (shape.type === 'boolean') {
+    // Sample corners of bounding boxes and sphere poles
+    for (let p of shape.primitives) {
+      let nSamples = 12;
+      let cr = Math.cos(p.rx), sr = Math.sin(p.rx);
+      let cry = Math.cos(p.ry), sry = Math.sin(p.ry);
+
+      function rotatePoint(lx, ly, lz) {
+        // Rotate around X then Y
+        let y1 = ly * cr - lz * sr;
+        let z1 = ly * sr + lz * cr;
+        let x2 = lx * cry + z1 * sry;
+        let z2 = -lx * sry + z1 * cry;
+        return { x: x2 + p.px, y: y1 + p.py, z: z2 + p.pz };
+      }
+
+      if (p.prim === 'box') {
+        for (let dx of [-p.sx / 2, p.sx / 2]) {
+          for (let dy of [-p.sy / 2, p.sy / 2]) {
+            for (let dz of [-p.sz / 2, p.sz / 2]) {
+              pts.push(rotatePoint(dx, dy, dz));
+            }
+          }
+        }
+      } else if (p.prim === 'sphere') {
+        let r = Math.max(p.sx, p.sy, p.sz) / 2;
+        for (let i = 0; i < nSamples; i++) {
+          let theta = (i / nSamples) * Math.PI * 2;
+          for (let j = 0; j < nSamples / 2; j++) {
+            let phi = (j / (nSamples / 2)) * Math.PI;
+            pts.push(rotatePoint(
+              r * Math.sin(phi) * Math.cos(theta),
+              r * Math.sin(phi) * Math.sin(theta),
+              r * Math.cos(phi)
+            ));
+          }
+        }
+      } else if (p.prim === 'cylinder') {
+        let r = Math.max(p.sx, p.sz) / 2;
+        let h = p.sy / 2;
+        for (let i = 0; i < nSamples; i++) {
+          let theta = (i / nSamples) * Math.PI * 2;
+          pts.push(rotatePoint(r * Math.cos(theta), -h, r * Math.sin(theta)));
+          pts.push(rotatePoint(r * Math.cos(theta), h, r * Math.sin(theta)));
+        }
+      }
+    }
+  }
+
+  return pts;
+}
+
+// ===== ROTATE POINTS =====
+function rotatePoints(pts, angle, axis) {
+  let ca = Math.cos(angle), sa = Math.sin(angle);
+  return pts.map(p => {
+    let x = p.x, y = p.y, z = p.z;
+    if (axis === 'Y') {
+      return { x: x * ca + z * sa, y: y, z: -x * sa + z * ca };
+    } else if (axis === 'X') {
+      return { x: x, y: y * ca - z * sa, z: y * sa + z * ca };
+    } else if (axis === 'Z') {
+      return { x: x * ca - y * sa, y: x * sa + y * ca, z: z };
+    } else {
+      // Diagonal (1,1,1) normalized
+      let nx = 0.5774, ny = 0.5774, nz = 0.5774;
+      let dot = x * nx + y * ny + z * nz;
+      let cx = nx * dot, cy = ny * dot, cz = nz * dot;
+      let rx = x - cx, ry = y - cy, rz = z - cz;
+      // Cross product n x r
+      let tx = ny * rz - nz * ry;
+      let ty = nz * rx - nx * rz;
+      let tz = nx * ry - ny * rx;
+      return {
+        x: cx + rx * ca + tx * sa,
+        y: cy + ry * ca + ty * sa,
+        z: cz + rz * ca + tz * sa
+      };
+    }
+  });
+}
+
+// ===== COMPUTE SHADOW =====
+function computeShadowHull(shape, angle, axis, ld) {
+  let pts = getSamplePoints(shape);
+  let rotated = rotatePoints(pts, angle, axis);
+  let groundY = 2.0;
+  let projected = rotated.map(p => projectShadow(p.x, p.y, p.z, ld, groundY));
+  return convexHull(projected);
+}
+
+// ===== SCORE CELL -- shadow complexity variance over rotation =====
+function scoreCell(shape, axis) {
+  let ld = lightDirection();
+  let complexities = [];
+  let areas = [];
+  let steps = 24;
+  for (let i = 0; i < steps; i++) {
+    let angle = (i / steps) * Math.PI * 2;
+    let hull = computeShadowHull(shape, angle, axis, ld);
+    complexities.push(shadowComplexity(hull));
+    areas.push(polygonArea(hull));
+  }
+
+  // Variance of complexity
+  let mean = complexities.reduce((a, b) => a + b, 0) / complexities.length;
+  let variance = complexities.reduce((a, b) => a + (b - mean) ** 2, 0) / complexities.length;
+
+  // Peak complexity
+  let peak = Math.max(...complexities);
+
+  // Diversity bonus for boolean
+  let diversity = 1;
+  if (shape.type === 'boolean') {
+    let types = new Set(shape.primitives.map(p => p.prim));
+    diversity = types.size / 3;
+  }
+
+  return variance * peak * (1 + diversity * 0.5);
+}
+
+// ===== CELL MANAGEMENT =====
+function makeCell(shape) {
+  return { shape: shape, score: 0, complexityHistory: [] };
+}
+
+function getShapeType() {
+  return document.getElementById('sel-shape').value;
+}
+
+function getAxis() {
+  return document.getElementById('sel-axis').value;
+}
+
+function getComplexity() {
+  return parseInt(document.getElementById('sl-complexity').value);
+}
+
+function randomizeAll() {
+  cells = [];
+  let types = ['voxels', 'wireframe', 'extruded', 'boolean'];
+  for (let i = 0; i < COLS * ROWS; i++) {
+    let t = types[Math.floor(Math.random() * types.length)];
+    let c = 3 + Math.floor(Math.random() * 10);
+    let seed = Math.floor(Math.random() * 999999);
+    cells.push(makeCell(generateShape(t, c, seed)));
+  }
+  rotAngle = 0;
+}
+
+function mutateAll() {
+  for (let i = 0; i < cells.length; i++) {
+    let t = cells[i].shape.type;
+    let c = getComplexity();
+    let seed = Math.floor(Math.random() * 999999);
+    cells[i] = makeCell(generateShape(t, c, seed));
+  }
+  rotAngle = 0;
+}
+
+function onShapeTypeChange() {
+  // In single mode, regenerate current shape
+  if (mode === 'single' && selectedIdx >= 0) {
+    let t = getShapeType();
+    let c = getComplexity();
+    let seed = Math.floor(Math.random() * 999999);
+    cells[selectedIdx] = makeCell(generateShape(t, c, seed));
+  }
+}
+
+// ===== FIND BEAUTIFUL =====
+let fbBest = [];
+let fbTested = 0;
+let fbFrameHandle = null;
+
+function findBeautiful() {
+  if (findBeautifulRunning) return;
+  findBeautifulRunning = true;
+  document.getElementById('btn-beautiful').disabled = true;
+  document.getElementById('progress-container').style.display = 'block';
+  fbBest = [];
+  fbTested = 0;
+
+  // Pre-fill with current cells
+  for (let cell of cells) {
+    cell.score = scoreCell(cell.shape, getAxis());
+    fbBest.push(cell);
+  }
+  fbBest.sort((a, b) => b.score - a.score);
+  fbBest = fbBest.slice(0, COLS * ROWS);
+
+  fbFrameHandle = requestAnimationFrame(fbChunk);
+}
+
+function fbChunk() {
+  let types = ['voxels', 'wireframe', 'extruded', 'boolean'];
+  for (let i = 0; i < FIND_BEAUTIFUL_CHUNK; i++) {
+    if (fbTested >= FIND_BEAUTIFUL_TOTAL) {
+      // Done
+      cells = fbBest.slice(0, COLS * ROWS);
+      findBeautifulRunning = false;
+      document.getElementById('btn-beautiful').disabled = false;
+      document.getElementById('progress-container').style.display = 'none';
+      return;
+    }
+    let t = types[Math.floor(Math.random() * types.length)];
+    let c = 3 + Math.floor(Math.random() * 10);
+    let seed = Math.floor(Math.random() * 999999);
+    let shape = generateShape(t, c, seed);
+    let score = scoreCell(shape, getAxis());
+    let cell = makeCell(shape);
+    cell.score = score;
+    fbBest.push(cell);
+    fbBest.sort((a, b) => b.score - a.score);
+    fbBest = fbBest.slice(0, COLS * ROWS);
+    fbTested++;
+  }
+
+  let pct = Math.min(100, Math.floor((fbTested / FIND_BEAUTIFUL_TOTAL) * 100));
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-text').textContent = 'Tested ' + fbTested + ' / ' + FIND_BEAUTIFUL_TOTAL;
+
+  // Update display with best so far
+  cells = fbBest.slice(0, COLS * ROWS);
+  fbFrameHandle = requestAnimationFrame(fbChunk);
+}
+
+// ===== TOGGLES =====
+function toggleLight() {
+  showLight = !showLight;
+  document.getElementById('btn-light').classList.toggle('active', showLight);
+}
+
+function toggleOutline() {
+  showOutline = !showOutline;
+  document.getElementById('btn-outline').classList.toggle('active', showOutline);
+}
+
+function toggleGridPlane() {
+  showGridPlane = !showGridPlane;
+  document.getElementById('btn-grid-plane').classList.toggle('active', showGridPlane);
+}
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-atlas').classList.toggle('active', mode === 'atlas');
+  document.getElementById('btn-single').classList.toggle('active', mode === 'single');
+  document.getElementById('hud-mode').textContent = mode;
+  if (mode === 'atlas') {
+    selectedIdx = -1;
+  } else if (mode === 'single' && selectedIdx < 0 && cells.length > 0) {
+    selectedIdx = 0;
+  }
+}
+
+// ===== p5.js SKETCH =====
+new p5(function(p) {
+  let SIDEBAR_W = 280;
+
+  p.setup = function() {
+    cw = window.innerWidth - SIDEBAR_W;
+    ch = window.innerHeight;
+    let c = p.createCanvas(cw, ch, p.WEBGL);
+    c.parent('canvas-container');
+    p.textFont('Georgia');
+    randomizeAll();
+    shadowCtx = document.getElementById('shadow-canvas').getContext('2d');
+  };
+
+  p.windowResized = function() {
+    cw = window.innerWidth - SIDEBAR_W;
+    ch = window.innerHeight;
+    p.resizeCanvas(cw, ch);
+  };
+
+  p.draw = function() {
+    p.background(245, 243, 238);
+
+    let speed = parseFloat(document.getElementById('sl-speed').value);
+    rotAngle += speed * 0.02;
+
+    // Update slider displays
+    document.getElementById('v-complexity').textContent = document.getElementById('sl-complexity').value;
+    document.getElementById('v-azimuth').textContent = document.getElementById('sl-azimuth').value + '\u00b0';
+    document.getElementById('v-elevation').textContent = document.getElementById('sl-elevation').value + '\u00b0';
+    document.getElementById('v-speed').textContent = parseFloat(document.getElementById('sl-speed').value).toFixed(2);
+
+    let axis = getAxis();
+    let ld = lightDirection();
+
+    // HUD
+    document.getElementById('hud-fps').textContent = Math.round(p.frameRate());
+    document.getElementById('hud-rot').textContent = ((rotAngle * 180 / Math.PI) % 360).toFixed(1) + '\u00b0';
+    document.getElementById('hud-light').textContent =
+      document.getElementById('sl-azimuth').value + '\u00b0 / ' +
+      document.getElementById('sl-elevation').value + '\u00b0';
+
+    if (mode === 'atlas') {
+      drawAtlas(p, ld, axis);
+    } else {
+      drawSingle(p, ld, axis);
+    }
+  };
+
+  // ===== ATLAS MODE =====
+  function drawAtlas(p, ld, axis) {
+    let margin = 16;
+    let cellW = (cw - margin * (COLS + 1)) / COLS;
+    let cellH = (ch - margin * (ROWS + 1) - 30) / ROWS;
+    let cellSize = Math.min(cellW, cellH);
+
+    // Detect hover
+    let mx = p.mouseX, my = p.mouseY;
+    hoverCell = -1;
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        let idx = r * COLS + c;
+        let cx = margin + c * (cellSize + margin) + cellSize / 2 - cw / 2;
+        let cy = margin + r * (cellSize + margin) + cellSize / 2 - ch / 2;
+        let smx = mx - cw / 2, smy = my - ch / 2;
+        if (Math.abs(smx - cx) < cellSize / 2 && Math.abs(smy - cy) < cellSize / 2) {
+          hoverCell = idx;
+        }
+      }
+    }
+
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        let idx = r * COLS + c;
+        if (idx >= cells.length) continue;
+        let cell = cells[idx];
+        let cx = margin + c * (cellSize + margin) + cellSize / 2 - cw / 2;
+        let cy = margin + r * (cellSize + margin) + cellSize / 2 - ch / 2;
+
+        p.push();
+        p.translate(cx, cy, 0);
+
+        // Cell background (2D rect)
+        p.push();
+        p.translate(0, 0, -1);
+        p.noStroke();
+        p.fill(idx === hoverCell ? 230 : 250, idx === hoverCell ? 225 : 248, idx === hoverCell ? 215 : 240);
+        p.plane(cellSize - 4, cellSize - 4);
+        p.pop();
+
+        // Scale to fit
+        let sc = cellSize * 0.3;
+        p.push();
+        p.translate(0, -cellSize * 0.1, 0);
+
+        // Lighting for atlas cells
+        p.directionalLight(180, 160, 140, -0.5, 0.7, -0.3);
+        p.ambientLight(90, 85, 80);
+
+        // Camera-like rotation for atlas (fixed isometric view)
+        p.rotateX(-0.5);
+        p.rotateY(0.4);
+
+        drawShapeRotated(p, cell.shape, rotAngle, axis, sc, ld, sc * 2.5, false);
+        p.pop();
+
+        // Score text
+        let hull = computeShadowHull(cell.shape, rotAngle, axis, ld);
+        let cmplx = shadowComplexity(hull);
+        p.push();
+        p.translate(0, cellSize / 2 - 14, 1);
+        p.fill(120);
+        p.noStroke();
+        p.textAlign(p.CENTER, p.CENTER);
+        p.textSize(9);
+        p.text(cell.shape.type + ' | C:' + cmplx.toFixed(1), 0, 0);
+        p.pop();
+
+        p.pop();
+      }
+    }
+  }
+
+  // ===== SINGLE MODE =====
+  function drawSingle(p, ld, axis) {
+    if (selectedIdx < 0 || selectedIdx >= cells.length) return;
+    let cell = cells[selectedIdx];
+
+    // Orbit camera
+    p.push();
+    let dist = 5 * orbitZoom;
+    let camX = dist * Math.sin(orbitRotY) * Math.cos(orbitRotX);
+    let camY = dist * Math.sin(orbitRotX); // Negative because Y+ is down
+    let camZ = dist * Math.cos(orbitRotY) * Math.cos(orbitRotX);
+    p.camera(camX * 80, camY * 80, camZ * 80, 0, 20, 0, 0, -1, 0);
+
+    p.directionalLight(200, 180, 160, -ld.x, -ld.y, -ld.z);
+    p.ambientLight(80, 75, 70);
+
+    let sc = 80;
+    drawShapeRotated(p, cell.shape, rotAngle, axis, sc, ld, sc * 3.0, true);
+
+    p.pop();
+
+    // Update HUD
+    let hull = computeShadowHull(cell.shape, rotAngle, axis, ld);
+    let area = polygonArea(hull);
+    let cmplx = shadowComplexity(hull);
+    document.getElementById('hud-shape').textContent = cell.shape.type;
+    document.getElementById('hud-area').textContent = area.toFixed(0);
+    document.getElementById('hud-complexity').textContent = cmplx.toFixed(2);
+    document.getElementById('hud-prims').textContent = getPrimCount(cell.shape);
+
+    // Update shadow profile canvas
+    drawShadowProfile(hull);
+  }
+
+  function getPrimCount(shape) {
+    if (shape.type === 'voxels') return shape.positions.length;
+    if (shape.type === 'wireframe') return shape.vertices.length + '/' + shape.edges.length;
+    if (shape.type === 'extruded') return shape.profile.length + 'v';
+    if (shape.type === 'boolean') return shape.primitives.length;
+    return '--';
+  }
+
+  // ===== DRAW SHAPE WITH ROTATION AND SHADOW =====
+  function drawShapeRotated(p, shape, angle, axis, sc, ld, groundDist, detailed) {
+
+    // Draw the 3D object
+    p.push();
+
+    // Apply rotation
+    if (axis === 'Y') p.rotateY(angle);
+    else if (axis === 'X') p.rotateX(angle);
+    else if (axis === 'Z') p.rotateZ(angle);
+    else {
+      // Diagonal rotation around (1,1,1) — Rodrigues formula
+      // p5 applyMatrix in WEBGL expects column-major 4x4
+      let a = angle;
+      let nx = 0.5774, ny = 0.5774, nz = 0.5774;
+      let ca = Math.cos(a), sa = Math.sin(a);
+      // Row-major entries: R[row][col]
+      let r00 = ca + nx*nx*(1-ca),     r01 = nx*ny*(1-ca) - nz*sa, r02 = nx*nz*(1-ca) + ny*sa;
+      let r10 = ny*nx*(1-ca) + nz*sa,  r11 = ca + ny*ny*(1-ca),    r12 = ny*nz*(1-ca) - nx*sa;
+      let r20 = nz*nx*(1-ca) - ny*sa,  r21 = nz*ny*(1-ca) + nx*sa, r22 = ca + nz*nz*(1-ca);
+      // Column-major for p5 WEBGL applyMatrix
+      p.applyMatrix(
+        r00, r10, r20, 0,
+        r01, r11, r21, 0,
+        r02, r12, r22, 0,
+        0,   0,   0,   1
+      );
+    }
+
+    drawShapePrimitives(p, shape, sc, detailed);
+    p.pop();
+
+    // Draw shadow on ground plane
+    let hull = computeShadowHull(shape, angle, axis, ld);
+    if (hull.length >= 3) {
+      p.push();
+      p.translate(0, groundDist, 0); // Ground is below (Y+ is down)
+      p.rotateX(Math.PI / 2);
+
+      // Shadow fill
+      p.fill(60, 50, 40, 80);
+      p.noStroke();
+      p.beginShape();
+      for (let pt of hull) {
+        p.vertex(pt.x * sc, pt.z * sc);
+      }
+      p.endShape(p.CLOSE);
+
+      // Shadow outline
+      if (showOutline) {
+        p.noFill();
+        p.stroke(100, 80, 60, 150);
+        p.strokeWeight(1);
+        p.beginShape();
+        for (let pt of hull) {
+          p.vertex(pt.x * sc, pt.z * sc);
+        }
+        p.endShape(p.CLOSE);
+      }
+
+      p.pop();
+    }
+
+    // Ground plane grid
+    if (showGridPlane && detailed) {
+      p.push();
+      p.translate(0, groundDist + 0.5, 0);
+      p.rotateX(Math.PI / 2);
+      p.stroke(180, 170, 155, 60);
+      p.strokeWeight(0.5);
+      let gridSize = sc * 3;
+      let step = sc * 0.5;
+      for (let x = -gridSize; x <= gridSize; x += step) {
+        p.line(x, -gridSize, x, gridSize);
+      }
+      for (let z = -gridSize; z <= gridSize; z += step) {
+        p.line(-gridSize, z, gridSize, z);
+      }
+      p.pop();
+    }
+
+    // Light direction arrow
+    if (showLight && detailed) {
+      p.push();
+      let arrowLen = sc * 2;
+      let startX = -ld.x * arrowLen;
+      let startY = -ld.y * arrowLen; // Pointing toward object
+      let startZ = -ld.z * arrowLen;
+      p.stroke(220, 180, 40);
+      p.strokeWeight(2);
+      p.line(startX, startY, startZ, 0, 0, 0);
+      // Arrowhead
+      p.push();
+      p.translate(0, 0, 0);
+      p.fill(220, 180, 40);
+      p.noStroke();
+      p.sphere(3);
+      p.pop();
+      p.pop();
+    }
+  }
+
+  // ===== DRAW SHAPE PRIMITIVES =====
+  function drawShapePrimitives(p, shape, sc, detailed) {
+    let copper = [180, 120, 70];
+    let copperDark = [140, 90, 50];
+
+    if (shape.type === 'voxels') {
+      let u = shape.unitSize * sc;
+      p.fill(copper[0], copper[1], copper[2]);
+      p.stroke(copperDark[0], copperDark[1], copperDark[2]);
+      p.strokeWeight(0.5);
+      for (let pos of shape.positions) {
+        p.push();
+        p.translate(pos.x * shape.unitSize * 2 * sc, pos.y * shape.unitSize * 2 * sc, pos.z * shape.unitSize * 2 * sc);
+        p.box(u * 1.9);
+        p.pop();
+      }
+    } else if (shape.type === 'wireframe') {
+      // Draw edges as thick lines with spheres at vertices
+      p.stroke(copper[0], copper[1], copper[2]);
+      p.strokeWeight(detailed ? 3 : 2);
+      for (let e of shape.edges) {
+        let a = shape.vertices[e[0]];
+        let b = shape.vertices[e[1]];
+        p.line(a.x * sc, a.y * sc, a.z * sc, b.x * sc, b.y * sc, b.z * sc);
+      }
+      p.noStroke();
+      p.fill(copper[0] + 30, copper[1] + 20, copper[2] + 10);
+      for (let v of shape.vertices) {
+        p.push();
+        p.translate(v.x * sc, v.y * sc, v.z * sc);
+        p.sphere(detailed ? 4 : 2);
+        p.pop();
+      }
+    } else if (shape.type === 'extruded') {
+      // Draw as connected cross-section rings
+      let nSlice = shape.slices;
+      let prof = shape.profile;
+
+      p.fill(copper[0], copper[1], copper[2], 200);
+      p.stroke(copperDark[0], copperDark[1], copperDark[2]);
+      p.strokeWeight(0.5);
+
+      for (let s = 0; s < nSlice; s++) {
+        let frac0 = s / nSlice;
+        let frac1 = (s + 1) / nSlice;
+        let z0 = (frac0 - 0.5) * 2 * sc;
+        let z1 = (frac1 - 0.5) * 2 * sc;
+        let tw0 = shape.twist * frac0;
+        let tw1 = shape.twist * frac1;
+        let tp0 = 1.0 + (shape.taper - 1.0) * frac0;
+        let tp1 = 1.0 + (shape.taper - 1.0) * frac1;
+
+        p.beginShape(p.TRIANGLE_STRIP);
+        for (let i = 0; i <= prof.length; i++) {
+          let idx = i % prof.length;
+          let px = prof[idx].x, py = prof[idx].y;
+          let rx0 = (px * Math.cos(tw0) - py * Math.sin(tw0)) * tp0 * sc;
+          let ry0 = (px * Math.sin(tw0) + py * Math.cos(tw0)) * tp0 * sc;
+          let rx1 = (px * Math.cos(tw1) - py * Math.sin(tw1)) * tp1 * sc;
+          let ry1 = (px * Math.sin(tw1) + py * Math.cos(tw1)) * tp1 * sc;
+          p.vertex(rx0, ry0, z0);
+          p.vertex(rx1, ry1, z1);
+        }
+        p.endShape();
+      }
+
+      // End caps
+      for (let cap = 0; cap < 2; cap++) {
+        let frac = cap === 0 ? 0 : 1;
+        let z = (frac - 0.5) * 2 * sc;
+        let tw = shape.twist * frac;
+        let tp = 1.0 + (shape.taper - 1.0) * frac;
+        p.beginShape();
+        for (let i = 0; i < prof.length; i++) {
+          let px = prof[i].x, py = prof[i].y;
+          let rx = (px * Math.cos(tw) - py * Math.sin(tw)) * tp * sc;
+          let ry = (px * Math.sin(tw) + py * Math.cos(tw)) * tp * sc;
+          p.vertex(rx, ry, z);
+        }
+        p.endShape(p.CLOSE);
+      }
+    } else if (shape.type === 'boolean') {
+      for (let i = 0; i < shape.primitives.length; i++) {
+        let pr = shape.primitives[i];
+        // Vary copper tone slightly
+        let hueShift = (i * 30) % 60 - 30;
+        p.fill(copper[0] + hueShift, copper[1] + hueShift * 0.5, copper[2], 180);
+        p.stroke(copperDark[0], copperDark[1], copperDark[2], 120);
+        p.strokeWeight(0.5);
+
+        p.push();
+        p.translate(pr.px * sc, pr.py * sc, pr.pz * sc);
+        p.rotateX(pr.rx);
+        p.rotateY(pr.ry);
+
+        if (pr.prim === 'box') {
+          p.box(pr.sx * sc, pr.sy * sc, pr.sz * sc);
+        } else if (pr.prim === 'sphere') {
+          let r = Math.max(pr.sx, pr.sy, pr.sz) * sc / 2;
+          p.sphere(r, detailed ? 12 : 8, detailed ? 8 : 6);
+        } else if (pr.prim === 'cylinder') {
+          let r = Math.max(pr.sx, pr.sz) * sc / 2;
+          let h = pr.sy * sc;
+          p.cylinder(r, h, detailed ? 12 : 8);
+        }
+        p.pop();
+      }
+    }
+  }
+
+  // ===== DRAW SHADOW PROFILE on sidebar canvas =====
+  function drawShadowProfile(hull) {
+    if (!shadowCtx) return;
+    let cvs = document.getElementById('shadow-canvas');
+    let w = cvs.width, h = cvs.height;
+    shadowCtx.fillStyle = '#faf8f3';
+    shadowCtx.fillRect(0, 0, w, h);
+
+    if (hull.length < 3) return;
+
+    // Find bounds
+    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+    for (let pt of hull) {
+      if (pt.x < minX) minX = pt.x;
+      if (pt.x > maxX) maxX = pt.x;
+      if (pt.z < minZ) minZ = pt.z;
+      if (pt.z > maxZ) maxZ = pt.z;
+    }
+
+    let rangeX = maxX - minX || 1;
+    let rangeZ = maxZ - minZ || 1;
+    let scale = Math.min((w - 20) / rangeX, (h - 20) / rangeZ);
+    let ox = w / 2 - (minX + maxX) / 2 * scale;
+    let oz = h / 2 - (minZ + maxZ) / 2 * scale;
+
+    // Draw filled shadow
+    shadowCtx.fillStyle = 'rgba(80, 60, 40, 0.3)';
+    shadowCtx.strokeStyle = '#8b4513';
+    shadowCtx.lineWidth = 1.5;
+    shadowCtx.beginPath();
+    for (let i = 0; i < hull.length; i++) {
+      let sx = hull[i].x * scale + ox;
+      let sy = hull[i].z * scale + oz;
+      if (i === 0) shadowCtx.moveTo(sx, sy);
+      else shadowCtx.lineTo(sx, sy);
+    }
+    shadowCtx.closePath();
+    shadowCtx.fill();
+    shadowCtx.stroke();
+
+    // Draw vertices
+    shadowCtx.fillStyle = '#8b4513';
+    for (let pt of hull) {
+      let sx = pt.x * scale + ox;
+      let sy = pt.z * scale + oz;
+      shadowCtx.beginPath();
+      shadowCtx.arc(sx, sy, 2, 0, Math.PI * 2);
+      shadowCtx.fill();
+    }
+  }
+
+  // ===== MOUSE INTERACTION =====
+  p.mousePressed = function() {
+    if (p.mouseX < 0 || p.mouseX > cw || p.mouseY < 0 || p.mouseY > ch) return;
+
+    if (mode === 'atlas' && hoverCell >= 0 && hoverCell < cells.length) {
+      selectedIdx = hoverCell;
+      setMode('single');
+      return;
+    }
+
+    if (mode === 'single') {
+      orbitDragging = true;
+      orbitLastMX = p.mouseX;
+      orbitLastMY = p.mouseY;
+    }
+  };
+
+  p.mouseDragged = function() {
+    if (orbitDragging) {
+      let dx = p.mouseX - orbitLastMX;
+      let dy = p.mouseY - orbitLastMY;
+      orbitRotY += dx * 0.008;
+      orbitRotX += dy * 0.008;
+      orbitRotX = Math.max(-Math.PI / 2 + 0.1, Math.min(0, orbitRotX));
+      orbitLastMX = p.mouseX;
+      orbitLastMY = p.mouseY;
+    }
+  };
+
+  p.mouseReleased = function() {
+    orbitDragging = false;
+  };
+
+  p.mouseWheel = function(event) {
+    if (mode === 'single') {
+      orbitZoom *= event.delta > 0 ? 1.08 : 0.92;
+      orbitZoom = Math.max(0.3, Math.min(4, orbitZoom));
+    }
+  };
+
+  // Keyboard
+  p.keyPressed = function() {
+    if (p.key === ' ') {
+      let sl = document.getElementById('sl-speed');
+      sl.value = parseFloat(sl.value) > 0 ? 0 : 0.5;
+    } else if (p.key === 'Escape' && mode === 'single') {
+      setMode('atlas');
+    } else if (p.key === 'r' || p.key === 'R') {
+      if (mode === 'single' && selectedIdx >= 0) {
+        let t = getShapeType();
+        let c = getComplexity();
+        let seed = Math.floor(Math.random() * 999999);
+        cells[selectedIdx] = makeCell(generateShape(t, c, seed));
+      }
+    }
+  };
+
+}, document.getElementById('canvas-container'));
+
+// ===== VARIANCE TRACKING =====
+// Periodically compute variance of shadow complexity for selected cell
+setInterval(function() {
+  if (mode !== 'single' || selectedIdx < 0 || selectedIdx >= cells.length) {
+    document.getElementById('hud-variance').textContent = '--';
+    return;
+  }
+  let cell = cells[selectedIdx];
+  let axis = getAxis();
+  let ld = lightDirection();
+  let complexities = [];
+  let steps = 16;
+  for (let i = 0; i < steps; i++) {
+    let angle = (i / steps) * Math.PI * 2;
+    let hull = computeShadowHull(cell.shape, angle, axis, ld);
+    complexities.push(shadowComplexity(hull));
+  }
+  let mean = complexities.reduce((a, b) => a + b, 0) / complexities.length;
+  let variance = complexities.reduce((a, b) => a + (b - mean) ** 2, 0) / complexities.length;
+  document.getElementById('hud-variance').textContent = variance.toFixed(2);
+}, 1000);
+</script>
+</body>
+</html>
