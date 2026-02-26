@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Moire Pattern Animator — Optical Motion Illusion</title>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f5f3ee; overflow: hidden; font-family: 'Georgia', serif; display: flex; height: 100vh; }
+
+  #sidebar {
+    width: 280px; min-width: 280px; background: #f0ede6;
+    border-right: 1px solid #c8c0b0; overflow-y: auto; padding: 12px 14px;
+    font-size: 12px; color: #444;
+  }
+  #sidebar h1 { font-size: 14px; letter-spacing: 1.5px; color: #333; margin-bottom: 2px; font-weight: normal; }
+  #sidebar .subtitle { font-size: 10px; color: #888; margin-bottom: 12px; font-style: italic; }
+
+  .section-title {
+    font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: #8b7355;
+    margin-top: 14px; margin-bottom: 6px; border-bottom: 1px solid #d8d0c0; padding-bottom: 3px;
+  }
+  .ctrl-row { display: flex; align-items: center; margin-bottom: 5px; }
+  .ctrl-row label { flex: 0 0 95px; font-size: 11px; color: #666; }
+  .ctrl-row input[type="range"] { flex: 1; height: 3px; accent-color: #8b4513; }
+  .ctrl-row .val { flex: 0 0 40px; text-align: right; font-size: 10px; color: #555; font-family: 'Consolas', monospace; }
+
+  select {
+    width: 100%; padding: 4px 8px; font-size: 11px; font-family: 'Georgia', serif;
+    background: #faf8f3; color: #555; border: 1px solid #c8c0b0; border-radius: 3px; margin-bottom: 4px;
+  }
+
+  .btn-row { display: flex; gap: 5px; margin: 8px 0; flex-wrap: wrap; }
+  .btn {
+    padding: 5px 10px; font-size: 10px; font-family: 'Georgia', serif;
+    background: #555; color: #f5f3ee; border: none; cursor: pointer;
+    letter-spacing: 0.5px; border-radius: 2px; transition: background 0.15s;
+  }
+  .btn:hover { background: #333; }
+  .btn.active { background: #8b4513; }
+  .btn.accent { background: #2a6848; }
+  .btn.accent:hover { background: #1a4830; }
+  .btn.danger { background: #8b2020; }
+  .btn:disabled { background: #aaa; cursor: not-allowed; }
+
+  #canvas-container { flex: 1; position: relative; }
+  #canvas-container canvas { display: block; }
+
+  #info-bar {
+    position: fixed; bottom: 0; left: 280px; right: 0; z-index: 100;
+    background: rgba(245,243,238,0.92); border-top: 1px solid #bbb;
+    padding: 4px 16px; font-size: 10px; color: #777; font-style: italic;
+  }
+
+  #hud {
+    position: absolute; top: 8px; right: 12px; background: rgba(245,243,238,0.9);
+    border: 1px solid #c8c0b0; border-radius: 4px; padding: 8px 12px;
+    font-size: 10px; line-height: 1.7; color: #666; min-width: 160px; pointer-events: none;
+  }
+  #hud .hv { color: #444; font-family: 'Consolas', monospace; float: right; }
+
+  .progress-bar { width: 100%; height: 3px; background: #ddd; border-radius: 2px; margin: 4px 0; }
+  .progress-bar-fill { height: 100%; background: #8b4513; border-radius: 2px; transition: width 0.1s; }
+
+  .config-list { max-height: 160px; overflow-y: auto; font-size: 9px; line-height: 1.5; margin-top: 4px; }
+  .config-item { padding: 1px 0; color: #666; font-family: 'Consolas', monospace; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #c8c0b0; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h1>MOIR&Eacute; ANIMATOR</h1>
+  <div class="subtitle">Optical Motion Illusion &mdash; Overlapping Pattern Interference</div>
+
+  <div class="section-title">Pattern 1</div>
+  <select id="sel-type1">
+    <option value="lines" selected>Parallel Lines</option>
+    <option value="circles">Concentric Circles</option>
+    <option value="radial">Radial Lines</option>
+    <option value="grid">Square Grid</option>
+    <option value="spiral">Archimedean Spiral</option>
+  </select>
+  <div class="ctrl-row">
+    <label>Spacing 1</label>
+    <input type="range" id="sl-spacing1" min="5" max="30" step="0.5" value="12">
+    <span class="val" id="v-spacing1">12.0</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Angle 1</label>
+    <input type="range" id="sl-angle1" min="0" max="3.1416" step="0.01" value="0">
+    <span class="val" id="v-angle1">0.00</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Rot Speed 1</label>
+    <input type="range" id="sl-rotspeed1" min="-0.5" max="0.5" step="0.01" value="0.05">
+    <span class="val" id="v-rotspeed1">0.05</span>
+  </div>
+
+  <div class="section-title">Pattern 2</div>
+  <select id="sel-type2">
+    <option value="lines" selected>Parallel Lines</option>
+    <option value="circles">Concentric Circles</option>
+    <option value="radial">Radial Lines</option>
+    <option value="grid">Square Grid</option>
+    <option value="spiral">Archimedean Spiral</option>
+  </select>
+  <div class="ctrl-row">
+    <label>Spacing 2</label>
+    <input type="range" id="sl-spacing2" min="5" max="30" step="0.5" value="13">
+    <span class="val" id="v-spacing2">13.0</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Angle 2</label>
+    <input type="range" id="sl-angle2" min="0" max="3.1416" step="0.01" value="0.12">
+    <span class="val" id="v-angle2">0.12</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Rot Speed 2</label>
+    <input type="range" id="sl-rotspeed2" min="-0.5" max="0.5" step="0.01" value="-0.03">
+    <span class="val" id="v-rotspeed2">-0.03</span>
+  </div>
+
+  <div class="section-title">Rendering</div>
+  <div class="ctrl-row">
+    <label>Line Weight</label>
+    <input type="range" id="sl-weight" min="0.5" max="3.0" step="0.1" value="1.0">
+    <span class="val" id="v-weight">1.0</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Speed Scale</label>
+    <input type="range" id="sl-timescale" min="0.1" max="3.0" step="0.05" value="1.0">
+    <span class="val" id="v-timescale">1.00</span>
+  </div>
+
+  <div class="section-title">Color</div>
+  <div class="btn-row">
+    <button class="btn active" id="btn-bw" onclick="setColorMode('bw')">Black / White</button>
+    <button class="btn" id="btn-color" onclick="setColorMode('color')">Colored</button>
+  </div>
+
+  <div class="section-title">Actions</div>
+  <div class="btn-row">
+    <button class="btn active" id="btn-atlas" onclick="setMode('atlas')">Atlas 4&times;4</button>
+    <button class="btn" id="btn-single" onclick="setMode('single')">Single</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn accent" onclick="randomizeAll()">Randomize</button>
+    <button class="btn" onclick="mutateAll()">Mutate</button>
+    <button class="btn danger" id="btn-beautiful" onclick="findBeautiful()">Find Beautiful</button>
+  </div>
+  <div id="progress-container" style="display:none;">
+    <div class="progress-bar"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
+    <span style="font-size:9px;color:#888;" id="progress-text">Searching...</span>
+  </div>
+
+  <div class="section-title">Config</div>
+  <div class="config-list" id="config-list">
+    <div class="config-item" style="color:#999;">Click a cell to see config</div>
+  </div>
+</div>
+
+<div id="canvas-container">
+  <div id="hud">
+    <div>FPS <span class="hv" id="hud-fps">--</span></div>
+    <div>Mode <span class="hv" id="hud-mode">atlas</span></div>
+    <div>Pattern 1 <span class="hv" id="hud-p1">--</span></div>
+    <div>Pattern 2 <span class="hv" id="hud-p2">--</span></div>
+    <div>Score <span class="hv" id="hud-score">--</span></div>
+  </div>
+</div>
+
+<div id="info-bar">
+  Plate VII. &mdash; Moir&eacute; interference patterns from overlapping line grids. Two patterns with slightly different spacings create the illusion of motion. Click to inspect.
+</div>
+
+<script>
+// ========================================================
+// MOIRE PATTERN ANIMATOR — Optical Motion Illusion
+// ========================================================
+
+const COLS = 4, ROWS = 4;
+const FIND_BEAUTIFUL_TOTAL = 200;
+const FIND_BEAUTIFUL_CHUNK = 25;
+
+const PATTERN_TYPES = ['lines', 'circles', 'radial', 'grid', 'spiral'];
+const PATTERN_LABELS = { lines: 'Lines', circles: 'Circles', radial: 'Radial', grid: 'Grid', spiral: 'Spiral' };
+
+// ===== STATE =====
+let mode = 'atlas';
+let colorMode = 'bw';
+let cells = [];
+let selectedIdx = -1;
+let globalTime = 0;
+let hoverCell = -1;
+let cw, ch;
+let findBeautifulRunning = false;
+
+// ===== CONFIG =====
+function readSidebar() {
+  return {
+    type1: document.getElementById('sel-type1').value,
+    type2: document.getElementById('sel-type2').value,
+    spacing1: parseFloat(document.getElementById('sl-spacing1').value),
+    spacing2: parseFloat(document.getElementById('sl-spacing2').value),
+    angle1: parseFloat(document.getElementById('sl-angle1').value),
+    angle2: parseFloat(document.getElementById('sl-angle2').value),
+    rotSpeed1: parseFloat(document.getElementById('sl-rotspeed1').value),
+    rotSpeed2: parseFloat(document.getElementById('sl-rotspeed2').value),
+    lineWeight: parseFloat(document.getElementById('sl-weight').value),
+    // Additional params for circles/radial/spiral (centered at canvas center)
+    cx1: 0, cy1: 0, cx2: 0, cy2: 0,
+    driftX1: 0, driftY1: 0, driftX2: 0, driftY2: 0,
+    numLines1: 36, numLines2: 38,
+    numArms1: 4, numArms2: 5,
+    transSpeed1: 0, transSpeed2: 0
+  };
+}
+
+function randomConfig() {
+  let t1 = PATTERN_TYPES[Math.floor(Math.random() * PATTERN_TYPES.length)];
+  let t2 = PATTERN_TYPES[Math.floor(Math.random() * PATTERN_TYPES.length)];
+  let s1 = 5 + Math.random() * 25;
+  let s2 = 5 + Math.random() * 25;
+  let a1 = Math.random() * Math.PI;
+  let a2 = Math.random() * Math.PI;
+  let r1 = (Math.random() - 0.5) * 1.0;
+  let r2 = (Math.random() - 0.5) * 1.0;
+  let lw = 0.5 + Math.random() * 2.5;
+
+  // drift for circles
+  let driftX1 = (Math.random() - 0.5) * 20;
+  let driftY1 = (Math.random() - 0.5) * 20;
+  let driftX2 = (Math.random() - 0.5) * 20;
+  let driftY2 = (Math.random() - 0.5) * 20;
+
+  // radial line count
+  let numLines1 = 12 + Math.floor(Math.random() * 48);
+  let numLines2 = 12 + Math.floor(Math.random() * 48);
+
+  // spiral arms
+  let numArms1 = 2 + Math.floor(Math.random() * 6);
+  let numArms2 = 2 + Math.floor(Math.random() * 6);
+
+  // translation speed for lines
+  let transSpeed1 = (Math.random() - 0.5) * 30;
+  let transSpeed2 = (Math.random() - 0.5) * 30;
+
+  return {
+    type1: t1, type2: t2,
+    spacing1: s1, spacing2: s2,
+    angle1: a1, angle2: a2,
+    rotSpeed1: r1, rotSpeed2: r2,
+    lineWeight: lw,
+    cx1: 0, cy1: 0, cx2: 0, cy2: 0,
+    driftX1, driftY1, driftX2, driftY2,
+    numLines1, numLines2,
+    numArms1, numArms2,
+    transSpeed1, transSpeed2
+  };
+}
+
+function mutateConfig(config) {
+  let c = JSON.parse(JSON.stringify(config));
+
+  c.spacing1 *= (1 + (Math.random() - 0.5) * 0.2);
+  c.spacing2 *= (1 + (Math.random() - 0.5) * 0.2);
+  c.spacing1 = Math.max(5, Math.min(30, c.spacing1));
+  c.spacing2 = Math.max(5, Math.min(30, c.spacing2));
+
+  c.angle1 += (Math.random() - 0.5) * 0.1;
+  c.angle2 += (Math.random() - 0.5) * 0.1;
+
+  c.rotSpeed1 *= (1 + (Math.random() - 0.5) * 0.4);
+  c.rotSpeed2 *= (1 + (Math.random() - 0.5) * 0.4);
+  c.rotSpeed1 = Math.max(-0.5, Math.min(0.5, c.rotSpeed1));
+  c.rotSpeed2 = Math.max(-0.5, Math.min(0.5, c.rotSpeed2));
+
+  c.transSpeed1 *= (1 + (Math.random() - 0.5) * 0.4);
+  c.transSpeed2 *= (1 + (Math.random() - 0.5) * 0.4);
+
+  c.driftX1 += (Math.random() - 0.5) * 4;
+  c.driftY1 += (Math.random() - 0.5) * 4;
+  c.driftX2 += (Math.random() - 0.5) * 4;
+  c.driftY2 += (Math.random() - 0.5) * 4;
+
+  // 20% chance to swap pattern types
+  if (Math.random() < 0.2) c.type1 = PATTERN_TYPES[Math.floor(Math.random() * PATTERN_TYPES.length)];
+  if (Math.random() < 0.2) c.type2 = PATTERN_TYPES[Math.floor(Math.random() * PATTERN_TYPES.length)];
+
+  return c;
+}
+
+// ===== BEAUTY SCORER =====
+function scoreMoire(config) {
+  let score = 0;
+
+  // Spacing ratio close to 1.0 but not equal
+  let ratio = config.spacing1 / config.spacing2;
+  if (ratio > 1) ratio = 1 / ratio;
+  // Sweet spot: 0.85 - 0.99
+  if (ratio >= 0.85 && ratio <= 0.99) {
+    // Closer to 1.0 = better moire
+    score += (1 - Math.abs(ratio - 0.95) / 0.15) * 40;
+  } else if (ratio >= 0.70 && ratio < 0.85) {
+    score += 10;
+  }
+
+  // Small angle difference (2-15 degrees) between patterns
+  let angleDiff = Math.abs(config.angle1 - config.angle2);
+  if (angleDiff > Math.PI) angleDiff = Math.PI * 2 - angleDiff;
+  let angleDeg = angleDiff * 180 / Math.PI;
+  if (angleDeg >= 2 && angleDeg <= 15) {
+    score += (1 - Math.abs(angleDeg - 8) / 13) * 30;
+  } else if (angleDeg > 0 && angleDeg < 2) {
+    score += 10;
+  }
+
+  // Bonus for complementary types (same type = classic moire)
+  if (config.type1 === config.type2) {
+    score += 20;
+    // lines+lines or circles+circles are the best
+    if (config.type1 === 'lines' || config.type1 === 'circles') score += 10;
+  }
+
+  // Moderate line weight is better for moire
+  if (config.lineWeight >= 0.8 && config.lineWeight <= 1.5) score += 8;
+
+  // Gentle rotation speeds produce hypnotic slow moire drift
+  let avgSpeed = (Math.abs(config.rotSpeed1) + Math.abs(config.rotSpeed2)) / 2;
+  if (avgSpeed > 0.02 && avgSpeed < 0.15) score += 12;
+
+  // Counter-rotation bonus (opposite signs)
+  if (config.rotSpeed1 * config.rotSpeed2 < 0) score += 8;
+
+  // Fine spacing produces denser interference (better moire)
+  let avgSpacing = (config.spacing1 + config.spacing2) / 2;
+  if (avgSpacing >= 8 && avgSpacing <= 18) score += 10;
+
+  return score;
+}
+
+// ===== PATTERN RENDERING =====
+function drawPattern(p, type, params, time, isAtlas) {
+  let lineRange = isAtlas ? 25 : 60;
+  let maxR = isAtlas ? 300 : 600;
+  let spiralMax = isAtlas ? 15 : 30;
+
+  switch (type) {
+    case 'lines': {
+      let angle = params.angle + params.rotSpeed * time;
+      let cos_a = Math.cos(angle), sin_a = Math.sin(angle);
+      let cos_p = Math.cos(angle + Math.PI / 2), sin_p = Math.sin(angle + Math.PI / 2);
+      for (let i = -lineRange; i < lineRange; i++) {
+        let offset = i * params.spacing + params.transSpeed * time;
+        let ox = offset * cos_p, oy = offset * sin_p;
+        p.line(ox - 800 * cos_a, oy - 800 * sin_a, ox + 800 * cos_a, oy + 800 * sin_a);
+      }
+      break;
+    }
+    case 'circles': {
+      let cx = params.cx + params.driftX * time;
+      let cy = params.cy + params.driftY * time;
+      for (let r = params.spacing; r < maxR; r += params.spacing) {
+        p.ellipse(cx, cy, r * 2, r * 2);
+      }
+      break;
+    }
+    case 'radial': {
+      let cx = params.cx, cy = params.cy;
+      let baseAngle = params.rotSpeed * time;
+      for (let i = 0; i < params.numLines; i++) {
+        let a = baseAngle + (i / params.numLines) * Math.PI * 2;
+        p.line(cx, cy, cx + maxR * Math.cos(a), cy + maxR * Math.sin(a));
+      }
+      break;
+    }
+    case 'grid': {
+      // Two perpendicular sets of lines
+      let angle = params.angle + params.rotSpeed * time;
+      let cos_a = Math.cos(angle), sin_a = Math.sin(angle);
+      let cos_p = Math.cos(angle + Math.PI / 2), sin_p = Math.sin(angle + Math.PI / 2);
+      for (let i = -lineRange; i < lineRange; i++) {
+        let offset = i * params.spacing + params.transSpeed * time;
+        let ox = offset * cos_p, oy = offset * sin_p;
+        p.line(ox - 800 * cos_a, oy - 800 * sin_a, ox + 800 * cos_a, oy + 800 * sin_a);
+      }
+      // Perpendicular set
+      let angle2 = angle + Math.PI / 2;
+      let cos_a2 = Math.cos(angle2), sin_a2 = Math.sin(angle2);
+      let cos_p2 = Math.cos(angle2 + Math.PI / 2), sin_p2 = Math.sin(angle2 + Math.PI / 2);
+      for (let i = -lineRange; i < lineRange; i++) {
+        let offset = i * params.spacing + params.transSpeed * time;
+        let ox = offset * cos_p2, oy = offset * sin_p2;
+        p.line(ox - 800 * cos_a2, oy - 800 * sin_a2, ox + 800 * cos_a2, oy + 800 * sin_a2);
+      }
+      break;
+    }
+    case 'spiral': {
+      let cx = params.cx, cy = params.cy;
+      let baseAngle = params.rotSpeed * time;
+      for (let arm = 0; arm < params.numArms; arm++) {
+        p.beginShape();
+        p.noFill();
+        let armOffset = (arm / params.numArms) * Math.PI * 2;
+        for (let t = 0; t < spiralMax; t += 0.05) {
+          let r = t * params.spacing;
+          let a = t + armOffset + baseAngle;
+          p.vertex(cx + r * Math.cos(a), cy + r * Math.sin(a));
+        }
+        p.endShape();
+      }
+      break;
+    }
+  }
+}
+
+function getPatternParams(config, which) {
+  if (which === 1) {
+    return {
+      spacing: config.spacing1, angle: config.angle1, rotSpeed: config.rotSpeed1,
+      cx: config.cx1, cy: config.cy1, driftX: config.driftX1, driftY: config.driftY1,
+      numLines: config.numLines1, numArms: config.numArms1, transSpeed: config.transSpeed1,
+      lineWeight: config.lineWeight
+    };
+  } else {
+    return {
+      spacing: config.spacing2, angle: config.angle2, rotSpeed: config.rotSpeed2,
+      cx: config.cx2, cy: config.cy2, driftX: config.driftX2, driftY: config.driftY2,
+      numLines: config.numLines2, numArms: config.numArms2, transSpeed: config.transSpeed2,
+      lineWeight: config.lineWeight
+    };
+  }
+}
+
+// ===== CELL MANAGEMENT =====
+function makeCell(config) {
+  return { config: config, score: 0 };
+}
+
+function randomizeAll() {
+  cells = [];
+  for (let i = 0; i < COLS * ROWS; i++) {
+    cells.push(makeCell(randomConfig()));
+  }
+  globalTime = 0;
+}
+
+function mutateAll() {
+  for (let cell of cells) {
+    cell.config = mutateConfig(cell.config);
+  }
+  globalTime = 0;
+}
+
+// ===== FIND BEAUTIFUL (chunked non-blocking) =====
+function findBeautiful() {
+  if (findBeautifulRunning) return;
+  findBeautifulRunning = true;
+  document.getElementById('btn-beautiful').disabled = true;
+  document.getElementById('progress-container').style.display = 'block';
+
+  let candidates = [];
+  let processed = 0;
+
+  function processChunk() {
+    let chunkEnd = Math.min(processed + FIND_BEAUTIFUL_CHUNK, FIND_BEAUTIFUL_TOTAL);
+    for (let i = processed; i < chunkEnd; i++) {
+      let config = randomConfig();
+      let score = scoreMoire(config);
+      candidates.push({ config, score });
+    }
+    processed = chunkEnd;
+
+    let pct = Math.round((processed / FIND_BEAUTIFUL_TOTAL) * 100);
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('progress-text').textContent = `Scoring ${processed}/${FIND_BEAUTIFUL_TOTAL}...`;
+
+    if (processed < FIND_BEAUTIFUL_TOTAL) {
+      setTimeout(processChunk, 0);
+    } else {
+      candidates.sort((a, b) => b.score - a.score);
+      cells = candidates.slice(0, COLS * ROWS).map(c => {
+        let cell = makeCell(c.config);
+        cell.score = c.score;
+        return cell;
+      });
+      globalTime = 0;
+      findBeautifulRunning = false;
+      document.getElementById('btn-beautiful').disabled = false;
+      document.getElementById('progress-container').style.display = 'none';
+    }
+  }
+  processChunk();
+}
+
+// ===== MODE & COLOR =====
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-atlas').classList.toggle('active', m === 'atlas');
+  document.getElementById('btn-single').classList.toggle('active', m === 'single');
+  document.getElementById('hud-mode').textContent = m;
+  if (m === 'atlas') {
+    selectedIdx = -1;
+    document.getElementById('info-bar').innerHTML =
+      'Plate VII. &mdash; Moir&eacute; interference patterns from overlapping line grids. Two patterns with slightly different spacings create the illusion of motion. Click to inspect.';
+  }
+}
+
+function setColorMode(cm) {
+  colorMode = cm;
+  document.getElementById('btn-bw').classList.toggle('active', cm === 'bw');
+  document.getElementById('btn-color').classList.toggle('active', cm === 'color');
+}
+
+// ===== SLIDER WIRING =====
+function wireSlider(id, valId, fmt) {
+  let sl = document.getElementById(id);
+  let vl = document.getElementById(valId);
+  sl.addEventListener('input', () => {
+    let v = parseFloat(sl.value);
+    if (fmt === 'int') vl.textContent = Math.round(v);
+    else vl.textContent = v.toFixed(fmt === undefined ? 2 : fmt);
+  });
+}
+wireSlider('sl-spacing1', 'v-spacing1', 1);
+wireSlider('sl-spacing2', 'v-spacing2', 1);
+wireSlider('sl-angle1', 'v-angle1');
+wireSlider('sl-angle2', 'v-angle2');
+wireSlider('sl-rotspeed1', 'v-rotspeed1');
+wireSlider('sl-rotspeed2', 'v-rotspeed2');
+wireSlider('sl-weight', 'v-weight', 1);
+wireSlider('sl-timescale', 'v-timescale');
+
+// ===== P5.JS SKETCH =====
+const sketch = (p) => {
+  p.setup = () => {
+    let container = document.getElementById('canvas-container');
+    cw = container.clientWidth; ch = container.clientHeight;
+    p.createCanvas(cw, ch).parent(container);
+    p.textFont('Georgia');
+    randomizeAll();
+  };
+
+  p.windowResized = () => {
+    let container = document.getElementById('canvas-container');
+    cw = container.clientWidth; ch = container.clientHeight;
+    p.resizeCanvas(cw, ch);
+  };
+
+  p.draw = () => {
+    let timeScale = parseFloat(document.getElementById('sl-timescale').value);
+    globalTime += timeScale * 0.016; // ~60fps dt
+
+    if (mode === 'atlas') drawAtlas(p);
+    else drawSingle(p);
+
+    document.getElementById('hud-fps').textContent = Math.round(p.frameRate());
+  };
+
+  p.mousePressed = () => {
+    if (p.mouseX < 0 || p.mouseX > cw || p.mouseY < 0 || p.mouseY > ch) return;
+    if (mode === 'atlas') {
+      let cellW = cw / COLS, cellH = ch / ROWS;
+      let col = Math.floor(p.mouseX / cellW);
+      let row = Math.floor(p.mouseY / cellH);
+      if (col >= 0 && col < COLS && row >= 0 && row < ROWS) {
+        selectedIdx = row * COLS + col;
+        if (selectedIdx < cells.length) {
+          setMode('single');
+          updateConfigList(cells[selectedIdx].config);
+          applyCellToSidebar(cells[selectedIdx].config);
+        }
+      }
+    }
+  };
+
+  p.mouseMoved = () => {
+    if (mode === 'atlas') {
+      let cellW = cw / COLS, cellH = ch / ROWS;
+      let col = Math.floor(p.mouseX / cellW);
+      let row = Math.floor(p.mouseY / cellH);
+      hoverCell = (col >= 0 && col < COLS && row >= 0 && row < ROWS) ? row * COLS + col : -1;
+    }
+  };
+};
+
+// ===== ATLAS RENDERER =====
+function drawAtlas(p) {
+  let cellW = cw / COLS, cellH = ch / ROWS;
+
+  for (let idx = 0; idx < cells.length; idx++) {
+    let col = idx % COLS, row = Math.floor(idx / COLS);
+    let cx = col * cellW, cy = row * cellH;
+    let centerX = cx + cellW / 2, centerY = cy + cellH / 2;
+
+    let cell = cells[idx];
+    let config = cell.config;
+
+    // Clip to cell
+    p.push();
+    // Use drawingContext for clipping
+    p.drawingContext.save();
+    p.drawingContext.beginPath();
+    p.drawingContext.rect(cx + 1, cy + 1, cellW - 2, cellH - 2);
+    p.drawingContext.clip();
+
+    // White background for moire contrast
+    p.fill(255);
+    p.noStroke();
+    p.rect(cx, cy, cellW, cellH);
+
+    // Draw pattern 1
+    p.push();
+    p.translate(centerX, centerY);
+    p.noFill();
+    if (colorMode === 'color') {
+      p.stroke(30, 60, 180, 180);
+    } else {
+      p.stroke(0, 0, 0, 200);
+    }
+    p.strokeWeight(config.lineWeight * 0.7);
+    let params1 = getPatternParams(config, 1);
+    drawPattern(p, config.type1, params1, globalTime, true);
+    p.pop();
+
+    // Draw pattern 2
+    p.push();
+    p.translate(centerX, centerY);
+    p.noFill();
+    if (colorMode === 'color') {
+      p.stroke(180, 30, 30, 180);
+    } else {
+      p.stroke(0, 0, 0, 200);
+    }
+    p.strokeWeight(config.lineWeight * 0.7);
+    let params2 = getPatternParams(config, 2);
+    drawPattern(p, config.type2, params2, globalTime, true);
+    p.pop();
+
+    p.drawingContext.restore();
+    p.pop();
+
+    // Cell border
+    p.noFill(); p.stroke(200, 190, 175); p.strokeWeight(0.5);
+    p.rect(cx, cy, cellW, cellH);
+
+    // Hover highlight
+    if (idx === hoverCell) {
+      p.noFill(); p.stroke(139, 69, 19); p.strokeWeight(2);
+      p.rect(cx + 1, cy + 1, cellW - 2, cellH - 2);
+    }
+
+    // Label
+    p.noStroke(); p.fill(100, 90, 80, 180); p.textSize(8); p.textAlign(p.LEFT, p.TOP);
+    p.text(`${PATTERN_LABELS[config.type1]}+${PATTERN_LABELS[config.type2]}`, cx + 4, cy + 3);
+
+    // Score if available
+    if (cell.score > 0) {
+      p.textAlign(p.RIGHT, p.TOP);
+      p.fill(139, 69, 19, 160); p.textSize(7);
+      p.text(cell.score.toFixed(0), cx + cellW - 4, cy + 3);
+    }
+  }
+}
+
+// ===== SINGLE MODE RENDERER =====
+function drawSingle(p) {
+  let config;
+  if (selectedIdx >= 0 && selectedIdx < cells.length) {
+    config = cells[selectedIdx].config;
+  } else {
+    // Use sidebar values for live editing
+    config = readSidebar();
+  }
+
+  // White background for maximum contrast
+  p.fill(255);
+  p.noStroke();
+  p.rect(0, 0, cw, ch);
+
+  let centerX = cw / 2, centerY = ch / 2;
+
+  // Draw pattern 1
+  p.push();
+  p.translate(centerX, centerY);
+  // Clip to canvas
+  p.drawingContext.save();
+  p.drawingContext.beginPath();
+  p.drawingContext.rect(-centerX, -centerY, cw, ch);
+  p.drawingContext.clip();
+
+  p.noFill();
+  if (colorMode === 'color') {
+    p.stroke(30, 60, 180, 200);
+  } else {
+    p.stroke(0, 0, 0, 220);
+  }
+  p.strokeWeight(config.lineWeight);
+  let params1 = getPatternParams(config, 1);
+  drawPattern(p, config.type1, params1, globalTime, false);
+
+  p.drawingContext.restore();
+  p.pop();
+
+  // Draw pattern 2
+  p.push();
+  p.translate(centerX, centerY);
+  p.drawingContext.save();
+  p.drawingContext.beginPath();
+  p.drawingContext.rect(-centerX, -centerY, cw, ch);
+  p.drawingContext.clip();
+
+  p.noFill();
+  if (colorMode === 'color') {
+    p.stroke(180, 30, 30, 200);
+  } else {
+    p.stroke(0, 0, 0, 220);
+  }
+  p.strokeWeight(config.lineWeight);
+  let params2 = getPatternParams(config, 2);
+  drawPattern(p, config.type2, params2, globalTime, false);
+
+  p.drawingContext.restore();
+  p.pop();
+
+  // HUD update
+  document.getElementById('hud-p1').textContent = PATTERN_LABELS[config.type1];
+  document.getElementById('hud-p2').textContent = PATTERN_LABELS[config.type2];
+
+  let score = scoreMoire(config);
+  document.getElementById('hud-score').textContent = score.toFixed(1);
+
+  // Info bar
+  let spacingRatio = (config.spacing1 / config.spacing2).toFixed(3);
+  let angleDiff = (Math.abs(config.angle1 - config.angle2) * 180 / Math.PI).toFixed(1);
+  document.getElementById('info-bar').textContent =
+    `Cell ${selectedIdx + 1} \u2014 ${PATTERN_LABELS[config.type1]} + ${PATTERN_LABELS[config.type2]}, ` +
+    `spacing ratio ${spacingRatio}, angle diff ${angleDiff}\u00B0, score ${score.toFixed(1)}`;
+
+  // Back hint
+  p.fill(150); p.noStroke(); p.textSize(10); p.textAlign(p.LEFT, p.BOTTOM);
+  p.text('\u2190 Press Atlas to return', 10, ch - 30);
+}
+
+// ===== HELPERS =====
+function updateConfigList(config) {
+  let list = document.getElementById('config-list');
+  let html = '';
+  html += `<div class="config-item">P1: ${PATTERN_LABELS[config.type1]}</div>`;
+  html += `<div class="config-item">P2: ${PATTERN_LABELS[config.type2]}</div>`;
+  html += `<div class="config-item">Spacing: ${config.spacing1.toFixed(1)} / ${config.spacing2.toFixed(1)}</div>`;
+  html += `<div class="config-item">Ratio: ${(config.spacing1 / config.spacing2).toFixed(3)}</div>`;
+  html += `<div class="config-item">Angles: ${(config.angle1 * 180 / Math.PI).toFixed(1)}\u00B0 / ${(config.angle2 * 180 / Math.PI).toFixed(1)}\u00B0</div>`;
+  html += `<div class="config-item">\u0394angle: ${(Math.abs(config.angle1 - config.angle2) * 180 / Math.PI).toFixed(1)}\u00B0</div>`;
+  html += `<div class="config-item">Rot: ${config.rotSpeed1.toFixed(3)} / ${config.rotSpeed2.toFixed(3)}</div>`;
+  html += `<div class="config-item">Weight: ${config.lineWeight.toFixed(1)}</div>`;
+  html += `<div class="config-item" style="color:#8b4513;">Score: ${scoreMoire(config).toFixed(1)}</div>`;
+  list.innerHTML = html;
+}
+
+function applyCellToSidebar(config) {
+  document.getElementById('sel-type1').value = config.type1;
+  document.getElementById('sel-type2').value = config.type2;
+
+  document.getElementById('sl-spacing1').value = config.spacing1;
+  document.getElementById('v-spacing1').textContent = config.spacing1.toFixed(1);
+
+  document.getElementById('sl-spacing2').value = config.spacing2;
+  document.getElementById('v-spacing2').textContent = config.spacing2.toFixed(1);
+
+  document.getElementById('sl-angle1').value = config.angle1;
+  document.getElementById('v-angle1').textContent = config.angle1.toFixed(2);
+
+  document.getElementById('sl-angle2').value = config.angle2;
+  document.getElementById('v-angle2').textContent = config.angle2.toFixed(2);
+
+  document.getElementById('sl-rotspeed1').value = Math.max(-0.5, Math.min(0.5, config.rotSpeed1));
+  document.getElementById('v-rotspeed1').textContent = config.rotSpeed1.toFixed(2);
+
+  document.getElementById('sl-rotspeed2').value = Math.max(-0.5, Math.min(0.5, config.rotSpeed2));
+  document.getElementById('v-rotspeed2').textContent = config.rotSpeed2.toFixed(2);
+
+  document.getElementById('sl-weight').value = config.lineWeight;
+  document.getElementById('v-weight').textContent = config.lineWeight.toFixed(1);
+}
+
+// ===== LAUNCH =====
+new p5(sketch, 'canvas-container');
+</script>
+</body>
+</html>
