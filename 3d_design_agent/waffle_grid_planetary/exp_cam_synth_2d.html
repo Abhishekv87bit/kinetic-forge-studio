@@ -65,6 +65,15 @@
   .harmonic-list { max-height: 160px; overflow-y: auto; font-size: 9px; line-height: 1.5; margin-top: 4px; }
   .harmonic-item { padding: 1px 0; color: #666; font-family: 'Consolas', monospace; }
 
+  #physics-hud {
+    position: absolute; top: 8px; left: 290px;
+    background: rgba(245,243,238,0.9); border: 1px solid #c8c0b0;
+    border-radius: 4px; padding: 6px 10px; font-size: 9px; line-height: 1.6;
+    color: #666; min-width: 140px; pointer-events: none; font-family: 'Consolas', monospace;
+  }
+  #physics-hud.warn { border-color: #cc8800; background: rgba(255,240,200,0.9); }
+  #physics-hud.error { border-color: #cc2020; background: rgba(255,220,220,0.9); }
+
   ::-webkit-scrollbar { width: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: #c8c0b0; border-radius: 2px; }
@@ -103,6 +112,23 @@
     <label>Roller Radius</label>
     <input type="range" id="sl-roller" min="3" max="15" step="1" value="6">
     <span class="val" id="v-roller">6</span>
+  </div>
+
+  <div class="section-title">Follower Dynamics</div>
+  <div class="ctrl-row">
+    <label>Mass</label>
+    <input type="range" id="sl-mass" min="0.1" max="5.0" step="0.1" value="1.0">
+    <span class="val" id="v-mass">1.00</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Spring k</label>
+    <input type="range" id="sl-springk" min="10" max="500" step="5" value="100">
+    <span class="val" id="v-springk">100</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Damping</label>
+    <input type="range" id="sl-damping" min="0.0" max="5.0" step="0.1" value="1.0">
+    <span class="val" id="v-damping">1.00</span>
   </div>
 
   <div class="section-title">Animation</div>
@@ -146,6 +172,12 @@
     <div>Max Pressure <span class="hv" id="hud-pressure">--</span></div>
     <div>Score <span class="hv" id="hud-score">--</span></div>
   </div>
+  <div id="physics-hud">
+    <div>Contact Force: <span id="ph-contact">&mdash;</span></div>
+    <div>Follower Vel: <span id="ph-vel">&mdash;</span></div>
+    <div>Spring Force: <span id="ph-spring">&mdash;</span></div>
+    <div>Status: <span id="ph-status">CONTACT</span></div>
+  </div>
 </div>
 
 <div id="info-bar">
@@ -156,6 +188,13 @@
 // ========================================================
 // CAM PROFILE SYNTHESIZER — Fourier Cam Generation
 // ========================================================
+
+// ANALYTICAL CHECK: Cam Follower Jump Condition
+// For a flat-faced follower on a rotating cam:
+//   Contact maintained when: cam_accel + g + (k/m)*x > 0
+//   Jump occurs when cam surface accelerates downward faster than gravity + spring can follow
+//   Critical speed: omega_crit = sqrt(k/m) for simple harmonic cam
+//   Above omega_crit, follower will separate at the nose of the cam
 
 const COLS = 4, ROWS = 4;
 const ATLAS_TRAIL_MAX = 400;
@@ -172,6 +211,21 @@ let globalAngle = 0;
 let hoverCell = -1;
 let cw, ch;
 let findBeautifulRunning = false;
+
+// ===== FOLLOWER DYNAMICS STATE =====
+const GRAVITY = 9.8;       // scaled gravity constant
+const DT_PHYSICS = 0.016;  // physics timestep (~60fps)
+// Per-cell dynamics state is stored in cell.dynamics = { y, vy, inContact, contactForce, springForce }
+function initDynamics(baseR) {
+  return { y: 0, vy: 0, inContact: true, contactForce: 0, springForce: 0 };
+}
+function getPhysicsParams() {
+  return {
+    mass: parseFloat(document.getElementById('sl-mass').value),
+    springK: parseFloat(document.getElementById('sl-springk').value),
+    damping: parseFloat(document.getElementById('sl-damping').value)
+  };
+}
 
 // ===== FOURIER CAM CORE =====
 function camRadius(theta, baseR, harmonics) {
@@ -332,6 +386,97 @@ function scoreCamCurve(pts) {
   return inflections * 3 + dwellCount * 8 + range * 0.5 + asymmetry * 10;
 }
 
+// ===== FOLLOWER DYNAMICS SIMULATION =====
+// Second derivative of cam radius (for acceleration-based contact detection)
+function camRadiusSecondDeriv(theta, baseR, harmonics) {
+  let ddr = 0;
+  for (let k = 0; k < harmonics.length; k++) {
+    ddr -= harmonics[k].amp * (k + 1) * (k + 1) * Math.cos((k + 1) * theta + harmonics[k].phase);
+  }
+  return ddr;
+}
+
+// Update follower dynamics for one cell
+// camSurfaceDisp: the kinematic displacement of cam surface (positive = up/away from cam center)
+// Returns updated dynamics object
+function updateFollowerDynamics(dynamics, camSurfaceDisp, prevCamDisp, physics, dt) {
+  let { mass, springK, damping } = physics;
+  let { y, vy, inContact } = dynamics;
+
+  // Rest position is 0 (where cam = base radius)
+  let restY = 0;
+  let springForce = -springK * (y - restY);
+  let dampingForce = -damping * vy;
+  let gravityForce = -mass * GRAVITY; // gravity pulls follower down (toward cam)
+
+  // Cam surface velocity (finite difference)
+  let camVel = (camSurfaceDisp - prevCamDisp) / dt;
+
+  let contactForce = 0;
+
+  if (inContact) {
+    // Follower constrained to cam surface
+    // Compute what acceleration the cam demands
+    let camAccel = (camSurfaceDisp - 2 * prevCamDisp + (prevCamDisp - (camVel * dt))) / (dt * dt);
+    // Simpler: just use position constraint
+    y = camSurfaceDisp;
+    vy = camVel;
+
+    // Contact force = force needed to keep follower on cam
+    // F_contact = m*a_cam - F_spring - F_gravity - F_damping
+    // If contact force < 0, follower wants to separate
+    let requiredAccel = (camSurfaceDisp - dynamics.y) / (dt * dt) * 2; // approximate
+    contactForce = mass * requiredAccel - springForce - gravityForce - dampingForce;
+
+    // Better contact check: does the cam push the follower, or does the follower want to fly away?
+    // If the follower (under spring + gravity alone) would be above the cam surface, contact is maintained.
+    // If follower would be below cam surface even without cam, it has separated.
+    let freeAccel = (springForce + gravityForce + dampingForce) / mass;
+    let freeY = y + vy * dt + 0.5 * freeAccel * dt * dt;
+
+    if (freeY > camSurfaceDisp) {
+      // Free follower would be above cam -> cam is needed to hold it down, contact OK
+      // (cam pushes follower down in this convention where positive = away from cam)
+      contactForce = mass * ((camSurfaceDisp - y) / (dt * dt) * 2 - freeAccel);
+    } else {
+      // Free follower would fall below cam surface -> follower separates (jumps)
+      inContact = false;
+      // Let physics take over
+      let accel = freeAccel;
+      vy += accel * dt;
+      y += vy * dt;
+      contactForce = 0;
+    }
+
+    if (inContact) {
+      y = camSurfaceDisp;
+      vy = camVel;
+    }
+  } else {
+    // Follower is separated - only spring + gravity + damping act
+    let accel = (springForce + gravityForce + dampingForce) / mass;
+    vy += accel * dt;
+    y += vy * dt;
+    contactForce = 0;
+
+    // Check for re-contact: follower has fallen back to cam surface
+    if (y <= camSurfaceDisp) {
+      y = camSurfaceDisp;
+      vy = camVel; // snap to cam velocity on re-contact
+      inContact = true;
+      contactForce = 0.01; // just made contact
+    }
+  }
+
+  return {
+    y: y,
+    vy: vy,
+    inContact: inContact,
+    contactForce: contactForce,
+    springForce: springForce
+  };
+}
+
 // ===== ACTIONS =====
 function makeCell(config) {
   return {
@@ -339,7 +484,9 @@ function makeCell(config) {
     profile: camProfile(config.baseR, config.harmonics, CAM_PROFILE_STEPS),
     dispCurve: computeDisplacementCurve(config.baseR, config.harmonics, config.followerType, config.rollerR, 180),
     trail: [],
-    score: 0
+    score: 0,
+    dynamics: initDynamics(config.baseR),
+    prevCamDisp: 0
   };
 }
 
@@ -372,6 +519,8 @@ function mutateAll() {
       cell.profile = camProfile(m.baseR, m.harmonics, CAM_PROFILE_STEPS);
       cell.dispCurve = computeDisplacementCurve(m.baseR, m.harmonics, m.followerType, m.rollerR, 180);
       cell.trail = [];
+      cell.dynamics = initDynamics(m.baseR);
+      cell.prevCamDisp = 0;
     }
   }
   globalAngle = 0;
@@ -452,6 +601,9 @@ wireSlider('sl-harmonics', 'v-harmonics', 'int');
 wireSlider('sl-base', 'v-base', 'int');
 wireSlider('sl-amp', 'v-amp');
 wireSlider('sl-roller', 'v-roller', 'int');
+wireSlider('sl-mass', 'v-mass');
+wireSlider('sl-springk', 'v-springk', 'int');
+wireSlider('sl-damping', 'v-damping');
 wireSlider('sl-speed', 'v-speed');
 wireSlider('sl-trail', 'v-trail', 'int');
 
@@ -552,12 +704,21 @@ function drawAtlas(p) {
 
     p.pop();
 
-    // Follower animation
-    let disp = followerDisplacement(globalAngle, config.baseR, config.harmonics, config.followerType, config.rollerR);
-    let followerY = centerY - (config.baseR + disp) * camScale;
+    // Follower dynamics simulation
+    let camDisp = followerDisplacement(globalAngle, config.baseR, config.harmonics, config.followerType, config.rollerR);
+    let physics = getPhysicsParams();
+    cell.dynamics = updateFollowerDynamics(cell.dynamics, camDisp, cell.prevCamDisp, physics, DT_PHYSICS);
+    cell.prevCamDisp = camDisp;
 
-    // Follower indicator
-    p.fill(180, 50, 50); p.noStroke();
+    let dynDisp = cell.dynamics.y;
+    let followerY = centerY - (config.baseR + dynDisp) * camScale;
+
+    // Follower indicator — green when in contact, red when separated (jumping)
+    if (cell.dynamics.inContact) {
+      p.fill(50, 160, 80); p.noStroke();
+    } else {
+      p.fill(220, 50, 50); p.noStroke();
+    }
     if (config.followerType === 'roller') {
       p.circle(centerX, followerY, config.rollerR * camScale * 2);
     } else {
@@ -565,7 +726,7 @@ function drawAtlas(p) {
     }
 
     // Follower trail (displacement over time)
-    cell.trail.push(disp);
+    cell.trail.push(dynDisp);
     if (cell.trail.length > ATLAS_TRAIL_MAX) cell.trail.shift();
 
     // Mini displacement graph at bottom of cell
@@ -634,22 +795,47 @@ function drawSingle(p) {
 
   p.pop();
 
-  // === Draw Follower ===
-  let disp = followerDisplacement(globalAngle, config.baseR, config.harmonics, config.followerType, config.rollerR);
-  let followerY = camCenterY - (config.baseR + disp) * camScale;
+  // === Draw Follower (with dynamics) ===
+  let camDisp = followerDisplacement(globalAngle, config.baseR, config.harmonics, config.followerType, config.rollerR);
+  let physics = getPhysicsParams();
+  cell.dynamics = updateFollowerDynamics(cell.dynamics, camDisp, cell.prevCamDisp, physics, DT_PHYSICS);
+  cell.prevCamDisp = camDisp;
+
+  let dynDisp = cell.dynamics.y;
+  let followerY = camCenterY - (config.baseR + dynDisp) * camScale;
+  let inContact = cell.dynamics.inContact;
 
   // Follower guide rail
   p.stroke(160, 150, 140); p.strokeWeight(1);
   p.line(camCenterX, camCenterY - config.baseR * camScale * 2.5, camCenterX, camCenterY - config.baseR * camScale * 0.5);
 
-  // Follower body
+  // Spring coil between follower and return point (top of guide rail)
+  let springTopY = camCenterY - config.baseR * camScale * 2.5;
+  let springBotY = followerY - (config.followerType === 'roller' ? config.rollerR * camScale : 3);
+  let springSegments = 8;
+  let springAmplitude = 6;
+  p.stroke(100, 140, 180, 180); p.strokeWeight(1); p.noFill();
+  p.beginShape();
+  for (let s = 0; s <= springSegments; s++) {
+    let t = s / springSegments;
+    let sy = springTopY + t * (springBotY - springTopY);
+    let sx = camCenterX + (s % 2 === 0 ? -1 : 1) * springAmplitude * (1 - Math.abs(t - 0.5) * 0.5);
+    p.vertex(sx, sy);
+  }
+  p.endShape();
+
+  // Follower body — green when in contact, red when separated
+  let fR = inContact ? 50 : 220;
+  let fG = inContact ? 160 : 50;
+  let fB = inContact ? 80 : 50;
+
   if (config.followerType === 'roller') {
-    p.fill(180, 50, 50, 150); p.stroke(150, 40, 40); p.strokeWeight(1);
+    p.fill(fR, fG, fB, 150); p.stroke(fR * 0.8, fG * 0.8, fB * 0.8); p.strokeWeight(1);
     p.circle(camCenterX, followerY, config.rollerR * camScale * 2);
-    p.fill(200, 80, 80); p.noStroke();
+    p.fill(fR + 20, fG + 20, fB + 20); p.noStroke();
     p.circle(camCenterX, followerY, 3);
   } else if (config.followerType === 'flat') {
-    p.fill(180, 50, 50, 150); p.stroke(150, 40, 40); p.strokeWeight(1);
+    p.fill(fR, fG, fB, 150); p.stroke(fR * 0.8, fG * 0.8, fB * 0.8); p.strokeWeight(1);
     p.rect(camCenterX - 15, followerY - 3, 30, 6, 2);
   } else {
     // Oscillating arm
@@ -657,14 +843,38 @@ function drawSingle(p) {
     let pivotX = camCenterX + config.baseR * camScale * 1.5;
     let pivotY = camCenterY;
     let armAngle = Math.atan2(followerY - pivotY, camCenterX - pivotX);
-    p.stroke(180, 50, 50); p.strokeWeight(2);
+    p.stroke(fR, fG, fB); p.strokeWeight(2);
     p.line(pivotX, pivotY, pivotX + armLen * Math.cos(armAngle), pivotY + armLen * Math.sin(armAngle));
     p.fill(60); p.noStroke();
     p.rect(pivotX - 3, pivotY - 3, 6, 6);
   }
 
+  // Cam surface ghost (kinematic position for reference)
+  let kinFollowerY = camCenterY - (config.baseR + camDisp) * camScale;
+  p.stroke(180, 180, 180, 100); p.strokeWeight(0.5); p.noFill();
+  p.line(camCenterX - 10, kinFollowerY, camCenterX + 10, kinFollowerY);
+
+  // Update physics HUD
+  let phHud = document.getElementById('physics-hud');
+  document.getElementById('ph-contact').textContent = cell.dynamics.contactForce.toFixed(1);
+  document.getElementById('ph-vel').textContent = cell.dynamics.vy.toFixed(2);
+  document.getElementById('ph-spring').textContent = cell.dynamics.springForce.toFixed(1);
+  if (inContact) {
+    document.getElementById('ph-status').textContent = 'CONTACT';
+    phHud.className = '';
+    phHud.id = 'physics-hud';
+  } else {
+    document.getElementById('ph-status').textContent = 'JUMP!';
+    phHud.className = 'error';
+    phHud.id = 'physics-hud';
+  }
+  if (inContact && cell.dynamics.contactForce < 5) {
+    phHud.className = 'warn';
+    phHud.id = 'physics-hud';
+  }
+
   // === Displacement Graph (right half) ===
-  cell.trail.push(disp);
+  cell.trail.push(dynDisp);
   if (cell.trail.length > maxTrail) cell.trail.shift();
 
   let graphX = cw * 0.58, graphY = ch * 0.15;
@@ -702,7 +912,7 @@ function drawSingle(p) {
 
   // Current value marker
   let curX = graphX + ((cell.trail.length - 1) / maxTrail) * graphW;
-  let curY = zeroY - (disp / dispRange) * graphH * 0.4;
+  let curY = zeroY - (dynDisp / dispRange) * graphH * 0.4;
   p.fill(200, 50, 50); p.noStroke();
   p.circle(curX, curY, 6);
 

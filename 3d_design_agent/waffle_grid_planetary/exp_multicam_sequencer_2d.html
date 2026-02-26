@@ -64,6 +64,15 @@
   .cam-list { max-height: 200px; overflow-y: auto; font-size: 9px; line-height: 1.5; margin-top: 4px; }
   .cam-item { padding: 2px 0; color: #666; font-family: 'Consolas', monospace; }
 
+  #physics-hud {
+    position: absolute; top: 8px; left: 290px;
+    background: rgba(245,243,238,0.9); border: 1px solid #c8c0b0;
+    border-radius: 4px; padding: 6px 10px; font-size: 9px; line-height: 1.6;
+    color: #666; min-width: 140px; pointer-events: none; font-family: 'Consolas', monospace;
+  }
+  #physics-hud.warn { border-color: #cc8800; background: rgba(255,240,200,0.9); }
+  #physics-hud.error { border-color: #cc2020; background: rgba(255,220,220,0.9); }
+
   ::-webkit-scrollbar { width: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: #c8c0b0; border-radius: 2px; }
@@ -90,6 +99,23 @@
     <label>Speed</label>
     <input type="range" id="speed" min="0.1" max="3.0" value="1.0" step="0.1">
     <span class="val" id="speedVal">1.0</span>
+  </div>
+
+  <div class="section-title">Follower Dynamics</div>
+  <div class="ctrl-row">
+    <label>Mass</label>
+    <input type="range" id="followerMass" min="0.1" max="5.0" step="0.1" value="1.0">
+    <span class="val" id="followerMassVal">1.0</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Spring k</label>
+    <input type="range" id="springK" min="10" max="500" step="5" value="100">
+    <span class="val" id="springKVal">100</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Damping</label>
+    <input type="range" id="dampingC" min="0.0" max="5.0" step="0.1" value="1.0">
+    <span class="val" id="dampingCVal">1.0</span>
   </div>
 
   <div class="section-title">Follower Type</div>
@@ -128,10 +154,100 @@
 
 <div id="canvas-container">
   <div id="hud"></div>
+  <div id="physics-hud">
+    <div>Contact Force: <span id="ph-contact">&mdash;</span></div>
+    <div>Follower Vel: <span id="ph-vel">&mdash;</span></div>
+    <div>Spring Force: <span id="ph-spring">&mdash;</span></div>
+    <div>Status: <span id="ph-status">CONTACT</span></div>
+  </div>
 </div>
 <div id="info-bar">Multi-Cam Sequencer &mdash; N cams on one shaft create motion sequences</div>
 
 <script>
+// ANALYTICAL CHECK: Cam Follower Jump Condition
+// For a flat-faced follower on a rotating cam:
+//   Contact maintained when: cam_accel + g + (k/m)*x > 0
+//   Jump occurs when cam surface accelerates downward faster than gravity + spring can follow
+//   Critical speed: omega_crit = sqrt(k/m) for simple harmonic cam
+//   Above omega_crit, follower will separate at the nose of the cam
+
+// ===== FOLLOWER DYNAMICS ENGINE =====
+const GRAVITY = 9.8;
+const DT_PHYSICS = 0.016;
+
+function initFollowerDynamics() {
+  return { y: 0, vy: 0, inContact: true, contactForce: 0, springForce: 0, prevCamDisp: 0 };
+}
+
+function getPhysicsParams() {
+  return {
+    mass: parseFloat(document.getElementById('followerMass').value),
+    springK: parseFloat(document.getElementById('springK').value),
+    damping: parseFloat(document.getElementById('dampingC').value)
+  };
+}
+
+function updateFollowerDynamics(dyn, camSurfaceDisp, physics, dt) {
+  let { mass, springK, damping } = physics;
+  let { y, vy, inContact, prevCamDisp } = dyn;
+
+  let restY = 0;
+  let springForce = -springK * (y - restY);
+  let dampingForce = -damping * vy;
+  let gravityForce = -mass * GRAVITY;
+
+  let camVel = (camSurfaceDisp - prevCamDisp) / dt;
+  let contactForce = 0;
+
+  if (inContact) {
+    y = camSurfaceDisp;
+    vy = camVel;
+
+    // Check if follower would separate: free-body prediction
+    let freeAccel = (springForce + gravityForce + dampingForce) / mass;
+    let freeY = y + vy * dt + 0.5 * freeAccel * dt * dt;
+
+    if (freeY > camSurfaceDisp) {
+      // Contact maintained — cam needed to hold follower
+      contactForce = mass * ((camSurfaceDisp - y) / (dt * dt) * 2 - freeAccel);
+    } else {
+      // Follower separates (jumps)
+      inContact = false;
+      vy += freeAccel * dt;
+      y += vy * dt;
+      contactForce = 0;
+    }
+
+    if (inContact) {
+      y = camSurfaceDisp;
+      vy = camVel;
+    }
+  } else {
+    // Separated — spring + gravity + damping only
+    let accel = (springForce + gravityForce + dampingForce) / mass;
+    vy += accel * dt;
+    y += vy * dt;
+    contactForce = 0;
+
+    // Re-contact check
+    if (y <= camSurfaceDisp) {
+      y = camSurfaceDisp;
+      vy = camVel;
+      inContact = true;
+      contactForce = 0.01;
+    }
+  }
+
+  return {
+    y: y,
+    vy: vy,
+    inContact: inContact,
+    contactForce: contactForce,
+    springForce: springForce,
+    prevCamDisp: camSurfaceDisp
+  };
+}
+
 const sketch = (p) => {
   const ATLAS_COLS = 4, ATLAS_ROWS = 4;
   let mode = 'atlas';
@@ -191,7 +307,8 @@ const sketch = (p) => {
           30 + i * (200 / nCams),
           80 + Math.sin(i * 1.2) * 60,
           120 + Math.cos(i * 0.8) * 80
-        )
+        ),
+        dynamics: initFollowerDynamics()
       });
     }
     return { cams };
@@ -210,7 +327,8 @@ const sketch = (p) => {
         ...c,
         profile: newProfile,
         phaseOffset: c.phaseOffset + (p.random() - 0.5) * 0.3,
-        amplitudeScale: Math.max(0.3, c.amplitudeScale * (1 + (p.random() - 0.5) * 0.2))
+        amplitudeScale: Math.max(0.3, c.amplitudeScale * (1 + (p.random() - 0.5) * 0.2)),
+        dynamics: initFollowerDynamics()
       };
     });
     return { cams: newCams };
@@ -268,12 +386,28 @@ const sketch = (p) => {
     p.strokeWeight(3);
     p.line(cx - w / 2 + 10, shaftY, cx + w / 2 - 10, shaftY);
 
+    let physics = getPhysicsParams();
+    let anyJumping = false;
+    let worstContactForce = Infinity;
+    let totalSpringForce = 0;
+    let totalVel = 0;
+
     // Each cam + follower
     for (let i = 0; i < nCams; i++) {
       let cam = cfg.cams[i];
       let camX = cx - w / 2 + (i + 1) * camSpacing;
       let angle = time + cam.phaseOffset;
-      let displacement = followerDisplacement(cam.profile, angle) * cam.amplitudeScale;
+      let kinDisplacementRaw = followerDisplacement(cam.profile, angle);
+
+      // Update follower dynamics on raw displacement (before amplitudeScale)
+      cam.dynamics = updateFollowerDynamics(cam.dynamics, kinDisplacementRaw, physics, DT_PHYSICS);
+      let dynDisplacement = cam.dynamics.y * cam.amplitudeScale;
+      let inContact = cam.dynamics.inContact;
+
+      if (!inContact) anyJumping = true;
+      if (cam.dynamics.contactForce < worstContactForce) worstContactForce = cam.dynamics.contactForce;
+      totalSpringForce += cam.dynamics.springForce;
+      totalVel += Math.abs(cam.dynamics.vy);
 
       // Draw cam profile (small)
       p.push();
@@ -298,13 +432,35 @@ const sketch = (p) => {
       p.ellipse(0, 0, 4, 4);
       p.pop();
 
-      // Follower
-      let followerY = followerBaseY - displacement * 0.8;
+      // Follower — use dynamic displacement
+      let followerY = followerBaseY - dynDisplacement * 0.8;
+
+      // Color: green in contact, red when jumping
+      let fR = inContact ? 50 : 220;
+      let fG = inContact ? 160 : 50;
+      let fB = inContact ? 80 : 50;
+
       if (cam.followerType === 'translate') {
         // Flat follower translating vertically
-        p.stroke(p.red(cam.color), p.green(cam.color), p.blue(cam.color));
+        p.stroke(fR, fG, fB);
         p.strokeWeight(2);
         p.line(camX - 8, followerY, camX + 8, followerY);
+
+        // Spring coil between follower and guide rail top
+        let springTop = shaftY - 30;
+        let springBot = followerY;
+        let springSegs = 6;
+        let springAmp = 4;
+        p.stroke(100, 140, 180, 150); p.strokeWeight(0.8); p.noFill();
+        p.beginShape();
+        for (let s = 0; s <= springSegs; s++) {
+          let t = s / springSegs;
+          let sy = springTop + t * (springBot - springTop);
+          let sx = camX + (s % 2 === 0 ? -1 : 1) * springAmp;
+          p.vertex(sx, sy);
+        }
+        p.endShape();
+
         // Guide lines
         p.stroke(180);
         p.strokeWeight(0.5);
@@ -315,20 +471,20 @@ const sketch = (p) => {
         p.strokeWeight(1.5);
         p.line(camX, followerY, camX, followerBaseY + h * 0.25);
         // Tip marker
-        p.fill(p.red(cam.color), p.green(cam.color), p.blue(cam.color));
+        p.fill(fR, fG, fB);
         p.noStroke();
         p.ellipse(camX, followerBaseY + h * 0.25, 6, 6);
       } else {
         // Oscillating arm
         let armLen = h * 0.25;
         let pivotX = camX, pivotY = followerBaseY + 5;
-        let swingAngle = displacement * 0.02;
+        let swingAngle = dynDisplacement * 0.02;
         let tipX = pivotX + armLen * Math.sin(swingAngle);
         let tipY = pivotY + armLen * Math.cos(swingAngle);
-        p.stroke(p.red(cam.color), p.green(cam.color), p.blue(cam.color));
+        p.stroke(fR, fG, fB);
         p.strokeWeight(2);
         p.line(pivotX, pivotY, tipX, tipY);
-        p.fill(p.red(cam.color), p.green(cam.color), p.blue(cam.color));
+        p.fill(fR, fG, fB);
         p.noStroke();
         p.ellipse(pivotX, pivotY, 5, 5);
         p.ellipse(tipX, tipY, 5, 5);
@@ -342,10 +498,13 @@ const sketch = (p) => {
         p.textAlign(p.CENTER);
         p.text('C' + (i + 1), camX, shaftY - 25);
         p.textSize(7);
-        p.fill(140);
-        p.text(cam.followerType.charAt(0).toUpperCase(), camX, followerBaseY + h * 0.33);
+        p.fill(inContact ? 140 : 200, inContact ? 140 : 50, inContact ? 140 : 50);
+        p.text(inContact ? cam.followerType.charAt(0).toUpperCase() : 'JUMP', camX, followerBaseY + h * 0.33);
       }
     }
+
+    // Return summary for HUD updates
+    return { anyJumping, worstContactForce, totalSpringForce, totalVel, nCams };
   }
 
   function drawWaterfallView(p, cfg, cx, cy, w, h, time) {
@@ -391,13 +550,20 @@ const sketch = (p) => {
       }
       p.endShape();
 
-      // Current position marker
+      // Current position marker — use dynamic position if available
       let currAngle = (time % (Math.PI * 2));
       let currX = graphX + (currAngle / (Math.PI * 2)) * graphW;
-      let currD = followerDisplacement(cam.profile, currAngle + cam.phaseOffset) * cam.amplitudeScale;
+      let currDRaw = cam.dynamics ? cam.dynamics.y : followerDisplacement(cam.profile, currAngle + cam.phaseOffset);
+      let currD = currDRaw * cam.amplitudeScale;
       let currY = midY - (currD / maxDisp) * ampY;
 
-      p.fill(p.red(cam.color), p.green(cam.color), p.blue(cam.color));
+      // Color marker by contact status
+      let inCon = cam.dynamics ? cam.dynamics.inContact : true;
+      if (inCon) {
+        p.fill(p.red(cam.color), p.green(cam.color), p.blue(cam.color));
+      } else {
+        p.fill(220, 50, 50);
+      }
       p.noStroke();
       p.ellipse(currX, currY, 6, 6);
 
@@ -540,8 +706,8 @@ const sketch = (p) => {
       let cfg = configs[i];
       if (!cfg) continue;
 
-      // Draw small side view in each cell
-      drawSideView(p, cfg, cx + cellW / 2, cy + cellH / 2, cellW - 20, cellH - 20, shaftAngle, false);
+      // Draw small side view in each cell (dynamics computed inside)
+      let result = drawSideView(p, cfg, cx + cellW / 2, cy + cellH / 2, cellW - 20, cellH - 20, shaftAngle, false);
 
       // Score
       p.noStroke();
@@ -578,14 +744,62 @@ const sketch = (p) => {
     if (!cfg) return;
 
     let viewMode = document.getElementById('viewMode').value;
+    let physResult = null;
 
     if (viewMode === 'side') {
-      drawSideView(p, cfg, cW / 2, cH / 2 - 20, cW - 40, cH - 60, shaftAngle, true);
+      physResult = drawSideView(p, cfg, cW / 2, cH / 2 - 20, cW - 40, cH - 60, shaftAngle, true);
     } else if (viewMode === 'waterfall') {
+      // Run dynamics update for waterfall view too
+      let physics = getPhysicsParams();
+      let anyJ = false;
+      for (let cam of cfg.cams) {
+        let angle = shaftAngle + cam.phaseOffset;
+        let kinD = followerDisplacement(cam.profile, angle);
+        cam.dynamics = updateFollowerDynamics(cam.dynamics, kinD, physics, DT_PHYSICS);
+        if (!cam.dynamics.inContact) anyJ = true;
+      }
       drawWaterfallView(p, cfg, cW / 2, cH / 2, cW - 40, cH - 40, shaftAngle);
+      physResult = { anyJumping: anyJ, worstContactForce: 0, totalSpringForce: 0, totalVel: 0, nCams: cfg.cams.length };
     } else {
+      // Polar view — also run dynamics
+      let physics = getPhysicsParams();
+      let anyJ = false;
+      for (let cam of cfg.cams) {
+        let angle = shaftAngle + cam.phaseOffset;
+        let kinD = followerDisplacement(cam.profile, angle);
+        cam.dynamics = updateFollowerDynamics(cam.dynamics, kinD, physics, DT_PHYSICS);
+        if (!cam.dynamics.inContact) anyJ = true;
+      }
       let size = Math.min(cW, cH) - 60;
       drawPolarView(p, cfg, cW / 2, cH / 2, size, shaftAngle);
+      physResult = { anyJumping: anyJ, worstContactForce: 0, totalSpringForce: 0, totalVel: 0, nCams: cfg.cams.length };
+    }
+
+    // Update physics HUD
+    if (physResult) {
+      let phHud = document.getElementById('physics-hud');
+      let jumpCount = cfg.cams.filter(c => c.dynamics && !c.dynamics.inContact).length;
+      let avgVel = cfg.cams.reduce((s, c) => s + (c.dynamics ? Math.abs(c.dynamics.vy) : 0), 0) / cfg.cams.length;
+      let avgSpring = cfg.cams.reduce((s, c) => s + (c.dynamics ? c.dynamics.springForce : 0), 0) / cfg.cams.length;
+      let minContact = cfg.cams.reduce((m, c) => Math.min(m, c.dynamics ? c.dynamics.contactForce : 999), 999);
+
+      document.getElementById('ph-contact').textContent = minContact.toFixed(1);
+      document.getElementById('ph-vel').textContent = avgVel.toFixed(2);
+      document.getElementById('ph-spring').textContent = avgSpring.toFixed(1);
+
+      if (jumpCount > 0) {
+        document.getElementById('ph-status').textContent = jumpCount + '/' + cfg.cams.length + ' JUMP!';
+        phHud.className = 'error';
+        phHud.id = 'physics-hud';
+      } else if (minContact < 5) {
+        document.getElementById('ph-status').textContent = 'MARGINAL';
+        phHud.className = 'warn';
+        phHud.id = 'physics-hud';
+      } else {
+        document.getElementById('ph-status').textContent = 'ALL CONTACT';
+        phHud.className = '';
+        phHud.id = 'physics-hud';
+      }
     }
 
     updateCamList(cfg);
@@ -669,7 +883,7 @@ const sketch = (p) => {
   };
 
   // Slider hooks
-  ['numCams', 'numHarmonics', 'speed'].forEach(id => {
+  ['numCams', 'numHarmonics', 'speed', 'followerMass', 'springK', 'dampingC'].forEach(id => {
     let el = document.getElementById(id);
     let valEl = document.getElementById(id + 'Val');
     el.addEventListener('input', () => { valEl.textContent = el.value; });
