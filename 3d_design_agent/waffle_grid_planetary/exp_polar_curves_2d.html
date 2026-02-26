@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Polar Curve Explorer — Multi-Term Random Equations</title>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f5f3ee; overflow: hidden; font-family: 'Georgia', serif; display: flex; height: 100vh; }
+  #sidebar { width: 280px; min-width: 280px; background: #f0ede6; border-right: 1px solid #c8c0b0; overflow-y: auto; padding: 12px 14px; font-size: 12px; color: #444; }
+  #sidebar h1 { font-size: 14px; letter-spacing: 1.5px; color: #333; margin-bottom: 2px; font-weight: normal; }
+  #sidebar .subtitle { font-size: 10px; color: #888; margin-bottom: 12px; font-style: italic; }
+  .section-title { font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: #8b7355; margin-top: 14px; margin-bottom: 6px; border-bottom: 1px solid #d8d0c0; padding-bottom: 3px; }
+  .ctrl-row { display: flex; align-items: center; margin-bottom: 5px; }
+  .ctrl-row label { flex: 0 0 95px; font-size: 11px; color: #666; }
+  .ctrl-row input[type="range"] { flex: 1; height: 3px; accent-color: #8b4513; }
+  .ctrl-row .val { flex: 0 0 40px; text-align: right; font-size: 10px; color: #555; font-family: 'Consolas', monospace; }
+  select { width: 100%; padding: 4px 8px; font-size: 11px; font-family: 'Georgia', serif; background: #faf8f3; color: #555; border: 1px solid #c8c0b0; border-radius: 3px; margin-bottom: 4px; }
+  .btn-row { display: flex; gap: 5px; margin: 8px 0; flex-wrap: wrap; }
+  .btn { padding: 5px 10px; font-size: 10px; font-family: 'Georgia', serif; background: #555; color: #f5f3ee; border: none; cursor: pointer; letter-spacing: 0.5px; border-radius: 2px; transition: background 0.15s; }
+  .btn:hover { background: #333; }
+  .btn.active { background: #8b4513; }
+  .btn.accent { background: #2a6848; }
+  .btn.accent:hover { background: #1a4830; }
+  .btn.danger { background: #8b2020; }
+  .btn:disabled { background: #aaa; cursor: not-allowed; }
+  #canvas-container { flex: 1; position: relative; }
+  #info-bar { position: fixed; bottom: 0; left: 280px; right: 0; z-index: 100; background: rgba(245,243,238,0.92); border-top: 1px solid #bbb; padding: 4px 16px; font-size: 10px; color: #777; font-style: italic; }
+  #hud { position: absolute; top: 8px; right: 12px; background: rgba(245,243,238,0.9); border: 1px solid #c8c0b0; border-radius: 4px; padding: 8px 12px; font-size: 10px; line-height: 1.7; color: #666; min-width: 160px; pointer-events: none; }
+  #hud .hv { color: #444; font-family: 'Consolas', monospace; float: right; }
+  .progress-bar { width: 100%; height: 3px; background: #ddd; border-radius: 2px; margin: 4px 0; }
+  .progress-bar-fill { height: 100%; background: #8b4513; border-radius: 2px; transition: width 0.1s; }
+  .term-list { max-height: 180px; overflow-y: auto; font-size: 9px; line-height: 1.6; margin-top: 4px; }
+  .term-item { padding: 1px 0; color: #666; font-family: 'Consolas', monospace; }
+  .preset-item { cursor: pointer; padding: 3px 6px; font-size: 10px; border-radius: 2px; transition: background 0.12s; }
+  .preset-item:hover { background: #e8e4db; }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #c8c0b0; border-radius: 2px; }
+</style>
+</head>
+<body>
+<div id="sidebar">
+  <h1>POLAR CURVES</h1>
+  <div class="subtitle">Multi-Term Random Polar Equations</div>
+
+  <div class="section-title">Structure</div>
+  <div class="ctrl-row">
+    <label>Terms (N)</label>
+    <input type="range" id="sl-terms" min="1" max="6" step="1" value="3">
+    <span class="val" id="v-terms">3</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Func Bias</label>
+    <select id="sel-func" style="flex:1; width:auto;">
+      <option value="mixed" selected>Mixed (all types)</option>
+      <option value="cos">Cosine only</option>
+      <option value="sin">Sine only</option>
+      <option value="abscos">|cos| only</option>
+      <option value="abssin">|sin| only</option>
+      <option value="sawtooth">Sawtooth only</option>
+      <option value="triangle">Triangle only</option>
+    </select>
+  </div>
+
+  <div class="section-title">Animation</div>
+  <div class="ctrl-row">
+    <label>Speed</label>
+    <input type="range" id="sl-speed" min="0.1" max="4.0" step="0.1" value="1.2">
+    <span class="val" id="v-speed">1.20</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Trail Length</label>
+    <input type="range" id="sl-trail" min="200" max="6000" step="200" value="2000">
+    <span class="val" id="v-trail">2000</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Trail Width</label>
+    <input type="range" id="sl-tw" min="0.3" max="3.0" step="0.1" value="1.0">
+    <span class="val" id="v-tw">1.00</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Morph</label>
+    <input type="range" id="sl-morph" min="0" max="1" step="1" value="0">
+    <span class="val" id="v-morph">OFF</span>
+  </div>
+
+  <div class="section-title">Mode</div>
+  <div class="btn-row">
+    <button class="btn active" id="btn-atlas" onclick="setMode('atlas')">Atlas 4x4</button>
+    <button class="btn" id="btn-single" onclick="setMode('single')">Single</button>
+    <button class="btn" id="btn-morph" onclick="setMode('morph')">Morph</button>
+  </div>
+
+  <div class="section-title">Actions</div>
+  <div class="btn-row">
+    <button class="btn accent" onclick="randomizeAll()">Randomize</button>
+    <button class="btn" onclick="mutateAll()">Mutate</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn danger" id="btn-beautiful" onclick="findBeautiful()">Find Beautiful</button>
+  </div>
+  <div id="progress-container" style="display:none;">
+    <div class="progress-bar"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
+    <span style="font-size:9px;color:#888;" id="progress-text">Searching...</span>
+  </div>
+
+  <div class="section-title">Presets</div>
+  <div style="font-size:10px; line-height:1.8; color:#666;">
+    <div class="preset-item" onclick="loadPreset('rose')">Rose: r = cos(n&theta;)</div>
+    <div class="preset-item" onclick="loadPreset('spiral')">Spiral: r = a + b&theta;</div>
+    <div class="preset-item" onclick="loadPreset('lemniscate')">Lemniscate: r&sup2; = cos(2&theta;)</div>
+    <div class="preset-item" onclick="loadPreset('cardioid')">Cardioid: r = 1 + cos(&theta;)</div>
+    <div class="preset-item" onclick="loadPreset('limacon')">Lima&ccedil;on: r = 0.5 + cos(&theta;)</div>
+    <div class="preset-item" onclick="loadPreset('butterfly')">Butterfly: mixed multi-term</div>
+  </div>
+
+  <div class="section-title">Terms</div>
+  <div class="term-list" id="term-list">
+    <div class="term-item" style="color:#999;">Click a cell to inspect terms</div>
+  </div>
+</div>
+
+<div id="canvas-container">
+  <div id="hud">
+    <div>FPS <span class="hv" id="hud-fps">--</span></div>
+    <div>Mode <span class="hv" id="hud-mode">atlas</span></div>
+    <div>Terms <span class="hv" id="hud-n">--</span></div>
+    <div>Score <span class="hv" id="hud-score">--</span></div>
+  </div>
+</div>
+
+<div id="info-bar">
+  Plate VII. &mdash; An atlas of polar curves r(&theta;) = &Sigma; A&middot;f(n&theta;+&phi;). Each cell traces a unique multi-term polar equation. Click to inspect.
+</div>
+
+<script>
+// ========================================================
+// POLAR CURVE EXPLORER — Multi-Term Random Equations
+// ========================================================
+
+const TWO_PI = Math.PI * 2;
+const COLS = 4, ROWS = 4;
+const ATLAS_TRAIL = 600;
+const SINGLE_TRAIL = 6000;
+const FIND_BEAUTIFUL_TOTAL = 200;
+const FIND_BEAUTIFUL_CHUNK = 25;
+
+let mode = 'atlas', cells = [], selectedIdx = -1, globalAngle = 0, hoverCell = -1;
+let cw, ch, findBeautifulRunning = false;
+
+// Morph state
+let morphConfigA = null, morphConfigB = null, morphT = 0, morphDir = 1;
+let morphTrail = [];
+
+// ===== WAVE FUNCTIONS =====
+function sawtooth(x) { return 2 * (x / TWO_PI - Math.floor(x / TWO_PI + 0.5)); }
+function triangle(x) { return Math.abs(sawtooth(x)) * 2 - 1; }
+
+const FUNC_NAMES = ['cos', 'sin', 'abscos', 'abssin', 'sawtooth', 'triangle'];
+const FUNC_MAP = {
+  cos: Math.cos,
+  sin: Math.sin,
+  abscos: x => Math.abs(Math.cos(x)),
+  abssin: x => Math.abs(Math.sin(x)),
+  sawtooth: sawtooth,
+  triangle: triangle
+};
+
+function evalFunc(name, x) { return FUNC_MAP[name](x); }
+
+// ===== POLAR EQUATION =====
+// r(theta) = sum_{k} A[k] * func[k](freq[k] * theta + phase[k])
+function polarR(terms, theta) {
+  let r = 0;
+  for (let k = 0; k < terms.length; k++) {
+    let t = terms[k];
+    r += t.amp * evalFunc(t.func, t.freq * theta + t.phase);
+  }
+  return r;
+}
+
+function polarToCartesian(terms, theta) {
+  let r = polarR(terms, theta);
+  return { x: r * Math.cos(theta), y: r * Math.sin(theta), r: r };
+}
+
+// Pre-compute full curve for scoring
+function computeFullCurve(terms, steps) {
+  let pts = [];
+  let revolutions = Math.max(2, Math.ceil(maxFreqRevolutions(terms)));
+  for (let i = 0; i <= steps; i++) {
+    let theta = (i / steps) * TWO_PI * revolutions;
+    let p = polarToCartesian(terms, theta);
+    pts.push(p);
+  }
+  return pts;
+}
+
+// Estimate how many revolutions needed for curve to approximately close
+function maxFreqRevolutions(terms) {
+  let maxF = 1;
+  for (let t of terms) {
+    let f = Math.abs(t.freq);
+    if (f > 0.1) maxF = Math.max(maxF, f);
+  }
+  // For frequency n, one revolution of the base pattern needs ceil(n) theta revolutions
+  // We want at least a few full patterns
+  return Math.min(Math.ceil(maxF) * 2, 12);
+}
+
+// ===== CONFIG GENERATOR =====
+function pickFunc() {
+  let bias = document.getElementById('sel-func').value;
+  if (bias !== 'mixed') return bias;
+  return FUNC_NAMES[Math.floor(Math.random() * FUNC_NAMES.length)];
+}
+
+function randomConfig() {
+  let numTerms = parseInt(document.getElementById('sl-terms').value);
+  let terms = [];
+  for (let k = 0; k < numTerms; k++) {
+    terms.push({
+      amp: 0.1 + Math.random() * 0.9,
+      freq: 0.5 + Math.random() * 7.5,
+      phase: Math.random() * TWO_PI,
+      func: pickFunc()
+    });
+  }
+  // Ensure first term has decent amplitude for structure
+  terms[0].amp = 0.4 + Math.random() * 0.6;
+  return { terms, numTerms };
+}
+
+function mutateConfig(config) {
+  let c = JSON.parse(JSON.stringify(config));
+  for (let t of c.terms) {
+    t.amp = Math.max(0.1, Math.min(1.0, t.amp + (Math.random() - 0.5) * 0.15));
+    t.freq = Math.max(0.5, Math.min(8.0, t.freq + (Math.random() - 0.5) * 0.5));
+    t.phase += (Math.random() - 0.5) * 0.3;
+    if (Math.random() < 0.08) t.func = pickFunc();
+  }
+  return c;
+}
+
+// Interpolate two configs for morph mode
+function lerpConfig(a, b, t) {
+  let maxTerms = Math.max(a.terms.length, b.terms.length);
+  let terms = [];
+  for (let k = 0; k < maxTerms; k++) {
+    let ta = k < a.terms.length ? a.terms[k] : { amp: 0, freq: 1, phase: 0, func: 'cos' };
+    let tb = k < b.terms.length ? b.terms[k] : { amp: 0, freq: 1, phase: 0, func: 'cos' };
+    terms.push({
+      amp: ta.amp * (1 - t) + tb.amp * t,
+      freq: ta.freq * (1 - t) + tb.freq * t,
+      phase: ta.phase * (1 - t) + tb.phase * t,
+      func: t < 0.5 ? ta.func : tb.func
+    });
+  }
+  return { terms, numTerms: maxTerms };
+}
+
+// ===== PRESET CONFIGS =====
+function loadPreset(name) {
+  let config;
+  switch (name) {
+    case 'rose':
+      let n = Math.floor(Math.random() * 6) + 2;
+      config = { terms: [{ amp: 0.8, freq: n, phase: 0, func: 'cos' }], numTerms: 1 };
+      break;
+    case 'spiral':
+      config = { terms: [
+        { amp: 0.3, freq: 0, phase: 0, func: 'cos' },
+        { amp: 0.05, freq: 1 / TWO_PI, phase: 0, func: 'cos' }
+      ], numTerms: 2 };
+      // Spiral approximation: first term constant offset, synthesize via wrap
+      config = { terms: [
+        { amp: 0.6, freq: 0.5, phase: 0, func: 'cos' },
+        { amp: 0.3, freq: 1.5, phase: 0.5, func: 'sawtooth' }
+      ], numTerms: 2 };
+      break;
+    case 'lemniscate':
+      // r^2 = cos(2theta) approximated as r = |cos(2theta)|^0.5
+      config = { terms: [{ amp: 0.9, freq: 2, phase: 0, func: 'abscos' }], numTerms: 1 };
+      break;
+    case 'cardioid':
+      config = { terms: [
+        { amp: 0.5, freq: 0.001, phase: 0, func: 'cos' },
+        { amp: 0.5, freq: 1, phase: 0, func: 'cos' }
+      ], numTerms: 2 };
+      break;
+    case 'limacon':
+      config = { terms: [
+        { amp: 0.3, freq: 0.001, phase: 0, func: 'cos' },
+        { amp: 0.7, freq: 1, phase: 0, func: 'cos' }
+      ], numTerms: 2 };
+      break;
+    case 'butterfly':
+      config = { terms: [
+        { amp: 0.5, freq: 2, phase: 0, func: 'cos' },
+        { amp: 0.3, freq: 5, phase: 1.2, func: 'sin' },
+        { amp: 0.2, freq: 3, phase: 0.7, func: 'abscos' },
+        { amp: 0.15, freq: 7, phase: 2.1, func: 'triangle' }
+      ], numTerms: 4 };
+      break;
+    default:
+      config = randomConfig();
+  }
+  selectedIdx = 0;
+  cells[0] = makeCell(config);
+  cells[0].trail = [];
+  setMode('single');
+  updateTermList(config);
+}
+
+// ===== BEAUTY SCORER =====
+function scoreCurve(pts) {
+  if (pts.length < 30) return 0;
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (let p of pts) { minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x); minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y); }
+  let w = maxX - minX, h = maxY - minY, area = w * h;
+  if (area < 0.001) return 0;
+
+  // Perimeter
+  let perim = 0;
+  for (let i = 1; i < pts.length; i++) {
+    let dx = pts[i].x - pts[i - 1].x, dy = pts[i].y - pts[i - 1].y;
+    perim += Math.sqrt(dx * dx + dy * dy);
+  }
+  if (perim < 0.01) return 0;
+
+  let complexity = (perim / Math.sqrt(area)) * 2;
+
+  // Inflection count
+  let inflections = 0;
+  for (let i = 3; i < pts.length; i++) {
+    let cross1 = (pts[i].x - pts[i - 1].x) * (pts[i - 1].y - pts[i - 2].y) - (pts[i].y - pts[i - 1].y) * (pts[i - 1].x - pts[i - 2].x);
+    let cross0 = (pts[i - 1].x - pts[i - 2].x) * (pts[i - 2].y - pts[i - 3].y) - (pts[i - 1].y - pts[i - 2].y) * (pts[i - 2].x - pts[i - 3].x);
+    if (cross1 * cross0 < 0) inflections++;
+  }
+
+  // Aspect ratio bonus
+  let aspect = Math.min(w, h) / Math.max(w, h);
+  let aspectBonus = aspect > 0.3 ? 12 : (aspect > 0.15 ? 5 : 0);
+
+  // Near-closure bonus
+  let dx = pts[pts.length - 1].x - pts[0].x, dy = pts[pts.length - 1].y - pts[0].y;
+  let closeDist = Math.sqrt(dx * dx + dy * dy);
+  let closureBonus = closeDist < perim * 0.01 ? 25 : (closeDist < perim * 0.05 ? 12 : 0);
+
+  // Self-intersections (sampled every 3rd point for speed)
+  let crossings = 0;
+  let step = 3;
+  for (let i = step; i < pts.length && crossings < 20; i += step) {
+    for (let j = i + step * 2; j < pts.length && crossings < 20; j += step) {
+      if (segsIntersect(pts[i - step], pts[i], pts[j - step], pts[j])) crossings++;
+    }
+  }
+
+  return inflections * 1.2 + Math.min(crossings, 20) * 3.5 + complexity * 0.4 + aspectBonus + closureBonus;
+}
+
+function segsIntersect(a, b, c, d) {
+  let det = (b.x - a.x) * (d.y - c.y) - (b.y - a.y) * (d.x - c.x);
+  if (Math.abs(det) < 1e-10) return false;
+  let t = ((c.x - a.x) * (d.y - c.y) - (c.y - a.y) * (d.x - c.x)) / det;
+  let u = ((c.x - a.x) * (b.y - a.y) - (c.y - a.y) * (b.x - a.x)) / det;
+  return t > 0.01 && t < 0.99 && u > 0.01 && u < 0.99;
+}
+
+// ===== ACTIONS =====
+function makeCell(config) {
+  return { config, trail: [], score: 0, angle: 0 };
+}
+
+function randomizeAll() {
+  cells = [];
+  for (let i = 0; i < COLS * ROWS; i++) cells.push(makeCell(randomConfig()));
+  globalAngle = 0;
+  if (mode === 'morph') { morphConfigA = randomConfig(); morphConfigB = randomConfig(); morphTrail = []; morphT = 0; }
+}
+
+function mutateAll() {
+  for (let cell of cells) { cell.config = mutateConfig(cell.config); cell.trail = []; cell.score = 0; }
+  globalAngle = 0;
+}
+
+function findBeautiful() {
+  if (findBeautifulRunning) return;
+  findBeautifulRunning = true;
+  document.getElementById('btn-beautiful').disabled = true;
+  document.getElementById('progress-container').style.display = 'block';
+  let candidates = [], processed = 0;
+
+  function chunk() {
+    let end = Math.min(processed + FIND_BEAUTIFUL_CHUNK, FIND_BEAUTIFUL_TOTAL);
+    for (let i = processed; i < end; i++) {
+      let config = randomConfig();
+      let pts = computeFullCurve(config.terms, 1500);
+      let score = scoreCurve(pts);
+      candidates.push({ config, score });
+    }
+    processed = end;
+    document.getElementById('progress-fill').style.width = Math.round(processed / FIND_BEAUTIFUL_TOTAL * 100) + '%';
+    document.getElementById('progress-text').textContent = 'Scoring ' + processed + '/' + FIND_BEAUTIFUL_TOTAL + '...';
+
+    if (processed < FIND_BEAUTIFUL_TOTAL) {
+      setTimeout(chunk, 0);
+    } else {
+      candidates.sort((a, b) => b.score - a.score);
+      cells = candidates.slice(0, COLS * ROWS).map(c => { let cell = makeCell(c.config); cell.score = c.score; return cell; });
+      globalAngle = 0;
+      findBeautifulRunning = false;
+      document.getElementById('btn-beautiful').disabled = false;
+      document.getElementById('progress-container').style.display = 'none';
+    }
+  }
+  chunk();
+}
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-atlas').classList.toggle('active', m === 'atlas');
+  document.getElementById('btn-single').classList.toggle('active', m === 'single');
+  document.getElementById('btn-morph').classList.toggle('active', m === 'morph');
+  document.getElementById('hud-mode').textContent = m;
+  if (m === 'atlas') selectedIdx = -1;
+  if (m === 'morph') {
+    morphConfigA = randomConfig();
+    morphConfigB = randomConfig();
+    morphTrail = [];
+    morphT = 0;
+    morphDir = 1;
+  }
+}
+
+// Slider wiring
+['sl-terms:v-terms:int', 'sl-speed:v-speed:', 'sl-trail:v-trail:int', 'sl-tw:v-tw:', 'sl-morph:v-morph:bool'].forEach(s => {
+  let [id, vid, fmt] = s.split(':');
+  document.getElementById(id).addEventListener('input', () => {
+    let v = parseFloat(document.getElementById(id).value);
+    document.getElementById(vid).textContent = fmt === 'int' ? Math.round(v) : fmt === 'bool' ? (v > 0.5 ? 'ON' : 'OFF') : v.toFixed(2);
+  });
+});
+
+// ===== P5.JS SKETCH =====
+const sketch = (p) => {
+  p.setup = () => {
+    let c = document.getElementById('canvas-container');
+    cw = c.clientWidth; ch = c.clientHeight;
+    p.createCanvas(cw, ch).parent(c);
+    p.textFont('Georgia');
+    randomizeAll();
+  };
+  p.windowResized = () => {
+    let c = document.getElementById('canvas-container');
+    cw = c.clientWidth; ch = c.clientHeight; p.resizeCanvas(cw, ch);
+  };
+  p.draw = () => {
+    p.background(245, 243, 238);
+    let speed = parseFloat(document.getElementById('sl-speed').value);
+    globalAngle += speed * 0.025;
+    if (mode === 'atlas') drawAtlas(p);
+    else if (mode === 'single') drawSingle(p);
+    else if (mode === 'morph') drawMorph(p);
+    document.getElementById('hud-fps').textContent = Math.round(p.frameRate());
+  };
+  p.mousePressed = () => {
+    if (p.mouseX < 0 || p.mouseX > cw || p.mouseY < 0 || p.mouseY > ch) return;
+    if (mode === 'atlas') {
+      let cellW = cw / COLS, cellH = ch / ROWS;
+      let col = Math.floor(p.mouseX / cellW), row = Math.floor(p.mouseY / cellH);
+      if (col >= 0 && col < COLS && row >= 0 && row < ROWS) {
+        selectedIdx = row * COLS + col;
+        if (selectedIdx < cells.length) {
+          setMode('single');
+          cells[selectedIdx].trail = [];
+          updateTermList(cells[selectedIdx].config);
+        }
+      }
+    }
+  };
+  p.mouseMoved = () => {
+    if (mode === 'atlas') {
+      let cellW = cw / COLS, cellH = ch / ROWS;
+      let col = Math.floor(p.mouseX / cellW), row = Math.floor(p.mouseY / cellH);
+      hoverCell = (col >= 0 && col < COLS && row >= 0 && row < ROWS) ? row * COLS + col : -1;
+    }
+  };
+};
+
+// ===== AUTO-SCALE HELPER =====
+function autoScale(trail, width, height, margin) {
+  if (trail.length < 2) return { scale: 1, offX: width / 2, offY: height / 2 };
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (let p of trail) { minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x); minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y); }
+  let tw = maxX - minX || 1, th = maxY - minY || 1;
+  let scale = Math.min((width - margin) / tw, (height - margin) / th) * 0.85;
+  scale = Math.min(scale, 400);
+  let offX = width / 2 - (minX + maxX) / 2 * scale;
+  let offY = height / 2 - (minY + maxY) / 2 * scale;
+  return { scale, offX, offY };
+}
+
+// ===== ATLAS MODE =====
+function drawAtlas(p) {
+  let cellW = cw / COLS, cellH = ch / ROWS;
+  let trailW = parseFloat(document.getElementById('sl-tw').value);
+
+  for (let idx = 0; idx < cells.length; idx++) {
+    let col = idx % COLS, row = Math.floor(idx / COLS);
+    let cx = col * cellW, cy = row * cellH;
+
+    // Cell border
+    p.noFill(); p.stroke(200, 190, 175); p.strokeWeight(0.5);
+    p.rect(cx, cy, cellW, cellH);
+    if (idx === hoverCell) { p.fill(255, 255, 255, 30); p.noStroke(); p.rect(cx, cy, cellW, cellH); }
+
+    let cell = cells[idx];
+    let pt = polarToCartesian(cell.config.terms, globalAngle);
+    cell.trail.push(pt);
+    if (cell.trail.length > ATLAS_TRAIL) cell.trail.shift();
+
+    // Auto-scale within cell
+    let { scale, offX, offY } = autoScale(cell.trail, cellW, cellH, 16);
+    offX += cx; offY += cy;
+
+    // Draw trail
+    if (cell.trail.length > 2) {
+      for (let i = 1; i < cell.trail.length; i++) {
+        let t = i / cell.trail.length;
+        // Color gradient: deep brown -> warm amber
+        let r = 139 + t * 40, g = 69 + t * 50, b = 19 + t * 30;
+        p.stroke(r, g, b, t * 200 + 30);
+        p.strokeWeight(trailW * t + 0.2);
+        p.line(offX + cell.trail[i - 1].x * scale, offY + cell.trail[i - 1].y * scale,
+               offX + cell.trail[i].x * scale, offY + cell.trail[i].y * scale);
+      }
+    }
+
+    // Pen dot
+    let penSX = offX + pt.x * scale, penSY = offY + pt.y * scale;
+    p.fill(200, 50, 50); p.noStroke(); p.circle(penSX, penSY, 3.5);
+
+    // Label
+    p.fill(180, 170, 155); p.textSize(8); p.textAlign(p.LEFT, p.TOP);
+    p.text(cell.config.numTerms + 'T', cx + 4, cy + 3);
+    if (cell.score > 0) {
+      p.textAlign(p.RIGHT, p.TOP);
+      p.text(cell.score.toFixed(0), cx + cellW - 4, cy + 3);
+    }
+  }
+}
+
+// ===== SINGLE MODE =====
+function drawSingle(p) {
+  if (selectedIdx < 0 || selectedIdx >= cells.length) return;
+  let cell = cells[selectedIdx];
+  let config = cell.config;
+  let trailW = parseFloat(document.getElementById('sl-tw').value);
+  let maxTrail = Math.min(parseInt(document.getElementById('sl-trail').value), SINGLE_TRAIL);
+
+  let pt = polarToCartesian(config.terms, globalAngle);
+  cell.trail.push(pt);
+  if (cell.trail.length > maxTrail) cell.trail.shift();
+
+  // Auto-scale
+  let { scale, offX, offY } = autoScale(cell.trail, cw, ch, 60);
+
+  // Faint polar axes
+  p.stroke(210, 200, 185); p.strokeWeight(0.3);
+  p.line(offX - cw * 0.4, offY, offX + cw * 0.4, offY);
+  p.line(offX, offY - ch * 0.4, offX, offY + ch * 0.4);
+  // Faint radial guides
+  for (let a = 0; a < Math.PI; a += Math.PI / 6) {
+    p.line(offX - Math.cos(a) * cw * 0.35, offY - Math.sin(a) * cw * 0.35,
+           offX + Math.cos(a) * cw * 0.35, offY + Math.sin(a) * cw * 0.35);
+  }
+
+  // Draw trail
+  if (cell.trail.length > 2) {
+    for (let i = 1; i < cell.trail.length; i++) {
+      let t = i / cell.trail.length;
+      let r = 139 + t * 40, g = 69 + t * 50, b = 19 + t * 30;
+      p.stroke(r, g, b, t * 230 + 20);
+      p.strokeWeight(trailW * 1.8 * t + 0.3);
+      p.line(offX + cell.trail[i - 1].x * scale, offY + cell.trail[i - 1].y * scale,
+             offX + cell.trail[i].x * scale, offY + cell.trail[i].y * scale);
+    }
+  }
+
+  // Origin dot
+  p.fill(180, 170, 155); p.noStroke(); p.circle(offX, offY, 4);
+
+  // Radial line from origin to pen
+  p.stroke(200, 50, 50, 80); p.strokeWeight(0.6);
+  p.line(offX, offY, offX + pt.x * scale, offY + pt.y * scale);
+
+  // Pen
+  p.fill(200, 50, 50); p.noStroke();
+  p.circle(offX + pt.x * scale, offY + pt.y * scale, 7);
+
+  // Score lazily
+  if (!cell.score && cell.trail.length > 400) {
+    let fullPts = computeFullCurve(config.terms, 1500);
+    cell.score = scoreCurve(fullPts);
+  }
+
+  document.getElementById('hud-n').textContent = config.numTerms;
+  document.getElementById('hud-score').textContent = cell.score ? cell.score.toFixed(1) : '--';
+
+  // Equation string
+  let eq = 'r(\u03b8) = ';
+  for (let k = 0; k < config.terms.length; k++) {
+    let t = config.terms[k];
+    if (k > 0) eq += ' + ';
+    eq += t.amp.toFixed(2) + '\u00b7' + t.func + '(' + t.freq.toFixed(1) + '\u03b8+' + t.phase.toFixed(1) + ')';
+  }
+
+  document.getElementById('info-bar').textContent =
+    'Cell ' + (selectedIdx + 1) + ' \u2014 ' + config.numTerms + ' terms. Score: ' + (cell.score ? cell.score.toFixed(1) : '...') + ' \u2014 ' + eq;
+
+  p.fill(150); p.noStroke(); p.textSize(10); p.textAlign(p.LEFT, p.BOTTOM);
+  p.text('\u2190 Press Atlas to return', 10, ch - 30);
+}
+
+// ===== MORPH MODE =====
+function drawMorph(p) {
+  let speed = parseFloat(document.getElementById('sl-speed').value);
+  let trailW = parseFloat(document.getElementById('sl-tw').value);
+  let maxTrail = Math.min(parseInt(document.getElementById('sl-trail').value), SINGLE_TRAIL);
+
+  // Advance morph parameter
+  morphT += morphDir * speed * 0.003;
+  if (morphT >= 1.0) { morphT = 1.0; morphDir = -1; }
+  if (morphT <= 0.0) {
+    morphT = 0.0; morphDir = 1;
+    // Swap: B becomes A, generate new B
+    morphConfigA = JSON.parse(JSON.stringify(morphConfigB));
+    morphConfigB = randomConfig();
+    morphTrail = [];
+  }
+
+  let currentConfig = lerpConfig(morphConfigA, morphConfigB, morphT);
+  let pt = polarToCartesian(currentConfig.terms, globalAngle);
+  morphTrail.push(pt);
+  if (morphTrail.length > maxTrail) morphTrail.shift();
+
+  // Auto-scale
+  let { scale, offX, offY } = autoScale(morphTrail, cw, ch, 60);
+
+  // Faint polar axes
+  p.stroke(210, 200, 185); p.strokeWeight(0.3);
+  p.line(offX - cw * 0.4, offY, offX + cw * 0.4, offY);
+  p.line(offX, offY - ch * 0.4, offX, offY + ch * 0.4);
+
+  // Draw trail with morph color shift
+  if (morphTrail.length > 2) {
+    for (let i = 1; i < morphTrail.length; i++) {
+      let t = i / morphTrail.length;
+      // Morph color: brown shifts to teal then back
+      let mt = (i / morphTrail.length);
+      let r = 139 + (1 - morphT) * t * 40 + morphT * t * (-80);
+      let g = 69 + t * 50 + morphT * 50;
+      let b = 19 + t * 30 + morphT * 80;
+      r = Math.max(0, Math.min(255, r));
+      g = Math.max(0, Math.min(255, g));
+      b = Math.max(0, Math.min(255, b));
+      p.stroke(r, g, b, t * 220 + 25);
+      p.strokeWeight(trailW * 1.6 * t + 0.3);
+      p.line(offX + morphTrail[i - 1].x * scale, offY + morphTrail[i - 1].y * scale,
+             offX + morphTrail[i].x * scale, offY + morphTrail[i].y * scale);
+    }
+  }
+
+  // Pen
+  p.fill(200, 50, 50); p.noStroke();
+  p.circle(offX + pt.x * scale, offY + pt.y * scale, 7);
+
+  // Origin
+  p.fill(180, 170, 155); p.noStroke(); p.circle(offX, offY, 4);
+
+  // Morph progress bar
+  let barW = cw * 0.3, barH = 4;
+  let barX = (cw - barW) / 2, barY = ch - 40;
+  p.fill(220, 215, 205); p.noStroke(); p.rect(barX, barY, barW, barH, 2);
+  p.fill(139, 69, 19); p.rect(barX, barY, barW * morphT, barH, 2);
+
+  p.fill(150); p.textSize(9); p.textAlign(p.CENTER, p.TOP);
+  p.text('Morph: ' + (morphT * 100).toFixed(0) + '%', cw / 2, barY + 8);
+
+  document.getElementById('hud-n').textContent = currentConfig.numTerms;
+  document.getElementById('hud-score').textContent = '--';
+  document.getElementById('info-bar').textContent =
+    'Morph mode \u2014 continuously interpolating between two random polar equations. t=' + morphT.toFixed(2);
+}
+
+// ===== TERM LIST =====
+function updateTermList(config) {
+  let html = '';
+  for (let k = 0; k < config.terms.length; k++) {
+    let t = config.terms[k];
+    html += '<div class="term-item">T' + k + ': A=' + t.amp.toFixed(2) + ' f=' + t.freq.toFixed(1) + ' \u03c6=' + (t.phase * 180 / Math.PI).toFixed(0) + '\u00b0 ' + t.func + '</div>';
+  }
+  document.getElementById('term-list').innerHTML = html;
+}
+
+new p5(sketch, 'canvas-container');
+</script>
+</body>
+</html>
