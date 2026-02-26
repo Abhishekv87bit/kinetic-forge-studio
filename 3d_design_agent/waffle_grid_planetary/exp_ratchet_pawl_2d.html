@@ -1,0 +1,1413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Ratchet &amp; Pawl Networks — One-Way Motion with Energy Storage</title>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/matter-js@0.20.0/build/matter.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f5f3ee; overflow: hidden; font-family: 'Georgia', serif; display: flex; height: 100vh; }
+
+  #sidebar {
+    width: 280px; min-width: 280px; background: #f0ede6;
+    border-right: 1px solid #c8c0b0; overflow-y: auto; padding: 12px 14px;
+    font-size: 12px; color: #444;
+  }
+  #sidebar h1 { font-size: 14px; letter-spacing: 1.5px; color: #333; margin-bottom: 2px; font-weight: normal; }
+  #sidebar .subtitle { font-size: 10px; color: #888; margin-bottom: 12px; font-style: italic; }
+
+  .section-title {
+    font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: #8b7355;
+    margin-top: 14px; margin-bottom: 6px; border-bottom: 1px solid #d8d0c0; padding-bottom: 3px;
+  }
+  .ctrl-row { display: flex; align-items: center; margin-bottom: 5px; }
+  .ctrl-row label { flex: 0 0 95px; font-size: 11px; color: #666; }
+  .ctrl-row input[type="range"] { flex: 1; height: 3px; accent-color: #8b4513; }
+  .ctrl-row .val { flex: 0 0 45px; text-align: right; font-size: 10px; color: #555; font-family: 'Consolas', monospace; }
+
+  .btn-row { display: flex; gap: 5px; margin: 8px 0; flex-wrap: wrap; }
+  .btn {
+    padding: 5px 10px; font-size: 10px; font-family: 'Georgia', serif;
+    background: #555; color: #f5f3ee; border: none; cursor: pointer;
+    letter-spacing: 0.5px; border-radius: 2px; transition: background 0.15s;
+  }
+  .btn:hover { background: #333; }
+  .btn.active { background: #8b4513; }
+  .btn.accent { background: #2a6848; }
+  .btn.accent:hover { background: #1a4830; }
+  .btn.wind { background: #b8860b; }
+  .btn.wind:hover { background: #966c09; }
+  .btn.release { background: #8b2020; }
+  .btn.release:hover { background: #6b1010; }
+
+  #canvas-container { flex: 1; position: relative; }
+  #canvas-container canvas { display: block; }
+
+  #info-bar {
+    position: fixed; bottom: 0; left: 280px; right: 0; z-index: 100;
+    background: rgba(245,243,238,0.92); border-top: 1px solid #bbb;
+    padding: 4px 16px; font-size: 10px; color: #777; font-style: italic;
+  }
+
+  #hud {
+    position: absolute; top: 8px; right: 12px; background: rgba(245,243,238,0.9);
+    border: 1px solid #c8c0b0; border-radius: 4px; padding: 8px 12px;
+    font-size: 10px; line-height: 1.7; color: #666; min-width: 160px; pointer-events: none;
+  }
+  #hud .hv { color: #444; font-family: 'Consolas', monospace; float: right; }
+  #hud .engaged { color: #2a6848; font-weight: bold; }
+  #hud .released { color: #8b2020; font-weight: bold; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #c8c0b0; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h1>RATCHET &amp; PAWL</h1>
+  <div class="subtitle">One-Way Motion with Energy Storage &amp; Cascaded Release</div>
+
+  <div class="section-title">Ratchet Geometry</div>
+  <div class="ctrl-row">
+    <label>Teeth</label>
+    <input type="range" id="sl-teeth" min="6" max="24" step="1" value="12">
+    <span class="val" id="v-teeth">12</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Tooth Height</label>
+    <input type="range" id="sl-toothH" min="4" max="20" step="1" value="10">
+    <span class="val" id="v-toothH">10</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Wheel Radius</label>
+    <input type="range" id="sl-radius" min="30" max="80" step="2" value="50">
+    <span class="val" id="v-radius">50</span>
+  </div>
+
+  <div class="section-title">Spring &amp; Friction</div>
+  <div class="ctrl-row">
+    <label>Spring Stiffness</label>
+    <input type="range" id="sl-spring" min="0.1" max="2.0" step="0.05" value="0.6">
+    <span class="val" id="v-spring">0.60</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Wheel Inertia</label>
+    <input type="range" id="sl-inertia" min="0.05" max="0.50" step="0.01" value="0.15">
+    <span class="val" id="v-inertia">0.15</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Friction</label>
+    <input type="range" id="sl-friction" min="0.01" max="0.20" step="0.005" value="0.04">
+    <span class="val" id="v-friction">0.040</span>
+  </div>
+
+  <div class="section-title">Cascade</div>
+  <div class="ctrl-row">
+    <label>Stages</label>
+    <input type="range" id="sl-stages" min="1" max="3" step="1" value="1">
+    <span class="val" id="v-stages">1</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Gear Ratio</label>
+    <input type="range" id="sl-gearRatio" min="0.5" max="3.0" step="0.1" value="1.5">
+    <span class="val" id="v-gearRatio">1.5</span>
+  </div>
+
+  <div class="section-title">Animation</div>
+  <div class="ctrl-row">
+    <label>Speed</label>
+    <input type="range" id="sl-speed" min="0.1" max="3.0" step="0.05" value="1.0">
+    <span class="val" id="v-speed">1.00</span>
+  </div>
+
+  <div class="section-title">Actions</div>
+  <div class="btn-row">
+    <button class="btn wind" id="btn-wind" onclick="startWinding()">Wind Up</button>
+    <button class="btn release" id="btn-release" onclick="triggerRelease()">Release</button>
+    <button class="btn" onclick="resetAll()">Reset</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn active" id="btn-single" onclick="setMode('single')">Single</button>
+    <button class="btn" id="btn-atlas" onclick="setMode('atlas')">Atlas</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn accent" onclick="randomizeAll()">Randomize</button>
+    <button class="btn accent" onclick="mutateAll()">Mutate</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn" onclick="findBeautiful()">Find Beautiful</button>
+    <button class="btn" onclick="autoDemo()">Auto Demo</button>
+  </div>
+
+  <div class="section-title">Info</div>
+  <div style="font-size:9px; color:#999; line-height:1.5; margin-top:4px;">
+    <b>Single mode:</b> Drag wheel CW to wind. Click Release or press R.<br>
+    <b>Atlas mode:</b> 16 configs auto-wind then release. Click cell to inspect.<br>
+    <b>Keys:</b> SPACE=pause, R=release, W=wind, A=atlas/single
+  </div>
+</div>
+
+<div id="canvas-container">
+  <div id="hud">
+    <div>Stored Energy <span class="hv" id="h-energy">0.00 J</span></div>
+    <div>Wheel Speed <span class="hv" id="h-rpm">0 RPM</span></div>
+    <div>Click Count <span class="hv" id="h-clicks">0</span></div>
+    <div>Spring Tension <span class="hv" id="h-tension">0%</span></div>
+    <div>Pawl Status <span class="hv" id="h-pawl"><span class="engaged">ENGAGED</span></span></div>
+    <div>Stage <span class="hv" id="h-stage">1 / 1</span></div>
+    <div>Score <span class="hv" id="h-score">0</span></div>
+    <div>FPS <span class="hv" id="h-fps">60</span></div>
+  </div>
+</div>
+
+<div id="info-bar">
+  Plate XI. &mdash; Ratchet &amp; pawl networks. Asymmetric teeth allow forward winding and prevent back-drive. Spring stores energy; release drives output shaft. Cascaded stages multiply effect.
+</div>
+
+<script>
+// ================================================================
+//  RATCHET & PAWL NETWORKS
+//  One-way rotation with energy storage and cascaded release.
+//  Asymmetric sawtooth teeth + spring-loaded pawl.
+// ================================================================
+
+const TWO_PI = Math.PI * 2;
+const DEG = Math.PI / 180;
+
+// ---- Matter.js Engine for Particle Effects ----
+const Engine = Matter.Engine;
+const World = Matter.World;
+const Bodies = Matter.Bodies;
+const Body = Matter.Body;
+
+let mEngine = Engine.create({ gravity: { x: 0, y: 0.5 } });
+let mParticles = [];
+
+function spawnReleaseParticles(cx, cy, count, speed) {
+  for (let i = 0; i < count; i++) {
+    let angle = Math.random() * TWO_PI;
+    let v = speed * (0.5 + Math.random());
+    let r = 2 + Math.random() * 3;
+    let body = Bodies.circle(cx, cy, r, {
+      frictionAir: 0.03,
+      restitution: 0.6,
+      render: { visible: false }
+    });
+    Body.setVelocity(body, { x: Math.cos(angle) * v, y: Math.sin(angle) * v });
+    World.add(mEngine.world, body);
+    mParticles.push({
+      body: body,
+      life: 1.0,
+      hue: 30 + Math.random() * 40,
+      radius: r
+    });
+  }
+}
+
+function updateParticles(dt) {
+  Engine.update(mEngine, dt * 1000);
+  for (let i = mParticles.length - 1; i >= 0; i--) {
+    mParticles[i].life -= dt * 0.8;
+    if (mParticles[i].life <= 0) {
+      World.remove(mEngine.world, mParticles[i].body);
+      mParticles.splice(i, 1);
+    }
+  }
+}
+
+function drawParticles(p) {
+  p.noStroke();
+  for (let pt of mParticles) {
+    let pos = pt.body.position;
+    let alpha = pt.life * 200;
+    let rgb = hslToRgb(pt.hue, 0.8, 0.55);
+    p.fill(rgb[0], rgb[1], rgb[2], alpha);
+    p.ellipse(pos.x, pos.y, pt.radius * 2 * pt.life, pt.radius * 2 * pt.life);
+  }
+}
+
+// ---- Global Parameters ----
+let numTeeth = 12;
+let toothHeight = 10;
+let wheelRadius = 50;
+let springStiffness = 0.6;
+let wheelInertia = 0.15;
+let friction = 0.04;
+let numStages = 1;
+let gearRatio = 1.5;
+let animSpeed = 1.0;
+let mode = 'single'; // 'single' or 'atlas'
+let paused = false;
+
+// ---- Atlas ----
+const ATLAS_COLS = 4, ATLAS_ROWS = 4;
+let atlasConfigs = [];
+let selectedCell = -1;
+
+// ---- FPS ----
+let fpsFrames = 0, fpsLast = 0, currentFps = 60;
+
+// ================================================================
+//  RATCHET MECHANISM MODEL
+// ================================================================
+function createRatchetConfig(opts) {
+  opts = opts || {};
+  let teeth = opts.teeth || numTeeth;
+  let radius = opts.radius || wheelRadius;
+  let tHeight = opts.toothHeight || toothHeight;
+  let stiffness = opts.stiffness || springStiffness;
+  let inertia = opts.inertia || wheelInertia;
+  let fric = opts.friction || friction;
+  let stages = opts.stages || numStages;
+  let gr = opts.gearRatio || gearRatio;
+
+  let ratchets = [];
+  for (let s = 0; s < stages; s++) {
+    let scaleFactor = Math.pow(gr, s);
+    ratchets.push({
+      teeth: teeth,
+      radius: radius * (s === 0 ? 1 : 0.7),
+      toothHeight: tHeight * (s === 0 ? 1 : 0.7),
+      stiffness: stiffness * scaleFactor,
+      inertia: inertia / scaleFactor,
+      friction: fric,
+      gearRatio: s > 0 ? gr : 1,
+      // State
+      angle: 0,
+      omega: 0,             // angular velocity
+      springTorque: 0,       // stored spring energy proxy
+      maxSpringTorque: stiffness * 20 * scaleFactor,
+      pawlEngaged: true,
+      clickCount: 0,
+      lastTooth: 0,
+      windAngle: 0,         // how far wound
+      pawlBounce: 0,        // visual bounce animation
+      releaseFlash: 0,      // flash on release
+      outputTorque: 0,      // torque delivered to next stage
+    });
+  }
+  return { ratchets, stages, gearRatio: gr };
+}
+
+function updateRatchet(config, dt) {
+  let ratchets = config.ratchets;
+
+  for (let s = 0; s < ratchets.length; s++) {
+    let r = ratchets[s];
+    let toothAngle = TWO_PI / r.teeth;
+
+    if (r.pawlEngaged) {
+      // Pawl prevents reverse rotation - wheel is locked
+      // Spring torque can still accumulate from winding
+      r.omega = 0;
+
+      // Check if upstream stage is delivering torque (cascade)
+      if (s > 0 && ratchets[s - 1].outputTorque > 0) {
+        let inTorque = ratchets[s - 1].outputTorque * config.gearRatio;
+        r.springTorque = Math.min(r.maxSpringTorque, r.springTorque + inTorque * dt);
+        r.windAngle += inTorque * dt / r.stiffness;
+
+        // Click detection during cascade wind
+        let currentTooth = Math.floor(r.windAngle / toothAngle);
+        if (currentTooth !== r.lastTooth) {
+          r.lastTooth = currentTooth;
+          r.clickCount++;
+          r.pawlBounce = 1.0;
+        }
+      }
+    } else {
+      // Released: spring drives wheel
+      let springForce = r.springTorque;
+      let frictionForce = r.friction * r.omega * r.omega * Math.sign(r.omega);
+      let alpha = (springForce - frictionForce) / r.inertia;
+
+      r.omega += alpha * dt;
+      if (r.omega < 0) r.omega = 0; // No reverse
+      r.angle += r.omega * dt;
+
+      // Spring unwinds
+      let springDrain = r.stiffness * r.omega * dt * 0.5;
+      r.springTorque = Math.max(0, r.springTorque - springDrain);
+
+      // Output torque to next stage
+      r.outputTorque = r.omega * r.inertia * 0.3;
+
+      // Click detection during release spin
+      let currentTooth = Math.floor(r.angle / toothAngle);
+      if (currentTooth !== r.lastTooth) {
+        r.lastTooth = currentTooth;
+        r.clickCount++;
+        r.pawlBounce = 0.6;
+      }
+
+      // Stop when energy depleted
+      if (r.springTorque < 0.001 && r.omega < 0.01) {
+        r.omega = 0;
+        r.outputTorque = 0;
+        r.pawlEngaged = true;
+      }
+    }
+
+    // Decay visual effects
+    r.pawlBounce *= 0.9;
+    r.releaseFlash *= 0.93;
+  }
+}
+
+function windRatchet(config, stageIdx, amount) {
+  let r = config.ratchets[stageIdx];
+  if (!r.pawlEngaged) return;
+
+  let toothAngle = TWO_PI / r.teeth;
+  r.springTorque = Math.min(r.maxSpringTorque, r.springTorque + amount * r.stiffness);
+  r.windAngle += amount;
+
+  // Click detection
+  let currentTooth = Math.floor(r.windAngle / toothAngle);
+  if (currentTooth !== r.lastTooth) {
+    r.lastTooth = currentTooth;
+    r.clickCount++;
+    r.pawlBounce = 1.0;
+  }
+}
+
+function releaseRatchet(config, stageIdx, particleCx, particleCy) {
+  let r = config.ratchets[stageIdx];
+  if (!r.pawlEngaged || r.springTorque < 0.01) return;
+  r.pawlEngaged = false;
+  r.releaseFlash = 1.0;
+  r.lastTooth = Math.floor(r.angle / (TWO_PI / r.teeth));
+
+  // Spawn Matter.js particles on release
+  if (particleCx !== undefined && particleCy !== undefined) {
+    let energy = r.springTorque / r.maxSpringTorque;
+    spawnReleaseParticles(particleCx, particleCy, Math.floor(8 + energy * 20), 2 + energy * 6);
+  }
+}
+
+function resetRatchetConfig(config) {
+  for (let r of config.ratchets) {
+    r.angle = 0;
+    r.omega = 0;
+    r.springTorque = 0;
+    r.pawlEngaged = true;
+    r.clickCount = 0;
+    r.lastTooth = 0;
+    r.windAngle = 0;
+    r.pawlBounce = 0;
+    r.releaseFlash = 0;
+    r.outputTorque = 0;
+  }
+}
+
+// ---- Scoring ----
+function scoreConfig(config) {
+  let totalEnergy = 0;
+  let smoothness = 0;
+  let cascadeTiming = 0;
+
+  for (let i = 0; i < config.ratchets.length; i++) {
+    let r = config.ratchets[i];
+    totalEnergy += r.maxSpringTorque;
+    // Smoothness: lower friction + higher inertia = smoother release
+    smoothness += r.inertia / (r.friction + 0.01);
+    if (i > 0) {
+      // Cascade timing: interesting gear ratios
+      let gr = config.gearRatio;
+      cascadeTiming += Math.abs(Math.sin(gr * Math.PI)) * 10;
+    }
+  }
+
+  return totalEnergy * 2 + smoothness * 3 + cascadeTiming * 5 + config.ratchets[0].teeth * 0.5;
+}
+
+// ================================================================
+//  SINGLE MODE STATE
+// ================================================================
+let singleConfig = null;
+let winding = false;
+let windAccum = 0;
+let dragStart = null;
+let dragAngle = 0;
+
+function initSingle() {
+  singleConfig = createRatchetConfig({
+    teeth: numTeeth, radius: wheelRadius, toothHeight: toothHeight,
+    stiffness: springStiffness, inertia: wheelInertia, friction: friction,
+    stages: numStages, gearRatio: gearRatio
+  });
+}
+
+function startWinding() {
+  if (!singleConfig) return;
+  winding = !winding;
+  let btn = document.getElementById('btn-wind');
+  btn.textContent = winding ? 'Stop Wind' : 'Wind Up';
+  btn.classList.toggle('active', winding);
+}
+
+function triggerRelease() {
+  if (!singleConfig) return;
+  // Release each stage sequentially with small delay via flags
+  // Pass approximate canvas center for particle effects
+  let container = document.getElementById('canvas-container');
+  let cx = container ? container.offsetWidth / 2 : 400;
+  let cy = container ? container.offsetHeight / 2 : 300;
+  for (let i = 0; i < singleConfig.ratchets.length; i++) {
+    let offset = i * 100;
+    setTimeout(() => releaseRatchet(singleConfig, i, cx + offset, cy), i * 300);
+  }
+  winding = false;
+  let btn = document.getElementById('btn-wind');
+  btn.textContent = 'Wind Up';
+  btn.classList.remove('active');
+}
+
+function resetAll() {
+  if (singleConfig) resetRatchetConfig(singleConfig);
+  winding = false;
+  let btn = document.getElementById('btn-wind');
+  btn.textContent = 'Wind Up';
+  btn.classList.remove('active');
+}
+
+function autoDemo() {
+  if (mode === 'single') {
+    resetAll();
+    winding = true;
+    document.getElementById('btn-wind').textContent = 'Stop Wind';
+    document.getElementById('btn-wind').classList.add('active');
+    // Auto wind for 3 seconds then release
+    setTimeout(() => {
+      winding = false;
+      document.getElementById('btn-wind').textContent = 'Wind Up';
+      document.getElementById('btn-wind').classList.remove('active');
+      setTimeout(() => triggerRelease(), 500);
+    }, 3000);
+  } else {
+    // Atlas: auto-wind and release all
+    for (let cfg of atlasConfigs) {
+      resetRatchetConfig(cfg);
+      cfg._autoPhase = 'wind';
+      cfg._autoTimer = 0;
+    }
+  }
+}
+
+// ================================================================
+//  ATLAS MODE
+// ================================================================
+function initAtlas() {
+  atlasConfigs = [];
+  for (let i = 0; i < ATLAS_COLS * ATLAS_ROWS; i++) {
+    let teeth = 6 + Math.floor(Math.random() * 19); // 6-24
+    let stiff = 0.2 + Math.random() * 1.6;
+    let inert = 0.05 + Math.random() * 0.4;
+    let fric = 0.01 + Math.random() * 0.15;
+    let stages = 1 + Math.floor(Math.random() * 3);
+    let gr = 0.5 + Math.random() * 2.5;
+    let cfg = createRatchetConfig({
+      teeth, radius: 40, toothHeight: 8,
+      stiffness: stiff, inertia: inert, friction: fric,
+      stages, gearRatio: gr
+    });
+    cfg._autoPhase = 'wind';
+    cfg._autoTimer = 0;
+    cfg._score = scoreConfig(cfg);
+    atlasConfigs.push(cfg);
+  }
+}
+
+function randomizeAll() {
+  if (mode === 'atlas') {
+    initAtlas();
+  } else {
+    initSingle();
+  }
+}
+
+function mutateAll() {
+  if (mode === 'atlas') {
+    for (let i = 0; i < atlasConfigs.length; i++) {
+      let cfg = atlasConfigs[i];
+      let r0 = cfg.ratchets[0];
+      let newTeeth = Math.max(6, Math.min(24, r0.teeth + Math.floor((Math.random() - 0.5) * 6)));
+      let newStiff = Math.max(0.1, Math.min(2.0, r0.stiffness + (Math.random() - 0.5) * 0.4));
+      let newInert = Math.max(0.05, Math.min(0.5, r0.inertia + (Math.random() - 0.5) * 0.08));
+      let newFric = Math.max(0.01, Math.min(0.2, r0.friction + (Math.random() - 0.5) * 0.04));
+      let newCfg = createRatchetConfig({
+        teeth: newTeeth, radius: 40, toothHeight: 8,
+        stiffness: newStiff, inertia: newInert, friction: newFric,
+        stages: cfg.stages, gearRatio: cfg.gearRatio
+      });
+      newCfg._autoPhase = 'wind';
+      newCfg._autoTimer = 0;
+      newCfg._score = scoreConfig(newCfg);
+      atlasConfigs[i] = newCfg;
+    }
+  } else {
+    // Mutate single config parameters slightly
+    numTeeth = Math.max(6, Math.min(24, numTeeth + Math.floor((Math.random() - 0.5) * 4)));
+    springStiffness = Math.max(0.1, Math.min(2.0, springStiffness + (Math.random() - 0.5) * 0.3));
+    wheelInertia = Math.max(0.05, Math.min(0.5, wheelInertia + (Math.random() - 0.5) * 0.06));
+    updateSliders();
+    initSingle();
+  }
+}
+
+function findBeautiful() {
+  let best = null, bestScore = -1;
+  let chunkSize = 50;
+  let totalTrials = 200;
+
+  function searchChunk(start) {
+    let end = Math.min(start + chunkSize, totalTrials);
+    for (let i = start; i < end; i++) {
+      let teeth = 6 + Math.floor(Math.random() * 19);
+      let stiff = 0.2 + Math.random() * 1.6;
+      let inert = 0.05 + Math.random() * 0.4;
+      let fric = 0.01 + Math.random() * 0.15;
+      let stages = 1 + Math.floor(Math.random() * 3);
+      let gr = 0.5 + Math.random() * 2.5;
+      let cfg = createRatchetConfig({
+        teeth, radius: 40, toothHeight: 8,
+        stiffness: stiff, inertia: inert, friction: fric,
+        stages, gearRatio: gr
+      });
+      let sc = scoreConfig(cfg);
+      if (sc > bestScore) { bestScore = sc; best = cfg; }
+    }
+    if (end < totalTrials) {
+      setTimeout(() => searchChunk(end), 0);
+    } else {
+      // Install best
+      if (best) {
+        if (mode === 'atlas') {
+          // Replace worst cell
+          let worstIdx = 0, worstScore = Infinity;
+          for (let i = 0; i < atlasConfigs.length; i++) {
+            let sc = atlasConfigs[i]._score || 0;
+            if (sc < worstScore) { worstScore = sc; worstIdx = i; }
+          }
+          best._autoPhase = 'wind';
+          best._autoTimer = 0;
+          best._score = bestScore;
+          atlasConfigs[worstIdx] = best;
+        } else {
+          singleConfig = best;
+          // Sync UI
+          numTeeth = best.ratchets[0].teeth;
+          springStiffness = best.ratchets[0].stiffness;
+          wheelInertia = best.ratchets[0].inertia;
+          friction = best.ratchets[0].friction;
+          numStages = best.ratchets.length;
+          updateSliders();
+        }
+      }
+    }
+  }
+  searchChunk(0);
+}
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-single').className = 'btn' + (m === 'single' ? ' active' : '');
+  document.getElementById('btn-atlas').className = 'btn' + (m === 'atlas' ? ' active' : '');
+  if (m === 'single' && !singleConfig) initSingle();
+  if (m === 'atlas' && atlasConfigs.length === 0) initAtlas();
+}
+
+function updateSliders() {
+  document.getElementById('sl-teeth').value = numTeeth;
+  document.getElementById('v-teeth').textContent = numTeeth;
+  document.getElementById('sl-spring').value = springStiffness;
+  document.getElementById('v-spring').textContent = springStiffness.toFixed(2);
+  document.getElementById('sl-inertia').value = wheelInertia;
+  document.getElementById('v-inertia').textContent = wheelInertia.toFixed(2);
+  document.getElementById('sl-friction').value = friction;
+  document.getElementById('v-friction').textContent = friction.toFixed(3);
+  document.getElementById('sl-stages').value = numStages;
+  document.getElementById('v-stages').textContent = numStages;
+}
+
+// ================================================================
+//  DRAWING FUNCTIONS
+// ================================================================
+
+function hslToRgb(h, s, l) {
+  h = ((h % 360) + 360) % 360;
+  let c = (1 - Math.abs(2 * l - 1)) * s;
+  let x = c * (1 - Math.abs((h / 60) % 2 - 1));
+  let m = l - c / 2;
+  let r, g, b;
+  if (h < 60)       { r = c; g = x; b = 0; }
+  else if (h < 120) { r = x; g = c; b = 0; }
+  else if (h < 180) { r = 0; g = c; b = x; }
+  else if (h < 240) { r = 0; g = x; b = c; }
+  else if (h < 300) { r = x; g = 0; b = c; }
+  else              { r = c; g = 0; b = x; }
+  return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)];
+}
+
+function drawRatchetWheel(p, cx, cy, r, tH, nTeeth, angle, scale) {
+  scale = scale || 1;
+  let R = r * scale;
+  let TH = tH * scale;
+
+  p.push();
+  p.translate(cx, cy);
+  p.rotate(angle);
+
+  // Draw sawtooth teeth
+  p.beginShape();
+  for (let i = 0; i < nTeeth; i++) {
+    let a1 = (i / nTeeth) * TWO_PI;
+    let a2 = ((i + 0.75) / nTeeth) * TWO_PI; // gentle slope to tip
+    let a3 = ((i + 0.78) / nTeeth) * TWO_PI; // steep drop-off
+
+    // Base of tooth
+    p.vertex(R * Math.cos(a1), R * Math.sin(a1));
+    // Tip of tooth (outer)
+    p.vertex((R + TH) * Math.cos(a2), (R + TH) * Math.sin(a2));
+    // Steep drop back to base
+    p.vertex(R * Math.cos(a3), R * Math.sin(a3));
+  }
+  p.endShape(p.CLOSE);
+
+  // Hub circle
+  p.ellipse(0, 0, R * 0.4, R * 0.4);
+
+  // Spokes
+  p.strokeWeight(1.5 * scale);
+  for (let i = 0; i < 4; i++) {
+    let a = (i / 4) * TWO_PI;
+    p.line(0, 0, R * 0.45 * Math.cos(a), R * 0.45 * Math.sin(a));
+  }
+
+  p.pop();
+}
+
+function drawPawl(p, cx, cy, wheelR, tH, pawlEngaged, pawlBounce, angle, scale) {
+  scale = scale || 1;
+  let R = wheelR * scale;
+  let TH = tH * scale;
+  let pawlLen = 25 * scale;
+  let pawlW = 6 * scale;
+
+  // Pawl pivot position (above and to right of wheel)
+  let pawlPivotX = cx + (R + TH + 8 * scale);
+  let pawlPivotY = cy - 4 * scale;
+
+  // Pawl angle: engaged = pointing toward wheel center, released = lifted away
+  let pawlAngle = pawlEngaged ?
+    Math.atan2(cy - pawlPivotY, cx - pawlPivotX) + Math.sin(pawlBounce * Math.PI) * 0.15 :
+    Math.atan2(cy - pawlPivotY, cx - pawlPivotX) - 0.5;
+
+  p.push();
+  p.translate(pawlPivotX, pawlPivotY);
+  p.rotate(pawlAngle);
+
+  // Pawl body
+  p.fill(pawlEngaged ? 140 : 180, pawlEngaged ? 90 : 100, pawlEngaged ? 60 : 70);
+  p.stroke(80, 50, 30);
+  p.strokeWeight(1 * scale);
+  p.beginShape();
+  p.vertex(0, -pawlW / 2);
+  p.vertex(pawlLen, -pawlW / 3);
+  p.vertex(pawlLen + 4 * scale, 0);
+  p.vertex(pawlLen, pawlW / 3);
+  p.vertex(0, pawlW / 2);
+  p.endShape(p.CLOSE);
+
+  // Pivot dot
+  p.fill(60);
+  p.noStroke();
+  p.ellipse(0, 0, 5 * scale, 5 * scale);
+
+  p.pop();
+
+  // Spring coil indicator (small coil near pawl pivot)
+  drawPawlSpring(p, pawlPivotX + 10 * scale, pawlPivotY - 12 * scale, pawlEngaged, scale);
+}
+
+function drawPawlSpring(p, x, y, engaged, scale) {
+  let coils = 4;
+  let coilH = 12 * scale;
+  let coilW = 4 * scale;
+  let compression = engaged ? 0.6 : 1.0;
+
+  p.stroke(120, 120, 130);
+  p.strokeWeight(1.2 * scale);
+  p.noFill();
+  p.beginShape();
+  for (let i = 0; i <= coils * 4; i++) {
+    let t = i / (coils * 4);
+    let px = x + Math.sin(t * coils * TWO_PI) * coilW;
+    let py = y + t * coilH * compression;
+    p.vertex(px, py);
+  }
+  p.endShape();
+}
+
+function drawSpringIndicator(p, x, y, w, h, tension, maxTension) {
+  let frac = maxTension > 0 ? Math.min(1, tension / maxTension) : 0;
+
+  // Background bar
+  p.fill(230, 225, 215);
+  p.stroke(180, 170, 155);
+  p.strokeWeight(1);
+  p.rect(x, y, w, h, 2);
+
+  // Filled portion
+  let fillH = h * frac;
+  let r = hslToRgb(120 * (1 - frac), 0.7, 0.45); // green -> red
+  p.fill(r[0], r[1], r[2]);
+  p.noStroke();
+  p.rect(x + 1, y + h - fillH, w - 2, fillH, 0, 0, 2, 2);
+
+  // Label
+  p.fill(100);
+  p.noStroke();
+  p.textSize(8);
+  p.textAlign(p.CENTER, p.BOTTOM);
+  p.text(Math.round(frac * 100) + '%', x + w / 2, y - 2);
+  p.text('E', x + w / 2, y + h + 10);
+}
+
+function drawCoilSpring(p, cx, cy, radius, tension, maxTension, scale) {
+  let frac = maxTension > 0 ? Math.min(1, tension / maxTension) : 0;
+  let coils = 6;
+  let innerR = radius * 0.3 * scale;
+  let outerR = radius * 0.8 * scale;
+
+  // Spiral spring inside wheel
+  let r = hslToRgb(120 * (1 - frac), 0.7, 0.5);
+  p.stroke(r[0], r[1], r[2]);
+  p.strokeWeight(2.5 * scale);
+  p.noFill();
+
+  let totalAngle = TWO_PI * coils * (0.3 + 0.7 * frac);
+  p.beginShape();
+  for (let i = 0; i <= 60; i++) {
+    let t = i / 60;
+    let a = t * totalAngle;
+    let rr = innerR + (outerR - innerR) * t;
+    p.vertex(cx + rr * Math.cos(a), cy + rr * Math.sin(a));
+  }
+  p.endShape();
+}
+
+function drawClickFlash(p, cx, cy, r, angle, bounce, scale) {
+  if (bounce < 0.05) return;
+  let flashR = (r + 12) * scale;
+  let fx = cx + flashR * Math.cos(angle);
+  let fy = cy + flashR * Math.sin(angle);
+  let alpha = bounce * 255;
+  let size = 6 + bounce * 12;
+
+  p.noStroke();
+  p.fill(255, 200, 50, alpha * 0.5);
+  p.ellipse(fx, fy, size * scale, size * scale);
+  p.fill(255, 255, 200, alpha);
+  p.ellipse(fx, fy, size * 0.4 * scale, size * 0.4 * scale);
+}
+
+function drawMotionBlur(p, cx, cy, r, omega, scale) {
+  if (Math.abs(omega) < 0.5) return;
+  let blur = Math.min(1, Math.abs(omega) / 15);
+  let R = (r + 5) * scale;
+
+  p.noFill();
+  for (let i = 0; i < 8; i++) {
+    let a = Math.random() * TWO_PI;
+    let alpha = blur * 80 * (1 - i / 8);
+    p.stroke(180, 150, 100, alpha);
+    p.strokeWeight(2 * scale);
+    p.arc(cx, cy, R * 2, R * 2, a, a + blur * 0.5);
+  }
+}
+
+function drawGearLink(p, x1, y1, x2, y2, ratio, scale) {
+  // Draw meshing gear indicator between stages
+  let mx = (x1 + x2) / 2;
+  let my = (y1 + y2) / 2;
+  let len = Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+
+  p.stroke(150, 130, 110);
+  p.strokeWeight(1.5 * scale);
+  p.drawingContext.setLineDash([4 * scale, 3 * scale]);
+  p.line(x1, y1, x2, y2);
+  p.drawingContext.setLineDash([]);
+
+  // Gear ratio label
+  p.fill(120, 100, 80);
+  p.noStroke();
+  p.textSize(9 * scale);
+  p.textAlign(p.CENTER, p.CENTER);
+  p.text(ratio.toFixed(1) + 'x', mx, my - 8 * scale);
+
+  // Small gear icons
+  let gs = 6 * scale;
+  for (let i = 0; i < 6; i++) {
+    let a = (i / 6) * TWO_PI;
+    p.stroke(150, 130, 110);
+    p.strokeWeight(1 * scale);
+    p.line(mx + gs * Math.cos(a), my + gs * Math.sin(a),
+           mx + (gs + 3 * scale) * Math.cos(a), my + (gs + 3 * scale) * Math.sin(a));
+  }
+}
+
+// ================================================================
+//  COMPLETE RATCHET ASSEMBLY DRAWING
+// ================================================================
+function drawRatchetAssembly(p, config, cx, cy, scale, isHover) {
+  let ratchets = config.ratchets;
+  let spacing = (100 + wheelRadius * 1.5) * scale;
+
+  for (let s = 0; s < ratchets.length; s++) {
+    let r = ratchets[s];
+    let sx = cx + (s - (ratchets.length - 1) / 2) * spacing;
+    let sy = cy;
+    let sScale = scale * (s === 0 ? 1 : 0.75);
+
+    // Motion blur during release
+    if (!r.pawlEngaged) {
+      drawMotionBlur(p, sx, sy, r.radius, r.omega, sScale);
+    }
+
+    // Wheel body
+    p.fill(isHover ? 220 : 210, isHover ? 200 : 190, isHover ? 170 : 160);
+    p.stroke(130, 110, 85);
+    p.strokeWeight(1.5 * sScale);
+    drawRatchetWheel(p, sx, sy, r.radius, r.toothHeight, r.teeth, r.angle, sScale);
+
+    // Spring inside wheel
+    drawCoilSpring(p, sx, sy, r.radius, r.springTorque, r.maxSpringTorque, sScale);
+
+    // Pawl
+    drawPawl(p, sx, sy, r.radius, r.toothHeight, r.pawlEngaged, r.pawlBounce, r.angle, sScale);
+
+    // Click flash
+    let toothAngle = TWO_PI / r.teeth;
+    let flashAngle = r.lastTooth * toothAngle + r.angle;
+    drawClickFlash(p, sx, sy, r.radius + r.toothHeight, flashAngle, r.pawlBounce, sScale);
+
+    // Release flash
+    if (r.releaseFlash > 0.05) {
+      p.noStroke();
+      p.fill(255, 100, 50, r.releaseFlash * 100);
+      p.ellipse(sx, sy, (r.radius * 2.5 + r.releaseFlash * 20) * sScale,
+                (r.radius * 2.5 + r.releaseFlash * 20) * sScale);
+    }
+
+    // Energy bar
+    let barX = sx - (r.radius + 30) * sScale;
+    let barY = sy - r.radius * sScale;
+    let barW = 10 * sScale;
+    let barH = r.radius * 2 * sScale;
+    drawSpringIndicator(p, barX, barY, barW, barH, r.springTorque, r.maxSpringTorque);
+
+    // Stage label
+    p.fill(140, 120, 95);
+    p.noStroke();
+    p.textSize(10 * sScale);
+    p.textAlign(p.CENTER, p.TOP);
+    p.text('Stage ' + (s + 1), sx, sy + (r.radius + r.toothHeight + 15) * sScale);
+
+    // Teeth / RPM label
+    p.textSize(8 * sScale);
+    p.fill(170, 150, 125);
+    let rpm = Math.abs(r.omega) * 60 / TWO_PI;
+    p.text(r.teeth + 'T | ' + rpm.toFixed(0) + ' RPM', sx, sy + (r.radius + r.toothHeight + 28) * sScale);
+
+    // Status
+    p.textSize(9 * sScale);
+    if (r.pawlEngaged) {
+      p.fill(42, 104, 72);
+      p.text('ENGAGED', sx, sy + (r.radius + r.toothHeight + 40) * sScale);
+    } else {
+      p.fill(139, 32, 32);
+      p.text('RELEASING', sx, sy + (r.radius + r.toothHeight + 40) * sScale);
+    }
+
+    // Gear link to next stage
+    if (s < ratchets.length - 1) {
+      let nx = cx + (s + 1 - (ratchets.length - 1) / 2) * spacing;
+      drawGearLink(p, sx + r.radius * sScale, sy,
+                   nx - ratchets[s + 1].radius * scale * 0.75, sy,
+                   config.gearRatio, scale);
+    }
+  }
+}
+
+// ================================================================
+//  P5.JS SKETCH (Instance Mode)
+// ================================================================
+let sketch = function(p) {
+
+  p.setup = function() {
+    let container = document.getElementById('canvas-container');
+    let cnv = p.createCanvas(container.offsetWidth, container.offsetHeight);
+    cnv.parent('canvas-container');
+    initSingle();
+    initAtlas();
+  };
+
+  p.windowResized = function() {
+    let container = document.getElementById('canvas-container');
+    p.resizeCanvas(container.offsetWidth, container.offsetHeight);
+  };
+
+  p.draw = function() {
+    // FPS
+    fpsFrames++;
+    let now = p.millis();
+    if (now - fpsLast > 500) {
+      currentFps = Math.round(fpsFrames / ((now - fpsLast) / 1000));
+      fpsFrames = 0; fpsLast = now;
+    }
+
+    let dt = (1 / 60) * animSpeed;
+
+    p.background(245, 243, 238);
+
+    if (!paused) {
+      if (mode === 'single') {
+        updateSingleMode(dt);
+      } else {
+        updateAtlasMode(dt);
+      }
+      updateParticles(dt);
+    }
+
+    if (mode === 'single') {
+      drawSingleMode(p);
+    } else {
+      drawAtlasMode(p);
+    }
+
+    // Matter.js particles overlay
+    drawParticles(p);
+
+    updateHUD();
+  };
+
+  // ---- Single Mode ----
+  function updateSingleMode(dt) {
+    if (!singleConfig) return;
+
+    // Auto-wind
+    if (winding) {
+      windRatchet(singleConfig, 0, dt * 2.0);
+    }
+
+    // Update physics
+    updateRatchet(singleConfig, dt);
+  }
+
+  function drawSingleMode(p) {
+    if (!singleConfig) return;
+
+    let cx = p.width / 2;
+    let cy = p.height / 2;
+    let scale = Math.min(p.width, p.height) / 350;
+
+    // Title
+    p.fill(140, 120, 95);
+    p.noStroke();
+    p.textSize(11);
+    p.textAlign(p.CENTER, p.TOP);
+    p.text('RATCHET & PAWL MECHANISM', cx, 12);
+
+    // Draw main assembly
+    drawRatchetAssembly(p, singleConfig, cx, cy - 10, scale, false);
+
+    // Drag hint
+    if (singleConfig.ratchets[0].springTorque < 0.01 && singleConfig.ratchets[0].pawlEngaged) {
+      p.fill(180, 160, 130, 150 + Math.sin(p.millis() / 500) * 60);
+      p.textSize(12);
+      p.textAlign(p.CENTER, p.BOTTOM);
+      p.text('Click "Wind Up" or drag wheel clockwise to store energy', cx, p.height - 30);
+    }
+
+    // Winding visual indicator
+    if (winding) {
+      let windPhase = (p.millis() / 200) % TWO_PI;
+      let r0 = singleConfig.ratchets[0];
+      let indicR = (r0.radius + r0.toothHeight + 30) * scale;
+      p.noFill();
+      p.stroke(180, 140, 50, 150);
+      p.strokeWeight(2);
+      p.arc(cx, cy - 10, indicR * 2, indicR * 2, windPhase, windPhase + 1.2);
+      p.arc(cx, cy - 10, indicR * 2, indicR * 2, windPhase + Math.PI, windPhase + Math.PI + 1.2);
+    }
+  }
+
+  // ---- Atlas Mode ----
+  function updateAtlasMode(dt) {
+    for (let cfg of atlasConfigs) {
+      if (!cfg._autoPhase) cfg._autoPhase = 'wind';
+      cfg._autoTimer = (cfg._autoTimer || 0) + dt;
+
+      if (cfg._autoPhase === 'wind') {
+        windRatchet(cfg, 0, dt * 1.5);
+        if (cfg._autoTimer > 2.5) {
+          cfg._autoPhase = 'release';
+          cfg._autoTimer = 0;
+          // Compute cell center for particle effects
+          let idx = atlasConfigs.indexOf(cfg);
+          let cellW = p.width / ATLAS_COLS;
+          let cellH = p.height / ATLAS_ROWS;
+          let col = idx % ATLAS_COLS;
+          let row = Math.floor(idx / ATLAS_COLS);
+          let pcx = col * cellW + cellW / 2;
+          let pcy = row * cellH + cellH / 2;
+          for (let s = 0; s < cfg.ratchets.length; s++) {
+            releaseRatchet(cfg, s, pcx, pcy);
+          }
+        }
+      } else if (cfg._autoPhase === 'release') {
+        updateRatchet(cfg, dt);
+        // Check if all stages stopped
+        let allStopped = cfg.ratchets.every(r => r.pawlEngaged && r.omega < 0.01);
+        if (allStopped && cfg._autoTimer > 1.5) {
+          cfg._autoPhase = 'pause';
+          cfg._autoTimer = 0;
+        }
+      } else if (cfg._autoPhase === 'pause') {
+        if (cfg._autoTimer > 1.0) {
+          resetRatchetConfig(cfg);
+          cfg._autoPhase = 'wind';
+          cfg._autoTimer = 0;
+        }
+      }
+    }
+  }
+
+  function drawAtlasMode(p) {
+    let cellW = p.width / ATLAS_COLS;
+    let cellH = p.height / ATLAS_ROWS;
+
+    for (let idx = 0; idx < atlasConfigs.length; idx++) {
+      let col = idx % ATLAS_COLS;
+      let row = Math.floor(idx / ATLAS_COLS);
+      let x = col * cellW;
+      let y = row * cellH;
+      let cx = x + cellW / 2;
+      let cy = y + cellH / 2;
+      let cfg = atlasConfigs[idx];
+
+      // Cell border
+      p.noFill();
+      p.stroke(200, 190, 175);
+      p.strokeWeight(0.5);
+      p.rect(x, y, cellW, cellH);
+
+      // Hover detection
+      let isHover = p.mouseX > x && p.mouseX < x + cellW &&
+                    p.mouseY > y && p.mouseY < y + cellH;
+      if (isHover) {
+        p.noStroke();
+        p.fill(255, 248, 230, 60);
+        p.rect(x + 1, y + 1, cellW - 2, cellH - 2);
+      }
+
+      let cellScale = Math.min(cellW, cellH) / 280;
+
+      // Draw compact ratchet assembly
+      drawRatchetAssemblyCompact(p, cfg, cx, cy, cellScale, isHover);
+
+      // Cell label
+      p.fill(170, 150, 125);
+      p.noStroke();
+      p.textSize(8);
+      p.textAlign(p.LEFT, p.TOP);
+      p.textStyle(p.ITALIC);
+      let r0 = cfg.ratchets[0];
+      p.text((idx + 1) + '. ' + r0.teeth + 'T s=' + cfg.ratchets.length, x + 4, y + 3);
+      p.textStyle(p.NORMAL);
+
+      // Score
+      p.textAlign(p.RIGHT, p.TOP);
+      p.textSize(7);
+      p.fill(180, 160, 130);
+      p.text((cfg._score || 0).toFixed(0), x + cellW - 4, y + 3);
+    }
+  }
+
+  function drawRatchetAssemblyCompact(p, config, cx, cy, scale, isHover) {
+    let ratchets = config.ratchets;
+    let spacing = 55 * scale;
+
+    for (let s = 0; s < ratchets.length; s++) {
+      let r = ratchets[s];
+      let sx, sy;
+
+      if (ratchets.length === 1) {
+        sx = cx;
+        sy = cy;
+      } else if (ratchets.length === 2) {
+        sx = cx + (s - 0.5) * spacing;
+        sy = cy;
+      } else {
+        // 3 stages: triangle layout
+        let angle = (s / ratchets.length) * TWO_PI - Math.PI / 2;
+        sx = cx + Math.cos(angle) * spacing * 0.6;
+        sy = cy + Math.sin(angle) * spacing * 0.6;
+      }
+
+      let sScale = scale * (s === 0 ? 1.0 : 0.7);
+      let drawR = 28;
+      let drawTH = 5;
+
+      // Motion blur
+      if (!r.pawlEngaged && r.omega > 1) {
+        let blur = Math.min(1, r.omega / 10);
+        p.noFill();
+        p.stroke(180, 150, 100, blur * 60);
+        p.strokeWeight(3 * sScale);
+        p.ellipse(sx, sy, (drawR + drawTH + 5) * 2 * sScale, (drawR + drawTH + 5) * 2 * sScale);
+      }
+
+      // Wheel
+      let wheelAlpha = isHover ? 255 : 220;
+      let tension = r.maxSpringTorque > 0 ? r.springTorque / r.maxSpringTorque : 0;
+      let wheelColor = hslToRgb(120 * (1 - tension), 0.3, 0.65);
+      p.fill(wheelColor[0], wheelColor[1], wheelColor[2], wheelAlpha);
+      p.stroke(130, 110, 85, wheelAlpha);
+      p.strokeWeight(1 * sScale);
+
+      // Simplified tooth drawing
+      p.push();
+      p.translate(sx, sy);
+      p.rotate(r.angle);
+
+      p.beginShape();
+      for (let i = 0; i < r.teeth; i++) {
+        let a1 = (i / r.teeth) * TWO_PI;
+        let a2 = ((i + 0.75) / r.teeth) * TWO_PI;
+        let a3 = ((i + 0.78) / r.teeth) * TWO_PI;
+        let R = drawR * sScale;
+        let TH = drawTH * sScale;
+        p.vertex(R * Math.cos(a1), R * Math.sin(a1));
+        p.vertex((R + TH) * Math.cos(a2), (R + TH) * Math.sin(a2));
+        p.vertex(R * Math.cos(a3), R * Math.sin(a3));
+      }
+      p.endShape(p.CLOSE);
+
+      // Hub
+      p.fill(180, 170, 155, wheelAlpha);
+      p.ellipse(0, 0, drawR * 0.35 * sScale, drawR * 0.35 * sScale);
+      p.pop();
+
+      // Coil spring (compact)
+      let coilColor = hslToRgb(120 * (1 - tension), 0.7, 0.5);
+      p.stroke(coilColor[0], coilColor[1], coilColor[2]);
+      p.strokeWeight(1.5 * sScale);
+      p.noFill();
+      let coilR1 = drawR * 0.15 * sScale;
+      let coilR2 = drawR * 0.55 * sScale;
+      let coilAngle = TWO_PI * 3 * (0.3 + 0.7 * tension);
+      p.beginShape();
+      for (let i = 0; i <= 30; i++) {
+        let t = i / 30;
+        let a = t * coilAngle;
+        let rr = coilR1 + (coilR2 - coilR1) * t;
+        p.vertex(sx + rr * Math.cos(a), sy + rr * Math.sin(a));
+      }
+      p.endShape();
+
+      // Pawl indicator (small triangle)
+      let pawlAngle = Math.PI * 0.25;
+      let pawlDist = (drawR + drawTH + 5) * sScale;
+      let px = sx + pawlDist * Math.cos(pawlAngle);
+      let py = sy + pawlDist * Math.sin(pawlAngle);
+      if (r.pawlEngaged) {
+        p.fill(42, 104, 72, 200);
+      } else {
+        p.fill(180, 80, 80, 200);
+      }
+      p.noStroke();
+      let ts = 4 * sScale;
+      p.triangle(px - ts, py - ts, px + ts, py, px - ts, py + ts);
+
+      // Click flash
+      if (r.pawlBounce > 0.1) {
+        p.noStroke();
+        p.fill(255, 200, 50, r.pawlBounce * 200);
+        p.ellipse(px, py, (5 + r.pawlBounce * 8) * sScale, (5 + r.pawlBounce * 8) * sScale);
+      }
+
+      // Gear link
+      if (s < ratchets.length - 1) {
+        let nextS = s + 1;
+        let nx, ny;
+        if (ratchets.length === 2) {
+          nx = cx + (nextS - 0.5) * spacing;
+          ny = cy;
+        } else {
+          let nAngle = (nextS / ratchets.length) * TWO_PI - Math.PI / 2;
+          nx = cx + Math.cos(nAngle) * spacing * 0.6;
+          ny = cy + Math.sin(nAngle) * spacing * 0.6;
+        }
+        p.stroke(160, 140, 115, 120);
+        p.strokeWeight(1 * scale);
+        p.drawingContext.setLineDash([3, 2]);
+        p.line(sx, sy, nx, ny);
+        p.drawingContext.setLineDash([]);
+      }
+    }
+  }
+
+  // ---- Mouse interaction (single mode) ----
+  p.mousePressed = function() {
+    if (mode !== 'single' || !singleConfig) {
+      // Atlas: click to select
+      if (mode === 'atlas') {
+        let cellW = p.width / ATLAS_COLS;
+        let cellH = p.height / ATLAS_ROWS;
+        let col = Math.floor(p.mouseX / cellW);
+        let row = Math.floor(p.mouseY / cellH);
+        if (col >= 0 && col < ATLAS_COLS && row >= 0 && row < ATLAS_ROWS) {
+          selectedCell = row * ATLAS_COLS + col;
+          singleConfig = atlasConfigs[selectedCell];
+          // Sync parameters from selected config
+          let r0 = singleConfig.ratchets[0];
+          numTeeth = r0.teeth;
+          springStiffness = r0.stiffness;
+          wheelInertia = r0.inertia;
+          friction = r0.friction;
+          numStages = singleConfig.ratchets.length;
+          updateSliders();
+          setMode('single');
+        }
+      }
+      return;
+    }
+
+    let cx = p.width / 2;
+    let cy = p.height / 2 - 10;
+    let dx = p.mouseX - cx;
+    let dy = p.mouseY - cy;
+    let dist = Math.sqrt(dx * dx + dy * dy);
+    let r0 = singleConfig.ratchets[0];
+    let scale = Math.min(p.width, p.height) / 350;
+    let wheelR = (r0.radius + r0.toothHeight) * scale;
+
+    if (dist < wheelR * 1.5 && r0.pawlEngaged) {
+      dragStart = { x: p.mouseX, y: p.mouseY };
+      dragAngle = Math.atan2(dy, dx);
+    }
+  };
+
+  p.mouseDragged = function() {
+    if (!dragStart || mode !== 'single' || !singleConfig) return;
+
+    let cx = p.width / 2;
+    let cy = p.height / 2 - 10;
+    let dx = p.mouseX - cx;
+    let dy = p.mouseY - cy;
+    let newAngle = Math.atan2(dy, dx);
+    let delta = newAngle - dragAngle;
+
+    // Normalize to [-PI, PI]
+    while (delta > Math.PI) delta -= TWO_PI;
+    while (delta < -Math.PI) delta += TWO_PI;
+
+    // Only allow clockwise winding (positive delta in screen coords)
+    if (delta > 0) {
+      windRatchet(singleConfig, 0, delta * 2.0);
+    }
+
+    dragAngle = newAngle;
+  };
+
+  p.mouseReleased = function() {
+    dragStart = null;
+  };
+
+  // ---- Keyboard ----
+  p.keyPressed = function() {
+    if (p.key === ' ') {
+      paused = !paused;
+      return false;
+    }
+    if (p.key === 'r' || p.key === 'R') {
+      triggerRelease();
+    }
+    if (p.key === 'w' || p.key === 'W') {
+      startWinding();
+    }
+    if (p.key === 'a' || p.key === 'A') {
+      setMode(mode === 'single' ? 'atlas' : 'single');
+    }
+  };
+};
+
+new p5(sketch, 'canvas-container');
+
+// ================================================================
+//  HUD UPDATE
+// ================================================================
+function updateHUD() {
+  let cfg = mode === 'single' ? singleConfig : (selectedCell >= 0 ? atlasConfigs[selectedCell] : null);
+  if (!cfg) {
+    document.getElementById('h-energy').textContent = '--';
+    document.getElementById('h-rpm').textContent = '--';
+    document.getElementById('h-clicks').textContent = '--';
+    document.getElementById('h-tension').textContent = '--';
+    document.getElementById('h-pawl').innerHTML = '<span class="engaged">--</span>';
+    document.getElementById('h-stage').textContent = '--';
+    document.getElementById('h-score').textContent = '--';
+  } else {
+    let r0 = cfg.ratchets[0];
+    let energy = r0.springTorque * r0.windAngle * 0.5;
+    let rpm = Math.abs(r0.omega) * 60 / TWO_PI;
+    let tension = r0.maxSpringTorque > 0 ? (r0.springTorque / r0.maxSpringTorque) * 100 : 0;
+
+    document.getElementById('h-energy').textContent = energy.toFixed(2) + ' J';
+    document.getElementById('h-rpm').textContent = rpm.toFixed(0) + ' RPM';
+    document.getElementById('h-clicks').textContent = r0.clickCount;
+    document.getElementById('h-tension').textContent = tension.toFixed(0) + '%';
+
+    if (r0.pawlEngaged) {
+      document.getElementById('h-pawl').innerHTML = '<span class="engaged">ENGAGED</span>';
+    } else {
+      document.getElementById('h-pawl').innerHTML = '<span class="released">RELEASING</span>';
+    }
+
+    document.getElementById('h-stage').textContent = '1 / ' + cfg.ratchets.length;
+    document.getElementById('h-score').textContent = (cfg._score || scoreConfig(cfg)).toFixed(0);
+  }
+  document.getElementById('h-fps').textContent = currentFps;
+}
+
+// ================================================================
+//  SLIDER BINDINGS
+// ================================================================
+function bindSlider(id, valId, getter, setter, formatter) {
+  let el = document.getElementById(id);
+  el.addEventListener('input', function() {
+    let v = parseFloat(this.value);
+    setter(v);
+    document.getElementById(valId).textContent = formatter(v);
+    if (mode === 'single') initSingle();
+  });
+}
+
+bindSlider('sl-teeth', 'v-teeth', () => numTeeth, v => { numTeeth = Math.round(v); }, v => Math.round(v));
+bindSlider('sl-toothH', 'v-toothH', () => toothHeight, v => { toothHeight = v; }, v => Math.round(v));
+bindSlider('sl-radius', 'v-radius', () => wheelRadius, v => { wheelRadius = v; }, v => Math.round(v));
+bindSlider('sl-spring', 'v-spring', () => springStiffness, v => { springStiffness = v; }, v => v.toFixed(2));
+bindSlider('sl-inertia', 'v-inertia', () => wheelInertia, v => { wheelInertia = v; }, v => v.toFixed(2));
+bindSlider('sl-friction', 'v-friction', () => friction, v => { friction = v; }, v => v.toFixed(3));
+bindSlider('sl-stages', 'v-stages', () => numStages, v => { numStages = Math.round(v); }, v => Math.round(v));
+bindSlider('sl-gearRatio', 'v-gearRatio', () => gearRatio, v => { gearRatio = v; }, v => v.toFixed(1));
+bindSlider('sl-speed', 'v-speed', () => animSpeed, v => { animSpeed = v; }, v => v.toFixed(2));
+
+</script>
+</body>
+</html>
