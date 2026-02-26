@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Creature Evolver — Genetic Algorithm Linkage Organisms</title>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f5f3ee; overflow: hidden; font-family: 'Georgia', serif; display: flex; height: 100vh; }
+
+  #sidebar {
+    width: 280px; min-width: 280px; background: #f0ede6;
+    border-right: 1px solid #c8c0b0; overflow-y: auto; padding: 12px 14px;
+    font-size: 12px; color: #444;
+  }
+  #sidebar h1 { font-size: 14px; letter-spacing: 1.5px; color: #333; margin-bottom: 2px; font-weight: normal; }
+  #sidebar .subtitle { font-size: 10px; color: #888; margin-bottom: 12px; font-style: italic; }
+
+  .section-title {
+    font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: #8b7355;
+    margin-top: 14px; margin-bottom: 6px; border-bottom: 1px solid #d8d0c0; padding-bottom: 3px;
+  }
+  .ctrl-row { display: flex; align-items: center; margin-bottom: 5px; }
+  .ctrl-row label { flex: 0 0 95px; font-size: 11px; color: #666; }
+  .ctrl-row input[type="range"] { flex: 1; height: 3px; accent-color: #8b4513; }
+  .ctrl-row .val { flex: 0 0 40px; text-align: right; font-size: 10px; color: #555; font-family: 'Consolas', monospace; }
+
+  select {
+    width: 100%; padding: 4px 8px; font-size: 11px; font-family: 'Georgia', serif;
+    background: #faf8f3; color: #555; border: 1px solid #c8c0b0; border-radius: 3px; margin-bottom: 4px;
+  }
+
+  .btn-row { display: flex; gap: 5px; margin: 8px 0; flex-wrap: wrap; }
+  .btn {
+    padding: 5px 10px; font-size: 10px; font-family: 'Georgia', serif;
+    background: #555; color: #f5f3ee; border: none; cursor: pointer;
+    letter-spacing: 0.5px; border-radius: 2px; transition: background 0.15s;
+  }
+  .btn:hover { background: #333; }
+  .btn.active { background: #8b4513; }
+  .btn.accent { background: #2a6848; }
+  .btn.accent:hover { background: #1a4830; }
+  .btn.danger { background: #8b2020; }
+  .btn:disabled { background: #aaa; cursor: not-allowed; }
+
+  #canvas-container { flex: 1; position: relative; }
+  #canvas-container canvas { display: block; }
+
+  #info-bar {
+    position: fixed; bottom: 0; left: 280px; right: 0; z-index: 100;
+    background: rgba(245,243,238,0.92); border-top: 1px solid #bbb;
+    padding: 4px 16px; font-size: 10px; color: #777; font-style: italic;
+  }
+
+  #hud {
+    position: absolute; top: 8px; right: 12px; background: rgba(245,243,238,0.9);
+    border: 1px solid #c8c0b0; border-radius: 4px; padding: 8px 12px;
+    font-size: 10px; line-height: 1.7; color: #666; min-width: 160px; pointer-events: none;
+  }
+  #hud .hv { color: #444; font-family: 'Consolas', monospace; float: right; }
+
+  .genome-list { max-height: 180px; overflow-y: auto; font-size: 9px; line-height: 1.5; margin-top: 4px; }
+  .genome-item { padding: 1px 0; color: #666; font-family: 'Consolas', monospace; }
+
+  .stat-row { display: flex; justify-content: space-between; font-size: 10px; color: #666; margin-bottom: 2px; }
+  .stat-row .stat-val { font-family: 'Consolas', monospace; color: #444; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #c8c0b0; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h1>CREATURE EVOLVER</h1>
+  <div class="subtitle">Genetic Algorithm &mdash; Linkage Organism Evolution</div>
+
+  <div class="section-title">Fitness Function</div>
+  <select id="sel-fitness">
+    <option value="distance" selected>Distance (tip travel)</option>
+    <option value="beauty">Beauty (curve complexity)</option>
+    <option value="periodicity">Periodicity (trail closure)</option>
+    <option value="height">Height (max Y displacement)</option>
+  </select>
+
+  <div class="section-title">Evolution</div>
+  <div class="ctrl-row">
+    <label>Mutation Rate</label>
+    <input type="range" id="sl-mutation" min="0.05" max="0.50" step="0.01" value="0.15">
+    <span class="val" id="v-mutation">0.15</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Speed</label>
+    <input type="range" id="sl-speed" min="0.5" max="4.0" step="0.1" value="1.0">
+    <span class="val" id="v-speed">1.00</span>
+  </div>
+  <div class="stat-row">
+    <span>Population</span><span class="stat-val">64</span>
+  </div>
+  <div class="stat-row">
+    <span>Generation</span><span class="stat-val" id="disp-gen">0</span>
+  </div>
+  <div class="stat-row">
+    <span>Best Fitness</span><span class="stat-val" id="disp-best">--</span>
+  </div>
+  <div class="stat-row">
+    <span>Avg Fitness</span><span class="stat-val" id="disp-avg">--</span>
+  </div>
+
+  <div class="section-title">Controls</div>
+  <div class="btn-row">
+    <button class="btn accent" id="btn-auto" onclick="toggleAutoEvolve()">Auto-Evolve: OFF</button>
+    <button class="btn" onclick="evolveOneGen()">Evolve 1 Gen</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn active" id="btn-atlas" onclick="setMode('atlas')">Atlas 4x4</button>
+    <button class="btn" id="btn-single" onclick="setMode('single')">Single</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn danger" onclick="randomizePopulation()">Randomize</button>
+    <button class="btn" id="btn-pin" onclick="togglePin()">Pin Selected</button>
+  </div>
+
+  <div class="section-title">Genome</div>
+  <div class="genome-list" id="genome-list">
+    <div class="genome-item" style="color:#999;">Click a creature to inspect genome</div>
+  </div>
+</div>
+
+<div id="canvas-container">
+  <div id="hud">
+    <div>FPS <span class="hv" id="hud-fps">--</span></div>
+    <div>Mode <span class="hv" id="hud-mode">atlas</span></div>
+    <div>Generation <span class="hv" id="hud-gen">0</span></div>
+    <div>Best Fitness <span class="hv" id="hud-best">--</span></div>
+    <div>Selected <span class="hv" id="hud-sel">--</span></div>
+  </div>
+</div>
+
+<div id="info-bar">
+  Plate IX. &mdash; Genetic evolution of linkage organisms. Each creature is a kinematic chain driven by sinusoidal motors. Click to inspect.
+</div>
+
+<script>
+// ========================================================
+// CREATURE EVOLVER — Genetic Algorithm Linkage Organisms
+// ========================================================
+
+const POP_SIZE = 64;
+const ATLAS_COLS = 4, ATLAS_ROWS = 4;
+const ATLAS_COUNT = ATLAS_COLS * ATLAS_ROWS; // top 16
+const EVAL_STEPS = 120; // steps per fitness evaluation cycle
+const TWO_PI = Math.PI * 2;
+
+// ===== STATE =====
+let mode = 'atlas';
+let population = [];
+let generation = 0;
+let selectedIdx = -1;
+let pinnedIdx = -1;
+let autoEvolve = false;
+let lastEvolveTime = 0;
+let animTime = 0;
+let fitnessHistory = []; // {best, avg, worst} per generation
+let cw, ch;
+let hoverCell = -1;
+
+// ===== GENOME =====
+function randomGenome() {
+  let numLimbs = Math.floor(Math.random() * 5) + 2; // 2-6
+  let limbs = [];
+  for (let i = 0; i < numLimbs; i++) {
+    limbs.push({
+      length: 20 + Math.random() * 60,       // 20-80
+      speedRatio: 0.25 + Math.random() * 3.75, // 0.25-4.0
+      phase: Math.random() * TWO_PI,           // 0-2PI
+      amplitude: 0.2 + Math.random() * 1.3     // 0.2-1.5
+    });
+  }
+  let motorSpeed = 0.5 + Math.random() * 2.5; // 0.5-3.0
+  return { numLimbs, limbs, motorSpeed };
+}
+
+function cloneGenome(g) {
+  return JSON.parse(JSON.stringify(g));
+}
+
+// ===== FORWARD KINEMATICS =====
+// Returns array of joint positions [{x,y},...] including center and tip
+function computeChain(genome, time, cx, cy) {
+  let joints = [{ x: cx, y: cy }];
+  let cumulativeAngle = 0;
+  let baseAngleSpacing = TWO_PI / genome.numLimbs;
+
+  for (let i = 0; i < genome.limbs.length; i++) {
+    let limb = genome.limbs[i];
+    let baseAngle = i * baseAngleSpacing;
+    let angle = baseAngle + limb.amplitude * Math.sin(genome.motorSpeed * limb.speedRatio * time + limb.phase);
+    cumulativeAngle += angle;
+
+    let prev = joints[joints.length - 1];
+    joints.push({
+      x: prev.x + limb.length * Math.cos(cumulativeAngle),
+      y: prev.y + limb.length * Math.sin(cumulativeAngle)
+    });
+  }
+  return joints;
+}
+
+// Get tip position at a given time
+function tipAt(genome, time) {
+  let joints = computeChain(genome, time, 0, 0);
+  return joints[joints.length - 1];
+}
+
+// ===== FITNESS FUNCTIONS =====
+function evaluateFitness(genome, fitnessType) {
+  let period = TWO_PI / genome.motorSpeed;
+  let dt = period / EVAL_STEPS;
+  let tips = [];
+
+  for (let i = 0; i <= EVAL_STEPS; i++) {
+    let t = i * dt;
+    tips.push(tipAt(genome, t));
+  }
+
+  switch (fitnessType) {
+    case 'distance': return fitnessDistance(tips);
+    case 'beauty': return fitnessBeauty(tips);
+    case 'periodicity': return fitnessPeriodicity(tips);
+    case 'height': return fitnessHeight(genome, period);
+    default: return fitnessDistance(tips);
+  }
+}
+
+function fitnessDistance(tips) {
+  // Max distance of tip from origin over one cycle
+  let maxDist = 0;
+  for (let p of tips) {
+    let d = Math.sqrt(p.x * p.x + p.y * p.y);
+    if (d > maxDist) maxDist = d;
+  }
+  return maxDist;
+}
+
+function fitnessBeauty(tips) {
+  if (tips.length < 10) return 0;
+
+  // Self-intersection count (approximate via segment crossing)
+  let crossings = 0;
+  for (let i = 0; i < tips.length - 2; i++) {
+    for (let j = i + 2; j < tips.length - 1; j++) {
+      if (segmentsIntersect(tips[i], tips[i + 1], tips[j], tips[j + 1])) {
+        crossings++;
+      }
+      if (crossings > 50) break; // cap for performance
+    }
+    if (crossings > 50) break;
+  }
+
+  // Perimeter
+  let perimeter = 0;
+  for (let i = 1; i < tips.length; i++) {
+    let dx = tips[i].x - tips[i - 1].x;
+    let dy = tips[i].y - tips[i - 1].y;
+    perimeter += Math.sqrt(dx * dx + dy * dy);
+  }
+
+  // Approximate area via shoelace
+  let area = 0;
+  for (let i = 0; i < tips.length - 1; i++) {
+    area += tips[i].x * tips[i + 1].y - tips[i + 1].x * tips[i].y;
+  }
+  area = Math.abs(area) / 2;
+
+  let areaRoot = Math.sqrt(Math.max(area, 1));
+  return crossings * 2 + perimeter / areaRoot;
+}
+
+function fitnessPeriodicity(tips) {
+  if (tips.length < 2) return 0;
+  // How well the trail closes: inverse of distance between first and last point
+  let first = tips[0];
+  let last = tips[tips.length - 1];
+  let dx = last.x - first.x;
+  let dy = last.y - first.y;
+  let gap = Math.sqrt(dx * dx + dy * dy);
+  // Also reward larger trails (not just stationary points)
+  let extent = 0;
+  for (let p of tips) {
+    let d = Math.sqrt(p.x * p.x + p.y * p.y);
+    if (d > extent) extent = d;
+  }
+  return extent / (1 + gap);
+}
+
+function fitnessHeight(genome, period) {
+  // Max Y-displacement of any joint
+  let dt = period / EVAL_STEPS;
+  let maxY = 0;
+  for (let i = 0; i <= EVAL_STEPS; i++) {
+    let t = i * dt;
+    let joints = computeChain(genome, t, 0, 0);
+    for (let j of joints) {
+      let absY = Math.abs(j.y);
+      if (absY > maxY) maxY = absY;
+    }
+  }
+  return maxY;
+}
+
+// Segment intersection helper
+function segmentsIntersect(a, b, c, d) {
+  let dxAB = b.x - a.x, dyAB = b.y - a.y;
+  let dxCD = d.x - c.x, dyCD = d.y - c.y;
+  let denom = dxAB * dyCD - dyAB * dxCD;
+  if (Math.abs(denom) < 1e-10) return false;
+  let t = ((c.x - a.x) * dyCD - (c.y - a.y) * dxCD) / denom;
+  let u = ((c.x - a.x) * dyAB - (c.y - a.y) * dxAB) / denom;
+  return t > 0.01 && t < 0.99 && u > 0.01 && u < 0.99;
+}
+
+// ===== GENETIC OPERATIONS =====
+function crossover(parent1, parent2) {
+  let g1 = cloneGenome(parent1);
+  let g2 = cloneGenome(parent2);
+
+  let minLen = Math.min(g1.limbs.length, g2.limbs.length);
+  let splitPoint = Math.floor(Math.random() * minLen);
+
+  let childLimbs = [];
+  for (let i = 0; i < splitPoint; i++) {
+    childLimbs.push(cloneGenome(g1).limbs[i]);
+  }
+  for (let i = splitPoint; i < g2.limbs.length; i++) {
+    childLimbs.push(cloneGenome(g2).limbs[i]);
+  }
+
+  return {
+    numLimbs: childLimbs.length,
+    limbs: childLimbs,
+    motorSpeed: Math.random() < 0.5 ? g1.motorSpeed : g2.motorSpeed
+  };
+}
+
+function mutate(genome, rate) {
+  let g = cloneGenome(genome);
+  if (Math.random() > rate) return g;
+
+  let choice = Math.random();
+
+  if (choice < 0.25 && g.limbs.length > 0) {
+    // Change one limb length +/- 15%
+    let idx = Math.floor(Math.random() * g.limbs.length);
+    g.limbs[idx].length *= (0.85 + Math.random() * 0.30);
+    g.limbs[idx].length = Math.max(20, Math.min(80, g.limbs[idx].length));
+  } else if (choice < 0.50 && g.limbs.length > 0) {
+    // Swap one limb's phase
+    let idx = Math.floor(Math.random() * g.limbs.length);
+    g.limbs[idx].phase = Math.random() * TWO_PI;
+  } else if (choice < 0.70) {
+    // Add or remove a limb
+    if (g.limbs.length < 6 && Math.random() < 0.5) {
+      g.limbs.push({
+        length: 20 + Math.random() * 60,
+        speedRatio: 0.25 + Math.random() * 3.75,
+        phase: Math.random() * TWO_PI,
+        amplitude: 0.2 + Math.random() * 1.3
+      });
+      g.numLimbs = g.limbs.length;
+    } else if (g.limbs.length > 2) {
+      let idx = Math.floor(Math.random() * g.limbs.length);
+      g.limbs.splice(idx, 1);
+      g.numLimbs = g.limbs.length;
+    }
+  } else if (choice < 0.85) {
+    // Change motor speed +/- 20%
+    g.motorSpeed *= (0.80 + Math.random() * 0.40);
+    g.motorSpeed = Math.max(0.5, Math.min(3.0, g.motorSpeed));
+  } else if (g.limbs.length > 0) {
+    // Mutate amplitude or speedRatio
+    let idx = Math.floor(Math.random() * g.limbs.length);
+    if (Math.random() < 0.5) {
+      g.limbs[idx].amplitude *= (0.7 + Math.random() * 0.6);
+      g.limbs[idx].amplitude = Math.max(0.2, Math.min(1.5, g.limbs[idx].amplitude));
+    } else {
+      g.limbs[idx].speedRatio *= (0.7 + Math.random() * 0.6);
+      g.limbs[idx].speedRatio = Math.max(0.25, Math.min(4.0, g.limbs[idx].speedRatio));
+    }
+  }
+
+  return g;
+}
+
+// ===== CREATURE WRAPPER =====
+function makeCreature(genome) {
+  let fitnessType = document.getElementById('sel-fitness').value;
+  let fitness = evaluateFitness(genome, fitnessType);
+  return {
+    genome: genome,
+    fitness: fitness,
+    trail: [],
+    pinned: false
+  };
+}
+
+// ===== POPULATION MANAGEMENT =====
+function randomizePopulation() {
+  population = [];
+  for (let i = 0; i < POP_SIZE; i++) {
+    population.push(makeCreature(randomGenome()));
+  }
+  sortPopulation();
+  generation = 0;
+  fitnessHistory = [];
+  selectedIdx = -1;
+  pinnedIdx = -1;
+  animTime = 0;
+  updateStats();
+}
+
+function sortPopulation() {
+  population.sort((a, b) => b.fitness - a.fitness);
+}
+
+function evolveOneGen() {
+  let mutationRate = parseFloat(document.getElementById('sl-mutation').value);
+  let fitnessType = document.getElementById('sel-fitness').value;
+
+  // Re-evaluate all fitness (in case fitness function changed)
+  for (let c of population) {
+    c.fitness = evaluateFitness(c.genome, fitnessType);
+  }
+  sortPopulation();
+
+  // Selection: keep top 25% (16 of 64)
+  let eliteCount = Math.floor(POP_SIZE * 0.25);
+  let elites = population.slice(0, eliteCount);
+
+  // Preserve pinned creature
+  let pinnedCreature = null;
+  if (pinnedIdx >= 0 && pinnedIdx < population.length) {
+    pinnedCreature = population[pinnedIdx];
+  }
+
+  let newPop = [];
+
+  // Elites survive
+  for (let e of elites) {
+    let c = makeCreature(cloneGenome(e.genome));
+    c.fitness = e.fitness;
+    c.trail = [];
+    newPop.push(c);
+  }
+
+  // Fill rest with crossover + mutation
+  while (newPop.length < POP_SIZE) {
+    let p1 = elites[Math.floor(Math.random() * eliteCount)];
+    let p2 = elites[Math.floor(Math.random() * eliteCount)];
+    let childGenome = crossover(p1.genome, p2.genome);
+    childGenome = mutate(childGenome, mutationRate);
+    let child = makeCreature(childGenome);
+    newPop.push(child);
+  }
+
+  population = newPop;
+  sortPopulation();
+
+  // Restore pinned creature into population
+  if (pinnedCreature) {
+    // Replace worst creature with pinned one
+    pinnedCreature.trail = [];
+    pinnedCreature.fitness = evaluateFitness(pinnedCreature.genome, fitnessType);
+    population[population.length - 1] = pinnedCreature;
+    sortPopulation();
+    // Find its new index
+    pinnedIdx = population.indexOf(pinnedCreature);
+  }
+
+  generation++;
+
+  // Record history
+  let fitnesses = population.map(c => c.fitness);
+  let best = fitnesses[0];
+  let worst = fitnesses[fitnesses.length - 1];
+  let avg = fitnesses.reduce((a, b) => a + b, 0) / fitnesses.length;
+  fitnessHistory.push({ best, avg, worst });
+
+  // Clear trails for fresh animation
+  for (let c of population) c.trail = [];
+  animTime = 0;
+
+  updateStats();
+}
+
+function updateStats() {
+  document.getElementById('disp-gen').textContent = generation;
+  document.getElementById('hud-gen').textContent = generation;
+
+  if (population.length > 0) {
+    let fitnesses = population.map(c => c.fitness);
+    let best = fitnesses[0];
+    let avg = fitnesses.reduce((a, b) => a + b, 0) / fitnesses.length;
+    document.getElementById('disp-best').textContent = best.toFixed(1);
+    document.getElementById('disp-avg').textContent = avg.toFixed(1);
+    document.getElementById('hud-best').textContent = best.toFixed(1);
+  }
+}
+
+// ===== AUTO EVOLVE =====
+function toggleAutoEvolve() {
+  autoEvolve = !autoEvolve;
+  let btn = document.getElementById('btn-auto');
+  btn.textContent = autoEvolve ? 'Auto-Evolve: ON' : 'Auto-Evolve: OFF';
+  btn.classList.toggle('active', autoEvolve);
+  btn.classList.toggle('accent', !autoEvolve);
+  lastEvolveTime = performance.now();
+}
+
+function togglePin() {
+  if (selectedIdx >= 0 && selectedIdx < population.length) {
+    if (pinnedIdx === selectedIdx) {
+      pinnedIdx = -1;
+      document.getElementById('btn-pin').classList.remove('active');
+    } else {
+      pinnedIdx = selectedIdx;
+      document.getElementById('btn-pin').classList.add('active');
+    }
+  }
+}
+
+// ===== MODE =====
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-atlas').classList.toggle('active', m === 'atlas');
+  document.getElementById('btn-single').classList.toggle('active', m === 'single');
+  document.getElementById('hud-mode').textContent = m;
+  if (m === 'atlas') {
+    document.getElementById('info-bar').textContent =
+      'Plate IX. \u2014 Genetic evolution of linkage organisms. Top 16 of 64, ranked by fitness. Click to inspect.';
+  }
+}
+
+// ===== SLIDER WIRING =====
+function wireSlider(id, valId, fmt) {
+  let sl = document.getElementById(id);
+  let vl = document.getElementById(valId);
+  sl.addEventListener('input', () => {
+    let v = parseFloat(sl.value);
+    if (fmt === 'int') vl.textContent = Math.round(v);
+    else vl.textContent = v.toFixed(2);
+  });
+}
+wireSlider('sl-mutation', 'v-mutation');
+wireSlider('sl-speed', 'v-speed');
+
+// ===== GENOME DISPLAY =====
+function updateGenomeList(creature) {
+  let list = document.getElementById('genome-list');
+  let g = creature.genome;
+  let html = '';
+  html += '<div class="genome-item" style="color:#8b4513;">Motor: ' + g.motorSpeed.toFixed(2) + ' rad/s</div>';
+  html += '<div class="genome-item" style="color:#8b4513;">Limbs: ' + g.numLimbs + '</div>';
+  html += '<div class="genome-item" style="color:#8b4513;">Fitness: ' + creature.fitness.toFixed(1) + '</div>';
+  html += '<div class="genome-item">&mdash;&mdash;&mdash;</div>';
+  for (let i = 0; i < g.limbs.length; i++) {
+    let l = g.limbs[i];
+    html += '<div class="genome-item">L' + (i + 1) + ': len=' + l.length.toFixed(1)
+      + ' spd=' + l.speedRatio.toFixed(2) + '</div>';
+    html += '<div class="genome-item">   amp=' + l.amplitude.toFixed(2)
+      + ' ph=' + (l.phase * 180 / Math.PI).toFixed(0) + '&deg;</div>';
+  }
+  list.innerHTML = html;
+}
+
+// ===== RANK COLORS =====
+function rankColor(rank) {
+  if (rank === 0) return { r: 218, g: 165, b: 32 };  // gold
+  if (rank === 1) return { r: 192, g: 192, b: 192 };  // silver
+  if (rank === 2) return { r: 205, g: 127, b: 50 };   // bronze
+  // Gradient from brown to grey for the rest
+  let t = Math.min((rank - 3) / 12, 1);
+  return {
+    r: Math.round(139 + t * (160 - 139)),
+    g: Math.round(90 + t * (150 - 90)),
+    b: Math.round(43 + t * (150 - 43))
+  };
+}
+
+// ===== P5.JS SKETCH =====
+const sketch = (p) => {
+  p.setup = () => {
+    let container = document.getElementById('canvas-container');
+    cw = container.clientWidth; ch = container.clientHeight;
+    p.createCanvas(cw, ch).parent(container);
+    p.textFont('Georgia');
+    randomizePopulation();
+  };
+
+  p.windowResized = () => {
+    let container = document.getElementById('canvas-container');
+    cw = container.clientWidth; ch = container.clientHeight;
+    p.resizeCanvas(cw, ch);
+  };
+
+  p.draw = () => {
+    p.background(245, 243, 238);
+
+    let speed = parseFloat(document.getElementById('sl-speed').value);
+    animTime += speed * 0.03;
+
+    // Auto-evolve: 1 generation per second
+    if (autoEvolve) {
+      let now = performance.now();
+      if (now - lastEvolveTime >= 1000) {
+        evolveOneGen();
+        lastEvolveTime = now;
+      }
+    }
+
+    if (mode === 'atlas') drawAtlas(p);
+    else drawSingle(p);
+
+    document.getElementById('hud-fps').textContent = Math.round(p.frameRate());
+  };
+
+  p.mousePressed = () => {
+    if (p.mouseX < 0 || p.mouseX > cw || p.mouseY < 0 || p.mouseY > ch) return;
+    if (mode === 'atlas') {
+      let cellW = cw / ATLAS_COLS, cellH = ch / ATLAS_ROWS;
+      let col = Math.floor(p.mouseX / cellW);
+      let row = Math.floor(p.mouseY / cellH);
+      if (col >= 0 && col < ATLAS_COLS && row >= 0 && row < ATLAS_ROWS) {
+        let idx = row * ATLAS_COLS + col;
+        if (idx < population.length) {
+          selectedIdx = idx;
+          setMode('single');
+          population[selectedIdx].trail = [];
+          updateGenomeList(population[selectedIdx]);
+        }
+      }
+    }
+  };
+
+  p.mouseMoved = () => {
+    if (mode === 'atlas') {
+      let cellW = cw / ATLAS_COLS, cellH = ch / ATLAS_ROWS;
+      let col = Math.floor(p.mouseX / cellW);
+      let row = Math.floor(p.mouseY / cellH);
+      hoverCell = (col >= 0 && col < ATLAS_COLS && row >= 0 && row < ATLAS_ROWS) ? row * ATLAS_COLS + col : -1;
+    }
+  };
+};
+
+// ===== ATLAS RENDERER =====
+function drawAtlas(p) {
+  let cellW = cw / ATLAS_COLS, cellH = ch / ATLAS_ROWS;
+
+  for (let idx = 0; idx < ATLAS_COUNT && idx < population.length; idx++) {
+    let col = idx % ATLAS_COLS, row = Math.floor(idx / ATLAS_COLS);
+    let cx = col * cellW, cy = row * cellH;
+    let centerX = cx + cellW / 2, centerY = cy + cellH / 2;
+
+    // Cell border
+    p.noFill(); p.stroke(200, 190, 175); p.strokeWeight(0.5);
+    p.rect(cx, cy, cellW, cellH);
+
+    if (idx === hoverCell) {
+      p.fill(255, 255, 255, 30); p.noStroke();
+      p.rect(cx, cy, cellW, cellH);
+    }
+
+    // Pinned indicator
+    if (idx === pinnedIdx) {
+      p.noFill(); p.stroke(139, 69, 19, 180); p.strokeWeight(2);
+      p.rect(cx + 2, cy + 2, cellW - 4, cellH - 4);
+    }
+
+    let creature = population[idx];
+    let genome = creature.genome;
+
+    // Compute total arm reach for scaling
+    let totalReach = 0;
+    for (let l of genome.limbs) totalReach += l.length;
+    let scale = Math.min(cellW * 0.35, cellH * 0.35) / Math.max(totalReach, 50);
+
+    // Compute chain
+    let joints = computeChain(genome, animTime, centerX, centerY);
+
+    // Collect tip trail
+    let tip = joints[joints.length - 1];
+    creature.trail.push({ x: tip.x, y: tip.y });
+    if (creature.trail.length > 200) creature.trail.shift();
+
+    // Draw tip trail
+    let rc = rankColor(idx);
+    p.noFill(); p.strokeWeight(0.8);
+    p.beginShape();
+    for (let i = 0; i < creature.trail.length; i++) {
+      let alpha = (i / creature.trail.length) * 120 + 20;
+      p.stroke(rc.r, rc.g, rc.b, alpha);
+      p.vertex(
+        centerX + (creature.trail[i].x - centerX) * scale,
+        centerY + (creature.trail[i].y - centerY) * scale
+      );
+    }
+    p.endShape();
+
+    // Draw linkage chain
+    p.strokeWeight(2);
+    for (let i = 0; i < joints.length - 1; i++) {
+      let t = i / Math.max(joints.length - 1, 1);
+      p.stroke(
+        rc.r * (1 - t * 0.3),
+        rc.g * (1 - t * 0.3),
+        rc.b * (1 - t * 0.3),
+        200
+      );
+      p.line(
+        centerX + (joints[i].x - centerX) * scale,
+        centerY + (joints[i].y - centerY) * scale,
+        centerX + (joints[i + 1].x - centerX) * scale,
+        centerY + (joints[i + 1].y - centerY) * scale
+      );
+    }
+
+    // Draw joints
+    for (let i = 0; i < joints.length; i++) {
+      let jx = centerX + (joints[i].x - centerX) * scale;
+      let jy = centerY + (joints[i].y - centerY) * scale;
+      if (i === 0) {
+        p.fill(60); p.noStroke();
+        p.circle(jx, jy, 5);
+      } else if (i === joints.length - 1) {
+        p.fill(rc.r, rc.g, rc.b); p.noStroke();
+        p.circle(jx, jy, 5);
+      } else {
+        p.fill(100, 90, 80); p.noStroke();
+        p.circle(jx, jy, 3);
+      }
+    }
+
+    // Rank label
+    p.noStroke(); p.textSize(9); p.textAlign(p.LEFT, p.TOP);
+    if (idx < 3) {
+      p.fill(rc.r, rc.g, rc.b);
+      let medal = idx === 0 ? '#1' : idx === 1 ? '#2' : '#3';
+      p.text(medal, cx + 4, cy + 3);
+    } else {
+      p.fill(180, 170, 155);
+      p.text('#' + (idx + 1), cx + 4, cy + 3);
+    }
+
+    // Fitness label
+    p.fill(130); p.textSize(8); p.textAlign(p.RIGHT, p.TOP);
+    p.text(creature.fitness.toFixed(1), cx + cellW - 4, cy + 3);
+
+    // Limb count
+    p.fill(170); p.textSize(7); p.textAlign(p.LEFT, p.BOTTOM);
+    p.text(genome.numLimbs + 'L', cx + 4, cy + cellH - 3);
+  }
+}
+
+// ===== SINGLE MODE RENDERER =====
+function drawSingle(p) {
+  if (selectedIdx < 0 || selectedIdx >= population.length) return;
+  let creature = population[selectedIdx];
+  let genome = creature.genome;
+
+  document.getElementById('hud-sel').textContent = '#' + (selectedIdx + 1);
+
+  // === Main creature area (left 60%) ===
+  let creatureCX = cw * 0.32, creatureCY = ch * 0.45;
+
+  // Compute total arm reach for scaling
+  let totalReach = 0;
+  for (let l of genome.limbs) totalReach += l.length;
+  let scale = Math.min(cw * 0.25, ch * 0.35) / Math.max(totalReach, 50);
+
+  // Compute chain
+  let joints = computeChain(genome, animTime, creatureCX, creatureCY);
+
+  // Tip trail
+  let tip = joints[joints.length - 1];
+  creature.trail.push({ x: tip.x, y: tip.y });
+  if (creature.trail.length > 800) creature.trail.shift();
+
+  // Draw full tip trail
+  let rc = rankColor(selectedIdx);
+  p.noFill(); p.strokeWeight(1.2);
+  p.beginShape();
+  for (let i = 0; i < creature.trail.length; i++) {
+    let alpha = (i / creature.trail.length) * 180 + 30;
+    p.stroke(rc.r, rc.g, rc.b, alpha);
+    p.vertex(creature.trail[i].x, creature.trail[i].y);
+  }
+  p.endShape();
+
+  // Draw linkage chain
+  p.strokeWeight(3);
+  for (let i = 0; i < joints.length - 1; i++) {
+    let t = i / Math.max(joints.length - 1, 1);
+    p.stroke(
+      rc.r * (1 - t * 0.2),
+      rc.g * (1 - t * 0.2),
+      rc.b * (1 - t * 0.2),
+      220
+    );
+    p.line(joints[i].x, joints[i].y, joints[i + 1].x, joints[i + 1].y);
+  }
+
+  // Draw joints
+  for (let i = 0; i < joints.length; i++) {
+    if (i === 0) {
+      p.fill(60); p.noStroke();
+      p.circle(joints[i].x, joints[i].y, 8);
+    } else if (i === joints.length - 1) {
+      p.fill(rc.r, rc.g, rc.b); p.stroke(60); p.strokeWeight(1);
+      p.circle(joints[i].x, joints[i].y, 8);
+    } else {
+      p.fill(100, 90, 80); p.noStroke();
+      p.circle(joints[i].x, joints[i].y, 5);
+    }
+  }
+
+  // Creature title
+  let rc2 = rankColor(selectedIdx);
+  p.noStroke(); p.fill(rc2.r, rc2.g, rc2.b); p.textSize(12); p.textAlign(p.LEFT, p.TOP);
+  let rankLabel = selectedIdx === 0 ? 'Champion' : selectedIdx === 1 ? 'Runner-up' : selectedIdx === 2 ? 'Third' : '#' + (selectedIdx + 1);
+  p.text(rankLabel + '  |  Fitness: ' + creature.fitness.toFixed(1) + '  |  ' + genome.numLimbs + ' limbs', 12, 12);
+
+  if (pinnedIdx === selectedIdx) {
+    p.fill(139, 69, 19); p.textSize(10);
+    p.text('PINNED', 12, 28);
+  }
+
+  // === Fitness History Graph (right side) ===
+  if (fitnessHistory.length > 1) {
+    let graphX = cw * 0.62, graphY = ch * 0.08;
+    let graphW = cw * 0.34, graphH = ch * 0.38;
+
+    // Graph frame
+    p.noFill(); p.stroke(180, 170, 160); p.strokeWeight(0.5);
+    p.rect(graphX, graphY, graphW, graphH);
+
+    // Title
+    p.noStroke(); p.fill(130); p.textSize(9); p.textAlign(p.CENTER, p.BOTTOM);
+    p.text('Fitness Over Generations', graphX + graphW / 2, graphY - 3);
+
+    // Find ranges
+    let maxFit = -Infinity, minFit = Infinity;
+    for (let h of fitnessHistory) {
+      if (h.best > maxFit) maxFit = h.best;
+      if (h.worst < minFit) minFit = h.worst;
+    }
+    let fitRange = maxFit - minFit;
+    if (fitRange < 1) fitRange = 1;
+
+    // Y-axis labels
+    p.fill(150); p.textSize(7); p.textAlign(p.RIGHT, p.CENTER);
+    p.text(maxFit.toFixed(0), graphX - 3, graphY + 4);
+    p.text(minFit.toFixed(0), graphX - 3, graphY + graphH - 4);
+
+    // X-axis label
+    p.textAlign(p.CENTER, p.TOP);
+    p.text('Gen ' + fitnessHistory.length, graphX + graphW / 2, graphY + graphH + 3);
+
+    let numPts = fitnessHistory.length;
+    let xStep = graphW / Math.max(numPts - 1, 1);
+
+    // Worst line
+    p.noFill(); p.stroke(180, 140, 140, 120); p.strokeWeight(0.8);
+    p.beginShape();
+    for (let i = 0; i < numPts; i++) {
+      let x = graphX + i * xStep;
+      let y = graphY + graphH - ((fitnessHistory[i].worst - minFit) / fitRange) * graphH;
+      p.vertex(x, y);
+    }
+    p.endShape();
+
+    // Average line
+    p.stroke(140, 140, 180, 150); p.strokeWeight(1);
+    p.beginShape();
+    for (let i = 0; i < numPts; i++) {
+      let x = graphX + i * xStep;
+      let y = graphY + graphH - ((fitnessHistory[i].avg - minFit) / fitRange) * graphH;
+      p.vertex(x, y);
+    }
+    p.endShape();
+
+    // Best line
+    p.stroke(218, 165, 32); p.strokeWeight(1.5);
+    p.beginShape();
+    for (let i = 0; i < numPts; i++) {
+      let x = graphX + i * xStep;
+      let y = graphY + graphH - ((fitnessHistory[i].best - minFit) / fitRange) * graphH;
+      p.vertex(x, y);
+    }
+    p.endShape();
+
+    // Legend
+    let legX = graphX + 6, legY = graphY + graphH - 30;
+    p.noStroke(); p.textSize(7); p.textAlign(p.LEFT, p.CENTER);
+    p.fill(218, 165, 32); p.circle(legX, legY, 4); p.text('Best', legX + 6, legY);
+    p.fill(140, 140, 180); p.circle(legX, legY + 10, 4); p.text('Avg', legX + 6, legY + 10);
+    p.fill(180, 140, 140); p.circle(legX, legY + 20, 4); p.text('Worst', legX + 6, legY + 20);
+  }
+
+  // === Population overview (bottom right) ===
+  let barX = cw * 0.62, barY = ch * 0.54;
+  let barW = cw * 0.34, barH = ch * 0.38;
+
+  p.noStroke(); p.fill(130); p.textSize(9); p.textAlign(p.CENTER, p.BOTTOM);
+  p.text('Population Fitness Distribution', barX + barW / 2, barY - 3);
+
+  // Draw fitness bars for top 16
+  let maxBarFit = population[0].fitness;
+  let barCount = Math.min(16, population.length);
+  let bw = (barW - 4) / barCount;
+
+  for (let i = 0; i < barCount; i++) {
+    let brc = rankColor(i);
+    let bh = (population[i].fitness / Math.max(maxBarFit, 1)) * (barH - 20);
+    let bx = barX + 2 + i * bw;
+    let by = barY + barH - bh;
+
+    p.fill(brc.r, brc.g, brc.b, 180); p.noStroke();
+    p.rect(bx, by, bw - 1, bh, 1);
+
+    // Highlight selected
+    if (i === selectedIdx) {
+      p.noFill(); p.stroke(60); p.strokeWeight(1.5);
+      p.rect(bx - 1, by - 1, bw + 1, bh + 2, 1);
+    }
+  }
+
+  // Bar axis
+  p.stroke(180, 170, 160); p.strokeWeight(0.5);
+  p.line(barX, barY + barH, barX + barW, barY + barH);
+
+  // Info bar
+  document.getElementById('info-bar').textContent =
+    'Creature #' + (selectedIdx + 1) + ' \u2014 ' + genome.numLimbs + ' limbs, motor ' + genome.motorSpeed.toFixed(2)
+    + ' rad/s. Fitness: ' + creature.fitness.toFixed(1) + '. Generation ' + generation + '.';
+
+  // Back hint
+  p.fill(150); p.noStroke(); p.textSize(10); p.textAlign(p.LEFT, p.BOTTOM);
+  p.text('\u2190 Press Atlas 4x4 to return', 12, ch - 30);
+}
+
+// ===== LAUNCH =====
+new p5(sketch, 'canvas-container');
+</script>
+</body>
+</html>
