@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>3D Cam Surface Explorer — Cylindrical Cam with 2D Fourier Surface</title>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f5f3ee; overflow: hidden; font-family: 'Georgia', serif; display: flex; height: 100vh; }
+
+  #sidebar {
+    width: 280px; min-width: 280px; background: #f0ede6;
+    border-right: 1px solid #c8c0b0; overflow-y: auto; padding: 12px 14px;
+    font-size: 12px; color: #444;
+  }
+  #sidebar h1 { font-size: 14px; letter-spacing: 1.5px; color: #333; margin-bottom: 2px; font-weight: normal; }
+  #sidebar .subtitle { font-size: 10px; color: #888; margin-bottom: 12px; font-style: italic; }
+
+  .section-title {
+    font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: #8b7355;
+    margin-top: 14px; margin-bottom: 6px; border-bottom: 1px solid #d8d0c0; padding-bottom: 3px;
+  }
+  .ctrl-row { display: flex; align-items: center; margin-bottom: 5px; }
+  .ctrl-row label { flex: 0 0 95px; font-size: 11px; color: #666; }
+  .ctrl-row input[type="range"] { flex: 1; height: 3px; accent-color: #8b4513; }
+  .ctrl-row .val { flex: 0 0 40px; text-align: right; font-size: 10px; color: #555; font-family: 'Consolas', monospace; }
+
+  select {
+    width: 100%; padding: 4px 8px; font-size: 11px; font-family: 'Georgia', serif;
+    background: #faf8f3; color: #555; border: 1px solid #c8c0b0; border-radius: 3px; margin-bottom: 4px;
+  }
+
+  .btn-row { display: flex; gap: 5px; margin: 8px 0; flex-wrap: wrap; }
+  .btn {
+    padding: 5px 10px; font-size: 10px; font-family: 'Georgia', serif;
+    background: #555; color: #f5f3ee; border: none; cursor: pointer;
+    letter-spacing: 0.5px; border-radius: 2px; transition: background 0.15s;
+  }
+  .btn:hover { background: #333; }
+  .btn.active { background: #8b4513; }
+  .btn.accent { background: #2a6848; }
+  .btn.accent:hover { background: #1a4830; }
+  .btn.danger { background: #8b2020; }
+  .btn:disabled { background: #aaa; cursor: not-allowed; }
+
+  #canvas-container { flex: 1; position: relative; }
+  #canvas-container canvas { display: block; }
+
+  #info-bar {
+    position: fixed; bottom: 0; left: 280px; right: 0; z-index: 100;
+    background: rgba(245,243,238,0.92); border-top: 1px solid #bbb;
+    padding: 4px 16px; font-size: 10px; color: #777; font-style: italic;
+  }
+
+  #hud {
+    position: absolute; top: 8px; right: 12px; background: rgba(245,243,238,0.9);
+    border: 1px solid #c8c0b0; border-radius: 4px; padding: 8px 12px;
+    font-size: 10px; line-height: 1.7; color: #666; min-width: 160px; pointer-events: none;
+  }
+  #hud .hv { color: #444; font-family: 'Consolas', monospace; float: right; }
+
+  .progress-bar { width: 100%; height: 3px; background: #ddd; border-radius: 2px; margin: 4px 0; }
+  .progress-bar-fill { height: 100%; background: #8b4513; border-radius: 2px; transition: width 0.1s; }
+
+  .harmonic-list { max-height: 160px; overflow-y: auto; font-size: 9px; line-height: 1.5; margin-top: 4px; }
+  .harmonic-item { padding: 1px 0; color: #666; font-family: 'Consolas', monospace; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #c8c0b0; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h1>3D CAM SURFACE</h1>
+  <div class="subtitle">Cylindrical Cam with 2D Fourier Surface &mdash; WEBGL</div>
+
+  <div class="section-title">Harmonics</div>
+  <div class="ctrl-row">
+    <label>&theta; Harmonics</label>
+    <input type="range" id="sl-theta-harm" min="1" max="6" step="1" value="3">
+    <span class="val" id="v-theta-harm">3</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Z Harmonics</label>
+    <input type="range" id="sl-z-harm" min="1" max="4" step="1" value="2">
+    <span class="val" id="v-z-harm">2</span>
+  </div>
+
+  <div class="section-title">Geometry</div>
+  <div class="ctrl-row">
+    <label>Base Radius</label>
+    <input type="range" id="sl-base-r" min="30" max="60" step="1" value="40">
+    <span class="val" id="v-base-r">40</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Cam Length</label>
+    <input type="range" id="sl-cam-len" min="60" max="120" step="2" value="80">
+    <span class="val" id="v-cam-len">80</span>
+  </div>
+
+  <div class="section-title">Follower Position</div>
+  <div class="ctrl-row">
+    <label>&theta; Position</label>
+    <input type="range" id="sl-fol-theta" min="0" max="360" step="1" value="0">
+    <span class="val" id="v-fol-theta">0&deg;</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Z Position</label>
+    <input type="range" id="sl-fol-z" min="0" max="100" step="1" value="50">
+    <span class="val" id="v-fol-z">50</span>
+  </div>
+
+  <div class="section-title">Rendering</div>
+  <div class="ctrl-row">
+    <label>Mesh Detail</label>
+    <select id="sel-mesh">
+      <option value="16">Low (16)</option>
+      <option value="32" selected>Medium (32)</option>
+      <option value="48">High (48)</option>
+    </select>
+  </div>
+  <div class="ctrl-row">
+    <label>Speed</label>
+    <input type="range" id="sl-speed" min="0" max="2.0" step="0.05" value="0.5">
+    <span class="val" id="v-speed">0.50</span>
+  </div>
+
+  <div class="section-title">Actions</div>
+  <div class="btn-row">
+    <button class="btn active" id="btn-atlas" onclick="setMode('atlas')">Atlas 4&times;4</button>
+    <button class="btn" id="btn-single" onclick="setMode('single')">Single</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn accent" onclick="randomizeAll()">Randomize</button>
+    <button class="btn" onclick="mutateAll()">Mutate</button>
+    <button class="btn danger" id="btn-beautiful" onclick="findBeautiful()">Find Beautiful</button>
+  </div>
+  <div id="progress-container" style="display:none;">
+    <div class="progress-bar"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
+    <span style="font-size:9px;color:#888;" id="progress-text">Searching...</span>
+  </div>
+
+  <div class="section-title">Coefficients</div>
+  <div class="harmonic-list" id="harmonic-list">
+    <div class="harmonic-item" style="color:#999;">Click a cell to see coefficients</div>
+  </div>
+</div>
+
+<div id="canvas-container">
+  <div id="hud">
+    <div>FPS <span class="hv" id="hud-fps">--</span></div>
+    <div>Mode <span class="hv" id="hud-mode">atlas</span></div>
+    <div>&theta;&times;Z <span class="hv" id="hud-harm">--</span></div>
+    <div>Displacement <span class="hv" id="hud-disp">--</span></div>
+    <div>Score <span class="hv" id="hud-score">--</span></div>
+  </div>
+</div>
+
+<div id="info-bar">
+  Plate VII. &mdash; Cylindrical cam surfaces from 2D Fourier synthesis. Each cell shows a unique cam with harmonic surface topology. Click to inspect.
+</div>
+
+<script>
+// ========================================================
+// 3D CAM SURFACE EXPLORER — Cylindrical Cam, 2D Fourier
+// p5.js WEBGL. Y+ = DOWN, Y- = UP.
+// ========================================================
+
+const COLS = 4, ROWS = 4;
+const ATLAS_THETA_STEPS = 24, ATLAS_Z_STEPS = 12;
+const FIND_BEAUTIFUL_TOTAL = 120;
+const FIND_BEAUTIFUL_CHUNK = 15;
+
+// ===== STATE =====
+let mode = 'atlas';
+let cells = [];
+let selectedIdx = -1;
+let hoverCell = -1;
+let cw, ch;
+let findBeautifulRunning = false;
+let autoRotAngle = 0;
+
+// Single mode orbit camera state
+let orbitRotX = -0.4;  // tilt (negative = looking down from above)
+let orbitRotY = 0;
+let orbitDragging = false;
+let orbitLastMX = 0, orbitLastMY = 0;
+
+// ===== CORE MATH — 2D FOURIER SURFACE HEIGHT =====
+function surfaceHeight(theta, z, config) {
+  let h = 0;
+  let M = config.thetaHarmonics;
+  let N = config.zHarmonics;
+  for (let m = 0; m < M; m++) {
+    for (let n = 0; n < N; n++) {
+      h += config.A[m][n] *
+           Math.cos((m + 1) * theta + config.phi[m]) *
+           Math.cos((n + 1) * z * Math.PI / config.camLength + config.psi[n]);
+    }
+  }
+  return h;
+}
+
+// ===== CONFIG =====
+function randomConfig() {
+  let thetaH = parseInt(document.getElementById('sl-theta-harm').value);
+  let zH = parseInt(document.getElementById('sl-z-harm').value);
+  let baseR = parseFloat(document.getElementById('sl-base-r').value);
+  let camLen = parseFloat(document.getElementById('sl-cam-len').value);
+
+  let A = [];
+  let phi = [];
+  let psi = [];
+
+  for (let m = 0; m < thetaH; m++) {
+    phi.push(Math.random() * Math.PI * 2);
+    let row = [];
+    for (let n = 0; n < zH; n++) {
+      // Amplitude decreases with harmonic order
+      let maxA = baseR * 0.25 / (1 + (m + n) * 0.6);
+      row.push(Math.random() * maxA);
+    }
+    A.push(row);
+  }
+  for (let n = 0; n < zH; n++) {
+    psi.push(Math.random() * Math.PI * 2);
+  }
+
+  return { thetaHarmonics: thetaH, zHarmonics: zH, A, phi, psi, baseR, camLength: camLen };
+}
+
+function mutateConfig(config) {
+  let c = JSON.parse(JSON.stringify(config));
+  let sigma = 0.15;
+  for (let m = 0; m < c.A.length; m++) {
+    c.phi[m] += (Math.random() - 0.5) * 0.4;
+    for (let n = 0; n < c.A[m].length; n++) {
+      c.A[m][n] *= (1 + (Math.random() - 0.5) * 2 * sigma);
+      c.A[m][n] = Math.max(0, c.A[m][n]);
+    }
+  }
+  for (let n = 0; n < c.psi.length; n++) {
+    c.psi[n] += (Math.random() - 0.5) * 0.4;
+  }
+  return c;
+}
+
+// ===== BEAUTY SCORER =====
+function scoreSurface(config) {
+  // Sample displacement range and complexity
+  let minH = Infinity, maxH = -Infinity;
+  let totalEnergy = 0;
+  let samples = 36;
+  let zSamples = 12;
+
+  for (let i = 0; i < samples; i++) {
+    let theta = (i / samples) * Math.PI * 2;
+    for (let j = 0; j < zSamples; j++) {
+      let z = (j / zSamples) * config.camLength;
+      let h = surfaceHeight(theta, z, config);
+      if (h < minH) minH = h;
+      if (h > maxH) maxH = h;
+    }
+  }
+
+  let range = maxH - minH;
+  if (range < 1) return 0;
+
+  // Harmonic energy (sum of squared amplitudes)
+  for (let m = 0; m < config.A.length; m++) {
+    for (let n = 0; n < config.A[m].length; n++) {
+      totalEnergy += config.A[m][n] * config.A[m][n];
+    }
+  }
+
+  // Variety: count sign changes along theta at different z
+  let signChanges = 0;
+  for (let j = 0; j < 4; j++) {
+    let z = (j / 4) * config.camLength;
+    let prevSign = 0;
+    for (let i = 0; i < samples; i++) {
+      let theta = (i / samples) * Math.PI * 2;
+      let h = surfaceHeight(theta, z, config);
+      let s = h > 0 ? 1 : -1;
+      if (prevSign !== 0 && s !== prevSign) signChanges++;
+      prevSign = s;
+    }
+  }
+
+  return range * 2 + Math.sqrt(totalEnergy) * 3 + signChanges * 5;
+}
+
+// ===== CELL MANAGEMENT =====
+function makeCell(config) {
+  return { config: config, score: 0 };
+}
+
+function randomizeAll() {
+  cells = [];
+  for (let i = 0; i < COLS * ROWS; i++) {
+    cells.push(makeCell(randomConfig()));
+  }
+  autoRotAngle = 0;
+}
+
+function mutateAll() {
+  for (let cell of cells) {
+    cell.config = mutateConfig(cell.config);
+  }
+  autoRotAngle = 0;
+}
+
+function findBeautiful() {
+  if (findBeautifulRunning) return;
+  findBeautifulRunning = true;
+  document.getElementById('btn-beautiful').disabled = true;
+  document.getElementById('progress-container').style.display = 'block';
+
+  let candidates = [];
+  let processed = 0;
+
+  function processChunk() {
+    let chunkEnd = Math.min(processed + FIND_BEAUTIFUL_CHUNK, FIND_BEAUTIFUL_TOTAL);
+    for (let i = processed; i < chunkEnd; i++) {
+      let config = randomConfig();
+      let score = scoreSurface(config);
+      candidates.push({ config, score });
+    }
+    processed = chunkEnd;
+
+    let pct = Math.round((processed / FIND_BEAUTIFUL_TOTAL) * 100);
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('progress-text').textContent = `Scoring ${processed}/${FIND_BEAUTIFUL_TOTAL}...`;
+
+    if (processed < FIND_BEAUTIFUL_TOTAL) {
+      setTimeout(processChunk, 0);
+    } else {
+      candidates.sort((a, b) => b.score - a.score);
+      cells = candidates.slice(0, COLS * ROWS).map(c => {
+        let cell = makeCell(c.config);
+        cell.score = c.score;
+        return cell;
+      });
+      autoRotAngle = 0;
+      findBeautifulRunning = false;
+      document.getElementById('btn-beautiful').disabled = false;
+      document.getElementById('progress-container').style.display = 'none';
+    }
+  }
+  processChunk();
+}
+
+// ===== MODE SWITCHING =====
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-atlas').classList.toggle('active', m === 'atlas');
+  document.getElementById('btn-single').classList.toggle('active', m === 'single');
+  document.getElementById('hud-mode').textContent = m;
+  if (m === 'atlas') {
+    selectedIdx = -1;
+    document.getElementById('info-bar').textContent =
+      'Plate VII. \u2014 Cylindrical cam surfaces from 2D Fourier synthesis. Each cell shows a unique cam with harmonic surface topology. Click to inspect.';
+  }
+  if (m === 'single') {
+    orbitRotX = -0.4;
+    orbitRotY = 0;
+  }
+}
+
+// ===== SLIDER WIRING =====
+function wireSlider(id, valId, fmt) {
+  let sl = document.getElementById(id);
+  let vl = document.getElementById(valId);
+  sl.addEventListener('input', () => {
+    let v = parseFloat(sl.value);
+    if (fmt === 'int') vl.textContent = Math.round(v);
+    else if (fmt === 'deg') vl.textContent = Math.round(v) + '\u00B0';
+    else vl.textContent = v.toFixed(2);
+  });
+}
+wireSlider('sl-theta-harm', 'v-theta-harm', 'int');
+wireSlider('sl-z-harm', 'v-z-harm', 'int');
+wireSlider('sl-base-r', 'v-base-r', 'int');
+wireSlider('sl-cam-len', 'v-cam-len', 'int');
+wireSlider('sl-fol-theta', 'v-fol-theta', 'deg');
+wireSlider('sl-fol-z', 'v-fol-z', 'int');
+wireSlider('sl-speed', 'v-speed');
+
+// Keep follower Z slider max in sync with cam length
+document.getElementById('sl-cam-len').addEventListener('input', () => {
+  let camLen = parseInt(document.getElementById('sl-cam-len').value);
+  let zSlider = document.getElementById('sl-fol-z');
+  zSlider.max = camLen;
+  if (parseInt(zSlider.value) > camLen) zSlider.value = camLen;
+  document.getElementById('v-fol-z').textContent = zSlider.value;
+});
+
+// ===== WEBGL MESH HELPERS =====
+
+// Build a cylindrical cam mesh as arrays for triangle_strip rows
+// Returns { positions: [[x,y,z]...per row], colors: [[r,g,b]...per row], normals: [...] }
+function buildCamMesh(config, thetaSteps, zSteps) {
+  let rows = [];
+  let hMin = Infinity, hMax = -Infinity;
+
+  // First pass: find height range for coloring
+  for (let zi = 0; zi <= zSteps; zi++) {
+    let zFrac = zi / zSteps;
+    let z = zFrac * config.camLength;
+    for (let ti = 0; ti <= thetaSteps; ti++) {
+      let theta = (ti / thetaSteps) * Math.PI * 2;
+      let h = surfaceHeight(theta, z, config);
+      if (h < hMin) hMin = h;
+      if (h > hMax) hMax = h;
+    }
+  }
+  let hRange = hMax - hMin;
+  if (hRange < 0.01) hRange = 1;
+
+  // Second pass: build vertex rows
+  // p5.js WEBGL: Y+ = down, so cam axial direction maps to Y (negative = up)
+  // Cam centered at origin, extends from -camLength/2 to +camLength/2 along Y axis
+  for (let zi = 0; zi <= zSteps; zi++) {
+    let zFrac = zi / zSteps;
+    let z = zFrac * config.camLength;
+    // Y in p5 WEBGL: negate so top of cam = -Y (up)
+    let yPos = -config.camLength / 2 + zFrac * config.camLength;
+
+    let rowVerts = [];
+    let rowColors = [];
+    for (let ti = 0; ti <= thetaSteps; ti++) {
+      let theta = (ti / thetaSteps) * Math.PI * 2;
+      let h = surfaceHeight(theta, z, config);
+      let r = config.baseR + h;
+      if (r < 2) r = 2; // clamp
+
+      let x = r * Math.cos(theta);
+      let zCoord = r * Math.sin(theta); // 3D z-axis = radial direction
+
+      // Color by height: blue (low) -> gray (mid) -> red (high)
+      let t = (h - hMin) / hRange; // 0..1
+      let cr, cg, cb;
+      if (t < 0.5) {
+        // blue to gray
+        let s = t * 2;
+        cr = lerp(60, 150, s);
+        cg = lerp(80, 150, s);
+        cb = lerp(180, 160, s);
+      } else {
+        // gray to red
+        let s = (t - 0.5) * 2;
+        cr = lerp(150, 200, s);
+        cg = lerp(150, 70, s);
+        cb = lerp(160, 60, s);
+      }
+      rowVerts.push([x, yPos, zCoord]);
+      rowColors.push([cr, cg, cb]);
+    }
+    rows.push({ verts: rowVerts, colors: rowColors });
+  }
+
+  return { rows, hMin, hMax };
+}
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+// ===== P5.JS SKETCH (WEBGL) =====
+const sketch = (p) => {
+  p.setup = () => {
+    let container = document.getElementById('canvas-container');
+    cw = container.clientWidth;
+    ch = container.clientHeight;
+    p.createCanvas(cw, ch, p.WEBGL).parent(container);
+    p.textFont('Georgia');
+    randomizeAll();
+  };
+
+  p.windowResized = () => {
+    let container = document.getElementById('canvas-container');
+    cw = container.clientWidth;
+    ch = container.clientHeight;
+    p.resizeCanvas(cw, ch);
+  };
+
+  p.draw = () => {
+    p.background(245, 243, 238);
+    let speed = parseFloat(document.getElementById('sl-speed').value);
+    autoRotAngle += speed * 0.01;
+
+    if (mode === 'atlas') drawAtlas(p);
+    else drawSingle(p);
+
+    document.getElementById('hud-fps').textContent = Math.round(p.frameRate());
+  };
+
+  // Mouse interaction — atlas click or single orbit
+  p.mousePressed = () => {
+    // Check bounds (in WEBGL, mouseX/Y are still screen relative)
+    if (p.mouseX < 0 || p.mouseX > cw || p.mouseY < 0 || p.mouseY > ch) return;
+
+    if (mode === 'atlas') {
+      let cellW = cw / COLS, cellH = ch / ROWS;
+      let col = Math.floor(p.mouseX / cellW);
+      let row = Math.floor(p.mouseY / cellH);
+      if (col >= 0 && col < COLS && row >= 0 && row < ROWS) {
+        selectedIdx = row * COLS + col;
+        if (selectedIdx < cells.length) {
+          setMode('single');
+          updateHarmonicList(cells[selectedIdx].config);
+        }
+      }
+    } else {
+      orbitDragging = true;
+      orbitLastMX = p.mouseX;
+      orbitLastMY = p.mouseY;
+    }
+  };
+
+  p.mouseReleased = () => {
+    orbitDragging = false;
+  };
+
+  p.mouseDragged = () => {
+    if (mode === 'single' && orbitDragging) {
+      let dx = p.mouseX - orbitLastMX;
+      let dy = p.mouseY - orbitLastMY;
+      orbitRotY += dx * 0.008;
+      orbitRotX += dy * 0.008;
+      orbitRotX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, orbitRotX));
+      orbitLastMX = p.mouseX;
+      orbitLastMY = p.mouseY;
+    }
+  };
+
+  p.mouseMoved = () => {
+    if (mode === 'atlas') {
+      let cellW = cw / COLS, cellH = ch / ROWS;
+      let col = Math.floor(p.mouseX / cellW);
+      let row = Math.floor(p.mouseY / cellH);
+      hoverCell = (col >= 0 && col < COLS && row >= 0 && row < ROWS) ? row * COLS + col : -1;
+    }
+  };
+};
+
+// ===== ATLAS RENDERER =====
+function drawAtlas(p) {
+  let cellW = cw / COLS, cellH = ch / ROWS;
+
+  for (let idx = 0; idx < cells.length; idx++) {
+    let col = idx % COLS, row = Math.floor(idx / COLS);
+    // In WEBGL, origin is center. Compute offset to top-left based grid.
+    let cx = col * cellW + cellW / 2 - cw / 2;
+    let cy = row * cellH + cellH / 2 - ch / 2;
+
+    let cell = cells[idx];
+    let config = cell.config;
+
+    // Scale cam to fit cell
+    let maxDim = config.baseR * 2 + config.baseR * 0.5;
+    let fitScale = Math.min(cellW, cellH) * 0.35 / maxDim;
+
+    p.push();
+    p.translate(cx, cy, 0);
+
+    // Draw cell border (2D overlay)
+    p.push();
+    p.noFill();
+    p.stroke(200, 190, 175);
+    p.strokeWeight(0.5);
+    p.rectMode(p.CENTER);
+    p.rect(0, 0, cellW - 1, cellH - 1);
+
+    // Hover highlight
+    if (idx === hoverCell) {
+      p.fill(255, 255, 255, 30);
+      p.noStroke();
+      p.rect(0, 0, cellW, cellH);
+    }
+    p.pop();
+
+    // 3D cam in isometric-ish fixed view
+    p.push();
+    p.scale(fitScale);
+
+    // Fixed isometric camera angle for atlas
+    p.rotateX(-0.5);
+    p.rotateY(autoRotAngle + idx * 0.4);
+
+    drawCamMesh(p, config, ATLAS_THETA_STEPS, ATLAS_Z_STEPS);
+    p.pop();
+
+    // Label (2D)
+    p.push();
+    p.fill(180, 170, 155);
+    p.noStroke();
+    p.textSize(8);
+    p.textAlign(p.LEFT, p.TOP);
+    p.text(config.thetaHarmonics + '\u00D7' + config.zHarmonics, -cellW / 2 + 4, -cellH / 2 + 3);
+    p.pop();
+
+    p.pop();
+  }
+}
+
+// ===== DRAW CAM MESH =====
+function drawCamMesh(p, config, thetaSteps, zSteps) {
+  let mesh = buildCamMesh(config, thetaSteps, zSteps);
+
+  for (let zi = 0; zi < mesh.rows.length - 1; zi++) {
+    let row0 = mesh.rows[zi];
+    let row1 = mesh.rows[zi + 1];
+
+    p.beginShape(p.TRIANGLE_STRIP);
+    p.noStroke();
+    for (let ti = 0; ti <= thetaSteps; ti++) {
+      let v0 = row0.verts[ti];
+      let c0 = row0.colors[ti];
+      let v1 = row1.verts[ti];
+      let c1 = row1.colors[ti];
+
+      p.fill(c0[0], c0[1], c0[2]);
+      p.vertex(v0[0], v0[1], v0[2]);
+      p.fill(c1[0], c1[1], c1[2]);
+      p.vertex(v1[0], v1[1], v1[2]);
+    }
+    p.endShape();
+  }
+
+  // End caps
+  drawEndCap(p, config, thetaSteps, 0, mesh.rows[0]);
+  drawEndCap(p, config, thetaSteps, 1, mesh.rows[mesh.rows.length - 1]);
+}
+
+function drawEndCap(p, config, thetaSteps, end, row) {
+  p.beginShape(p.TRIANGLE_FAN);
+  p.fill(140, 130, 120);
+  p.noStroke();
+  // Center vertex
+  let yCenter = row.verts[0][1]; // all same Y in this row
+  p.vertex(0, yCenter, 0);
+  for (let ti = 0; ti <= thetaSteps; ti++) {
+    let v = row.verts[ti];
+    let c = row.colors[ti];
+    p.fill(c[0] * 0.8, c[1] * 0.8, c[2] * 0.8);
+    p.vertex(v[0], v[1], v[2]);
+  }
+  p.endShape();
+}
+
+// ===== SINGLE MODE RENDERER =====
+function drawSingle(p) {
+  if (selectedIdx < 0 || selectedIdx >= cells.length) return;
+  let cell = cells[selectedIdx];
+  let config = cell.config;
+
+  let meshDetail = parseInt(document.getElementById('sel-mesh').value);
+  let thetaSteps = meshDetail;
+  let zSteps = Math.max(8, Math.round(meshDetail * 0.6));
+
+  let folThetaDeg = parseFloat(document.getElementById('sl-fol-theta').value);
+  let folZ = parseFloat(document.getElementById('sl-fol-z').value);
+  let folTheta = folThetaDeg * Math.PI / 180;
+
+  // Displacement at follower position
+  let disp = surfaceHeight(folTheta, folZ, config);
+
+  // --- LEFT HALF: 3D cam with orbit controls ---
+  p.push();
+  // Shift left to give room for displacement graph on right
+  p.translate(-cw * 0.15, 0, 0);
+
+  // Camera distance
+  let camDist = config.camLength * 1.8;
+  let eyeX = camDist * Math.sin(orbitRotY + autoRotAngle) * Math.cos(orbitRotX);
+  let eyeZ = camDist * Math.cos(orbitRotY + autoRotAngle) * Math.cos(orbitRotX);
+  let eyeY = camDist * Math.sin(orbitRotX); // Y+ = down in p5
+
+  // p5 WEBGL camera: Y+ = down, up vector = (0, -1, 0)
+  p.camera(
+    eyeX, eyeY, eyeZ,     // eye
+    0, 0, 0,               // center
+    0, -1, 0               // up (Y- = up)
+  );
+
+  // Ambient + directional light
+  p.ambientLight(100);
+  p.directionalLight(200, 195, 185, -0.5, 1, -0.3);
+  p.directionalLight(80, 80, 100, 0.5, -0.5, 0.5);
+
+  // Draw the cam mesh
+  drawCamMesh(p, config, thetaSteps, zSteps);
+
+  // Draw center axis
+  p.push();
+  p.stroke(100, 90, 80, 120);
+  p.strokeWeight(1);
+  let halfLen = config.camLength / 2 + 10;
+  p.line(0, -halfLen, 0, 0, halfLen, 0);
+  p.pop();
+
+  // Draw follower sphere on cam surface
+  let fR = config.baseR + disp;
+  if (fR < 2) fR = 2;
+  let fX = fR * Math.cos(folTheta);
+  let fZcoord = fR * Math.sin(folTheta);
+  // Y position: map folZ to -camLength/2 .. +camLength/2
+  let fY = -config.camLength / 2 + (folZ / config.camLength) * config.camLength;
+
+  p.push();
+  p.translate(fX, fY, fZcoord);
+  p.noStroke();
+  p.fill(200, 60, 60);
+  p.sphere(3);
+  p.pop();
+
+  // Draw follower line from axis to follower
+  p.push();
+  p.stroke(200, 60, 60, 180);
+  p.strokeWeight(1.5);
+  p.line(0, fY, 0, fX, fY, fZcoord);
+  p.pop();
+
+  p.pop();
+
+  // --- RIGHT SIDE: 2D displacement curve overlay ---
+  // Reset camera for 2D drawing
+  p.push();
+  p.camera(0, 0, (ch / 2) / Math.tan(Math.PI / 6), 0, 0, 0, 0, 1, 0);
+  p.noLights();
+
+  let graphX = cw * 0.18;
+  let graphY = -ch * 0.35;
+  let graphW = cw * 0.3;
+  let graphH = ch * 0.55;
+
+  // Graph background
+  p.fill(250, 248, 244, 200);
+  p.stroke(180, 170, 160);
+  p.strokeWeight(0.5);
+  p.rect(graphX, graphY, graphW, graphH);
+
+  // Title
+  p.fill(100);
+  p.noStroke();
+  p.textSize(9);
+  p.textAlign(p.CENTER, p.BOTTOM);
+  p.text('h(\u03B8) at z=' + Math.round(folZ), graphX + graphW / 2, graphY - 4);
+
+  // Compute displacement curve: h vs theta at current z
+  let curvePoints = [];
+  let curveMin = Infinity, curveMax = -Infinity;
+  let curveSamples = 90;
+  for (let i = 0; i <= curveSamples; i++) {
+    let th = (i / curveSamples) * Math.PI * 2;
+    let h = surfaceHeight(th, folZ, config);
+    curvePoints.push({ theta: th, h: h });
+    if (h < curveMin) curveMin = h;
+    if (h > curveMax) curveMax = h;
+  }
+  let curveRange = curveMax - curveMin;
+  if (curveRange < 0.5) curveRange = 1;
+
+  // Zero line
+  let zeroFrac = (0 - curveMin) / curveRange;
+  let zeroLineY = graphY + graphH - zeroFrac * graphH;
+  p.stroke(180, 170, 160, 120);
+  p.strokeWeight(0.3);
+  p.line(graphX, zeroLineY, graphX + graphW, zeroLineY);
+
+  // Curve
+  p.noFill();
+  p.stroke(139, 69, 19);
+  p.strokeWeight(1.5);
+  p.beginShape();
+  for (let pt of curvePoints) {
+    let px = graphX + (pt.theta / (Math.PI * 2)) * graphW;
+    let py = graphY + graphH - ((pt.h - curveMin) / curveRange) * graphH;
+    p.vertex(px, py);
+  }
+  p.endShape();
+
+  // Follower position marker on curve
+  let markerX = graphX + (folTheta / (Math.PI * 2)) * graphW;
+  let markerY = graphY + graphH - ((disp - curveMin) / curveRange) * graphH;
+  p.fill(200, 50, 50);
+  p.noStroke();
+  p.circle(markerX, markerY, 7);
+
+  // Displacement value text
+  p.fill(80);
+  p.textSize(10);
+  p.textAlign(p.LEFT, p.CENTER);
+  p.text('h = ' + disp.toFixed(2), markerX + 8, markerY);
+
+  // Axis labels
+  p.fill(130);
+  p.textSize(8);
+  p.textAlign(p.CENTER, p.TOP);
+  p.text('0\u00B0', graphX, graphY + graphH + 3);
+  p.text('180\u00B0', graphX + graphW / 2, graphY + graphH + 3);
+  p.text('360\u00B0', graphX + graphW, graphY + graphH + 3);
+  p.textAlign(p.RIGHT, p.CENTER);
+  p.text(curveMax.toFixed(1), graphX - 3, graphY + 4);
+  p.text(curveMin.toFixed(1), graphX - 3, graphY + graphH - 4);
+
+  p.pop();
+
+  // HUD updates
+  document.getElementById('hud-harm').textContent = config.thetaHarmonics + '\u00D7' + config.zHarmonics;
+  document.getElementById('hud-disp').textContent = disp.toFixed(2);
+
+  if (!cell.score) {
+    cell.score = scoreSurface(config);
+  }
+  document.getElementById('hud-score').textContent = cell.score.toFixed(1);
+
+  document.getElementById('info-bar').textContent =
+    'Cell ' + (selectedIdx + 1) + ' \u2014 ' +
+    config.thetaHarmonics + '\u00D7' + config.zHarmonics + ' harmonics, ' +
+    'R=' + config.baseR + ', L=' + config.camLength +
+    '. \u03B8=' + Math.round(folThetaDeg) + '\u00B0 z=' + Math.round(folZ) +
+    ' h=' + disp.toFixed(2) + '. Drag to orbit.';
+}
+
+// ===== HELPERS =====
+function updateHarmonicList(config) {
+  let list = document.getElementById('harmonic-list');
+  let html = '';
+  html += '<div class="harmonic-item" style="color:#8b4513;">R=' + config.baseR + '  L=' + config.camLength + '</div>';
+  for (let m = 0; m < config.thetaHarmonics; m++) {
+    for (let n = 0; n < config.zHarmonics; n++) {
+      html += '<div class="harmonic-item">A[' + (m + 1) + ',' + (n + 1) + ']=' +
+              config.A[m][n].toFixed(2) +
+              ' \u03C6=' + (config.phi[m] * 180 / Math.PI).toFixed(0) + '\u00B0' +
+              ' \u03C8=' + (config.psi[n] * 180 / Math.PI).toFixed(0) + '\u00B0</div>';
+    }
+  }
+  list.innerHTML = html;
+}
+
+// ===== LAUNCH =====
+new p5(sketch, 'canvas-container');
+</script>
+</body>
+</html>
