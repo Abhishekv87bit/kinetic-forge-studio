@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Gear Train Randomizer — Random Gear Topologies</title>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f5f3ee; overflow: hidden; font-family: 'Georgia', serif; display: flex; height: 100vh; }
+
+  #sidebar {
+    width: 280px; min-width: 280px; background: #f0ede6;
+    border-right: 1px solid #c8c0b0; overflow-y: auto; padding: 12px 14px;
+    font-size: 12px; color: #444;
+  }
+  #sidebar h1 { font-size: 14px; letter-spacing: 1.5px; color: #333; margin-bottom: 2px; font-weight: normal; }
+  #sidebar .subtitle { font-size: 10px; color: #888; margin-bottom: 12px; font-style: italic; }
+
+  .section-title {
+    font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: #8b7355;
+    margin-top: 14px; margin-bottom: 6px; border-bottom: 1px solid #d8d0c0; padding-bottom: 3px;
+  }
+  .ctrl-row { display: flex; align-items: center; margin-bottom: 5px; }
+  .ctrl-row label { flex: 0 0 95px; font-size: 11px; color: #666; }
+  .ctrl-row input[type="range"] { flex: 1; height: 3px; accent-color: #8b4513; }
+  .ctrl-row .val { flex: 0 0 40px; text-align: right; font-size: 10px; color: #555; font-family: 'Consolas', monospace; }
+
+  select {
+    width: 100%; padding: 4px 8px; font-size: 11px; font-family: 'Georgia', serif;
+    background: #faf8f3; color: #555; border: 1px solid #c8c0b0; border-radius: 3px; margin-bottom: 4px;
+  }
+
+  .btn-row { display: flex; gap: 5px; margin: 8px 0; flex-wrap: wrap; }
+  .btn {
+    padding: 5px 10px; font-size: 10px; font-family: 'Georgia', serif;
+    background: #555; color: #f5f3ee; border: none; cursor: pointer;
+    letter-spacing: 0.5px; border-radius: 2px; transition: background 0.15s;
+  }
+  .btn:hover { background: #333; }
+  .btn.active { background: #8b4513; }
+  .btn.accent { background: #2a6848; }
+  .btn.accent:hover { background: #1a4830; }
+  .btn:disabled { background: #aaa; cursor: not-allowed; }
+
+  #canvas-container { flex: 1; position: relative; }
+  #canvas-container canvas { display: block; }
+
+  #info-bar {
+    position: fixed; bottom: 0; left: 280px; right: 0; z-index: 100;
+    background: rgba(245,243,238,0.92); border-top: 1px solid #bbb;
+    padding: 4px 16px; font-size: 10px; color: #777; font-style: italic;
+  }
+
+  #hud {
+    position: absolute; top: 8px; right: 12px; background: rgba(245,243,238,0.9);
+    border: 1px solid #c8c0b0; border-radius: 4px; padding: 8px 12px;
+    font-size: 10px; line-height: 1.7; color: #666; min-width: 160px; pointer-events: none;
+  }
+  #hud .hv { color: #444; font-family: 'Consolas', monospace; float: right; }
+
+  .progress-bar { width: 100%; height: 3px; background: #ddd; border-radius: 2px; margin: 4px 0; }
+  .progress-bar-fill { height: 100%; background: #8b4513; border-radius: 2px; transition: width 0.1s; }
+
+  .train-info { max-height: 180px; overflow-y: auto; font-size: 9px; line-height: 1.6; margin-top: 4px; }
+  .train-item { padding: 1px 0; color: #666; font-family: 'Consolas', monospace; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #c8c0b0; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h1>GEAR TRAIN</h1>
+  <div class="subtitle">Random Gear Topologies &mdash; N Meshing Gears</div>
+
+  <div class="section-title">Configuration</div>
+  <div class="ctrl-row">
+    <label>Num Shafts</label>
+    <input type="range" id="numShafts" min="3" max="8" value="5" step="1">
+    <span class="val" id="numShaftsVal">5</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Min Teeth</label>
+    <input type="range" id="minTeeth" min="10" max="24" value="12" step="1">
+    <span class="val" id="minTeethVal">12</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Max Teeth</label>
+    <input type="range" id="maxTeeth" min="30" max="72" value="48" step="1">
+    <span class="val" id="maxTeethVal">48</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Compound %</label>
+    <input type="range" id="compoundProb" min="0" max="100" value="40" step="5">
+    <span class="val" id="compoundProbVal">40%</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Speed</label>
+    <input type="range" id="speed" min="0.1" max="3.0" value="1.0" step="0.1">
+    <span class="val" id="speedVal">1.0</span>
+  </div>
+
+  <div class="section-title">Module</div>
+  <div class="ctrl-row">
+    <label>Gear Module</label>
+    <input type="range" id="gearModule" min="2" max="8" value="4" step="0.5">
+    <span class="val" id="gearModuleVal">4.0</span>
+  </div>
+
+  <div class="section-title">Mode</div>
+  <div class="btn-row">
+    <button class="btn active" id="btnAtlas" onclick="setMode('atlas')">Atlas 4&times;4</button>
+    <button class="btn" id="btnSingle" onclick="setMode('single')">Single</button>
+  </div>
+
+  <div class="section-title">Actions</div>
+  <div class="btn-row">
+    <button class="btn" onclick="randomizeAll()">Randomize</button>
+    <button class="btn" onclick="mutateSelected()">Mutate</button>
+    <button class="btn accent" id="btnFind" onclick="findBeautiful()">Find Beautiful</button>
+  </div>
+  <div class="progress-bar" id="progressWrap" style="display:none;">
+    <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
+  </div>
+
+  <div class="section-title">Train Info</div>
+  <div class="train-info" id="trainInfo"></div>
+</div>
+
+<div id="canvas-container">
+  <div id="hud"></div>
+</div>
+<div id="info-bar">Gear Train Randomizer &mdash; click cell to inspect</div>
+
+<script>
+const sketch = (p) => {
+  // ─── constants ──────────────────────────────────────────
+  const MODULE_DEFAULT = 4;
+  const ATLAS_COLS = 4, ATLAS_ROWS = 4;
+  let mode = 'atlas'; // 'atlas' | 'single'
+  let configs = [];
+  let selectedIdx = 0;
+  let masterAngle = 0;
+  let cW, cH;
+  let fps = 60;
+  let fpsFrames = 0, fpsLast = 0;
+
+  // ─── gear train generation ──────────────────────────────
+  function randInt(lo, hi) { return Math.floor(p.random(lo, hi + 1)); }
+  function randFloat(lo, hi) { return lo + p.random() * (hi - lo); }
+
+  function generateGearTrain(numShafts, minT, maxT, compProb, mod) {
+    // Create shafts with random tooth counts
+    let shafts = [];
+    for (let i = 0; i < numShafts; i++) {
+      let gear1 = { teeth: randInt(minT, maxT) };
+      let gears = [gear1];
+      // Compound: second gear on same shaft
+      if (i > 0 && i < numShafts - 1 && p.random() < compProb / 100) {
+        gears.push({ teeth: randInt(minT, maxT) });
+      }
+      shafts.push({ gears, angle: 0, omega: 0, x: 0, y: 0 });
+    }
+
+    // Build spanning tree to ensure connectivity
+    let meshes = [];
+    let connected = new Set([0]);
+    let unconnected = [];
+    for (let i = 1; i < numShafts; i++) unconnected.push(i);
+
+    // Shuffle unconnected for random tree shape
+    for (let i = unconnected.length - 1; i > 0; i--) {
+      let j = Math.floor(p.random() * (i + 1));
+      [unconnected[i], unconnected[j]] = [unconnected[j], unconnected[i]];
+    }
+
+    while (unconnected.length > 0) {
+      let next = unconnected.pop();
+      // Pick random connected shaft to mesh with
+      let connArr = Array.from(connected);
+      let from = connArr[Math.floor(p.random() * connArr.length)];
+
+      // Which gear on each shaft meshes?
+      let gIdxFrom = shafts[from].gears.length > 1 && p.random() < 0.5 ? 1 : 0;
+      let gIdxTo = 0;
+
+      meshes.push({
+        shaftA: from, gearIdxA: gIdxFrom,
+        shaftB: next, gearIdxB: gIdxTo
+      });
+      connected.add(next);
+    }
+
+    // Position shafts based on mesh connections (BFS from shaft 0)
+    shafts[0].x = 0;
+    shafts[0].y = 0;
+    let placed = new Set([0]);
+    let queue = [0];
+
+    while (queue.length > 0) {
+      let curr = queue.shift();
+      for (let m of meshes) {
+        let neighbor = -1, gIdxCurr, gIdxNeighbor;
+        if (m.shaftA === curr && !placed.has(m.shaftB)) {
+          neighbor = m.shaftB; gIdxCurr = m.gearIdxA; gIdxNeighbor = m.gearIdxB;
+        } else if (m.shaftB === curr && !placed.has(m.shaftA)) {
+          neighbor = m.shaftA; gIdxCurr = m.gearIdxB; gIdxNeighbor = m.gearIdxA;
+        }
+        if (neighbor < 0) continue;
+
+        let r1 = shafts[curr].gears[gIdxCurr].teeth * mod / 2;
+        let r2 = shafts[neighbor].gears[gIdxNeighbor].teeth * mod / 2;
+        let dist = r1 + r2;
+
+        // Try several angles to find non-overlapping position
+        let bestAngle = 0, bestDist = -1;
+        for (let attempt = 0; attempt < 36; attempt++) {
+          let angle = attempt * Math.PI * 2 / 36 + p.random() * 0.1;
+          let nx = shafts[curr].x + dist * Math.cos(angle);
+          let ny = shafts[curr].y + dist * Math.sin(angle);
+          let minOverlap = Infinity;
+          for (let pi of placed) {
+            if (pi === curr) continue;
+            let dx = nx - shafts[pi].x, dy = ny - shafts[pi].y;
+            let d = Math.sqrt(dx * dx + dy * dy);
+            let maxR = 0;
+            for (let g of shafts[pi].gears) maxR = Math.max(maxR, g.teeth * mod / 2);
+            for (let g of shafts[neighbor].gears) maxR = Math.max(maxR, g.teeth * mod / 2);
+            minOverlap = Math.min(minOverlap, d - maxR);
+          }
+          if (minOverlap > bestDist) { bestDist = minOverlap; bestAngle = angle; }
+        }
+
+        shafts[neighbor].x = shafts[curr].x + dist * Math.cos(bestAngle);
+        shafts[neighbor].y = shafts[curr].y + dist * Math.sin(bestAngle);
+        placed.add(neighbor);
+        queue.push(neighbor);
+      }
+    }
+
+    // Compute angular velocities (input shaft 0 = 1 rad/s)
+    shafts[0].omega = 1.0;
+    computeOmegas(shafts, meshes);
+
+    // Compute total ratio
+    let totalRatio = shafts[numShafts - 1].omega / shafts[0].omega;
+
+    return { shafts, meshes, mod, totalRatio };
+  }
+
+  function computeOmegas(shafts, meshes) {
+    // BFS from shaft 0
+    let visited = new Set([0]);
+    let queue = [0];
+    while (queue.length > 0) {
+      let curr = queue.shift();
+      for (let m of meshes) {
+        let neighbor = -1, gIdxCurr, gIdxNeighbor;
+        if (m.shaftA === curr && !visited.has(m.shaftB)) {
+          neighbor = m.shaftB; gIdxCurr = m.gearIdxA; gIdxNeighbor = m.gearIdxB;
+        } else if (m.shaftB === curr && !visited.has(m.shaftA)) {
+          neighbor = m.shaftA; gIdxCurr = m.gearIdxB; gIdxNeighbor = m.gearIdxA;
+        }
+        if (neighbor < 0) continue;
+
+        let t1 = shafts[curr].gears[gIdxCurr].teeth;
+        let t2 = shafts[neighbor].gears[gIdxNeighbor].teeth;
+        // External mesh reverses direction
+        shafts[neighbor].omega = -shafts[curr].omega * (t1 / t2);
+
+        // If compound: all gears on same shaft have same omega
+        visited.add(neighbor);
+        queue.push(neighbor);
+      }
+    }
+  }
+
+  // ─── config management ──────────────────────────────────
+  function makeConfig() {
+    let nS = parseInt(document.getElementById('numShafts').value);
+    let minT = parseInt(document.getElementById('minTeeth').value);
+    let maxT = parseInt(document.getElementById('maxTeeth').value);
+    let comp = parseInt(document.getElementById('compoundProb').value);
+    let mod = parseFloat(document.getElementById('gearModule').value);
+    return generateGearTrain(nS, minT, maxT, comp, mod);
+  }
+
+  function mutateConfig(cfg) {
+    let nS = cfg.shafts.length;
+    let minT = parseInt(document.getElementById('minTeeth').value);
+    let maxT = parseInt(document.getElementById('maxTeeth').value);
+    let comp = parseInt(document.getElementById('compoundProb').value);
+    let mod = cfg.mod;
+
+    // Perturb: change 1-2 gear tooth counts
+    let newCfg = generateGearTrain(nS, minT, maxT, comp, mod);
+    // Keep same shaft count but regenerate (slight mutation)
+    return newCfg;
+  }
+
+  function scoreConfig(cfg) {
+    // Score based on:
+    // 1. Total ratio interest (very high or very low ratios = interesting)
+    let ratioScore = Math.min(Math.abs(Math.log(Math.abs(cfg.totalRatio) + 0.001)), 5) * 20;
+    // 2. Variety of tooth counts
+    let allTeeth = [];
+    for (let s of cfg.shafts) for (let g of s.gears) allTeeth.push(g.teeth);
+    let unique = new Set(allTeeth).size;
+    let varietyScore = (unique / allTeeth.length) * 30;
+    // 3. Compound shafts bonus
+    let compounds = cfg.shafts.filter(s => s.gears.length > 1).length;
+    let compoundScore = compounds * 15;
+    // 4. Number of gears
+    let gearCount = allTeeth.length;
+    let countScore = Math.min(gearCount, 10) * 5;
+
+    return ratioScore + varietyScore + compoundScore + countScore;
+  }
+
+  // ─── drawing ────────────────────────────────────────────
+  function drawGear(p, x, y, teeth, mod, angle, color, scale) {
+    let r = teeth * mod / 2 * scale;
+    let addendum = mod * scale;
+    let rOuter = r + addendum;
+    let rInner = r - addendum * 1.25;
+
+    p.push();
+    p.translate(x, y);
+    p.rotate(angle);
+
+    // Gear body
+    p.fill(color[0], color[1], color[2], 40);
+    p.stroke(color[0], color[1], color[2]);
+    p.strokeWeight(1 * scale);
+
+    // Draw gear teeth as simplified bumps
+    p.beginShape();
+    for (let i = 0; i < teeth; i++) {
+      let a0 = (i / teeth) * Math.PI * 2;
+      let a1 = ((i + 0.15) / teeth) * Math.PI * 2;
+      let a2 = ((i + 0.35) / teeth) * Math.PI * 2;
+      let a3 = ((i + 0.5) / teeth) * Math.PI * 2;
+      let a4 = ((i + 0.65) / teeth) * Math.PI * 2;
+      let a5 = ((i + 0.85) / teeth) * Math.PI * 2;
+
+      p.vertex(rInner * Math.cos(a0), rInner * Math.sin(a0));
+      p.vertex(rInner * Math.cos(a1), rInner * Math.sin(a1));
+      p.vertex(rOuter * Math.cos(a2), rOuter * Math.sin(a2));
+      p.vertex(rOuter * Math.cos(a3), rOuter * Math.sin(a3));
+      p.vertex(rInner * Math.cos(a4), rInner * Math.sin(a4));
+      p.vertex(rInner * Math.cos(a5), rInner * Math.sin(a5));
+    }
+    p.endShape(p.CLOSE);
+
+    // Hub
+    p.fill(color[0], color[1], color[2], 80);
+    p.noStroke();
+    p.ellipse(0, 0, mod * 3 * scale, mod * 3 * scale);
+
+    // Center dot
+    p.fill(60);
+    p.ellipse(0, 0, 3 * scale, 3 * scale);
+
+    p.pop();
+  }
+
+  function drawGearTrain(p, cfg, cx, cy, scale, showLabels, time) {
+    let mod = cfg.mod;
+
+    // Find bounding box of train to center it
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (let s of cfg.shafts) {
+      let maxR = 0;
+      for (let g of s.gears) maxR = Math.max(maxR, g.teeth * mod / 2);
+      minX = Math.min(minX, s.x - maxR);
+      maxX = Math.max(maxX, s.x + maxR);
+      minY = Math.min(minY, s.y - maxR);
+      maxY = Math.max(maxY, s.y + maxR);
+    }
+    let trainW = maxX - minX, trainH = maxY - minY;
+    let trainCx = (minX + maxX) / 2, trainCy = (minY + maxY) / 2;
+
+    // Draw mesh lines first
+    p.push();
+    p.translate(cx, cy);
+    for (let m of cfg.meshes) {
+      let sA = cfg.shafts[m.shaftA], sB = cfg.shafts[m.shaftB];
+      let x1 = (sA.x - trainCx) * scale, y1 = (sA.y - trainCy) * scale;
+      let x2 = (sB.x - trainCx) * scale, y2 = (sB.y - trainCy) * scale;
+      p.stroke(180, 160, 140);
+      p.strokeWeight(1);
+      p.line(x1, y1, x2, y2);
+    }
+    p.pop();
+
+    // Draw gears
+    let hueStep = 360 / cfg.shafts.length;
+    for (let si = 0; si < cfg.shafts.length; si++) {
+      let s = cfg.shafts[si];
+      let sx = cx + (s.x - trainCx) * scale;
+      let sy = cy + (s.y - trainCy) * scale;
+      let gearAngle = s.omega * time;
+
+      // Color based on shaft index
+      let hue = si * hueStep;
+      let r = 0, g = 0, b = 0;
+      // HSL to RGB approximation
+      let h = hue / 60;
+      let c = 0.6, x2 = c * (1 - Math.abs(h % 2 - 1));
+      if (h < 1) { r = c; g = x2; }
+      else if (h < 2) { r = x2; g = c; }
+      else if (h < 3) { g = c; b = x2; }
+      else if (h < 4) { g = x2; b = c; }
+      else if (h < 5) { r = x2; b = c; }
+      else { r = c; b = x2; }
+      let color = [Math.floor((r + 0.3) * 200), Math.floor((g + 0.3) * 200), Math.floor((b + 0.3) * 200)];
+
+      for (let gi = 0; gi < s.gears.length; gi++) {
+        let gear = s.gears[gi];
+        // For compound gears, offset slightly in rendering
+        let offsetX = gi > 0 ? 2 * scale : 0;
+        let alpha = gi > 0 ? 0.7 : 1.0;
+        let drawColor = gi > 0 ? [color[0] + 30, color[1] + 30, color[2] + 30] : color;
+        drawGear(p, sx + offsetX, sy, gear.teeth, mod, gearAngle, drawColor, scale);
+      }
+
+      // Labels
+      if (showLabels) {
+        p.noStroke();
+        p.fill(60);
+        p.textSize(9 * Math.max(scale, 0.6));
+        p.textAlign(p.CENTER);
+        let teethStr = s.gears.map(g => g.teeth).join('/');
+        p.text(teethStr, sx, sy - s.gears[0].teeth * mod / 2 * scale - 6 * scale);
+
+        // Input/output markers
+        if (si === 0) {
+          p.fill(40, 120, 60);
+          p.text('IN', sx, sy + s.gears[0].teeth * mod / 2 * scale + 12 * scale);
+        }
+        if (si === cfg.shafts.length - 1) {
+          p.fill(140, 40, 40);
+          p.text('OUT', sx, sy + s.gears[0].teeth * mod / 2 * scale + 12 * scale);
+        }
+      }
+    }
+  }
+
+  function drawSpeedGraph(p, cfg, x, y, w, h, time) {
+    p.push();
+    p.translate(x, y);
+    p.fill(250, 248, 242);
+    p.stroke(180);
+    p.strokeWeight(0.5);
+    p.rect(0, 0, w, h);
+
+    // Draw speed ratio lines for each shaft
+    let maxOmega = 0;
+    for (let s of cfg.shafts) maxOmega = Math.max(maxOmega, Math.abs(s.omega));
+    if (maxOmega < 0.001) maxOmega = 1;
+
+    let hueStep = 360 / cfg.shafts.length;
+    for (let si = 0; si < cfg.shafts.length; si++) {
+      let ratio = cfg.shafts[si].omega;
+      let normY = h / 2 - (ratio / maxOmega) * (h / 2 - 5);
+
+      // HSL color match
+      let hue = si * hueStep;
+      let hh = hue / 60;
+      let c = 0.6, x2 = c * (1 - Math.abs(hh % 2 - 1));
+      let r = 0, g = 0, b = 0;
+      if (hh < 1) { r = c; g = x2; }
+      else if (hh < 2) { r = x2; g = c; }
+      else if (hh < 3) { g = c; b = x2; }
+      else if (hh < 4) { g = x2; b = c; }
+      else if (hh < 5) { r = x2; b = c; }
+      else { r = c; b = x2; }
+
+      let col = p.color(Math.floor((r + 0.3) * 200), Math.floor((g + 0.3) * 200), Math.floor((b + 0.3) * 200));
+      p.stroke(col);
+      p.strokeWeight(2);
+      p.line(4, normY, w - 4, normY);
+
+      // Label
+      p.noStroke();
+      p.fill(col);
+      p.textSize(8);
+      p.textAlign(p.LEFT);
+      p.text((si === 0 ? 'IN:' : si === cfg.shafts.length - 1 ? 'OUT:' : 'S' + si + ':') + ratio.toFixed(2), 4, normY - 3);
+    }
+
+    // Zero line
+    p.stroke(150);
+    p.strokeWeight(0.5);
+    p.line(0, h / 2, w, h / 2);
+
+    p.pop();
+  }
+
+  // ─── atlas / single ─────────────────────────────────────
+  function getAtlasCell(mx, my) {
+    let cellW = cW / ATLAS_COLS, cellH = cH / ATLAS_ROWS;
+    let col = Math.floor(mx / cellW), row = Math.floor(my / cellH);
+    if (col < 0 || col >= ATLAS_COLS || row < 0 || row >= ATLAS_ROWS) return -1;
+    return row * ATLAS_COLS + col;
+  }
+
+  // ─── p5.js lifecycle ────────────────────────────────────
+  p.setup = function() {
+    let container = document.getElementById('canvas-container');
+    cW = container.clientWidth;
+    cH = container.clientHeight;
+    p.createCanvas(cW, cH).parent('canvas-container');
+    randomizeAll();
+    fpsLast = p.millis();
+  };
+
+  p.windowResized = function() {
+    let container = document.getElementById('canvas-container');
+    cW = container.clientWidth;
+    cH = container.clientHeight;
+    p.resizeCanvas(cW, cH);
+  };
+
+  p.draw = function() {
+    p.background(245, 243, 238);
+
+    let spd = parseFloat(document.getElementById('speed').value);
+    masterAngle += 0.02 * spd;
+
+    // FPS counter
+    fpsFrames++;
+    let now = p.millis();
+    if (now - fpsLast > 500) {
+      fps = Math.round(fpsFrames / ((now - fpsLast) / 1000));
+      fpsFrames = 0;
+      fpsLast = now;
+    }
+
+    if (mode === 'atlas') {
+      drawAtlas();
+    } else {
+      drawSingle();
+    }
+
+    // HUD
+    let hud = document.getElementById('hud');
+    if (mode === 'atlas') {
+      hud.innerHTML = `FPS <span class="hv">${fps}</span><br>Configs <span class="hv">${configs.length}</span>`;
+    } else if (configs[selectedIdx]) {
+      let cfg = configs[selectedIdx];
+      let gearCount = 0;
+      for (let s of cfg.shafts) gearCount += s.gears.length;
+      hud.innerHTML = `FPS <span class="hv">${fps}</span><br>Shafts <span class="hv">${cfg.shafts.length}</span><br>Gears <span class="hv">${gearCount}</span><br>Ratio <span class="hv">${cfg.totalRatio.toFixed(4)}</span>`;
+    }
+  };
+
+  function drawAtlas() {
+    let cellW = cW / ATLAS_COLS, cellH = cH / ATLAS_ROWS;
+
+    for (let i = 0; i < Math.min(configs.length, 16); i++) {
+      let row = Math.floor(i / ATLAS_COLS), col = i % ATLAS_COLS;
+      let cx = col * cellW, cy = row * cellH;
+
+      // Cell background
+      p.noStroke();
+      p.fill(252, 250, 245);
+      p.rect(cx + 2, cy + 2, cellW - 4, cellH - 4, 3);
+
+      let cfg = configs[i];
+      if (!cfg) continue;
+
+      // Compute scale to fit train in cell
+      let trainBounds = getTrainBounds(cfg);
+      let fitW = (cellW - 30) / (trainBounds.w + 1);
+      let fitH = (cellH - 50) / (trainBounds.h + 1);
+      let scale = Math.min(fitW, fitH, 1.0);
+
+      drawGearTrain(p, cfg, cx + cellW / 2, cy + cellH / 2 - 10, scale, false, masterAngle);
+
+      // Cell label
+      p.noStroke();
+      p.fill(100);
+      p.textSize(8);
+      p.textAlign(p.LEFT);
+      let rStr = cfg.totalRatio.toFixed(2);
+      p.text('ratio: ' + rStr, cx + 6, cy + cellH - 8);
+
+      // Roman numeral
+      p.fill(180);
+      p.textSize(9);
+      p.textAlign(p.RIGHT);
+      let rom = ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV','XVI'];
+      p.text(rom[i], cx + cellW - 6, cy + 14);
+
+      // Highlight selected
+      if (i === selectedIdx) {
+        p.noFill();
+        p.stroke(139, 69, 19);
+        p.strokeWeight(2);
+        p.rect(cx + 2, cy + 2, cellW - 4, cellH - 4, 3);
+      }
+    }
+
+    // Grid lines
+    p.stroke(200, 190, 175);
+    p.strokeWeight(0.5);
+    for (let c = 1; c < ATLAS_COLS; c++) p.line(c * cellW, 0, c * cellW, cH);
+    for (let r = 1; r < ATLAS_ROWS; r++) p.line(0, r * cellH, cW, r * cellH);
+  }
+
+  function drawSingle() {
+    let cfg = configs[selectedIdx];
+    if (!cfg) return;
+
+    // Gear train takes top 65% of canvas
+    let trainH = cH * 0.6;
+    let graphH = cH * 0.3;
+    let graphY = trainH + 20;
+
+    // Compute scale
+    let trainBounds = getTrainBounds(cfg);
+    let fitW = (cW - 60) / (trainBounds.w + 1);
+    let fitH = (trainH - 40) / (trainBounds.h + 1);
+    let scale = Math.min(fitW, fitH, 2.0);
+
+    drawGearTrain(p, cfg, cW / 2, trainH / 2, scale, true, masterAngle);
+
+    // Speed graph
+    drawSpeedGraph(p, cfg, 30, graphY, cW - 60, graphH, masterAngle);
+
+    // Update info panel
+    updateTrainInfo(cfg);
+  }
+
+  function getTrainBounds(cfg) {
+    let mod = cfg.mod;
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (let s of cfg.shafts) {
+      let maxR = 0;
+      for (let g of s.gears) maxR = Math.max(maxR, g.teeth * mod / 2);
+      minX = Math.min(minX, s.x - maxR);
+      maxX = Math.max(maxX, s.x + maxR);
+      minY = Math.min(minY, s.y - maxR);
+      maxY = Math.max(maxY, s.y + maxR);
+    }
+    return { w: maxX - minX, h: maxY - minY };
+  }
+
+  function updateTrainInfo(cfg) {
+    let el = document.getElementById('trainInfo');
+    let lines = [];
+    lines.push(`<div class="train-item">Shafts: ${cfg.shafts.length}</div>`);
+    for (let i = 0; i < cfg.shafts.length; i++) {
+      let s = cfg.shafts[i];
+      let tStr = s.gears.map(g => g.teeth + 'T').join(' + ');
+      let tag = i === 0 ? ' (IN)' : i === cfg.shafts.length - 1 ? ' (OUT)' : '';
+      lines.push(`<div class="train-item">S${i}${tag}: ${tStr}  &omega;=${s.omega.toFixed(3)}</div>`);
+    }
+    lines.push(`<div class="train-item">Total ratio: ${cfg.totalRatio.toFixed(4)}</div>`);
+    lines.push(`<div class="train-item">Score: ${scoreConfig(cfg).toFixed(1)}</div>`);
+    el.innerHTML = lines.join('');
+  }
+
+  // ─── interaction ────────────────────────────────────────
+  p.mousePressed = function() {
+    let mx = p.mouseX, my = p.mouseY;
+    if (mx < 0 || mx > cW || my < 0 || my > cH) return;
+
+    if (mode === 'atlas') {
+      let idx = getAtlasCell(mx, my);
+      if (idx >= 0 && idx < configs.length) {
+        selectedIdx = idx;
+        setMode('single');
+      }
+    }
+  };
+
+  // ─── global functions ───────────────────────────────────
+  window.setMode = function(m) {
+    mode = m;
+    document.getElementById('btnAtlas').classList.toggle('active', m === 'atlas');
+    document.getElementById('btnSingle').classList.toggle('active', m === 'single');
+  };
+
+  window.randomizeAll = function() {
+    configs = [];
+    for (let i = 0; i < 16; i++) configs.push(makeConfig());
+    selectedIdx = 0;
+    if (mode === 'single') updateTrainInfo(configs[0]);
+  };
+
+  window.mutateSelected = function() {
+    if (configs[selectedIdx]) {
+      configs[selectedIdx] = mutateConfig(configs[selectedIdx]);
+    }
+  };
+
+  window.findBeautiful = function() {
+    let btn = document.getElementById('btnFind');
+    btn.disabled = true;
+    let wrap = document.getElementById('progressWrap');
+    let fill = document.getElementById('progressFill');
+    wrap.style.display = 'block';
+    fill.style.width = '0%';
+
+    let candidates = [];
+    let total = 200, perChunk = 25, done = 0;
+
+    function processChunk() {
+      let chunkEnd = Math.min(done + perChunk, total);
+      for (let i = done; i < chunkEnd; i++) {
+        let cfg = makeConfig();
+        candidates.push({ cfg, score: scoreConfig(cfg) });
+      }
+      done = chunkEnd;
+      fill.style.width = (done / total * 100) + '%';
+
+      if (done < total) {
+        setTimeout(processChunk, 0);
+      } else {
+        // Sort by score, take top 16
+        candidates.sort((a, b) => b.score - a.score);
+        configs = candidates.slice(0, 16).map(c => c.cfg);
+        selectedIdx = 0;
+        btn.disabled = false;
+        wrap.style.display = 'none';
+        if (mode === 'single') updateTrainInfo(configs[0]);
+      }
+    }
+    setTimeout(processChunk, 0);
+  };
+
+  // ─── slider updates ─────────────────────────────────────
+  function hookSlider(id) {
+    let el = document.getElementById(id);
+    let valEl = document.getElementById(id + 'Val');
+    el.addEventListener('input', () => {
+      let v = el.value;
+      if (id === 'compoundProb') v += '%';
+      valEl.textContent = v;
+    });
+  }
+  hookSlider('numShafts');
+  hookSlider('minTeeth');
+  hookSlider('maxTeeth');
+  hookSlider('compoundProb');
+  hookSlider('speed');
+  hookSlider('gearModule');
+};
+
+new p5(sketch, 'canvas-container');
+</script>
+</body>
+</html>
