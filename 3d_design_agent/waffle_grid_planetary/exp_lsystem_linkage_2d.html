@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>L-System Linkage Generator — Fractal Mechanisms from Grammars</title>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f5f3ee; overflow: hidden; font-family: 'Georgia', serif; display: flex; height: 100vh; }
+  #sidebar { width: 280px; min-width: 280px; background: #f0ede6; border-right: 1px solid #c8c0b0; overflow-y: auto; padding: 12px 14px; font-size: 12px; color: #444; }
+  #sidebar h1 { font-size: 14px; letter-spacing: 1.5px; color: #333; margin-bottom: 2px; font-weight: normal; }
+  #sidebar .subtitle { font-size: 10px; color: #888; margin-bottom: 12px; font-style: italic; }
+  .section-title { font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: #8b7355; margin-top: 14px; margin-bottom: 6px; border-bottom: 1px solid #d8d0c0; padding-bottom: 3px; }
+  .ctrl-row { display: flex; align-items: center; margin-bottom: 5px; }
+  .ctrl-row label { flex: 0 0 95px; font-size: 11px; color: #666; }
+  .ctrl-row input[type="range"] { flex: 1; height: 3px; accent-color: #8b4513; }
+  .ctrl-row .val { flex: 0 0 40px; text-align: right; font-size: 10px; color: #555; font-family: 'Consolas', monospace; }
+  select { width: 100%; padding: 4px 8px; font-size: 11px; font-family: 'Georgia', serif; background: #faf8f3; color: #555; border: 1px solid #c8c0b0; border-radius: 3px; margin-bottom: 4px; }
+  .btn-row { display: flex; gap: 5px; margin: 8px 0; flex-wrap: wrap; }
+  .btn { padding: 5px 10px; font-size: 10px; font-family: 'Georgia', serif; background: #555; color: #f5f3ee; border: none; cursor: pointer; letter-spacing: 0.5px; border-radius: 2px; transition: background 0.15s; }
+  .btn:hover { background: #333; }
+  .btn.active { background: #8b4513; }
+  .btn.accent { background: #2a6848; }
+  .btn.accent:hover { background: #1a4830; }
+  .btn:disabled { background: #aaa; cursor: not-allowed; }
+  #canvas-container { flex: 1; position: relative; }
+  #canvas-container canvas { display: block; }
+  #info-bar { position: fixed; bottom: 0; left: 280px; right: 0; z-index: 100; background: rgba(245,243,238,0.92); border-top: 1px solid #bbb; padding: 4px 16px; font-size: 10px; color: #777; font-style: italic; }
+  #hud { position: absolute; top: 8px; right: 12px; background: rgba(245,243,238,0.9); border: 1px solid #c8c0b0; border-radius: 4px; padding: 8px 12px; font-size: 10px; line-height: 1.7; color: #666; min-width: 160px; pointer-events: none; }
+  #hud .hv { color: #444; font-family: 'Consolas', monospace; float: right; }
+  .progress-bar { width: 100%; height: 3px; background: #ddd; border-radius: 2px; margin: 4px 0; }
+  .progress-bar-fill { height: 100%; background: #8b4513; border-radius: 2px; transition: width 0.1s; }
+  .grammar-display { font-size: 9px; font-family: 'Consolas', monospace; color: #666; line-height: 1.5; margin-top: 4px; max-height: 120px; overflow-y: auto; word-break: break-all; }
+  .preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; margin-top: 6px; }
+  .preset-btn { padding: 4px 6px; font-size: 9px; font-family: 'Georgia', serif; background: #e8e4dc; color: #555; border: 1px solid #c8c0b0; cursor: pointer; border-radius: 2px; text-align: center; }
+  .preset-btn:hover { background: #d8d4cc; }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #c8c0b0; border-radius: 2px; }
+</style>
+</head>
+<body>
+<div id="sidebar">
+  <h1>L-SYSTEM LINKAGE</h1>
+  <div class="subtitle">Fractal Grammar &rarr; Mechanism &rarr; Motion</div>
+  <div class="section-title">Grammar</div>
+  <div class="ctrl-row"><label>Iterations</label><input type="range" id="iterations" min="2" max="5" value="3" step="1"><span class="val" id="iterationsVal">3</span></div>
+  <div class="ctrl-row"><label>Angle (deg)</label><input type="range" id="angle" min="15" max="90" value="30" step="5"><span class="val" id="angleVal">30</span></div>
+  <div class="ctrl-row"><label>Length Decay</label><input type="range" id="decay" min="0.5" max="0.9" value="0.7" step="0.05"><span class="val" id="decayVal">0.7</span></div>
+  <div class="ctrl-row"><label>Speed</label><input type="range" id="speed" min="0.1" max="3.0" value="1.0" step="0.1"><span class="val" id="speedVal">1.0</span></div>
+  <div class="section-title">Presets</div>
+  <div class="preset-grid">
+    <div class="preset-btn" onclick="loadPreset('tree')">Tree</div>
+    <div class="preset-btn" onclick="loadPreset('fern')">Fern</div>
+    <div class="preset-btn" onclick="loadPreset('dragon')">Dragon</div>
+    <div class="preset-btn" onclick="loadPreset('koch')">Koch</div>
+  </div>
+  <div class="section-title">Mode</div>
+  <div class="btn-row">
+    <button class="btn active" id="btnAtlas" onclick="setMode('atlas')">Atlas 4&times;4</button>
+    <button class="btn" id="btnSingle" onclick="setMode('single')">Single</button>
+  </div>
+  <div class="section-title">Actions</div>
+  <div class="btn-row">
+    <button class="btn" onclick="randomizeAll()">Randomize</button>
+    <button class="btn" onclick="mutateSelected()">Mutate</button>
+    <button class="btn accent" id="btnFind" onclick="findBeautiful()">Find Beautiful</button>
+  </div>
+  <div class="progress-bar" id="progressWrap" style="display:none;"><div class="progress-bar-fill" id="progressFill" style="width:0%"></div></div>
+  <div class="section-title">Grammar Info</div>
+  <div class="grammar-display" id="grammarInfo"></div>
+</div>
+<div id="canvas-container"><div id="hud"></div></div>
+<div id="info-bar">L-System Linkage Generator &mdash; grammar rules become fractal mechanisms</div>
+
+<script>
+const sketch = (p) => {
+  const ATLAS_COLS = 4, ATLAS_ROWS = 4;
+  let mode = 'atlas', configs = [], selectedIdx = 0, masterAngle = 0;
+  let cW, cH, fps = 60, fpsFrames = 0, fpsLast = 0;
+
+  // ─── L-System engine ────────────────────────────────────
+  function expandGrammar(axiom, rules, iterations) {
+    let str = axiom;
+    for (let i = 0; i < iterations; i++) {
+      let next = '';
+      for (let ch of str) {
+        next += rules[ch] || ch;
+      }
+      str = next;
+      if (str.length > 2000) break; // cap complexity
+    }
+    return str;
+  }
+
+  function interpretAsStructure(str, angle, baseLen, decay) {
+    // Build bars and joints from L-system string
+    let joints = [{ x: 0, y: 0, fixed: true }]; // root joint
+    let bars = [];
+    let stack = [];
+    let currJoint = 0;
+    let currAngle = -Math.PI / 2; // start pointing up
+    let currLen = baseLen;
+    let depth = 0;
+
+    for (let ch of str) {
+      if (ch === 'F' || ch === 'G') {
+        // Add a bar and new joint
+        let parent = joints[currJoint];
+        let nx = parent.x + currLen * Math.cos(currAngle);
+        let ny = parent.y + currLen * Math.sin(currAngle);
+        let newIdx = joints.length;
+        joints.push({ x: nx, y: ny, fixed: false, restAngle: currAngle });
+        bars.push({ i: currJoint, j: newIdx, length: currLen });
+        currJoint = newIdx;
+      } else if (ch === '+') {
+        currAngle += angle;
+      } else if (ch === '-') {
+        currAngle -= angle;
+      } else if (ch === '[') {
+        stack.push({ joint: currJoint, angle: currAngle, len: currLen, depth: depth });
+        depth++;
+        currLen *= decay;
+      } else if (ch === ']') {
+        if (stack.length > 0) {
+          let s = stack.pop();
+          currJoint = s.joint;
+          currAngle = s.angle;
+          currLen = s.len;
+          depth = s.depth;
+        }
+      }
+      if (joints.length > 200) break; // cap size
+    }
+
+    return { joints, bars };
+  }
+
+  // ─── constraint solver ──────────────────────────────────
+  function solveConstraints(structure, motorJoint, motorAngle, iterations) {
+    let { joints, bars } = structure;
+    if (joints.length < 2 || bars.length < 1) return;
+
+    // Apply motor: move motor joint in circle around root
+    if (motorJoint > 0 && motorJoint < joints.length) {
+      let root = joints[0];
+      let mBar = bars.find(b => b.j === motorJoint || b.i === motorJoint);
+      if (mBar) {
+        let r = mBar.length;
+        joints[motorJoint].x = root.x + r * Math.cos(motorAngle);
+        joints[motorJoint].y = root.y + r * Math.sin(motorAngle);
+      }
+    }
+
+    // Iterative constraint projection
+    for (let iter = 0; iter < iterations; iter++) {
+      for (let bar of bars) {
+        let j1 = joints[bar.i], j2 = joints[bar.j];
+        let dx = j2.x - j1.x, dy = j2.y - j1.y;
+        let dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 0.001) continue;
+        let diff = (dist - bar.length) / dist;
+        let cx = dx * diff * 0.5, cy = dy * diff * 0.5;
+        if (!j1.fixed && bar.i !== motorJoint) { j1.x += cx; j1.y += cy; }
+        if (!j2.fixed && bar.j !== motorJoint) { j2.x -= cx; j2.y -= cy; }
+      }
+    }
+  }
+
+  // ─── config management ──────────────────────────────────
+  const PRESETS = {
+    tree: { axiom: 'F', rules: { F: 'F[+F]F[-F]F' } },
+    fern: { axiom: 'F', rules: { F: 'FF-[-F+F+F]+[+F-F-F]' } },
+    dragon: { axiom: 'F', rules: { F: 'F+G', G: 'F-G' } },
+    koch: { axiom: 'F', rules: { F: 'F+F-F-F+F' } }
+  };
+
+  function randomRule() {
+    let chars = 'F+-[]FG';
+    let len = Math.floor(p.random(3, 8));
+    let rule = '';
+    let bracketDepth = 0;
+    for (let i = 0; i < len; i++) {
+      let ch = chars[Math.floor(p.random() * chars.length)];
+      if (ch === '[') { bracketDepth++; rule += ch; }
+      else if (ch === ']') { if (bracketDepth > 0) { bracketDepth--; rule += ch; } else rule += 'F'; }
+      else rule += ch;
+    }
+    // Close any open brackets
+    while (bracketDepth > 0) { rule += ']'; bracketDepth--; }
+    return rule;
+  }
+
+  function makeConfig() {
+    let iters = parseInt(document.getElementById('iterations').value);
+    let angle = parseInt(document.getElementById('angle').value) * Math.PI / 180;
+    let decay = parseFloat(document.getElementById('decay').value);
+
+    let axiom = 'F';
+    let rules = { F: randomRule() };
+    if (p.random() < 0.3) rules.G = randomRule();
+
+    let str = expandGrammar(axiom, rules, iters);
+    let baseLen = 40;
+    let structure = interpretAsStructure(str, angle, baseLen, decay);
+
+    // Pick motor joint (first non-fixed, non-root joint)
+    let motorJoint = structure.bars.length > 0 ? structure.bars[0].j : 1;
+
+    // Track tip joint (last joint)
+    let tipJoint = structure.joints.length - 1;
+
+    return {
+      axiom, rules, iters, angle, decay, baseLen,
+      structure, motorJoint, tipJoint,
+      trail: [], str: str.substring(0, 100)
+    };
+  }
+
+  function mutateConfig(cfg) {
+    let newRules = {};
+    for (let k in cfg.rules) {
+      let r = cfg.rules[k];
+      // Randomly change 1-2 characters
+      let arr = r.split('');
+      let numChanges = Math.floor(p.random(1, 3));
+      for (let c = 0; c < numChanges; c++) {
+        let idx = Math.floor(p.random() * arr.length);
+        let chars = 'F+-FG';
+        arr[idx] = chars[Math.floor(p.random() * chars.length)];
+      }
+      newRules[k] = arr.join('');
+    }
+
+    let angle = cfg.angle + (p.random() - 0.5) * 0.15;
+    let decay = Math.max(0.4, Math.min(0.95, cfg.decay + (p.random() - 0.5) * 0.1));
+
+    let str = expandGrammar(cfg.axiom, newRules, cfg.iters);
+    let structure = interpretAsStructure(str, angle, cfg.baseLen, decay);
+    let motorJoint = structure.bars.length > 0 ? structure.bars[0].j : 1;
+
+    return {
+      axiom: cfg.axiom, rules: newRules, iters: cfg.iters,
+      angle, decay, baseLen: cfg.baseLen,
+      structure, motorJoint,
+      tipJoint: structure.joints.length - 1,
+      trail: [], str: str.substring(0, 100)
+    };
+  }
+
+  function scoreConfig(cfg) {
+    let s = cfg.structure;
+    if (s.joints.length < 3 || s.bars.length < 2) return 0;
+
+    // Simulate a few frames and check tip displacement
+    let structCopy = {
+      joints: s.joints.map(j => ({ ...j })),
+      bars: s.bars.map(b => ({ ...b }))
+    };
+
+    let tipPositions = [];
+    for (let f = 0; f < 30; f++) {
+      let angle = (f / 30) * Math.PI * 2;
+      solveConstraints(structCopy, cfg.motorJoint, angle, 15);
+      let tip = structCopy.joints[Math.min(cfg.tipJoint, structCopy.joints.length - 1)];
+      if (tip) tipPositions.push({ x: tip.x, y: tip.y });
+    }
+
+    if (tipPositions.length < 5) return 0;
+
+    // Compute bounding box of tip trajectory
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (let p of tipPositions) {
+      minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+      minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+    }
+    let area = (maxX - minX) * (maxY - minY);
+
+    // Score: complexity (joint count) + motion range
+    let complexityScore = Math.min(s.joints.length, 30) * 2;
+    let motionScore = Math.min(Math.sqrt(area), 100);
+    let branchScore = (cfg.str.match(/\[/g) || []).length * 3;
+
+    return complexityScore + motionScore + branchScore;
+  }
+
+  // ─── drawing ────────────────────────────────────────────
+  function drawLinkage(p, cfg, cx, cy, scale, showTrail, time) {
+    let s = cfg.structure;
+    if (s.joints.length < 2) return;
+
+    // Make a working copy
+    let work = {
+      joints: s.joints.map(j => ({ ...j })),
+      bars: s.bars.map(b => ({ ...b }))
+    };
+
+    solveConstraints(work, cfg.motorJoint, time, 20);
+
+    // Center the structure
+    let avgX = 0, avgY = 0;
+    for (let j of work.joints) { avgX += j.x; avgY += j.y; }
+    avgX /= work.joints.length; avgY /= work.joints.length;
+
+    p.push();
+    p.translate(cx, cy);
+    p.scale(scale);
+
+    // Draw bars
+    for (let bar of work.bars) {
+      let j1 = work.joints[bar.i], j2 = work.joints[bar.j];
+      let depth = Math.min(bar.i, bar.j) / work.joints.length;
+      let alpha = 200 - depth * 100;
+      p.stroke(100, 80, 60, alpha);
+      p.strokeWeight(2 / scale);
+      p.line(j1.x - avgX, j1.y - avgY, j2.x - avgX, j2.y - avgY);
+    }
+
+    // Draw joints
+    for (let i = 0; i < work.joints.length; i++) {
+      let j = work.joints[i];
+      let jx = j.x - avgX, jy = j.y - avgY;
+      if (j.fixed) {
+        p.fill(60); p.noStroke();
+        p.triangle(jx - 4 / scale, jy + 4 / scale, jx + 4 / scale, jy + 4 / scale, jx, jy - 3 / scale);
+      } else if (i === cfg.motorJoint) {
+        p.fill(80, 160, 80); p.noStroke();
+        p.ellipse(jx, jy, 6 / scale, 6 / scale);
+      } else {
+        p.fill(139, 69, 19); p.noStroke();
+        p.ellipse(jx, jy, 3 / scale, 3 / scale);
+      }
+    }
+
+    // Tip trail
+    if (showTrail) {
+      let tipIdx = Math.min(cfg.tipJoint, work.joints.length - 1);
+      let tip = work.joints[tipIdx];
+      if (tip) {
+        cfg.trail.push({ x: tip.x - avgX, y: tip.y - avgY });
+        if (cfg.trail.length > 500) cfg.trail.shift();
+
+        p.noFill();
+        p.stroke(200, 80, 80, 150);
+        p.strokeWeight(1.5 / scale);
+        p.beginShape();
+        for (let pt of cfg.trail) p.vertex(pt.x, pt.y);
+        p.endShape();
+
+        // Tip dot
+        p.fill(200, 60, 60);
+        p.noStroke();
+        p.ellipse(tip.x - avgX, tip.y - avgY, 6 / scale, 6 / scale);
+      }
+    }
+
+    p.pop();
+  }
+
+  // ─── atlas / single ─────────────────────────────────────
+  function getAtlasCell(mx, my) {
+    let cellW = cW / ATLAS_COLS, cellH = cH / ATLAS_ROWS;
+    let col = Math.floor(mx / cellW), row = Math.floor(my / cellH);
+    if (col < 0 || col >= ATLAS_COLS || row < 0 || row >= ATLAS_ROWS) return -1;
+    return row * ATLAS_COLS + col;
+  }
+
+  p.setup = function() {
+    let c = document.getElementById('canvas-container');
+    cW = c.clientWidth; cH = c.clientHeight;
+    p.createCanvas(cW, cH).parent('canvas-container');
+    randomizeAll(); fpsLast = p.millis();
+  };
+
+  p.windowResized = function() {
+    let c = document.getElementById('canvas-container');
+    cW = c.clientWidth; cH = c.clientHeight; p.resizeCanvas(cW, cH);
+  };
+
+  p.draw = function() {
+    p.background(245, 243, 238);
+    let spd = parseFloat(document.getElementById('speed').value);
+    masterAngle += 0.025 * spd;
+
+    fpsFrames++;
+    let now = p.millis();
+    if (now - fpsLast > 500) { fps = Math.round(fpsFrames / ((now - fpsLast) / 1000)); fpsFrames = 0; fpsLast = now; }
+
+    if (mode === 'atlas') {
+      let cellW = cW / ATLAS_COLS, cellH = cH / ATLAS_ROWS;
+      for (let i = 0; i < Math.min(16, configs.length); i++) {
+        let row = Math.floor(i / ATLAS_COLS), col = i % ATLAS_COLS;
+        let cx = col * cellW + cellW / 2, cy = row * cellH + cellH / 2;
+        p.noStroke(); p.fill(252, 250, 245);
+        p.rect(col * cellW + 2, row * cellH + 2, cellW - 4, cellH - 4, 3);
+
+        if (configs[i]) {
+          let scale = Math.min(cellW, cellH) / 250;
+          drawLinkage(p, configs[i], cx, cy, scale, true, masterAngle);
+          p.fill(120); p.textSize(7); p.textAlign(p.LEFT); p.noStroke();
+          p.text(configs[i].structure.joints.length + 'j ' + configs[i].structure.bars.length + 'b', col * cellW + 5, row * cellH + cellH - 6);
+        }
+
+        p.fill(180); p.textSize(9); p.textAlign(p.RIGHT); p.noStroke();
+        let rom = ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV','XVI'];
+        p.text(rom[i], col * cellW + cellW - 6, row * cellH + 14);
+
+        if (i === selectedIdx) { p.noFill(); p.stroke(139, 69, 19); p.strokeWeight(2); p.rect(col * cellW + 2, row * cellH + 2, cellW - 4, cellH - 4, 3); }
+      }
+      p.stroke(200, 190, 175); p.strokeWeight(0.5);
+      for (let c = 1; c < ATLAS_COLS; c++) p.line(c * cellW, 0, c * cellW, cH);
+      for (let r = 1; r < ATLAS_ROWS; r++) p.line(0, r * cellH, cW, r * cellH);
+    } else {
+      let cfg = configs[selectedIdx];
+      if (cfg) {
+        let scale = Math.min(cW, cH) / 200;
+        drawLinkage(p, cfg, cW / 2, cH / 2, scale, true, masterAngle);
+        let el = document.getElementById('grammarInfo');
+        let ruleStr = Object.entries(cfg.rules).map(([k, v]) => `${k} → ${v}`).join('<br>');
+        el.innerHTML = `Axiom: ${cfg.axiom}<br>${ruleStr}<br>Joints: ${cfg.structure.joints.length} Bars: ${cfg.structure.bars.length}`;
+      }
+    }
+
+    let hud = document.getElementById('hud');
+    hud.innerHTML = `FPS <span class="hv">${fps}</span>` +
+      (configs[selectedIdx] ? `<br>Joints <span class="hv">${configs[selectedIdx].structure.joints.length}</span><br>Bars <span class="hv">${configs[selectedIdx].structure.bars.length}</span>` : '');
+  };
+
+  p.mousePressed = function() {
+    if (mode === 'atlas') { let idx = getAtlasCell(p.mouseX, p.mouseY); if (idx >= 0 && idx < configs.length) { selectedIdx = idx; setMode('single'); } }
+  };
+
+  window.loadPreset = function(name) {
+    let preset = PRESETS[name];
+    if (!preset) return;
+    let iters = parseInt(document.getElementById('iterations').value);
+    let angle = parseInt(document.getElementById('angle').value) * Math.PI / 180;
+    let decay = parseFloat(document.getElementById('decay').value);
+    let str = expandGrammar(preset.axiom, preset.rules, iters);
+    let structure = interpretAsStructure(str, angle, 40, decay);
+    let cfg = {
+      axiom: preset.axiom, rules: preset.rules, iters, angle, decay, baseLen: 40,
+      structure, motorJoint: structure.bars.length > 0 ? structure.bars[0].j : 1,
+      tipJoint: structure.joints.length - 1, trail: [], str: str.substring(0, 100)
+    };
+    configs[selectedIdx] = cfg;
+    if (mode === 'atlas') setMode('single');
+  };
+
+  window.setMode = function(m) { mode = m; document.getElementById('btnAtlas').classList.toggle('active', m === 'atlas'); document.getElementById('btnSingle').classList.toggle('active', m === 'single'); };
+  window.randomizeAll = function() { configs = []; for (let i = 0; i < 16; i++) configs.push(makeConfig()); selectedIdx = 0; };
+  window.mutateSelected = function() { if (configs[selectedIdx]) configs[selectedIdx] = mutateConfig(configs[selectedIdx]); };
+  window.findBeautiful = function() {
+    let btn = document.getElementById('btnFind'); btn.disabled = true;
+    let wrap = document.getElementById('progressWrap'), fill = document.getElementById('progressFill');
+    wrap.style.display = 'block'; fill.style.width = '0%';
+    let candidates = [], total = 200, perChunk = 20, done = 0;
+    function chunk() {
+      for (let i = done; i < Math.min(done + perChunk, total); i++) { let c = makeConfig(); candidates.push({ cfg: c, score: scoreConfig(c) }); }
+      done = Math.min(done + perChunk, total); fill.style.width = (done / total * 100) + '%';
+      if (done < total) setTimeout(chunk, 0);
+      else { candidates.sort((a, b) => b.score - a.score); configs = candidates.slice(0, 16).map(c => c.cfg); selectedIdx = 0; btn.disabled = false; wrap.style.display = 'none'; }
+    }
+    setTimeout(chunk, 0);
+  };
+
+  ['iterations', 'angle', 'decay', 'speed'].forEach(id => {
+    let el = document.getElementById(id), val = document.getElementById(id + 'Val');
+    el.addEventListener('input', () => { val.textContent = el.value; });
+  });
+};
+new p5(sketch, 'canvas-container');
+</script>
+</body>
+</html>
