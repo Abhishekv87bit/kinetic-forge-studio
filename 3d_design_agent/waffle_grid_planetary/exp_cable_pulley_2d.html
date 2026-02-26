@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Cable/Pulley Network Explorer — Mechanical Advantage Discovery</title>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f5f3ee; overflow: hidden; font-family: 'Georgia', serif; display: flex; height: 100vh; }
+
+  #sidebar {
+    width: 280px; min-width: 280px; background: #f0ede6;
+    border-right: 1px solid #c8c0b0; overflow-y: auto; padding: 12px 14px;
+    font-size: 12px; color: #444;
+  }
+  #sidebar h1 { font-size: 14px; letter-spacing: 1.5px; color: #333; margin-bottom: 2px; font-weight: normal; }
+  #sidebar .subtitle { font-size: 10px; color: #888; margin-bottom: 12px; font-style: italic; }
+
+  .section-title {
+    font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: #8b7355;
+    margin-top: 14px; margin-bottom: 6px; border-bottom: 1px solid #d8d0c0; padding-bottom: 3px;
+  }
+  .ctrl-row { display: flex; align-items: center; margin-bottom: 5px; }
+  .ctrl-row label { flex: 0 0 95px; font-size: 11px; color: #666; }
+  .ctrl-row input[type="range"] { flex: 1; height: 3px; accent-color: #8b4513; }
+  .ctrl-row .val { flex: 0 0 40px; text-align: right; font-size: 10px; color: #555; font-family: 'Consolas', monospace; }
+
+  .toggle-row { display: flex; align-items: center; margin-bottom: 5px; gap: 8px; }
+  .toggle-row label { font-size: 11px; color: #666; }
+  .toggle-row input[type="checkbox"] { accent-color: #8b4513; }
+
+  .btn-row { display: flex; gap: 5px; margin: 8px 0; flex-wrap: wrap; }
+  .btn {
+    padding: 5px 10px; font-size: 10px; font-family: 'Georgia', serif;
+    background: #555; color: #f5f3ee; border: none; cursor: pointer;
+    letter-spacing: 0.5px; border-radius: 2px; transition: background 0.15s;
+  }
+  .btn:hover { background: #333; }
+  .btn.active { background: #8b4513; }
+  .btn.accent { background: #2a6848; }
+  .btn.accent:hover { background: #1a4830; }
+  .btn.danger { background: #8b2020; }
+  .btn:disabled { background: #aaa; cursor: not-allowed; }
+
+  #canvas-container { flex: 1; position: relative; }
+  #canvas-container canvas { display: block; }
+
+  #info-bar {
+    position: fixed; bottom: 0; left: 280px; right: 0; z-index: 100;
+    background: rgba(245,243,238,0.92); border-top: 1px solid #bbb;
+    padding: 4px 16px; font-size: 10px; color: #777; font-style: italic;
+  }
+
+  #hud {
+    position: absolute; top: 8px; right: 12px; background: rgba(245,243,238,0.9);
+    border: 1px solid #c8c0b0; border-radius: 4px; padding: 8px 12px;
+    font-size: 10px; line-height: 1.7; color: #666; min-width: 160px; pointer-events: none;
+  }
+  #hud .hv { color: #444; font-family: 'Consolas', monospace; float: right; }
+
+  .progress-bar { width: 100%; height: 3px; background: #ddd; border-radius: 2px; margin: 4px 0; }
+  .progress-bar-fill { height: 100%; background: #8b4513; border-radius: 2px; transition: width 0.1s; }
+
+  .detail-list { max-height: 180px; overflow-y: auto; font-size: 9px; line-height: 1.5; margin-top: 4px; }
+  .detail-item { padding: 1px 0; color: #666; font-family: 'Consolas', monospace; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #c8c0b0; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h1>CABLE &amp; PULLEY</h1>
+  <div class="subtitle">Network Explorer &mdash; Mechanical Advantage Discovery</div>
+
+  <div class="section-title">Topology</div>
+  <div class="ctrl-row">
+    <label>Num Pulleys</label>
+    <input type="range" id="sl-pulleys" min="3" max="10" step="1" value="5">
+    <span class="val" id="v-pulleys">5</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Fixed Pulleys</label>
+    <input type="range" id="sl-fixed" min="1" max="9" step="1" value="2">
+    <span class="val" id="v-fixed">2</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Min Radius</label>
+    <input type="range" id="sl-rmin" min="5" max="15" step="1" value="8">
+    <span class="val" id="v-rmin">8</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Max Radius</label>
+    <input type="range" id="sl-rmax" min="16" max="35" step="1" value="25">
+    <span class="val" id="v-rmax">25</span>
+  </div>
+
+  <div class="section-title">Physics</div>
+  <div class="toggle-row">
+    <input type="checkbox" id="chk-sag">
+    <label for="chk-sag">Cable sag (weight)</label>
+  </div>
+  <div class="ctrl-row">
+    <label>Speed</label>
+    <input type="range" id="sl-speed" min="0.1" max="3.0" step="0.05" value="0.8">
+    <span class="val" id="v-speed">0.80</span>
+  </div>
+
+  <div class="section-title">View</div>
+  <div class="btn-row">
+    <button class="btn active" id="btn-atlas" onclick="setMode('atlas')">Atlas 4&times;4</button>
+    <button class="btn" id="btn-single" onclick="setMode('single')">Single</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn accent" onclick="randomizeAll()">Randomize</button>
+    <button class="btn" onclick="mutateAll()">Mutate</button>
+    <button class="btn danger" id="btn-beautiful" onclick="findBeautiful()">Find Beautiful</button>
+  </div>
+  <div id="progress-container" style="display:none;">
+    <div class="progress-bar"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
+    <span style="font-size:9px;color:#888;" id="progress-text">Searching...</span>
+  </div>
+
+  <div class="section-title">Details</div>
+  <div class="detail-list" id="detail-list">
+    <div class="detail-item" style="color:#999;">Click a cell to see pulley details</div>
+  </div>
+</div>
+
+<div id="canvas-container">
+  <div id="hud">
+    <div>FPS <span class="hv" id="hud-fps">--</span></div>
+    <div>Mode <span class="hv" id="hud-mode">atlas</span></div>
+    <div>Pulleys <span class="hv" id="hud-pulleys">--</span></div>
+    <div>MA <span class="hv" id="hud-ma">--</span></div>
+    <div>Score <span class="hv" id="hud-score">--</span></div>
+  </div>
+</div>
+
+<div id="info-bar">
+  Plate VII. &mdash; Cable/pulley networks with varying mechanical advantage. Fixed pulleys (gray, triangles) redirect cable; free pulleys (brown) respond to gravity and tension. Click to inspect.
+</div>
+
+<script>
+// ========================================================
+// CABLE/PULLEY NETWORK EXPLORER — Mechanical Advantage
+// ========================================================
+
+const COLS = 4, ROWS = 4;
+const FIND_BEAUTIFUL_TOTAL = 200;
+const FIND_BEAUTIFUL_CHUNK = 25;
+
+// ===== STATE =====
+let mode = 'atlas';
+let cells = [];
+let selectedIdx = -1;
+let hoverCell = -1;
+let cw, ch;
+let findBeautifulRunning = false;
+let globalTime = 0;
+let dragPulleyIdx = -1; // for single mode input drag
+let inputY = 0;         // normalized input position 0..1
+
+// ===== CABLE/PULLEY PHYSICS =====
+
+// Tangent points between two circles (external tangent, same-side wrap)
+function tangentPoints(p1, r1, p2, r2) {
+  let dx = p2.x - p1.x, dy = p2.y - p1.y;
+  let dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist < 0.001) return null;
+  let angle = Math.atan2(dy, dx);
+  // For same-side wrap (cable wraps same direction on both)
+  let dr = r1 - r2;
+  let sinA = dr / dist;
+  if (Math.abs(sinA) > 1) sinA = Math.sign(sinA);
+  let cosA = Math.sqrt(Math.max(0, 1 - sinA * sinA));
+  let tangentAngle = angle - Math.asin(sinA);
+  return {
+    exit: { x: p1.x + r1 * Math.cos(tangentAngle + Math.PI / 2), y: p1.y + r1 * Math.sin(tangentAngle + Math.PI / 2) },
+    entry: { x: p2.x + r2 * Math.cos(tangentAngle + Math.PI / 2), y: p2.y + r2 * Math.sin(tangentAngle + Math.PI / 2) },
+    angle: tangentAngle,
+    dist: dist
+  };
+}
+
+// Compute the full cable path through ordered pulleys
+function computeCablePath(pulleys, routing) {
+  let segments = [];
+  let totalLength = 0;
+
+  for (let i = 0; i < routing.length; i++) {
+    let pIdx = routing[i];
+    let p = pulleys[pIdx];
+
+    if (i > 0) {
+      let prevIdx = routing[i - 1];
+      let prev = pulleys[prevIdx];
+      let dx = p.x - prev.x, dy = p.y - prev.y;
+      let dist = Math.sqrt(dx * dx + dy * dy);
+      let angle = Math.atan2(dy, dx);
+
+      // Compute tangent departure and arrival
+      let perpAngle = angle + Math.PI / 2;
+      // Determine wrap direction from previous context
+      let wrapSign = (i % 2 === 0) ? 1 : -1;
+      let exitPt = {
+        x: prev.x + prev.radius * Math.cos(perpAngle * wrapSign),
+        y: prev.y + prev.radius * Math.sin(perpAngle * wrapSign)
+      };
+      let entryPt = {
+        x: p.x + p.radius * Math.cos(perpAngle * wrapSign),
+        y: p.y + p.radius * Math.sin(perpAngle * wrapSign)
+      };
+
+      // Simplified: straight line between pulley edges along the connecting direction
+      let offAngle = angle + Math.PI / 2;
+      let side = (i % 2 === 0) ? 1 : -1;
+      let ex = prev.x + prev.radius * Math.cos(offAngle) * side;
+      let ey = prev.y + prev.radius * Math.sin(offAngle) * side;
+      let nx = p.x + p.radius * Math.cos(offAngle) * side;
+      let ny = p.y + p.radius * Math.sin(offAngle) * side;
+
+      let segLen = Math.sqrt((nx - ex) * (nx - ex) + (ny - ey) * (ny - ey));
+      totalLength += segLen;
+
+      segments.push({
+        type: 'line',
+        x1: ex, y1: ey,
+        x2: nx, y2: ny,
+        length: segLen,
+        fromPulley: prevIdx,
+        toPulley: pIdx
+      });
+    }
+
+    // Arc wrap on pulley
+    if (i > 0 && i < routing.length - 1) {
+      let wrapAngle = Math.PI * 0.6; // approximate wrap
+      let arcLen = p.radius * wrapAngle;
+      totalLength += arcLen;
+      segments.push({
+        type: 'arc',
+        cx: p.x, cy: p.y,
+        r: p.radius,
+        pulleyIdx: pIdx,
+        arcLen: arcLen
+      });
+    }
+  }
+
+  return { segments, totalLength };
+}
+
+// Compute mechanical advantage: count cable segments supporting free pulleys
+function computeMA(pulleys, routing) {
+  // For each free pulley, count how many cable segments touch it
+  // MA = number of cable segments supporting the load (last free pulley)
+
+  let freePulleys = pulleys.filter(p => !p.fixed);
+  if (freePulleys.length === 0) return 1;
+
+  // Count segments attached to free pulleys
+  let segmentCounts = {};
+  for (let p of pulleys) {
+    segmentCounts[pulleys.indexOf(p)] = 0;
+  }
+
+  for (let i = 0; i < routing.length; i++) {
+    segmentCounts[routing[i]]++;
+  }
+
+  // The load pulley is the lowest free pulley
+  let loadPulley = null;
+  let maxY = -Infinity;
+  for (let i = 0; i < pulleys.length; i++) {
+    if (!pulleys[i].fixed && pulleys[i].y > maxY) {
+      maxY = pulleys[i].y;
+      loadPulley = i;
+    }
+  }
+
+  if (loadPulley === null) return 1;
+
+  // MA = number of cable passes through the load block system
+  // Simple approximation: count occurrences in routing of free pulleys
+  let ma = 0;
+  for (let idx of routing) {
+    if (!pulleys[idx].fixed) ma++;
+  }
+  // Each free pulley visited once contributes ~2 supporting segments (entry + exit)
+  // but for simple systems: MA = number of cable segments pulling UP on free pulleys
+  // Simplified: MA = total cable contacts on all free pulleys
+  return Math.max(1, ma);
+}
+
+// Compute tension in each cable segment (simplified)
+function computeTensions(pulleys, routing, loadWeight) {
+  let ma = computeMA(pulleys, routing);
+  let inputTension = loadWeight / Math.max(1, ma);
+  let tensions = [];
+  for (let i = 0; i < routing.length - 1; i++) {
+    // In an ideal frictionless system, tension is constant throughout
+    // With friction, it varies by e^(mu*theta) at each pulley
+    let frictionFactor = Math.pow(0.97, i); // slight loss per pulley
+    tensions.push(inputTension * frictionFactor);
+  }
+  return tensions;
+}
+
+// ===== CONFIG GENERATOR =====
+function randomConfig(cellW, cellH) {
+  let numPulleys = parseInt(document.getElementById('sl-pulleys').value);
+  let numFixed = Math.min(parseInt(document.getElementById('sl-fixed').value), numPulleys - 1);
+  let rMin = parseInt(document.getElementById('sl-rmin').value);
+  let rMax = parseInt(document.getElementById('sl-rmax').value);
+
+  let pulleys = [];
+  let margin = rMax + 5;
+  let usableW = (cellW || 300) - margin * 2;
+  let usableH = (cellH || 300) - margin * 2;
+
+  // Place fixed pulleys in upper region, free pulleys in lower region
+  for (let i = 0; i < numPulleys; i++) {
+    let fixed = i < numFixed;
+    let radius = rMin + Math.random() * (rMax - rMin);
+    let x, y;
+    if (fixed) {
+      // Fixed pulleys spread across top half
+      x = margin + Math.random() * usableW;
+      y = margin + Math.random() * usableH * 0.4;
+    } else {
+      // Free pulleys in lower portion
+      x = margin + Math.random() * usableW;
+      y = margin + usableH * 0.4 + Math.random() * usableH * 0.5;
+    }
+    let mass = fixed ? 0 : 0.5 + Math.random() * 2.0;
+    pulleys.push({ x, y, radius, fixed, mass });
+  }
+
+  // Generate a valid routing: visit each pulley at least once, zigzag between fixed and free
+  let fixedIndices = [], freeIndices = [];
+  for (let i = 0; i < pulleys.length; i++) {
+    if (pulleys[i].fixed) fixedIndices.push(i);
+    else freeIndices.push(i);
+  }
+
+  let routing = [];
+  // Interleave: fixed, free, fixed, free, ...
+  let fi = 0, fri = 0;
+  // Shuffle each group
+  shuffleArray(fixedIndices);
+  shuffleArray(freeIndices);
+
+  // Start with a fixed pulley
+  while (fi < fixedIndices.length || fri < freeIndices.length) {
+    if (fi < fixedIndices.length) routing.push(fixedIndices[fi++]);
+    if (fri < freeIndices.length) routing.push(freeIndices[fri++]);
+  }
+
+  // Ensure minimum length
+  if (routing.length < 3) {
+    // Duplicate some entries for more cable wraps
+    let extra = [...routing];
+    shuffleArray(extra);
+    routing = routing.concat(extra.slice(0, 2));
+  }
+
+  return { pulleys, routing, inputEnd: 'left' };
+}
+
+function shuffleArray(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    let j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+}
+
+function mutateConfig(config, cellW, cellH) {
+  let c = JSON.parse(JSON.stringify(config));
+  let margin = 30;
+  let usableW = (cellW || 300) - margin * 2;
+  let usableH = (cellH || 300) - margin * 2;
+
+  for (let p of c.pulleys) {
+    // Nudge positions
+    p.x += (Math.random() - 0.5) * usableW * 0.15;
+    p.y += (Math.random() - 0.5) * usableH * 0.15;
+    p.x = Math.max(margin, Math.min(margin + usableW, p.x));
+    p.y = Math.max(margin, Math.min(margin + usableH, p.y));
+    // Nudge radius
+    let rMin = parseInt(document.getElementById('sl-rmin').value);
+    let rMax = parseInt(document.getElementById('sl-rmax').value);
+    p.radius += (Math.random() - 0.5) * 5;
+    p.radius = Math.max(rMin, Math.min(rMax, p.radius));
+  }
+
+  // Occasionally swap two routing entries
+  if (c.routing.length >= 2 && Math.random() < 0.4) {
+    let a = Math.floor(Math.random() * c.routing.length);
+    let b = Math.floor(Math.random() * c.routing.length);
+    [c.routing[a], c.routing[b]] = [c.routing[b], c.routing[a]];
+  }
+
+  return c;
+}
+
+// ===== BEAUTY SCORER =====
+function scoreConfig(config) {
+  let ma = computeMA(config.pulleys, config.routing);
+
+  // Higher MA = more interesting
+  let maScore = ma * 10;
+
+  // Variety of pulley sizes
+  let radii = config.pulleys.map(p => p.radius);
+  let rRange = Math.max(...radii) - Math.min(...radii);
+  let varietyScore = rRange * 0.5;
+
+  // Spread of positions (higher = better layout)
+  let xs = config.pulleys.map(p => p.x);
+  let ys = config.pulleys.map(p => p.y);
+  let xSpread = Math.max(...xs) - Math.min(...xs);
+  let ySpread = Math.max(...ys) - Math.min(...ys);
+  let spreadScore = (xSpread + ySpread) * 0.05;
+
+  // Mix of fixed and free
+  let numFixed = config.pulleys.filter(p => p.fixed).length;
+  let numFree = config.pulleys.length - numFixed;
+  let mixScore = Math.min(numFixed, numFree) * 5;
+
+  // Penalty for pulleys too close together
+  let minDist = Infinity;
+  for (let i = 0; i < config.pulleys.length; i++) {
+    for (let j = i + 1; j < config.pulleys.length; j++) {
+      let dx = config.pulleys[i].x - config.pulleys[j].x;
+      let dy = config.pulleys[i].y - config.pulleys[j].y;
+      let d = Math.sqrt(dx * dx + dy * dy);
+      if (d < minDist) minDist = d;
+    }
+  }
+  let proximityPenalty = minDist < 30 ? -20 : 0;
+
+  return maScore + varietyScore + spreadScore + mixScore + proximityPenalty;
+}
+
+// ===== CELL MANAGEMENT =====
+function makeCell(config) {
+  let path = computeCablePath(config.pulleys, config.routing);
+  let ma = computeMA(config.pulleys, config.routing);
+  let score = scoreConfig(config);
+  return { config, path, ma, score };
+}
+
+function randomizeAll() {
+  cells = [];
+  let cellW = cw ? cw / COLS : 300;
+  let cellH = ch ? ch / ROWS : 250;
+  for (let i = 0; i < COLS * ROWS; i++) {
+    let config = randomConfig(cellW, cellH);
+    cells.push(makeCell(config));
+  }
+  globalTime = 0;
+  inputY = 0.5;
+}
+
+function mutateAll() {
+  let cellW = cw ? cw / COLS : 300;
+  let cellH = ch ? ch / ROWS : 250;
+  for (let cell of cells) {
+    let m = mutateConfig(cell.config, cellW, cellH);
+    cell.config = m;
+    cell.path = computeCablePath(m.pulleys, m.routing);
+    cell.ma = computeMA(m.pulleys, m.routing);
+    cell.score = scoreConfig(m);
+  }
+  globalTime = 0;
+}
+
+// ===== FIND BEAUTIFUL (chunked non-blocking) =====
+function findBeautiful() {
+  if (findBeautifulRunning) return;
+  findBeautifulRunning = true;
+  document.getElementById('btn-beautiful').disabled = true;
+  document.getElementById('progress-container').style.display = 'block';
+
+  let cellW = cw ? cw / COLS : 300;
+  let cellH = ch ? ch / ROWS : 250;
+  let candidates = [];
+  let processed = 0;
+
+  function processChunk() {
+    let chunkEnd = Math.min(processed + FIND_BEAUTIFUL_CHUNK, FIND_BEAUTIFUL_TOTAL);
+    for (let i = processed; i < chunkEnd; i++) {
+      let config = randomConfig(cellW, cellH);
+      let score = scoreConfig(config);
+      candidates.push({ config, score });
+    }
+    processed = chunkEnd;
+
+    let pct = Math.round((processed / FIND_BEAUTIFUL_TOTAL) * 100);
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('progress-text').textContent = `Scoring ${processed}/${FIND_BEAUTIFUL_TOTAL}...`;
+
+    if (processed < FIND_BEAUTIFUL_TOTAL) {
+      setTimeout(processChunk, 0);
+    } else {
+      candidates.sort((a, b) => b.score - a.score);
+      cells = candidates.slice(0, COLS * ROWS).map(c => makeCell(c.config));
+      globalTime = 0;
+      findBeautifulRunning = false;
+      document.getElementById('btn-beautiful').disabled = false;
+      document.getElementById('progress-container').style.display = 'none';
+    }
+  }
+  processChunk();
+}
+
+// ===== MODE SWITCHING =====
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-atlas').classList.toggle('active', m === 'atlas');
+  document.getElementById('btn-single').classList.toggle('active', m === 'single');
+  document.getElementById('hud-mode').textContent = m;
+  if (m === 'atlas') {
+    selectedIdx = -1;
+    dragPulleyIdx = -1;
+    document.getElementById('info-bar').textContent =
+      'Plate VII. \u2014 Cable/pulley networks with varying mechanical advantage. Fixed pulleys (gray, triangles) redirect cable; free pulleys (brown) respond to gravity and tension. Click to inspect.';
+  }
+}
+
+// ===== SLIDER WIRING =====
+function wireSlider(id, valId, fmt) {
+  let sl = document.getElementById(id);
+  let vl = document.getElementById(valId);
+  sl.addEventListener('input', () => {
+    let v = parseFloat(sl.value);
+    if (fmt === 'int') vl.textContent = Math.round(v);
+    else vl.textContent = v.toFixed(2);
+  });
+}
+wireSlider('sl-pulleys', 'v-pulleys', 'int');
+wireSlider('sl-fixed', 'v-fixed', 'int');
+wireSlider('sl-rmin', 'v-rmin', 'int');
+wireSlider('sl-rmax', 'v-rmax', 'int');
+wireSlider('sl-speed', 'v-speed');
+
+// Keep fixed slider max in sync with pulley count
+document.getElementById('sl-pulleys').addEventListener('input', () => {
+  let n = parseInt(document.getElementById('sl-pulleys').value);
+  let fixedSl = document.getElementById('sl-fixed');
+  fixedSl.max = n - 1;
+  if (parseInt(fixedSl.value) >= n) {
+    fixedSl.value = n - 1;
+    document.getElementById('v-fixed').textContent = n - 1;
+  }
+});
+
+// ===== P5.JS SKETCH =====
+const sketch = (p) => {
+  p.setup = () => {
+    let container = document.getElementById('canvas-container');
+    cw = container.clientWidth; ch = container.clientHeight;
+    p.createCanvas(cw, ch).parent(container);
+    p.textFont('Georgia');
+    randomizeAll();
+  };
+
+  p.windowResized = () => {
+    let container = document.getElementById('canvas-container');
+    cw = container.clientWidth; ch = container.clientHeight;
+    p.resizeCanvas(cw, ch);
+  };
+
+  p.draw = () => {
+    p.background(245, 243, 238);
+    let speed = parseFloat(document.getElementById('sl-speed').value);
+    globalTime += speed * 0.01;
+
+    if (mode === 'atlas') drawAtlas(p);
+    else drawSingle(p);
+
+    document.getElementById('hud-fps').textContent = Math.round(p.frameRate());
+  };
+
+  p.mousePressed = () => {
+    if (p.mouseX < 0 || p.mouseX > cw || p.mouseY < 0 || p.mouseY > ch) return;
+    if (mode === 'atlas') {
+      let cellW = cw / COLS, cellH = ch / ROWS;
+      let col = Math.floor(p.mouseX / cellW);
+      let row = Math.floor(p.mouseY / cellH);
+      if (col >= 0 && col < COLS && row >= 0 && row < ROWS) {
+        selectedIdx = row * COLS + col;
+        if (selectedIdx < cells.length) {
+          // Rescale pulley positions to fill single-mode canvas
+          rescaleForSingle(cells[selectedIdx]);
+          setMode('single');
+          updateDetailList(cells[selectedIdx]);
+        }
+      }
+    } else {
+      // Check if clicking near the input cable handle
+      let handleX = 30;
+      let handleY = ch * 0.15 + inputY * ch * 0.7;
+      let dx = p.mouseX - handleX, dy = p.mouseY - handleY;
+      if (dx * dx + dy * dy < 400) {
+        dragPulleyIdx = -2; // special: dragging input handle
+      }
+    }
+  };
+
+  p.mouseDragged = () => {
+    if (mode === 'single' && dragPulleyIdx === -2) {
+      inputY = Math.max(0, Math.min(1, (p.mouseY - ch * 0.15) / (ch * 0.7)));
+    }
+  };
+
+  p.mouseReleased = () => {
+    dragPulleyIdx = -1;
+  };
+
+  p.mouseMoved = () => {
+    if (mode === 'atlas') {
+      let cellW = cw / COLS, cellH = ch / ROWS;
+      let col = Math.floor(p.mouseX / cellW);
+      let row = Math.floor(p.mouseY / cellH);
+      hoverCell = (col >= 0 && col < COLS && row >= 0 && row < ROWS) ? row * COLS + col : -1;
+    }
+  };
+};
+
+// Rescale config pulleys to fill the single-mode display area
+function rescaleForSingle(cell) {
+  let config = cell.config;
+  let ps = config.pulleys;
+  if (ps.length === 0) return;
+
+  // Find bounding box of current positions
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (let p of ps) {
+    if (p.x - p.radius < minX) minX = p.x - p.radius;
+    if (p.x + p.radius > maxX) maxX = p.x + p.radius;
+    if (p.y - p.radius < minY) minY = p.y - p.radius;
+    if (p.y + p.radius > maxY) maxY = p.y + p.radius;
+  }
+
+  let srcW = maxX - minX || 1;
+  let srcH = maxY - minY || 1;
+
+  // Target area in single mode: leave space for input cable on left, info on right
+  let targetX = 100, targetY = 60;
+  let targetW = cw * 0.6 - 120;
+  let targetH = ch - 140;
+
+  let scale = Math.min(targetW / srcW, targetH / srcH) * 0.85;
+
+  for (let p of ps) {
+    p.x = targetX + ((p.x - minX) / srcW) * targetW;
+    p.y = targetY + ((p.y - minY) / srcH) * targetH;
+    p.radius = Math.max(8, p.radius * scale);
+    p.radius = Math.min(30, p.radius);
+  }
+
+  cell.path = computeCablePath(config.pulleys, config.routing);
+}
+
+// ===== DRAWING: ATLAS MODE =====
+function drawAtlas(p) {
+  let cellW = cw / COLS, cellH = ch / ROWS;
+
+  for (let idx = 0; idx < cells.length; idx++) {
+    let col = idx % COLS, row = Math.floor(idx / COLS);
+    let cx = col * cellW, cy = row * cellH;
+    let cell = cells[idx];
+    let config = cell.config;
+
+    // Cell border
+    p.noFill(); p.stroke(200, 190, 175); p.strokeWeight(0.5);
+    p.rect(cx, cy, cellW, cellH);
+
+    if (idx === hoverCell) {
+      p.fill(255, 255, 255, 30); p.noStroke();
+      p.rect(cx, cy, cellW, cellH);
+    }
+
+    // Scale pulleys to fit cell
+    let ps = config.pulleys;
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (let pp of ps) {
+      if (pp.x - pp.radius < minX) minX = pp.x - pp.radius;
+      if (pp.x + pp.radius > maxX) maxX = pp.x + pp.radius;
+      if (pp.y - pp.radius < minY) minY = pp.y - pp.radius;
+      if (pp.y + pp.radius > maxY) maxY = pp.y + pp.radius;
+    }
+    let srcW = maxX - minX || 1;
+    let srcH = maxY - minY || 1;
+    let margin = 12;
+    let scaleX = (cellW - margin * 2) / srcW;
+    let scaleY = (cellH - margin * 2 - 30) / srcH;
+    let sc = Math.min(scaleX, scaleY);
+
+    let offX = cx + (cellW - srcW * sc) / 2 - minX * sc;
+    let offY = cy + (cellH - 30 - srcH * sc) / 2 - minY * sc;
+
+    // Draw cable (brown lines between pulleys in routing order)
+    p.stroke(139, 90, 43); p.strokeWeight(1.2); p.noFill();
+    let showSag = document.getElementById('chk-sag').checked;
+    for (let i = 0; i < config.routing.length - 1; i++) {
+      let a = ps[config.routing[i]];
+      let b = ps[config.routing[i + 1]];
+      let ax = a.x * sc + offX, ay = a.y * sc + offY;
+      let bx = b.x * sc + offX, by = b.y * sc + offY;
+
+      if (showSag) {
+        // Draw cable with slight catenary sag
+        let midX = (ax + bx) / 2;
+        let midY = (ay + by) / 2 + Math.sqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay)) * 0.06;
+        p.beginShape();
+        p.vertex(ax, ay);
+        p.quadraticVertex(midX, midY, bx, by);
+        p.endShape();
+      } else {
+        p.line(ax, ay, bx, by);
+      }
+    }
+
+    // Draw pulleys
+    for (let i = 0; i < ps.length; i++) {
+      let pp = ps[i];
+      let px = pp.x * sc + offX;
+      let py = pp.y * sc + offY;
+      let pr = pp.radius * sc;
+
+      if (pp.fixed) {
+        // Fixed: gray circle with triangle support above
+        p.fill(170, 165, 155); p.stroke(120, 115, 105); p.strokeWeight(0.8);
+        p.circle(px, py, pr * 2);
+        // Triangle bracket
+        p.fill(140, 135, 125); p.noStroke();
+        p.triangle(px - pr * 0.6, py - pr, px + pr * 0.6, py - pr, px, py - pr * 1.8);
+        // Axle dot
+        p.fill(80); p.circle(px, py, 2);
+      } else {
+        // Free: brown circle, heavier look
+        p.fill(160, 110, 60, 180); p.stroke(120, 80, 40); p.strokeWeight(0.8);
+        p.circle(px, py, pr * 2);
+        // Axle dot
+        p.fill(60); p.noStroke(); p.circle(px, py, 2);
+        // Weight indicator (small arrow down)
+        p.stroke(120, 80, 40, 150); p.strokeWeight(0.5);
+        p.line(px, py + pr, px, py + pr + 4);
+        p.line(px - 2, py + pr + 2, px, py + pr + 4);
+        p.line(px + 2, py + pr + 2, px, py + pr + 4);
+      }
+    }
+
+    // Animate: oscillate input end slightly
+    let animDisp = Math.sin(globalTime * 3) * 5 * sc;
+    let firstP = ps[config.routing[0]];
+    let fpx = firstP.x * sc + offX;
+    let fpy = firstP.y * sc + offY;
+    // Input cable coming from left
+    p.stroke(139, 69, 19, 180); p.strokeWeight(1);
+    p.line(cx + 3, fpy + animDisp, fpx, fpy);
+
+    // MA label
+    p.noStroke(); p.fill(139, 69, 19); p.textSize(11); p.textAlign(p.RIGHT, p.BOTTOM);
+    p.text('MA: ' + cell.ma, cx + cellW - 4, cy + cellH - 3);
+
+    // Pulley count label
+    p.fill(180, 170, 155); p.textSize(8); p.textAlign(p.LEFT, p.TOP);
+    let nFix = config.pulleys.filter(pp => pp.fixed).length;
+    let nFree = config.pulleys.length - nFix;
+    p.text(`${nFix}F+${nFree}f`, cx + 4, cy + 3);
+  }
+}
+
+// ===== DRAWING: SINGLE MODE =====
+function drawSingle(p) {
+  if (selectedIdx < 0 || selectedIdx >= cells.length) return;
+  let cell = cells[selectedIdx];
+  let config = cell.config;
+  let ps = config.pulleys;
+  let routing = config.routing;
+  let showSag = document.getElementById('chk-sag').checked;
+
+  // --- Input cable handle on left side ---
+  let handleX = 30;
+  let handleMinY = ch * 0.15;
+  let handleMaxY = ch * 0.85;
+  let handleY = handleMinY + inputY * (handleMaxY - handleMinY);
+
+  // Draw input rail
+  p.stroke(180, 170, 160); p.strokeWeight(1);
+  p.line(handleX, handleMinY, handleX, handleMaxY);
+  // Handle
+  p.fill(200, 60, 60); p.stroke(160, 40, 40); p.strokeWeight(1.5);
+  p.circle(handleX, handleY, 14);
+  p.fill(255, 200, 200); p.noStroke(); p.textSize(7); p.textAlign(p.CENTER, p.CENTER);
+  p.text('IN', handleX, handleY);
+
+  // Apply input displacement to free pulleys
+  let baseInputY = 0.5;
+  let inputDelta = (inputY - baseInputY) * 200;
+  // Also add animation oscillation
+  let animDelta = Math.sin(globalTime * 3) * 30;
+  let totalDelta = inputDelta + animDelta;
+
+  // Compute free pulley equilibrium positions based on input
+  // In a real system, free pulleys move based on cable constraint
+  // Simplified: free pulleys shift proportionally to MA division
+  let ma = cell.ma;
+  let freePulleyDisp = totalDelta / Math.max(1, ma);
+
+  // Draw cable through routing
+  let tensions = computeTensions(ps, routing, 100);
+
+  // First: cable from input handle to first routed pulley
+  let firstP = ps[routing[0]];
+  let firstPY = firstP.y + (firstP.fixed ? 0 : freePulleyDisp);
+  p.stroke(139, 90, 43); p.strokeWeight(2); p.noFill();
+  if (showSag) {
+    let midX = (handleX + firstP.x) / 2;
+    let midY = (handleY + firstPY) / 2 + 8;
+    p.beginShape();
+    p.vertex(handleX, handleY);
+    p.quadraticVertex(midX, midY, firstP.x, firstPY);
+    p.endShape();
+  } else {
+    p.line(handleX, handleY, firstP.x, firstPY);
+  }
+
+  // Cable between routed pulleys
+  for (let i = 0; i < routing.length - 1; i++) {
+    let a = ps[routing[i]];
+    let b = ps[routing[i + 1]];
+    let ay = a.y + (a.fixed ? 0 : freePulleyDisp);
+    let by = b.y + (b.fixed ? 0 : freePulleyDisp);
+
+    // Tension-based thickness
+    let tension = tensions[i] || 1;
+    let thick = p.map(tension, 0, 120, 1.2, 3);
+    p.stroke(139, 90, 43, 220); p.strokeWeight(thick);
+
+    if (showSag) {
+      let dist = Math.sqrt((b.x - a.x) * (b.x - a.x) + (by - ay) * (by - ay));
+      let sagAmount = dist * 0.04;
+      let midX = (a.x + b.x) / 2;
+      let midY = (ay + by) / 2 + sagAmount;
+      p.beginShape();
+      p.vertex(a.x, ay);
+      p.quadraticVertex(midX, midY, b.x, by);
+      p.endShape();
+    } else {
+      p.line(a.x, ay, b.x, by);
+    }
+
+    // Tension label on segment midpoint
+    let labelX = (a.x + b.x) / 2;
+    let labelY = (ay + by) / 2 - 8;
+    p.noStroke(); p.fill(160, 120, 80); p.textSize(8); p.textAlign(p.CENTER, p.BOTTOM);
+    p.text(tension.toFixed(1) + 'N', labelX, labelY);
+  }
+
+  // Cable from last pulley to anchor (right side)
+  let lastP = ps[routing[routing.length - 1]];
+  let lastPY = lastP.y + (lastP.fixed ? 0 : freePulleyDisp);
+  let anchorX = cw * 0.62;
+  let anchorY = ch * 0.12;
+  p.stroke(139, 90, 43); p.strokeWeight(2);
+  if (showSag) {
+    let midX = (lastP.x + anchorX) / 2;
+    let midY = (lastPY + anchorY) / 2 + 6;
+    p.beginShape();
+    p.vertex(lastP.x, lastPY);
+    p.quadraticVertex(midX, midY, anchorX, anchorY);
+    p.endShape();
+  } else {
+    p.line(lastP.x, lastPY, anchorX, anchorY);
+  }
+  // Anchor symbol
+  p.fill(100); p.noStroke();
+  p.triangle(anchorX - 6, anchorY, anchorX + 6, anchorY, anchorX, anchorY - 10);
+  p.rect(anchorX - 8, anchorY - 12, 16, 3);
+
+  // Draw pulleys
+  for (let i = 0; i < ps.length; i++) {
+    let pp = ps[i];
+    let py = pp.y + (pp.fixed ? 0 : freePulleyDisp);
+
+    if (pp.fixed) {
+      // Fixed: gray circle, triangle mount, labeled F
+      p.fill(180, 175, 165); p.stroke(130, 125, 115); p.strokeWeight(1.2);
+      p.circle(pp.x, py, pp.radius * 2);
+      // Groove line
+      p.noFill(); p.stroke(150, 145, 135); p.strokeWeight(0.5);
+      p.circle(pp.x, py, pp.radius * 1.5);
+      // Triangle bracket
+      p.fill(150, 145, 135); p.noStroke();
+      p.triangle(pp.x - pp.radius * 0.7, py - pp.radius, pp.x + pp.radius * 0.7, py - pp.radius, pp.x, py - pp.radius * 2);
+      // Hatching on bracket
+      p.stroke(120, 115, 105); p.strokeWeight(0.4);
+      for (let h = 0; h < 4; h++) {
+        let hx = pp.x - pp.radius * 0.4 + h * pp.radius * 0.25;
+        p.line(hx, py - pp.radius * 1.1, hx + pp.radius * 0.15, py - pp.radius * 1.6);
+      }
+      // Axle
+      p.fill(70); p.noStroke(); p.circle(pp.x, py, 5);
+      // Label
+      p.fill(100); p.textSize(10); p.textAlign(p.CENTER, p.CENTER);
+      p.text('F', pp.x, py + pp.radius + 12);
+    } else {
+      // Free: brown, with weight hook below, labeled with number
+      p.fill(170, 120, 65, 200); p.stroke(130, 85, 40); p.strokeWeight(1.2);
+      p.circle(pp.x, py, pp.radius * 2);
+      // Groove
+      p.noFill(); p.stroke(140, 95, 50, 100); p.strokeWeight(0.5);
+      p.circle(pp.x, py, pp.radius * 1.5);
+      // Axle
+      p.fill(60); p.noStroke(); p.circle(pp.x, py, 5);
+      // Weight hook
+      p.stroke(130, 85, 40); p.strokeWeight(1.5);
+      p.line(pp.x, py + pp.radius, pp.x, py + pp.radius + 20);
+      // Weight block
+      let wSize = 8 + pp.mass * 4;
+      p.fill(100, 80, 60); p.stroke(80, 60, 40); p.strokeWeight(0.8);
+      p.rect(pp.x - wSize / 2, py + pp.radius + 20, wSize, wSize * 0.7, 2);
+      // Mass label
+      p.fill(220); p.noStroke(); p.textSize(7); p.textAlign(p.CENTER, p.CENTER);
+      p.text(pp.mass.toFixed(1), pp.x, py + pp.radius + 20 + wSize * 0.35);
+      // Pulley number
+      p.fill(130, 85, 40); p.textSize(10); p.textAlign(p.CENTER, p.CENTER);
+      p.text(i + 1, pp.x, py + pp.radius + wSize + 30);
+    }
+  }
+
+  // === MA Display (prominent) ===
+  let maBoxX = cw * 0.68, maBoxY = ch * 0.35;
+  let maBoxW = cw * 0.28, maBoxH = 120;
+  p.noFill(); p.stroke(200, 190, 175); p.strokeWeight(0.5);
+  p.rect(maBoxX, maBoxY, maBoxW, maBoxH, 4);
+
+  p.fill(139, 69, 19); p.noStroke();
+  p.textSize(10); p.textAlign(p.CENTER, p.TOP);
+  p.text('MECHANICAL ADVANTAGE', maBoxX + maBoxW / 2, maBoxY + 8);
+
+  p.textSize(48); p.textAlign(p.CENTER, p.CENTER);
+  p.text(ma, maBoxX + maBoxW / 2, maBoxY + maBoxH / 2 + 5);
+
+  p.fill(130); p.textSize(9); p.textAlign(p.CENTER, p.BOTTOM);
+  p.text(ma + ' cable segments support the load', maBoxX + maBoxW / 2, maBoxY + maBoxH - 6);
+
+  // === Network summary ===
+  let nFix = ps.filter(pp => pp.fixed).length;
+  let nFree = ps.length - nFix;
+  let sumBoxY = maBoxY + maBoxH + 20;
+
+  p.fill(100); p.textSize(10); p.textAlign(p.LEFT, p.TOP);
+  p.text('Network Summary', maBoxX, sumBoxY);
+  p.fill(130); p.textSize(9);
+  p.text(`Total pulleys: ${ps.length}`, maBoxX, sumBoxY + 18);
+  p.text(`Fixed (redirectors): ${nFix}`, maBoxX, sumBoxY + 32);
+  p.text(`Free (load-bearing): ${nFree}`, maBoxX, sumBoxY + 46);
+  p.text(`Routing length: ${routing.length} passes`, maBoxX, sumBoxY + 60);
+  p.text(`Input force: ${(100 / ma).toFixed(1)}N for 100N load`, maBoxX, sumBoxY + 74);
+
+  // === Force diagram (small) ===
+  let fdY = sumBoxY + 100;
+  p.fill(100); p.textSize(10); p.textAlign(p.LEFT, p.TOP);
+  p.text('Force Diagram', maBoxX, fdY);
+
+  // Input arrow (small)
+  let arrowY = fdY + 20;
+  let inputForce = 100 / ma;
+  let loadForce = 100;
+  let maxArrowW = maBoxW - 20;
+
+  // Input force arrow
+  let inputArrowW = (inputForce / loadForce) * maxArrowW;
+  p.fill(80, 140, 80); p.noStroke();
+  p.rect(maBoxX, arrowY, inputArrowW, 10, 2);
+  p.triangle(maBoxX + inputArrowW, arrowY - 2, maBoxX + inputArrowW, arrowY + 12, maBoxX + inputArrowW + 8, arrowY + 5);
+  p.fill(80); p.textSize(8); p.textAlign(p.LEFT, p.CENTER);
+  p.text(`Input: ${inputForce.toFixed(1)}N`, maBoxX + inputArrowW + 12, arrowY + 5);
+
+  // Load force arrow
+  let loadArrowW = maxArrowW;
+  let loadArrowY = arrowY + 24;
+  p.fill(180, 80, 80); p.noStroke();
+  p.rect(maBoxX, loadArrowY, loadArrowW, 10, 2);
+  p.triangle(maBoxX + loadArrowW, loadArrowY - 2, maBoxX + loadArrowW, loadArrowY + 12, maBoxX + loadArrowW + 8, loadArrowY + 5);
+  p.fill(80); p.textSize(8); p.textAlign(p.LEFT, p.CENTER);
+  p.text(`Load: ${loadForce.toFixed(0)}N`, maBoxX + loadArrowW + 12, loadArrowY + 5);
+
+  // Update HUD
+  document.getElementById('hud-pulleys').textContent = ps.length;
+  document.getElementById('hud-ma').textContent = ma;
+  document.getElementById('hud-score').textContent = cell.score.toFixed(1);
+
+  // Info bar
+  document.getElementById('info-bar').textContent =
+    `Cell ${selectedIdx + 1} \u2014 ${ps.length} pulleys (${nFix} fixed, ${nFree} free), MA=${ma}, Score: ${cell.score.toFixed(1)}. Drag red handle to apply input force.`;
+
+  // Back hint
+  p.fill(150); p.noStroke(); p.textSize(10); p.textAlign(p.LEFT, p.BOTTOM);
+  p.text('\u2190 Press Atlas to return', 10, ch - 30);
+}
+
+// ===== HELPERS =====
+function updateDetailList(cell) {
+  let list = document.getElementById('detail-list');
+  let config = cell.config;
+  let html = '';
+  for (let i = 0; i < config.pulleys.length; i++) {
+    let p = config.pulleys[i];
+    let type = p.fixed ? 'FIXED' : 'FREE';
+    html += `<div class="detail-item">P${i + 1} [${type}] r=${p.radius.toFixed(0)} ` +
+            `pos=(${p.x.toFixed(0)},${p.y.toFixed(0)})` +
+            (p.fixed ? '' : ` m=${p.mass.toFixed(1)}`) + `</div>`;
+  }
+  html += `<div class="detail-item" style="color:#8b4513;">Route: ${config.routing.map(r => 'P' + (r + 1)).join('\u2192')}</div>`;
+  html += `<div class="detail-item" style="color:#8b4513;">MA: ${cell.ma}</div>`;
+  list.innerHTML = html;
+}
+
+// ===== LAUNCH =====
+new p5(sketch, 'canvas-container');
+</script>
+</body>
+</html>
