@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Compliant Mechanism Explorer — Flexible Beam Deformation</title>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f5f3ee; overflow: hidden; font-family: 'Georgia', serif; display: flex; height: 100vh; }
+
+  #sidebar {
+    width: 280px; min-width: 280px; background: #f0ede6;
+    border-right: 1px solid #c8c0b0; overflow-y: auto; padding: 12px 14px;
+    font-size: 12px; color: #444;
+  }
+  #sidebar h1 { font-size: 14px; letter-spacing: 1.5px; color: #333; margin-bottom: 2px; font-weight: normal; }
+  #sidebar .subtitle { font-size: 10px; color: #888; margin-bottom: 12px; font-style: italic; }
+
+  .section-title {
+    font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: #8b7355;
+    margin-top: 14px; margin-bottom: 6px; border-bottom: 1px solid #d8d0c0; padding-bottom: 3px;
+  }
+  .ctrl-row { display: flex; align-items: center; margin-bottom: 5px; }
+  .ctrl-row label { flex: 0 0 95px; font-size: 11px; color: #666; }
+  .ctrl-row input[type="range"] { flex: 1; height: 3px; accent-color: #8b4513; }
+  .ctrl-row .val { flex: 0 0 40px; text-align: right; font-size: 10px; color: #555; font-family: 'Consolas', monospace; }
+
+  select {
+    width: 100%; padding: 4px 8px; font-size: 11px; font-family: 'Georgia', serif;
+    background: #faf8f3; color: #555; border: 1px solid #c8c0b0; border-radius: 3px; margin-bottom: 4px;
+  }
+
+  .btn-row { display: flex; gap: 5px; margin: 8px 0; flex-wrap: wrap; }
+  .btn {
+    padding: 5px 10px; font-size: 10px; font-family: 'Georgia', serif;
+    background: #555; color: #f5f3ee; border: none; cursor: pointer;
+    letter-spacing: 0.5px; border-radius: 2px; transition: background 0.15s;
+  }
+  .btn:hover { background: #333; }
+  .btn.active { background: #8b4513; }
+  .btn.accent { background: #2a6848; }
+  .btn.accent:hover { background: #1a4830; }
+  .btn.danger { background: #8b2020; }
+  .btn:disabled { background: #aaa; cursor: not-allowed; }
+
+  .toggle-row { display: flex; align-items: center; margin-bottom: 5px; gap: 6px; }
+  .toggle-row label { font-size: 11px; color: #666; }
+  .toggle-row input[type="checkbox"] { accent-color: #8b4513; }
+
+  #canvas-container { flex: 1; position: relative; }
+  #canvas-container canvas { display: block; }
+
+  #info-bar {
+    position: fixed; bottom: 0; left: 280px; right: 0; z-index: 100;
+    background: rgba(245,243,238,0.92); border-top: 1px solid #bbb;
+    padding: 4px 16px; font-size: 10px; color: #777; font-style: italic;
+  }
+
+  #hud {
+    position: absolute; top: 8px; right: 12px; background: rgba(245,243,238,0.9);
+    border: 1px solid #c8c0b0; border-radius: 4px; padding: 8px 12px;
+    font-size: 10px; line-height: 1.7; color: #666; min-width: 160px; pointer-events: none;
+  }
+  #hud .hv { color: #444; font-family: 'Consolas', monospace; float: right; }
+
+  .progress-bar { width: 100%; height: 3px; background: #ddd; border-radius: 2px; margin: 4px 0; }
+  .progress-bar-fill { height: 100%; background: #8b4513; border-radius: 2px; transition: width 0.1s; }
+
+  .detail-list { max-height: 160px; overflow-y: auto; font-size: 9px; line-height: 1.5; margin-top: 4px; }
+  .detail-item { padding: 1px 0; color: #666; font-family: 'Consolas', monospace; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #c8c0b0; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h1>COMPLIANT EXPLORER</h1>
+  <div class="subtitle">Flexible Beam Deformation &mdash; Torsional Spring Networks</div>
+
+  <div class="section-title">Topology</div>
+  <div class="ctrl-row">
+    <label>Num Beams</label>
+    <input type="range" id="sl-beams" min="2" max="10" step="1" value="4">
+    <span class="val" id="v-beams">4</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Segments/Beam</label>
+    <input type="range" id="sl-segments" min="5" max="15" step="1" value="8">
+    <span class="val" id="v-segments">8</span>
+  </div>
+
+  <div class="section-title">Physics</div>
+  <div class="ctrl-row">
+    <label>Stiffness</label>
+    <input type="range" id="sl-stiffness" min="0.1" max="5.0" step="0.1" value="1.0">
+    <span class="val" id="v-stiffness">1.00</span>
+  </div>
+
+  <div class="section-title">Input</div>
+  <select id="sel-input">
+    <option value="oscillate" selected>Oscillating Displacement</option>
+    <option value="drag">Static Force (Drag)</option>
+    <option value="rotate">Rotating Input</option>
+  </select>
+  <div class="ctrl-row">
+    <label>Amplitude</label>
+    <input type="range" id="sl-amplitude" min="5" max="80" step="1" value="30">
+    <span class="val" id="v-amplitude">30</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Speed</label>
+    <input type="range" id="sl-speed" min="0.1" max="3.0" step="0.05" value="0.8">
+    <span class="val" id="v-speed">0.80</span>
+  </div>
+
+  <div class="section-title">Display</div>
+  <div class="toggle-row">
+    <input type="checkbox" id="cb-stress" checked>
+    <label for="cb-stress">Show stress coloring</label>
+  </div>
+
+  <div class="section-title">Actions</div>
+  <div class="btn-row">
+    <button class="btn active" id="btn-atlas" onclick="setMode('atlas')">Atlas 4&times;4</button>
+    <button class="btn" id="btn-single" onclick="setMode('single')">Single</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn accent" onclick="randomizeAll()">Randomize</button>
+    <button class="btn" onclick="mutateAll()">Mutate</button>
+    <button class="btn danger" id="btn-beautiful" onclick="findBeautiful()">Find Beautiful</button>
+  </div>
+  <div id="progress-container" style="display:none;">
+    <div class="progress-bar"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
+    <span style="font-size:9px;color:#888;" id="progress-text">Searching...</span>
+  </div>
+
+  <div class="section-title">Details</div>
+  <div class="detail-list" id="detail-list">
+    <div class="detail-item" style="color:#999;">Click a cell to see topology</div>
+  </div>
+</div>
+
+<div id="canvas-container">
+  <div id="hud">
+    <div>FPS <span class="hv" id="hud-fps">--</span></div>
+    <div>Mode <span class="hv" id="hud-mode">atlas</span></div>
+    <div>Beams <span class="hv" id="hud-beams">--</span></div>
+    <div>Joints <span class="hv" id="hud-joints">--</span></div>
+    <div>Amplification <span class="hv" id="hud-amp">--</span></div>
+    <div>Score <span class="hv" id="hud-score">--</span></div>
+  </div>
+</div>
+
+<div id="info-bar">
+  Plate VII. &mdash; Compliant mechanism networks: flexible beams connected by torsional springs. Each cell shows a unique topology under oscillating input. Click to inspect.
+</div>
+
+<script>
+// ========================================================
+// COMPLIANT MECHANISM EXPLORER — Flexible Beam Deformation
+// ========================================================
+
+const COLS = 4, ROWS = 4;
+const FIND_BEAUTIFUL_TOTAL = 200;
+const FIND_BEAUTIFUL_CHUNK = 25;
+const RELAX_ITERATIONS = 12;
+
+// ===== STATE =====
+let mode = 'atlas';
+let cells = [];
+let selectedIdx = -1;
+let globalTime = 0;
+let hoverCell = -1;
+let cw, ch;
+let findBeautifulRunning = false;
+let dragActive = false;
+let dragJointIdx = -1;
+
+// ===== BEAM RELAXATION CORE =====
+// Each joint tries to restore its rest angle via torsional spring.
+// Corrections are damped and propagated downstream.
+function relaxBeams(joints, segments, fixed, stiffness, iterations) {
+  for (let iter = 0; iter < iterations; iter++) {
+    for (let i = 1; i < joints.length - 1; i++) {
+      if (fixed[i]) continue;
+      let a1 = Math.atan2(joints[i].y - joints[i-1].y, joints[i].x - joints[i-1].x);
+      let a2 = Math.atan2(joints[i+1].y - joints[i].y, joints[i+1].x - joints[i].x);
+      let bend = a2 - a1 - segments[i].restAngle;
+      // Normalize to [-PI, PI]
+      while (bend > Math.PI) bend -= 2 * Math.PI;
+      while (bend < -Math.PI) bend += 2 * Math.PI;
+      let corr = stiffness * bend * 0.05;
+      let cos_c = Math.cos(corr), sin_c = Math.sin(corr);
+      for (let j = i + 1; j < joints.length; j++) {
+        if (fixed[j]) break;
+        let dx = joints[j].x - joints[i].x;
+        let dy = joints[j].y - joints[i].y;
+        joints[j].x = joints[i].x + dx * cos_c - dy * sin_c;
+        joints[j].y = joints[i].y + dx * sin_c + dy * cos_c;
+      }
+    }
+  }
+}
+
+// Compute bending stress at each joint (magnitude of angle deviation from rest)
+function computeStress(joints, segments) {
+  let stress = new Array(joints.length).fill(0);
+  for (let i = 1; i < joints.length - 1; i++) {
+    let a1 = Math.atan2(joints[i].y - joints[i-1].y, joints[i].x - joints[i-1].x);
+    let a2 = Math.atan2(joints[i+1].y - joints[i].y, joints[i+1].x - joints[i].x);
+    let bend = a2 - a1 - segments[i].restAngle;
+    while (bend > Math.PI) bend -= 2 * Math.PI;
+    while (bend < -Math.PI) bend += 2 * Math.PI;
+    stress[i] = Math.abs(bend);
+  }
+  return stress;
+}
+
+// ===== NETWORK TOPOLOGY =====
+// A network = multiple beams that may share endpoints.
+// Each beam is an ordered array of joint indices into a global joints array.
+
+function generateNetwork(numBeams, segsPerBeam, layoutType, cx, cy, radius) {
+  let joints = [];
+  let beams = [];
+  let fixedSet = new Set();
+  let inputJoint = -1;
+
+  // Helper: add a joint, return index
+  function addJoint(x, y) {
+    joints.push({ x: x, y: y, restX: x, restY: y });
+    return joints.length - 1;
+  }
+
+  // Helper: find joint near (x,y) within threshold
+  function findNear(x, y, thresh) {
+    for (let i = 0; i < joints.length; i++) {
+      let dx = joints[i].x - x, dy = joints[i].y - y;
+      if (Math.sqrt(dx*dx + dy*dy) < thresh) return i;
+    }
+    return -1;
+  }
+
+  if (layoutType === 'star') {
+    // Star: all beams radiate from center
+    let centerIdx = addJoint(cx, cy);
+    fixedSet.add(centerIdx);
+    for (let b = 0; b < numBeams; b++) {
+      let angle = (b / numBeams) * Math.PI * 2 + (Math.random() - 0.5) * 0.3;
+      let beamJoints = [centerIdx];
+      for (let s = 1; s <= segsPerBeam; s++) {
+        let frac = s / segsPerBeam;
+        let jx = cx + Math.cos(angle) * radius * frac;
+        let jy = cy + Math.sin(angle) * radius * frac;
+        beamJoints.push(addJoint(jx, jy));
+      }
+      beams.push(beamJoints);
+    }
+    // Input: tip of first beam
+    inputJoint = beams[0][beams[0].length - 1];
+
+  } else if (layoutType === 'parallel') {
+    // Parallel beams connected at ends
+    let spacing = (radius * 1.6) / Math.max(numBeams - 1, 1);
+    let startY = cy - (numBeams - 1) * spacing / 2;
+    let halfLen = radius * 0.8;
+    for (let b = 0; b < numBeams; b++) {
+      let by = startY + b * spacing;
+      let beamJoints = [];
+      for (let s = 0; s <= segsPerBeam; s++) {
+        let frac = s / segsPerBeam;
+        let jx = cx - halfLen + frac * halfLen * 2;
+        let jy = by;
+        // Share endpoints with adjacent beams at start/end
+        let existIdx = (s === 0 || s === segsPerBeam) ? findNear(jx, jy, 3) : -1;
+        if (existIdx >= 0) {
+          beamJoints.push(existIdx);
+        } else {
+          beamJoints.push(addJoint(jx, jy));
+        }
+      }
+      beams.push(beamJoints);
+    }
+    // Fix left endpoints
+    for (let b of beams) fixedSet.add(b[0]);
+    // Input: rightmost endpoint of middle beam
+    inputJoint = beams[Math.floor(numBeams / 2)][segsPerBeam];
+
+  } else if (layoutType === 'tree') {
+    // Binary tree: trunk splits into branches
+    let trunkEnd = addJoint(cx, cy - radius * 0.3);
+    let trunkStart = addJoint(cx, cy + radius * 0.5);
+    fixedSet.add(trunkStart);
+    // Trunk beam
+    let trunkJoints = [trunkStart];
+    let trunkSegs = Math.max(3, Math.floor(segsPerBeam / 2));
+    for (let s = 1; s < trunkSegs; s++) {
+      let frac = s / trunkSegs;
+      trunkJoints.push(addJoint(
+        cx + (Math.random() - 0.5) * 5,
+        cy + radius * 0.5 - frac * radius * 0.8
+      ));
+    }
+    trunkJoints.push(trunkEnd);
+    beams.push(trunkJoints);
+
+    // Branches from trunk end
+    let branchCount = Math.min(numBeams - 1, 6);
+    for (let b = 0; b < branchCount; b++) {
+      let angle = -Math.PI / 2 + (b / (branchCount - 1 || 1) - 0.5) * Math.PI * 0.8;
+      let branchJoints = [trunkEnd];
+      let branchSegs = segsPerBeam - trunkSegs;
+      if (branchSegs < 2) branchSegs = 2;
+      for (let s = 1; s <= branchSegs; s++) {
+        let frac = s / branchSegs;
+        branchJoints.push(addJoint(
+          trunkEnd + Math.cos(angle) * radius * 0.5 * frac + (Math.random() - 0.5) * 3,
+          joints[trunkEnd].y + Math.sin(angle) * radius * 0.5 * frac + (Math.random() - 0.5) * 3
+        ));
+      }
+      // Fix: use trunk endpoint coordinates for branch start
+      for (let s = 1; s <= branchSegs; s++) {
+        let frac = s / branchSegs;
+        let bj = branchJoints[s];
+        joints[bj].x = joints[trunkEnd].x + Math.cos(angle) * radius * 0.5 * frac;
+        joints[bj].y = joints[trunkEnd].y + Math.sin(angle) * radius * 0.5 * frac;
+        joints[bj].restX = joints[bj].x;
+        joints[bj].restY = joints[bj].y;
+      }
+      beams.push(branchJoints);
+    }
+    inputJoint = trunkStart;
+    fixedSet.delete(trunkStart);
+    // Fix branch tips instead
+    for (let b = 1; b < beams.length; b++) {
+      fixedSet.add(beams[b][beams[b].length - 1]);
+    }
+
+  } else {
+    // Random: scatter endpoints, connect with beams
+    let endpoints = [];
+    for (let i = 0; i < numBeams + 2; i++) {
+      let angle = Math.random() * Math.PI * 2;
+      let r = radius * (0.3 + Math.random() * 0.7);
+      endpoints.push(addJoint(cx + Math.cos(angle) * r, cy + Math.sin(angle) * r));
+    }
+
+    for (let b = 0; b < numBeams; b++) {
+      let startIdx = endpoints[b % endpoints.length];
+      let endIdx = endpoints[(b + 1) % endpoints.length];
+      let beamJoints = [startIdx];
+      let sx = joints[startIdx].x, sy = joints[startIdx].y;
+      let ex = joints[endIdx].x, ey = joints[endIdx].y;
+      for (let s = 1; s < segsPerBeam; s++) {
+        let frac = s / segsPerBeam;
+        beamJoints.push(addJoint(
+          sx + (ex - sx) * frac + (Math.random() - 0.5) * 8,
+          sy + (ey - sy) * frac + (Math.random() - 0.5) * 8
+        ));
+      }
+      beamJoints.push(endIdx);
+      beams.push(beamJoints);
+    }
+
+    // Fix 1-3 endpoints
+    let numFixed = 1 + Math.floor(Math.random() * 3);
+    for (let f = 0; f < numFixed && f < endpoints.length; f++) {
+      fixedSet.add(endpoints[endpoints.length - 1 - f]);
+    }
+    inputJoint = endpoints[0];
+  }
+
+  // Build segments with rest angles
+  let allSegments = [];
+  for (let beam of beams) {
+    let segs = [];
+    for (let i = 0; i < beam.length; i++) {
+      if (i === 0) {
+        segs.push({ restAngle: 0 });
+        continue;
+      }
+      if (i >= beam.length - 1) {
+        segs.push({ restAngle: 0 });
+        continue;
+      }
+      let a1 = Math.atan2(
+        joints[beam[i]].y - joints[beam[i-1]].y,
+        joints[beam[i]].x - joints[beam[i-1]].x
+      );
+      let a2 = Math.atan2(
+        joints[beam[i+1]].y - joints[beam[i]].y,
+        joints[beam[i+1]].x - joints[beam[i]].x
+      );
+      let restAngle = a2 - a1;
+      while (restAngle > Math.PI) restAngle -= 2 * Math.PI;
+      while (restAngle < -Math.PI) restAngle += 2 * Math.PI;
+      segs.push({ restAngle: restAngle });
+    }
+    allSegments.push(segs);
+  }
+
+  // Ensure inputJoint is not fixed
+  fixedSet.delete(inputJoint);
+
+  // Store rest positions
+  for (let j of joints) {
+    j.restX = j.x;
+    j.restY = j.y;
+  }
+
+  let fixed = new Array(joints.length).fill(false);
+  for (let idx of fixedSet) fixed[idx] = true;
+
+  return { joints, beams, allSegments, fixed, inputJoint, layout: layoutType };
+}
+
+// ===== APPLY INPUT DISPLACEMENT =====
+function applyInput(network, time, inputType, amplitude, speed) {
+  let ij = network.inputJoint;
+  if (ij < 0 || ij >= network.joints.length) return;
+  let j = network.joints[ij];
+  let t = time * speed;
+
+  if (inputType === 'oscillate') {
+    j.x = j.restX + Math.sin(t) * amplitude;
+    j.y = j.restY + Math.cos(t * 0.7) * amplitude * 0.3;
+  } else if (inputType === 'rotate') {
+    j.x = j.restX + Math.cos(t) * amplitude;
+    j.y = j.restY + Math.sin(t) * amplitude;
+  }
+  // 'drag' handled by mouse interaction
+}
+
+// ===== SIMULATE ONE STEP =====
+function simulateNetwork(network, stiffness) {
+  // Reset to rest, then apply input, then relax each beam
+  // First, reset non-fixed, non-input joints to rest
+  for (let i = 0; i < network.joints.length; i++) {
+    if (!network.fixed[i] && i !== network.inputJoint) {
+      network.joints[i].x = network.joints[i].restX;
+      network.joints[i].y = network.joints[i].restY;
+    }
+  }
+
+  // Relax each beam independently, then average shared joints
+  for (let b = 0; b < network.beams.length; b++) {
+    let beamIndices = network.beams[b];
+    // Extract joints for this beam
+    let beamJoints = beamIndices.map(idx => ({
+      x: network.joints[idx].x,
+      y: network.joints[idx].y
+    }));
+    let beamFixed = beamIndices.map(idx => network.fixed[idx] || idx === network.inputJoint);
+    let beamSegments = network.allSegments[b];
+
+    relaxBeams(beamJoints, beamSegments, beamFixed, stiffness, RELAX_ITERATIONS);
+
+    // Write back
+    for (let i = 0; i < beamIndices.length; i++) {
+      let idx = beamIndices[i];
+      if (!network.fixed[idx] && idx !== network.inputJoint) {
+        network.joints[idx].x = beamJoints[i].x;
+        network.joints[idx].y = beamJoints[i].y;
+      }
+    }
+  }
+}
+
+// ===== COMPUTE NETWORK STRESS =====
+function computeNetworkStress(network) {
+  let stressArr = new Array(network.joints.length).fill(0);
+  for (let b = 0; b < network.beams.length; b++) {
+    let beamIndices = network.beams[b];
+    let beamJoints = beamIndices.map(idx => network.joints[idx]);
+    let stress = computeStress(beamJoints, network.allSegments[b]);
+    for (let i = 0; i < beamIndices.length; i++) {
+      stressArr[beamIndices[i]] = Math.max(stressArr[beamIndices[i]], stress[i]);
+    }
+  }
+  return stressArr;
+}
+
+// ===== MEASURE OUTPUT DISPLACEMENT =====
+function measureOutputDisplacement(network) {
+  // Max displacement of any non-fixed, non-input joint from rest
+  let maxDisp = 0;
+  for (let i = 0; i < network.joints.length; i++) {
+    if (network.fixed[i] || i === network.inputJoint) continue;
+    let dx = network.joints[i].x - network.joints[i].restX;
+    let dy = network.joints[i].y - network.joints[i].restY;
+    let d = Math.sqrt(dx*dx + dy*dy);
+    if (d > maxDisp) maxDisp = d;
+  }
+  return maxDisp;
+}
+
+function measureInputDisplacement(network) {
+  let ij = network.inputJoint;
+  if (ij < 0) return 0;
+  let dx = network.joints[ij].x - network.joints[ij].restX;
+  let dy = network.joints[ij].y - network.joints[ij].restY;
+  return Math.sqrt(dx*dx + dy*dy);
+}
+
+// ===== CONFIG GENERATOR =====
+function randomConfig() {
+  let numBeams = parseInt(document.getElementById('sl-beams').value);
+  let segsPerBeam = parseInt(document.getElementById('sl-segments').value);
+  let stiffness = parseFloat(document.getElementById('sl-stiffness').value);
+  let layouts = ['star', 'parallel', 'tree', 'random'];
+  let layout = layouts[Math.floor(Math.random() * layouts.length)];
+  return { numBeams, segsPerBeam, stiffness, layout };
+}
+
+function makeCell(config, cx, cy, radius) {
+  let network = generateNetwork(config.numBeams, config.segsPerBeam, config.layout, cx, cy, radius);
+  return {
+    config: config,
+    network: network,
+    score: 0,
+    maxOutputDisp: 0,
+    movingJointCount: 0
+  };
+}
+
+// ===== ACTIONS =====
+function randomizeAll() {
+  cells = [];
+  for (let i = 0; i < COLS * ROWS; i++) {
+    let config = randomConfig();
+    // Placeholder center; will be set during draw
+    cells.push(makeCell(config, 0, 0, 60));
+  }
+  globalTime = 0;
+}
+
+function mutateAll() {
+  for (let cell of cells) {
+    let c = Object.assign({}, cell.config);
+    // Slight layout change: sometimes keep, sometimes change
+    if (Math.random() < 0.3) {
+      let layouts = ['star', 'parallel', 'tree', 'random'];
+      c.layout = layouts[Math.floor(Math.random() * layouts.length)];
+    }
+    // Vary beam count slightly
+    c.numBeams = Math.max(2, Math.min(10, c.numBeams + Math.floor(Math.random() * 3) - 1));
+    c.segsPerBeam = Math.max(5, Math.min(15, c.segsPerBeam + Math.floor(Math.random() * 3) - 1));
+
+    let newCell = makeCell(c, 0, 0, 60);
+    cell.config = c;
+    cell.network = newCell.network;
+    cell.score = 0;
+  }
+  globalTime = 0;
+}
+
+// ===== BEAUTY SCORER =====
+function scoreNetwork(cell, stiffness, amplitude, speed) {
+  // Simulate for a few steps and measure qualities
+  let net = cell.network;
+  // Save state
+  let savedJoints = net.joints.map(j => ({ x: j.x, y: j.y }));
+
+  let totalOutputDisp = 0;
+  let movingJoints = new Set();
+  let steps = 30;
+
+  for (let s = 0; s < steps; s++) {
+    let t = (s / steps) * Math.PI * 2;
+    let ij = net.inputJoint;
+    if (ij >= 0 && ij < net.joints.length) {
+      net.joints[ij].x = net.joints[ij].restX + Math.sin(t) * amplitude;
+      net.joints[ij].y = net.joints[ij].restY + Math.cos(t * 0.7) * amplitude * 0.3;
+    }
+    simulateNetwork(net, stiffness);
+    totalOutputDisp += measureOutputDisplacement(net);
+
+    // Count joints that moved > threshold
+    for (let i = 0; i < net.joints.length; i++) {
+      if (net.fixed[i] || i === net.inputJoint) continue;
+      let dx = net.joints[i].x - net.joints[i].restX;
+      let dy = net.joints[i].y - net.joints[i].restY;
+      if (Math.sqrt(dx*dx + dy*dy) > 1) movingJoints.add(i);
+    }
+  }
+
+  // Restore
+  for (let i = 0; i < net.joints.length; i++) {
+    net.joints[i].x = savedJoints[i].x;
+    net.joints[i].y = savedJoints[i].y;
+  }
+
+  let avgOutput = totalOutputDisp / steps;
+  let inputDisp = amplitude; // nominal
+  let amplification = inputDisp > 0 ? avgOutput / inputDisp : 0;
+  let distributedness = movingJoints.size / Math.max(1, net.joints.length);
+  let complexity = net.beams.length * 0.5 + net.joints.length * 0.1;
+
+  cell.maxOutputDisp = avgOutput;
+  cell.movingJointCount = movingJoints.size;
+
+  return amplification * 30 + distributedness * 40 + complexity * 5;
+}
+
+// ===== FIND BEAUTIFUL (chunked non-blocking) =====
+function findBeautiful() {
+  if (findBeautifulRunning) return;
+  findBeautifulRunning = true;
+  document.getElementById('btn-beautiful').disabled = true;
+  document.getElementById('progress-container').style.display = 'block';
+
+  let stiffness = parseFloat(document.getElementById('sl-stiffness').value);
+  let amplitude = parseFloat(document.getElementById('sl-amplitude').value);
+  let speed = parseFloat(document.getElementById('sl-speed').value);
+  let candidates = [];
+  let processed = 0;
+
+  function processChunk() {
+    let chunkEnd = Math.min(processed + FIND_BEAUTIFUL_CHUNK, FIND_BEAUTIFUL_TOTAL);
+    for (let i = processed; i < chunkEnd; i++) {
+      let config = randomConfig();
+      let cell = makeCell(config, 0, 0, 60);
+      let score = scoreNetwork(cell, stiffness, amplitude * 0.3, speed);
+      cell.score = score;
+      candidates.push(cell);
+    }
+    processed = chunkEnd;
+
+    let pct = Math.round((processed / FIND_BEAUTIFUL_TOTAL) * 100);
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('progress-text').textContent = `Scoring ${processed}/${FIND_BEAUTIFUL_TOTAL}...`;
+
+    if (processed < FIND_BEAUTIFUL_TOTAL) {
+      setTimeout(processChunk, 0);
+    } else {
+      candidates.sort((a, b) => b.score - a.score);
+      cells = candidates.slice(0, COLS * ROWS);
+      globalTime = 0;
+      findBeautifulRunning = false;
+      document.getElementById('btn-beautiful').disabled = false;
+      document.getElementById('progress-container').style.display = 'none';
+    }
+  }
+  processChunk();
+}
+
+// ===== MODE SWITCHING =====
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-atlas').classList.toggle('active', m === 'atlas');
+  document.getElementById('btn-single').classList.toggle('active', m === 'single');
+  document.getElementById('hud-mode').textContent = m;
+  dragActive = false;
+  if (m === 'atlas') {
+    selectedIdx = -1;
+    document.getElementById('info-bar').textContent =
+      'Plate VII. \u2014 Compliant mechanism networks: flexible beams connected by torsional springs. Each cell shows a unique topology under oscillating input. Click to inspect.';
+  }
+}
+
+// ===== SLIDER WIRING =====
+function wireSlider(id, valId, fmt) {
+  let sl = document.getElementById(id);
+  let vl = document.getElementById(valId);
+  sl.addEventListener('input', () => {
+    let v = parseFloat(sl.value);
+    if (fmt === 'int') vl.textContent = Math.round(v);
+    else vl.textContent = v.toFixed(2);
+  });
+}
+wireSlider('sl-beams', 'v-beams', 'int');
+wireSlider('sl-segments', 'v-segments', 'int');
+wireSlider('sl-stiffness', 'v-stiffness');
+wireSlider('sl-amplitude', 'v-amplitude', 'int');
+wireSlider('sl-speed', 'v-speed');
+
+// ===== HELPERS =====
+function stressColor(p, stress, maxStress) {
+  // blue (low) -> yellow -> red (high)
+  let t = maxStress > 0 ? Math.min(stress / maxStress, 1) : 0;
+  if (t < 0.5) {
+    let f = t * 2;
+    return p.color(30 + f * 200, 80 + f * 150, 200 - f * 150);
+  } else {
+    let f = (t - 0.5) * 2;
+    return p.color(230 + f * 25, 230 - f * 180, 50 - f * 50);
+  }
+}
+
+function drawFixedTriangle(p, x, y, size) {
+  p.triangle(x - size, y + size, x + size, y + size, x, y - size * 0.5);
+  // Ground hatching
+  p.strokeWeight(0.8);
+  for (let i = -1; i <= 1; i++) {
+    let lx = x + i * size * 0.6;
+    p.line(lx, y + size, lx - 3, y + size + 4);
+  }
+}
+
+function updateDetailList(cell) {
+  let list = document.getElementById('detail-list');
+  let net = cell.network;
+  let html = '';
+  html += `<div class="detail-item" style="color:#8b4513;">Layout: ${cell.config.layout}</div>`;
+  html += `<div class="detail-item">Beams: ${net.beams.length}</div>`;
+  html += `<div class="detail-item">Joints: ${net.joints.length}</div>`;
+  let fixedCount = net.fixed.filter(f => f).length;
+  html += `<div class="detail-item">Fixed: ${fixedCount}</div>`;
+  html += `<div class="detail-item">Input joint: #${net.inputJoint}</div>`;
+  html += `<div class="detail-item">Stiffness: ${cell.config.stiffness.toFixed(1)}</div>`;
+  html += `<div class="detail-item">Score: ${cell.score.toFixed(1)}</div>`;
+  for (let b = 0; b < net.beams.length; b++) {
+    html += `<div class="detail-item" style="color:#999;">Beam ${b}: ${net.beams[b].length} joints</div>`;
+  }
+  list.innerHTML = html;
+}
+
+// ===== P5.JS SKETCH =====
+const sketch = (p) => {
+  p.setup = () => {
+    let container = document.getElementById('canvas-container');
+    cw = container.clientWidth; ch = container.clientHeight;
+    p.createCanvas(cw, ch).parent(container);
+    p.textFont('Georgia');
+    randomizeAll();
+  };
+
+  p.windowResized = () => {
+    let container = document.getElementById('canvas-container');
+    cw = container.clientWidth; ch = container.clientHeight;
+    p.resizeCanvas(cw, ch);
+  };
+
+  p.draw = () => {
+    p.background(245, 243, 238);
+    let speed = parseFloat(document.getElementById('sl-speed').value);
+    let stiffness = parseFloat(document.getElementById('sl-stiffness').value);
+    let amplitude = parseFloat(document.getElementById('sl-amplitude').value);
+    let inputType = document.getElementById('sel-input').value;
+    let showStress = document.getElementById('cb-stress').checked;
+    globalTime += speed * 0.03;
+
+    if (mode === 'atlas') drawAtlas(p, stiffness, amplitude, speed, inputType, showStress);
+    else drawSingle(p, stiffness, amplitude, speed, inputType, showStress);
+
+    document.getElementById('hud-fps').textContent = Math.round(p.frameRate());
+  };
+
+  p.mousePressed = () => {
+    if (p.mouseX < 0 || p.mouseX > cw || p.mouseY < 0 || p.mouseY > ch) return;
+    if (mode === 'atlas') {
+      let cellW = cw / COLS, cellH = ch / ROWS;
+      let col = Math.floor(p.mouseX / cellW);
+      let row = Math.floor(p.mouseY / cellH);
+      if (col >= 0 && col < COLS && row >= 0 && row < ROWS) {
+        selectedIdx = row * COLS + col;
+        if (selectedIdx < cells.length) {
+          // Rebuild network at single-mode center
+          let config = cells[selectedIdx].config;
+          let singleRadius = Math.min(cw, ch) * 0.3;
+          cells[selectedIdx] = makeCell(config, cw / 2, ch / 2, singleRadius);
+          setMode('single');
+          updateDetailList(cells[selectedIdx]);
+        }
+      }
+    } else if (mode === 'single' && selectedIdx >= 0) {
+      let inputType = document.getElementById('sel-input').value;
+      if (inputType === 'drag') {
+        let net = cells[selectedIdx].network;
+        let ij = net.inputJoint;
+        if (ij >= 0) {
+          let dx = p.mouseX - net.joints[ij].x;
+          let dy = p.mouseY - net.joints[ij].y;
+          if (Math.sqrt(dx*dx + dy*dy) < 30) {
+            dragActive = true;
+            dragJointIdx = ij;
+          }
+        }
+      }
+    }
+  };
+
+  p.mouseDragged = () => {
+    if (dragActive && selectedIdx >= 0 && dragJointIdx >= 0) {
+      let net = cells[selectedIdx].network;
+      net.joints[dragJointIdx].x = p.mouseX;
+      net.joints[dragJointIdx].y = p.mouseY;
+    }
+  };
+
+  p.mouseReleased = () => {
+    if (dragActive && selectedIdx >= 0 && dragJointIdx >= 0) {
+      // Snap back to rest
+      let net = cells[selectedIdx].network;
+      net.joints[dragJointIdx].x = net.joints[dragJointIdx].restX;
+      net.joints[dragJointIdx].y = net.joints[dragJointIdx].restY;
+    }
+    dragActive = false;
+    dragJointIdx = -1;
+  };
+
+  p.mouseMoved = () => {
+    if (mode === 'atlas') {
+      let cellW = cw / COLS, cellH = ch / ROWS;
+      let col = Math.floor(p.mouseX / cellW);
+      let row = Math.floor(p.mouseY / cellH);
+      hoverCell = (col >= 0 && col < COLS && row >= 0 && row < ROWS) ? row * COLS + col : -1;
+    }
+  };
+};
+
+// ===== ATLAS RENDERER =====
+function drawAtlas(p, stiffness, amplitude, speed, inputType, showStress) {
+  let cellW = cw / COLS, cellH = ch / ROWS;
+
+  for (let idx = 0; idx < cells.length; idx++) {
+    let col = idx % COLS, row = Math.floor(idx / COLS);
+    let cx = col * cellW, cy = row * cellH;
+    let centerX = cx + cellW / 2, centerY = cy + cellH / 2;
+    let radius = Math.min(cellW, cellH) * 0.35;
+
+    let cell = cells[idx];
+    let net = cell.network;
+
+    // Rebuild network centered in this cell if needed
+    if (net.joints.length > 0 && (
+      Math.abs(net.joints[0].restX - centerX) > radius * 2 ||
+      Math.abs(net.joints[0].restY - centerY) > radius * 2
+    )) {
+      cells[idx] = makeCell(cell.config, centerX, centerY, radius);
+      cell = cells[idx];
+      net = cell.network;
+    }
+
+    // Cell border
+    p.noFill(); p.stroke(200, 190, 175); p.strokeWeight(0.5);
+    p.rect(cx, cy, cellW, cellH);
+
+    if (idx === hoverCell) {
+      p.fill(255, 255, 255, 30); p.noStroke();
+      p.rect(cx, cy, cellW, cellH);
+    }
+
+    // Apply input and simulate
+    applyInput(net, globalTime, 'oscillate', amplitude * radius / 100, speed);
+    simulateNetwork(net, stiffness);
+
+    let stressArr = showStress ? computeNetworkStress(net) : null;
+    let maxStress = 0;
+    if (stressArr) {
+      for (let s of stressArr) if (s > maxStress) maxStress = s;
+    }
+
+    // Draw beams
+    for (let b = 0; b < net.beams.length; b++) {
+      let beamIndices = net.beams[b];
+      for (let i = 0; i < beamIndices.length - 1; i++) {
+        let j0 = net.joints[beamIndices[i]];
+        let j1 = net.joints[beamIndices[i+1]];
+        if (showStress && stressArr) {
+          let segStress = (stressArr[beamIndices[i]] + stressArr[beamIndices[i+1]]) / 2;
+          let col = stressColor(p, segStress, Math.max(maxStress, 0.1));
+          p.stroke(col);
+        } else {
+          p.stroke(100, 80, 60);
+        }
+        p.strokeWeight(2.5);
+        p.line(j0.x, j0.y, j1.x, j1.y);
+      }
+    }
+
+    // Draw joints
+    for (let i = 0; i < net.joints.length; i++) {
+      let j = net.joints[i];
+      if (net.fixed[i]) {
+        // Fixed: triangle
+        p.fill(80, 80, 80); p.stroke(60); p.strokeWeight(0.5);
+        drawFixedTriangle(p, j.x, j.y, 4);
+      } else if (i === net.inputJoint) {
+        // Input: green circle
+        p.fill(50, 180, 80); p.stroke(30, 120, 50); p.strokeWeight(0.5);
+        p.circle(j.x, j.y, 6);
+      } else {
+        // Regular joint
+        p.fill(200, 190, 175); p.stroke(150, 140, 130); p.strokeWeight(0.5);
+        p.circle(j.x, j.y, 3);
+      }
+    }
+
+    // Label
+    p.noStroke(); p.fill(180, 170, 155); p.textSize(8); p.textAlign(p.LEFT, p.TOP);
+    p.text(`${cell.config.layout}`, cx + 4, cy + 3);
+  }
+}
+
+// ===== SINGLE MODE RENDERER =====
+function drawSingle(p, stiffness, amplitude, speed, inputType, showStress) {
+  if (selectedIdx < 0 || selectedIdx >= cells.length) return;
+  let cell = cells[selectedIdx];
+  let net = cell.network;
+
+  // Recenter if needed
+  let singleRadius = Math.min(cw, ch) * 0.3;
+  let centerX = cw / 2, centerY = ch / 2;
+
+  // Apply input
+  if (inputType !== 'drag' || !dragActive) {
+    applyInput(net, globalTime, inputType, amplitude, speed);
+  }
+  simulateNetwork(net, stiffness);
+
+  let stressArr = showStress ? computeNetworkStress(net) : null;
+  let maxStress = 0;
+  if (stressArr) {
+    for (let s of stressArr) if (s > maxStress) maxStress = s;
+  }
+
+  // Draw rest shape (ghost)
+  p.push();
+  for (let b = 0; b < net.beams.length; b++) {
+    let beamIndices = net.beams[b];
+    p.stroke(210, 200, 190); p.strokeWeight(1);
+    for (let i = 0; i < beamIndices.length - 1; i++) {
+      let j0 = net.joints[beamIndices[i]];
+      let j1 = net.joints[beamIndices[i+1]];
+      p.line(j0.restX, j0.restY, j1.restX, j1.restY);
+    }
+  }
+  p.pop();
+
+  // Draw deformed beams
+  for (let b = 0; b < net.beams.length; b++) {
+    let beamIndices = net.beams[b];
+    for (let i = 0; i < beamIndices.length - 1; i++) {
+      let j0 = net.joints[beamIndices[i]];
+      let j1 = net.joints[beamIndices[i+1]];
+      if (showStress && stressArr) {
+        let segStress = (stressArr[beamIndices[i]] + stressArr[beamIndices[i+1]]) / 2;
+        let col = stressColor(p, segStress, Math.max(maxStress, 0.1));
+        p.stroke(col);
+      } else {
+        p.stroke(100, 80, 60);
+      }
+      p.strokeWeight(4);
+      p.line(j0.x, j0.y, j1.x, j1.y);
+    }
+  }
+
+  // Draw joints (larger in single mode)
+  for (let i = 0; i < net.joints.length; i++) {
+    let j = net.joints[i];
+    if (net.fixed[i]) {
+      p.fill(80, 80, 80); p.stroke(50); p.strokeWeight(1);
+      drawFixedTriangle(p, j.x, j.y, 8);
+    } else if (i === net.inputJoint) {
+      // Input point: green circle, larger
+      let isHover = false;
+      if (inputType === 'drag') {
+        let dx = p.mouseX - j.x, dy = p.mouseY - j.y;
+        isHover = Math.sqrt(dx*dx + dy*dy) < 30;
+      }
+      p.fill(dragActive ? p.color(80, 220, 120) : p.color(50, 180, 80));
+      p.stroke(30, 120, 50); p.strokeWeight(1.5);
+      p.circle(j.x, j.y, isHover || dragActive ? 18 : 14);
+      // Arrow hint for drag
+      if (inputType === 'drag' && !dragActive) {
+        p.noFill(); p.stroke(50, 180, 80, 150); p.strokeWeight(1);
+        p.circle(j.x, j.y, 28);
+      }
+      // Label
+      p.fill(30, 120, 50); p.noStroke(); p.textSize(9); p.textAlign(p.CENTER, p.TOP);
+      p.text('INPUT', j.x, j.y + 12);
+    } else {
+      // Displacement indicator: line from rest to current
+      let dx = j.x - j.restX, dy = j.y - j.restY;
+      let d = Math.sqrt(dx*dx + dy*dy);
+      if (d > 0.5) {
+        p.stroke(180, 50, 50, 80); p.strokeWeight(0.8);
+        p.line(j.restX, j.restY, j.x, j.y);
+      }
+
+      p.fill(200, 190, 175); p.stroke(120, 110, 100); p.strokeWeight(1);
+      p.circle(j.x, j.y, 7);
+    }
+  }
+
+  // HUD updates
+  let outDisp = measureOutputDisplacement(net);
+  let inDisp = measureInputDisplacement(net);
+  let ampRatio = inDisp > 0.1 ? (outDisp / inDisp).toFixed(2) : '--';
+  document.getElementById('hud-amp').textContent = ampRatio;
+  document.getElementById('hud-beams').textContent = net.beams.length;
+  document.getElementById('hud-joints').textContent = net.joints.length;
+  document.getElementById('hud-score').textContent = cell.score.toFixed(1);
+
+  // Info bar
+  let fixedCount = net.fixed.filter(f => f).length;
+  document.getElementById('info-bar').textContent =
+    `Cell ${selectedIdx + 1} \u2014 ${cell.config.layout} layout, ${net.beams.length} beams, ${net.joints.length} joints, ${fixedCount} fixed. ` +
+    `Amplification: ${ampRatio}. Score: ${cell.score.toFixed(1)}`;
+
+  // Back hint
+  p.fill(150); p.noStroke(); p.textSize(10); p.textAlign(p.LEFT, p.BOTTOM);
+  p.text('\u2190 Press Atlas to return', 10, ch - 30);
+
+  // Legend
+  if (showStress) {
+    let lx = cw - 140, ly = ch - 60;
+    p.textSize(9); p.textAlign(p.LEFT, p.CENTER); p.fill(120);
+    p.text('Stress:', lx, ly);
+    let gradW = 80, gradH = 8;
+    for (let g = 0; g < gradW; g++) {
+      let t = g / gradW;
+      let col = stressColor(p, t, 1);
+      p.stroke(col); p.strokeWeight(1);
+      p.line(lx + 40 + g, ly - gradH/2, lx + 40 + g, ly + gradH/2);
+    }
+    p.noStroke(); p.fill(150); p.textSize(8);
+    p.textAlign(p.LEFT); p.text('low', lx + 40, ly + 12);
+    p.textAlign(p.RIGHT); p.text('high', lx + 40 + gradW, ly + 12);
+  }
+}
+
+// ===== LAUNCH =====
+new p5(sketch, 'canvas-container');
+</script>
+</body>
+</html>
