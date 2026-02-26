@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Kinetic Discovery Suite — 28 Experiments</title>
+<title>Kinetic Discovery Suite v2 — 28 Experiments</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -17,8 +17,11 @@
     margin-bottom: 8px;
   }
   .header .subtitle {
-    font-size: 13px; color: #888; font-style: italic; max-width: 600px;
+    font-size: 13px; color: #888; font-style: italic; max-width: 700px;
     margin: 0 auto; line-height: 1.6;
+  }
+  .header .version {
+    font-size: 10px; color: #b0a890; margin-top: 6px; letter-spacing: 2px;
   }
   .wave-section {
     max-width: 1200px; margin: 0 auto 40px auto;
@@ -64,6 +67,9 @@
   .tag.visual { background: #e8e4dc; color: #6b5a4a; }
   .tag.ga { background: #e8dce8; color: #6b4a6b; }
   .tag.three-d { background: #dce8e8; color: #4a6b6b; }
+  .tag.new { background: #d4e8d4; color: #2a5a2a; font-weight: bold; }
+  .tag.rebuilt { background: #e8dcd4; color: #6b4a2a; font-weight: bold; }
+  .tag.fixed { background: #d4d8e8; color: #2a3a6b; font-weight: bold; }
 
   .footer {
     text-align: center; margin-top: 50px; padding-top: 20px;
@@ -81,225 +87,270 @@
 <body>
 
 <div class="header">
-  <h1>KINETIC DISCOVERY SUITE</h1>
+  <h1>Kinetic Discovery Suite</h1>
   <div class="subtitle">
-    27 interactive experiments for discovering your unique kinetic sculpture niche.
-    Each experiment randomizes mechanism parameters &mdash; click "Find Beautiful" to let the algorithm surface the most interesting configurations.
+    28 standalone experiments exploring kinetic sculpture mechanisms —
+    real physics simulation, defined I/O contracts, three-layer verification.
+    Each experiment: atlas overview, single deep-dive, Find Beautiful search.
   </div>
+  <div class="version">v2 — Feb 2026 — 7 physics engines, 0 fake kinematics</div>
 </div>
 
-<!-- WAVE 1 -->
+<!-- WAVE 1: ROTARY MECHANISMS -->
 <div class="wave-section">
-  <div class="wave-title">Wave 1: Core Engines <span>foundations for all mechanism experiments</span></div>
+  <div class="wave-title">Rotary Mechanisms <span>gears, cams, intermittent motion</span></div>
   <div class="card-grid">
-    <a class="card" href="exp_linkage_lab_2d.html">
-      <div class="number">01</div>
-      <div class="name">Linkage Lab</div>
-      <div class="desc">Random N-bar mechanisms via dyad composition. The foundation solver used by 5 other experiments.</div>
-      <div class="tags"><span class="tag mechanism">mechanism</span><span class="tag">dyad solver</span></div>
-    </a>
-    <a class="card" href="exp_cam_synth_2d.html">
-      <div class="number">02</div>
-      <div class="name">Cam Profile Synthesizer</div>
-      <div class="desc">Fourier-generated cam profiles with 3 follower types and pressure angle validation.</div>
-      <div class="tags"><span class="tag mechanism">mechanism</span><span class="tag">fourier</span></div>
-    </a>
+
     <a class="card" href="exp_noncircular_gears_2d.html">
-      <div class="number">03</div>
-      <div class="name">Non-Circular Gear Pair</div>
-      <div class="desc">Fourier pitch curves, RK4 theta integration, variable speed ratio visualization.</div>
-      <div class="tags"><span class="tag mechanism">mechanism</span><span class="tag math">math</span></div>
+      <div class="number">01</div>
+      <div class="name">Noncircular Gears</div>
+      <div class="desc">Elliptical, eccentric, and freeform gear profiles with variable velocity ratios</div>
+      <div class="tags"><span class="tag mechanism">rotary</span><span class="tag math">parametric</span></div>
     </a>
-    <a class="card" href="exp_spirograph_deep_2d.html">
-      <div class="number">04</div>
-      <div class="name">Spirograph Deep Explorer</div>
-      <div class="desc">Up to 8 nested rolling circles with 4 radius modes: integer, near-integer, irrational, golden.</div>
-      <div class="tags"><span class="tag math">math</span><span class="tag visual">visual</span></div>
-    </a>
-    <a class="card" href="exp_walker_gait_2d.html">
-      <div class="number">05</div>
-      <div class="name">Walker Gait Lab</div>
-      <div class="desc">Dyad mechanisms scored for walking quality: stance flatness, step height, stride, smoothness.</div>
-      <div class="tags"><span class="tag mechanism">mechanism</span><span class="tag physics">physics</span></div>
-    </a>
-  </div>
-</div>
 
-<!-- WAVE 2 -->
-<div class="wave-section">
-  <div class="wave-title">Wave 2: Shape &amp; Curve Explorers <span>pure mathematical beauty</span></div>
-  <div class="card-grid">
-    <a class="card" href="exp_superformula_2d.html">
-      <div class="number">06</div>
-      <div class="name">Superformula Morpher</div>
-      <div class="desc">Gielis superformula with 7 parameters, 4 animation modes including compound nesting.</div>
-      <div class="tags"><span class="tag math">math</span><span class="tag visual">visual</span></div>
-    </a>
-    <a class="card" href="exp_polar_curves_2d.html">
-      <div class="number">07</div>
-      <div class="name">Polar Curve Explorer</div>
-      <div class="desc">Multi-term polar equations with morph mode — continuously interpolate between random curves.</div>
-      <div class="tags"><span class="tag math">math</span><span class="tag visual">visual</span></div>
-    </a>
-    <a class="card" href="exp_math_drivers_2d.html">
-      <div class="number">08</div>
-      <div class="name">Math Function Drivers</div>
-      <div class="desc">Weierstrass, Riemann zeta, Mandelbrot boundary, logistic bifurcation, Collatz paths.</div>
-      <div class="tags"><span class="tag math">math</span></div>
-    </a>
-    <a class="card" href="exp_straight_line_2d.html">
-      <div class="number">09</div>
-      <div class="name">Straight-Line Mechanism Sweep</div>
-      <div class="desc">Chebyshev, Hoecken, Watt, Roberts, Evans — perturbed from ideal ratios.</div>
-      <div class="tags"><span class="tag mechanism">mechanism</span></div>
-    </a>
-  </div>
-</div>
-
-<!-- WAVE 3 -->
-<div class="wave-section">
-  <div class="wave-title">Wave 3: Network &amp; Grid Systems <span>emergent behavior from connected elements</span></div>
-  <div class="card-grid">
-    <a class="card" href="exp_coupled_oscillators_2d.html">
-      <div class="number">10</div>
-      <div class="name">Coupled Oscillator Network</div>
-      <div class="desc">Kuramoto model with 5 topologies: ring, star, random, small-world, scale-free.</div>
-      <div class="tags"><span class="tag physics">physics</span><span class="tag math">math</span></div>
-    </a>
-    <a class="card" href="exp_kinematic_tiles_2d.html">
-      <div class="number">11</div>
-      <div class="name">Kinematic Tile Grid</div>
-      <div class="desc">Unit-cell mechanisms tiled in NxN grid — motion propagates through shared joints.</div>
-      <div class="tags"><span class="tag mechanism">mechanism</span></div>
-    </a>
-    <a class="card" href="exp_moire_2d.html">
-      <div class="number">12</div>
-      <div class="name">Moir&eacute; Pattern Animator</div>
-      <div class="desc">Two overlapping patterns create optical motion illusion. Pure visual, no physics.</div>
-      <div class="tags"><span class="tag visual">visual</span></div>
-    </a>
-    <a class="card" href="exp_bistable_array_2d.html">
-      <div class="number">13</div>
-      <div class="name">Bistable Snap-Through Array</div>
-      <div class="desc">Double-well potential elements in network — trigger cascade propagation.</div>
-      <div class="tags"><span class="tag physics">physics</span></div>
-    </a>
-  </div>
-</div>
-
-<!-- WAVE 4 -->
-<div class="wave-section">
-  <div class="wave-title">Wave 4: Complex Mechanism Randomizers <span>the creative heart of kinetic sculpture</span></div>
-  <div class="card-grid">
     <a class="card" href="exp_gear_train_2d.html">
-      <div class="number">14</div>
-      <div class="name">Gear Train Randomizer</div>
-      <div class="desc">N gears with random tooth counts in random topology. Compound shafts, spanning tree connectivity.</div>
-      <div class="tags"><span class="tag mechanism">mechanism</span></div>
+      <div class="number">02</div>
+      <div class="name">Gear Train Explorer</div>
+      <div class="desc">Compound gear trains with ratio computation, mesh visualization, and power flow</div>
+      <div class="tags"><span class="tag mechanism">rotary</span><span class="tag physics">tooth mesh</span></div>
     </a>
-    <a class="card" href="exp_automata_figure_2d.html">
-      <div class="number">15</div>
-      <div class="name">Automata Figure Compositor</div>
-      <div class="desc">Stick figure with random harmonic drivers per joint — discovers dancing, walking, swimming.</div>
-      <div class="tags"><span class="tag mechanism">mechanism</span><span class="tag visual">visual</span></div>
-    </a>
-    <a class="card" href="exp_multicam_sequencer_2d.html">
-      <div class="number">16</div>
-      <div class="name">Multi-Cam Sequencer</div>
-      <div class="desc">N cams on shared shaft with phase offsets — Al-Jazari digitized. Waterfall timing view.</div>
-      <div class="tags"><span class="tag mechanism">mechanism</span></div>
-    </a>
+
     <a class="card" href="exp_differential_2d.html">
-      <div class="number">17</div>
+      <div class="number">03</div>
       <div class="name">Differential Mechanism</div>
-      <div class="desc">Bevel gear differentials blending 2-3 inputs into one output. Up to 3 cascaded stages.</div>
-      <div class="tags"><span class="tag mechanism">mechanism</span></div>
+      <div class="desc">Bevel differential splitting and summing rotational inputs</div>
+      <div class="tags"><span class="tag mechanism">rotary</span><span class="tag math">ratio</span></div>
     </a>
+
+    <a class="card" href="exp_cam_synth_2d.html">
+      <div class="number">04</div>
+      <div class="name">Cam Profile Synthesizer</div>
+      <div class="desc">Fourier-based cam profile generation with follower mass, spring return, and jump detection</div>
+      <div class="tags"><span class="tag mechanism">cam</span><span class="tag physics">dynamics</span><span class="tag fixed">fixed v2</span></div>
+    </a>
+
+    <a class="card" href="exp_multicam_sequencer_2d.html">
+      <div class="number">05</div>
+      <div class="name">Multi-Cam Sequencer</div>
+      <div class="desc">Multiple cam lobes on a shared shaft creating programmable motion sequences with contact force monitoring</div>
+      <div class="tags"><span class="tag mechanism">cam</span><span class="tag physics">dynamics</span><span class="tag fixed">fixed v2</span></div>
+    </a>
+
+    <a class="card" href="exp_3d_cam_surface_3d.html">
+      <div class="number">06</div>
+      <div class="name">3D Cam Surface</div>
+      <div class="desc">Barrel cams and globoidal cam surfaces in 3D with WEBGL rendering</div>
+      <div class="tags"><span class="tag mechanism">cam</span><span class="tag three-d">3D</span></div>
+    </a>
+
+    <a class="card" href="exp_geneva_intermittent_2d.html">
+      <div class="number">07</div>
+      <div class="name">Geneva & Intermittent Motion</div>
+      <div class="desc">Geneva cross, Maltese cross — dwell fraction, pin-slot engagement, staircase kinematics</div>
+      <div class="tags"><span class="tag mechanism">intermittent</span><span class="tag physics">kinematics</span><span class="tag new">new v2</span></div>
+    </a>
+
     <a class="card" href="exp_escapement_zoo_2d.html">
-      <div class="number">18</div>
+      <div class="number">08</div>
       <div class="name">Escapement Zoo</div>
-      <div class="desc">Verge, anchor, deadbeat, grasshopper — random geometry creates different tick rhythms.</div>
-      <div class="tags"><span class="tag mechanism">mechanism</span><span class="tag physics">physics</span></div>
+      <div class="desc">Anchor, deadbeat, grasshopper, and co-axial escapements with energy budget tracking</div>
+      <div class="tags"><span class="tag mechanism">intermittent</span><span class="tag physics">energy</span></div>
     </a>
-    <a class="card" href="exp_pantograph_chain_2d.html">
-      <div class="number">19</div>
-      <div class="name">Pantograph Chain</div>
-      <div class="desc">N-level pantographs transforming motion through each stage. Scales, reflects, rotates.</div>
-      <div class="tags"><span class="tag mechanism">mechanism</span><span class="tag math">math</span></div>
+
+    <a class="card" href="exp_ratchet_pawl_2d.html">
+      <div class="number">09</div>
+      <div class="name">Ratchet & Pawl Networks</div>
+      <div class="desc">One-way motion with spring energy storage, cascaded stages, gear ratios, wind-release cycles</div>
+      <div class="tags"><span class="tag mechanism">intermittent</span><span class="tag physics">torque</span><span class="tag new">new v2</span></div>
     </a>
+
+    <a class="card" href="exp_magnetic_gears_2d.html">
+      <div class="number">10</div>
+      <div class="name">Magnetic Gear Pairs</div>
+      <div class="desc">Contactless torque transmission via dipole-dipole fields — cogging ripple, slip detection, B-field lines</div>
+      <div class="tags"><span class="tag physics">magnetic dipole</span><span class="tag mechanism">rotary</span><span class="tag new">new v2</span></div>
+    </a>
+
   </div>
 </div>
 
-<!-- WAVE 5 -->
+<!-- WAVE 2: SPRING & CABLE PHYSICS -->
 <div class="wave-section">
-  <div class="wave-title">Wave 5: Physics Simulations <span>nature's kinetic sculptures</span></div>
+  <div class="wave-title">Spring & Cable Physics <span>Verlet integration, tension, elastic deformation</span></div>
   <div class="card-grid">
-    <a class="card" href="exp_three_body_2d.html">
-      <div class="number">20</div>
-      <div class="name">3-Body Gravitational Orrery</div>
-      <div class="desc">RK4 N-body with softening. Presets: Figure-8, Lagrange, Euler. Discover stable chaos.</div>
-      <div class="tags"><span class="tag physics">physics</span><span class="tag math">math</span></div>
+
+    <a class="card" href="exp_cable_pulley_2d.html">
+      <div class="number">11</div>
+      <div class="name">Cable & Pulley Systems</div>
+      <div class="desc">Real Verlet particle cables with sag, tension gradients, pulley wrap, and mechanical advantage</div>
+      <div class="tags"><span class="tag physics">verlet</span><span class="tag mechanism">cable</span><span class="tag rebuilt">rebuilt v2</span></div>
     </a>
+
+    <a class="card" href="exp_tensegrity_2d.html">
+      <div class="number">12</div>
+      <div class="name">Tensegrity Builder</div>
+      <div class="desc">Strut-cable structures with compression/tension separation, stability testing, interactive deformation</div>
+      <div class="tags"><span class="tag physics">verlet</span><span class="tag mechanism">tensegrity</span><span class="tag new">new v2</span></div>
+    </a>
+
+    <a class="card" href="exp_coupled_oscillators_2d.html">
+      <div class="number">13</div>
+      <div class="name">Coupled Oscillators</div>
+      <div class="desc">Spring-mass chains with normal modes, beat frequencies, and energy transfer visualization</div>
+      <div class="tags"><span class="tag physics">springs</span><span class="tag math">modes</span></div>
+    </a>
+
+    <a class="card" href="exp_compliant_flex_2d.html">
+      <div class="number">14</div>
+      <div class="name">Compliant Mechanism Explorer</div>
+      <div class="desc">Euler-Bernoulli beam FEA — lever amplifiers, bistable switches, grippers, displacement inverters</div>
+      <div class="tags"><span class="tag physics">beam FEA</span><span class="tag mechanism">compliant</span><span class="tag rebuilt">rebuilt v2</span></div>
+    </a>
+
+    <a class="card" href="exp_bistable_array_2d.html">
+      <div class="number">15</div>
+      <div class="name">Bistable Snap Array</div>
+      <div class="desc">Networks of over-center mechanisms with propagating snap-through cascades</div>
+      <div class="tags"><span class="tag physics">energy</span><span class="tag mechanism">bistable</span></div>
+    </a>
+
+  </div>
+</div>
+
+<!-- WAVE 3: RIGID BODY & GRAVITY -->
+<div class="wave-section">
+  <div class="wave-title">Rigid Body & Gravity <span>Matter.js collisions, Newton's laws, gravitational dynamics</span></div>
+  <div class="card-grid">
+
+    <a class="card" href="exp_ball_run_2d.html">
+      <div class="number">16</div>
+      <div class="name">Ball Run / Marble Machine</div>
+      <div class="desc">Matter.js rigid body tracks with ramps, funnels, bumpers, seesaws, loops, and timed gates</div>
+      <div class="tags"><span class="tag physics">matter.js</span><span class="tag mechanism">gravity</span><span class="tag new">new v2</span></div>
+    </a>
+
+    <a class="card" href="exp_tipping_balance_2d.html">
+      <div class="number">17</div>
+      <div class="name">Tipping Balance Automata</div>
+      <div class="desc">Cascading balance beams with weight particles — torque, tipping chains, cascade detection</div>
+      <div class="tags"><span class="tag physics">matter.js</span><span class="tag mechanism">balance</span><span class="tag new">new v2</span></div>
+    </a>
+
+    <a class="card" href="exp_three_body_2d.html">
+      <div class="number">18</div>
+      <div class="name">Three-Body Problem</div>
+      <div class="desc">Gravitational three-body orbits with RK4 integration, Lagrange points, and chaos visualization</div>
+      <div class="tags"><span class="tag physics">gravity</span><span class="tag math">ODE</span></div>
+    </a>
+
+    <a class="card" href="exp_rattleback_cascade_2d.html">
+      <div class="number">19</div>
+      <div class="name">Rattleback Cascade</div>
+      <div class="desc">Asymmetric rigid body spin reversal with energy exchange between rotation modes</div>
+      <div class="tags"><span class="tag physics">rigid body</span><span class="tag math">inertia</span></div>
+    </a>
+
+  </div>
+</div>
+
+<!-- WAVE 4: EVOLUTIONARY & EMERGENT -->
+<div class="wave-section">
+  <div class="wave-title">Evolutionary & Emergent <span>genetic algorithms, self-organization</span></div>
+  <div class="card-grid">
+
+    <a class="card" href="exp_creature_evolver_2d.html">
+      <div class="number">20</div>
+      <div class="name">Creature Evolver v2</div>
+      <div class="desc">Verlet soft-body creatures with muscles, ground friction, genetic algorithm — evolve locomotion from scratch</div>
+      <div class="tags"><span class="tag ga">GA</span><span class="tag physics">verlet</span><span class="tag rebuilt">rebuilt v2</span></div>
+    </a>
+
     <a class="card" href="exp_magnetic_pendulum_2d.html">
       <div class="number">21</div>
-      <div class="name">Magnetic Pendulum Basins</div>
-      <div class="desc">Progressive fractal basin rendering — which magnet does the pendulum settle on?</div>
-      <div class="tags"><span class="tag physics">physics</span><span class="tag visual">visual</span></div>
+      <div class="name">Magnetic Pendulum</div>
+      <div class="desc">Pendulum over magnetic attractors — basin of attraction fractal maps, sensitive dependence</div>
+      <div class="tags"><span class="tag physics">magnetic</span><span class="tag math">chaos</span></div>
     </a>
-    <a class="card" href="exp_rattleback_cascade_2d.html">
-      <div class="number">22</div>
-      <div class="name">Rattleback Cascade Grid</div>
-      <div class="desc">Asymmetric spinning tops that reverse — trigger cascading spin reversals through a grid.</div>
-      <div class="tags"><span class="tag physics">physics</span></div>
-    </a>
-    <a class="card" href="exp_cable_pulley_2d.html">
-      <div class="number">23</div>
-      <div class="name">Cable/Pulley Network</div>
-      <div class="desc">Inextensible cables threaded through fixed and free pulleys. Discover mechanical advantage.</div>
-      <div class="tags"><span class="tag mechanism">mechanism</span><span class="tag physics">physics</span></div>
-    </a>
+
   </div>
 </div>
 
-<!-- WAVE 6 -->
+<!-- WAVE 5: FLUID & PARTICLE FLOW -->
 <div class="wave-section">
-  <div class="wave-title">Wave 6: Advanced Experiments <span>pushing the boundaries</span></div>
+  <div class="wave-title">Fluid & Particle Flow <span>Torricelli's theorem, siphon dynamics</span></div>
   <div class="card-grid">
-    <a class="card" href="exp_lsystem_linkage_2d.html">
+
+    <a class="card" href="exp_water_siphon_2d.html">
+      <div class="number">22</div>
+      <div class="name">Water Siphon Cascade</div>
+      <div class="desc">Particle-based water flowing through siphon tubes — Torricelli flow rates, priming, cascade chains</div>
+      <div class="tags"><span class="tag physics">fluid</span><span class="tag mechanism">siphon</span><span class="tag new">new v2</span></div>
+    </a>
+
+  </div>
+</div>
+
+<!-- WAVE 6: PATTERN & GEOMETRY -->
+<div class="wave-section">
+  <div class="wave-title">Pattern & Geometry <span>mathematical curves, winding rules, Lissajous</span></div>
+  <div class="card-grid">
+
+    <a class="card" href="exp_spirograph_deep_2d.html">
+      <div class="number">23</div>
+      <div class="name">Spirograph Deep</div>
+      <div class="desc">Multi-layer epitrochoid/hypotrochoid generation with gear ratio exploration</div>
+      <div class="tags"><span class="tag math">parametric</span><span class="tag visual">pattern</span></div>
+    </a>
+
+    <a class="card" href="exp_moire_2d.html">
       <div class="number">24</div>
-      <div class="name">L-System Linkage Generator</div>
-      <div class="desc">Grammar rules produce fractal branching structures interpreted as mechanisms.</div>
-      <div class="tags"><span class="tag math">math</span><span class="tag mechanism">mechanism</span></div>
+      <div class="name">Moire Patterns</div>
+      <div class="desc">Overlapping grids creating emergent interference patterns from simple geometry</div>
+      <div class="tags"><span class="tag visual">pattern</span><span class="tag math">interference</span></div>
     </a>
-    <a class="card" href="exp_creature_evolver_2d.html">
+
+    <a class="card" href="exp_string_art_2d.html">
       <div class="number">25</div>
-      <div class="name">Creature Evolver</div>
-      <div class="desc">Genetic algorithm evolves both body topology and motor pattern. Watch fitness climb.</div>
-      <div class="tags"><span class="tag ga">genetic algorithm</span><span class="tag mechanism">mechanism</span></div>
+      <div class="name">String Art Machine</div>
+      <div class="desc">Mathematical winding rules on boundary pins — cardioids, nephroids, Fibonacci spirals, multi-layer</div>
+      <div class="tags"><span class="tag math">modular</span><span class="tag visual">pattern</span><span class="tag new">new v2</span></div>
     </a>
-    <a class="card" href="exp_compliant_flex_2d.html">
+
+    <a class="card" href="exp_sand_pendulum_2d.html">
       <div class="number">26</div>
-      <div class="name">Compliant Mechanism Explorer</div>
-      <div class="desc">Flexible beams with torsional springs — drag input to see distributed deformation.</div>
-      <div class="tags"><span class="tag physics">physics</span><span class="tag mechanism">mechanism</span></div>
+      <div class="name">Sand Pendulum Harmonograph</div>
+      <div class="desc">Damped compound pendulum depositing sand grains — Lissajous figures with density gradients</div>
+      <div class="tags"><span class="tag physics">pendulum</span><span class="tag visual">pattern</span><span class="tag new">new v2</span></div>
     </a>
-    <a class="card" href="exp_3d_cam_surface_3d.html">
+
+  </div>
+</div>
+
+<!-- WAVE 7: 3D & SPATIAL -->
+<div class="wave-section">
+  <div class="wave-title">3D & Spatial <span>WEBGL, shadow projection, folding</span></div>
+  <div class="card-grid">
+
+    <a class="card" href="exp_shadow_sculpture_3d.html">
       <div class="number">27</div>
-      <div class="name">3D Cam Surface Explorer</div>
-      <div class="desc">Cylindrical cam with 2D Fourier surface. The only 3D experiment — WEBGL rendering.</div>
-      <div class="tags"><span class="tag three-d">3D</span><span class="tag mechanism">mechanism</span></div>
+      <div class="name">Shadow Sculpture Explorer</div>
+      <div class="desc">3D objects casting 2D shadow silhouettes — morphing shadows from rotation, complexity tracking</div>
+      <div class="tags"><span class="tag three-d">WEBGL</span><span class="tag visual">projection</span><span class="tag new">new v2</span></div>
     </a>
-    <a class="card" href="exp_ball_run_2d.html">
+
+    <a class="card" href="exp_origami_deployable_2d.html">
       <div class="number">28</div>
-      <div class="name">Ball Run / Marble Machine</div>
-      <div class="desc">Matter.js rigid body physics — balls roll down randomized tracks of ramps, bumpers, seesaws, loops, and gates.</div>
-      <div class="tags"><span class="tag physics">physics</span><span class="tag visual">visual</span></div>
+      <div class="name">Origami Deployable Mechanisms</div>
+      <div class="desc">Miura-Ori, Yoshizawa, Waterbomb folds — 1-DOF deployment, compaction ratio, dual top/side views</div>
+      <div class="tags"><span class="tag mechanism">folding</span><span class="tag math">geometry</span><span class="tag new">new v2</span></div>
     </a>
+
   </div>
 </div>
 
 <div class="footer">
-  KINETIC DISCOVERY SUITE &bull; 28 Experiments &bull; Built 2026-02-26
+  Kinetic Discovery Suite v2 — 28 experiments — Feb 2026
+  <br>11 new &bull; 3 rebuilt &bull; 2 fixed &bull; 12 original &bull; 7 physics engines &bull; 0 fake kinematics
 </div>
 
 </body>
