@@ -769,17 +769,73 @@ exp_lorenz_attractor_3d.html    → pure math, no mechanism
 
 ---
 
-## 6. Quality Gates
+## 6. Three-Layer Physics Verification Stack
+
+### Layer 1: Python Reference Scripts (build-time)
+
+Small scripts per physics type (~50-100 lines each). Run ONCE during development to generate
+ground truth test vectors. Located in `physics_verify/`.
+
+```
+physics_verify/
+  verify_verlet_cable.py      — expected cable sag shape for given params
+  verify_rk4_orbit.py         — expected orbital path for 3-body presets
+  verify_beam_deflection.py   — Euler-Bernoulli expected deflection curve
+  verify_matter_collision.py  — expected bounce trajectory (ball run)
+  verify_dipole_torque.py     — expected magnetic gear torque curve
+  verify_pendulum_period.py   — expected period vs analytical T=2pi*sqrt(L/g)
+  verify_siphon_flow.py       — expected Torricelli flow rate Q=A*sqrt(2g*h)
+  verify_verlet_tensegrity.py — expected equilibrium shape for strut+cable network
+```
+
+Each script outputs JSON: `{input_params, expected_state_at_t[], expected_energy_at_t[]}`.
+JavaScript implementation tested against these during development.
+
+**Dependencies:** numpy, scipy only. No exotic packages.
+
+### Layer 2: In-Browser Physics HUD (runtime)
+
+Every experiment displays real-time physics health:
+
+```
+Energy: 142.3 J (±0.2%)     ← conservation check (green/yellow/red)
+Constraints: 0.001 mm        ← max constraint violation
+Forces: Sigma = 0.003 N      ← equilibrium check
+dt: 0.016s (stable)          ← timestep health
+```
+
+Thresholds:
+- Energy drift > 5% → HUD turns yellow (warning)
+- Energy drift > 20% → HUD turns red (physics broken)
+- Constraint violation > 1mm → orange warning
+- Constraint violation > 5mm → red, simulation paused
+- Force imbalance > 1N at equilibrium → yellow warning
+
+### Layer 3: Analytical Checks (in-code comments)
+
+For systems with known solutions, code includes expected results as comments:
+
+```javascript
+// ANALYTICAL CHECK: pendulum L=100mm, g=9810mm/s^2
+// T = 2*PI*sqrt(L/g) = 2*PI*sqrt(100/9810) = 0.634s
+// Simulated period must be within 2% (0.621 - 0.647s)
+```
+
+---
+
+## 7. Quality Gates
 
 Every experiment must pass ALL before delivery:
 
 1. **I/O declaration** — Input, Mechanism, Output, Constraint clearly shown in sidebar
-2. **Physics verification** — Energy conservation check (kinetic + potential should be bounded)
-3. **Diversity check** — "Randomize" must produce visually distinct results 5/5 times
-4. **Find Beautiful v2** — scoring uses OUTPUT behavior metrics, not just shape complexity
-5. **Performance** — 30+ FPS on GTX 1650, < 500K polygons if WEBGL
-6. **Interaction** — at least one slider meaningfully changes behavior in real-time
-7. **Atlas variety** — 16-cell atlas must show at least 4 visually distinct categories
+2. **Physics verification (Layer 1)** — Python test vectors match JS output within tolerance
+3. **Runtime health (Layer 2)** — HUD shows green for 60 seconds of simulation
+4. **Diversity check** — "Randomize" must produce visually distinct results 5/5 times
+5. **Find Beautiful v2** — scoring uses OUTPUT behavior metrics, not just shape complexity
+6. **Performance** — 30+ FPS on GTX 1650, < 500K polygons if WEBGL
+7. **Interaction** — at least one slider meaningfully changes behavior in real-time
+8. **Atlas variety** — 16-cell atlas must show at least 4 visually distinct categories
+9. **Analytical check (Layer 3)** — known solutions verified in code comments
 
 ---
 
