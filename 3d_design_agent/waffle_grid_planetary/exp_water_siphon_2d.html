@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Water Siphon Cascade — Gravity-Driven Particle Flow</title>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f5f3ee; overflow: hidden; font-family: 'Georgia', serif; display: flex; height: 100vh; }
+
+  #sidebar {
+    width: 280px; min-width: 280px; background: #f0ede6;
+    border-right: 1px solid #c8c0b0; overflow-y: auto; padding: 12px 14px;
+    font-size: 12px; color: #444;
+  }
+  #sidebar h1 { font-size: 14px; letter-spacing: 1.5px; color: #333; margin-bottom: 2px; font-weight: normal; }
+  #sidebar .subtitle { font-size: 10px; color: #888; margin-bottom: 12px; font-style: italic; }
+
+  .section-title {
+    font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: #8b7355;
+    margin-top: 14px; margin-bottom: 6px; border-bottom: 1px solid #d8d0c0; padding-bottom: 3px;
+  }
+  .ctrl-row { display: flex; align-items: center; margin-bottom: 5px; }
+  .ctrl-row label { flex: 0 0 95px; font-size: 11px; color: #666; }
+  .ctrl-row input[type="range"] { flex: 1; height: 3px; accent-color: #8b4513; }
+  .ctrl-row .val { flex: 0 0 40px; text-align: right; font-size: 10px; color: #555; font-family: 'Consolas', monospace; }
+
+  select { width: 100%; padding: 4px 8px; font-size: 11px; font-family: 'Georgia', serif; background: #faf8f3; color: #555; border: 1px solid #c8c0b0; border-radius: 3px; margin-bottom: 4px; }
+
+  .btn-row { display: flex; gap: 5px; margin: 8px 0; flex-wrap: wrap; }
+  .btn {
+    padding: 5px 10px; font-size: 10px; font-family: 'Georgia', serif;
+    background: #555; color: #f5f3ee; border: none; cursor: pointer;
+    letter-spacing: 0.5px; border-radius: 2px; transition: background 0.15s;
+  }
+  .btn:hover { background: #333; }
+  .btn.active { background: #8b4513; }
+  .btn.accent { background: #2a6848; }
+  .btn.accent:hover { background: #1a4830; }
+  .btn.danger { background: #8b2020; }
+  .btn:disabled { background: #aaa; cursor: not-allowed; }
+
+  #canvas-container { flex: 1; position: relative; }
+  #canvas-container canvas { display: block; }
+
+  #info-bar {
+    position: fixed; bottom: 0; left: 280px; right: 0; z-index: 100;
+    background: rgba(245,243,238,0.92); border-top: 1px solid #bbb;
+    padding: 4px 16px; font-size: 10px; color: #777; font-style: italic;
+  }
+
+  #hud {
+    position: absolute; top: 8px; right: 12px; background: rgba(245,243,238,0.9);
+    border: 1px solid #c8c0b0; border-radius: 4px; padding: 8px 12px;
+    font-size: 10px; line-height: 1.7; color: #666; min-width: 160px; pointer-events: none;
+  }
+  #hud .hv { color: #444; font-family: 'Consolas', monospace; float: right; }
+
+  #physics-hud {
+    position: absolute; top: 8px; left: 290px; background: rgba(245,243,238,0.9);
+    border: 1px solid #c8c0b0; border-radius: 4px; padding: 6px 10px;
+    font-size: 9px; line-height: 1.6; color: #666; min-width: 140px; pointer-events: none;
+    font-family: 'Consolas', monospace;
+  }
+  #physics-hud.warn { border-color: #cc8800; background: rgba(255,240,200,0.9); }
+  #physics-hud.error { border-color: #cc2020; background: rgba(255,220,220,0.9); }
+
+  .progress-bar { width: 100%; height: 3px; background: #ddd; border-radius: 2px; margin: 4px 0; }
+  .progress-bar-fill { height: 100%; background: #8b4513; border-radius: 2px; transition: width 0.1s; }
+
+  .detail-list { max-height: 180px; overflow-y: auto; font-size: 9px; line-height: 1.5; margin-top: 4px; }
+  .detail-item { padding: 1px 0; color: #666; font-family: 'Consolas', monospace; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #c8c0b0; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h1>WATER SIPHON</h1>
+  <div class="subtitle">Cascade &mdash; Gravity-Driven Particle Flow</div>
+
+  <div class="section-title">Topology</div>
+  <div class="ctrl-row">
+    <label>Reservoirs</label>
+    <input type="range" id="sl-reservoirs" min="3" max="6" step="1" value="4">
+    <span class="val" id="v-reservoirs">4</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Tube Diameter</label>
+    <input type="range" id="sl-tube-dia" min="8" max="20" step="1" value="12">
+    <span class="val" id="v-tube-dia">12</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Particles/Res</label>
+    <input type="range" id="sl-particles" min="50" max="200" step="10" value="120">
+    <span class="val" id="v-particles">120</span>
+  </div>
+
+  <div class="section-title">Physics</div>
+  <div class="ctrl-row">
+    <label>Gravity</label>
+    <input type="range" id="sl-gravity" min="0.1" max="0.5" step="0.01" value="0.25">
+    <span class="val" id="v-gravity">0.25</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Speed</label>
+    <input type="range" id="sl-speed" min="0.2" max="3.0" step="0.1" value="1.0">
+    <span class="val" id="v-speed">1.0</span>
+  </div>
+
+  <div class="section-title">View</div>
+  <div class="btn-row">
+    <button class="btn active" id="btn-atlas" onclick="setMode('atlas')">Atlas 4&times;4</button>
+    <button class="btn" id="btn-single" onclick="setMode('single')">Single</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn accent" onclick="randomizeAll()">Randomize</button>
+    <button class="btn" onclick="mutateAll()">Mutate</button>
+    <button class="btn danger" id="btn-beautiful" onclick="findBeautiful()">Find Beautiful</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn" onclick="primeAllSiphons()">Prime All</button>
+    <button class="btn danger" onclick="resetAll()">Reset</button>
+  </div>
+  <div id="progress-container" style="display:none;">
+    <div class="progress-bar"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
+    <span style="font-size:9px;color:#888;" id="progress-text">Searching...</span>
+  </div>
+
+  <div class="section-title">Details</div>
+  <div class="detail-list" id="detail-list">
+    <div class="detail-item" style="color:#999;">Click a siphon tube to prime it</div>
+  </div>
+</div>
+
+<div id="canvas-container">
+  <div id="hud">
+    <div>FPS <span class="hv" id="hud-fps">--</span></div>
+    <div>Mode <span class="hv" id="hud-mode">atlas</span></div>
+    <div>Reservoirs <span class="hv" id="hud-res">--</span></div>
+    <div>Particles <span class="hv" id="hud-particles">--</span></div>
+    <div>Active Flows <span class="hv" id="hud-flows">--</span></div>
+    <div>Score <span class="hv" id="hud-score">--</span></div>
+  </div>
+  <div id="physics-hud">
+    <div>PE: <span id="ph-pe">--</span></div>
+    <div>KE: <span id="ph-ke">--</span></div>
+    <div>Total: <span id="ph-total">--</span></div>
+    <div>Drift: <span id="ph-drift">--</span></div>
+  </div>
+</div>
+
+<div id="info-bar">
+  Plate IX. &mdash; Water siphon cascade: particles flow through primed tubes from high to low reservoirs. Click tubes to prime. Flow rate follows Torricelli&rsquo;s theorem: v = &radic;(2g&Delta;h).
+</div>
+
+<script>
+// ========================================================
+// WATER SIPHON CASCADE — Gravity-Driven Particle Flow
+// ========================================================
+// ANALYTICAL CHECK: Torricelli's theorem
+// v = sqrt(2 * g * delta_h) where delta_h = height difference between reservoirs
+// Flow rate Q = tube_area * v = pi*(d/2)^2 * sqrt(2*g*h)
+// Siphon principle: once tube is full (primed), flow continues uphill over crest
+// Siphon breaks if air enters (source level drops below tube inlet)
+
+const COLS = 4, ROWS = 4;
+const FIND_BEAUTIFUL_TOTAL = 200;
+const FIND_BEAUTIFUL_CHUNK = 25;
+const PARTICLE_R = 3;
+const WALL_THICK = 4;
+const DAMPING = 0.6;
+const PARTICLE_DAMPING = 0.85;
+
+// ===== STATE =====
+let mode = 'atlas';
+let cells = [];
+let selectedIdx = -1;
+let hoverCell = -1;
+let cw, ch;
+let findBeautifulRunning = false;
+let globalTime = 0;
+let initialEnergy = null;
+
+// ===== SLIDER WIRING =====
+function sliderVal(id) { return parseFloat(document.getElementById(id).value); }
+function wireSlider(sliderId, displayId, fmt) {
+  let sl = document.getElementById(sliderId);
+  let disp = document.getElementById(displayId);
+  sl.addEventListener('input', () => {
+    disp.textContent = fmt ? fmt(sl.value) : sl.value;
+  });
+}
+
+// ===== BEZIER UTILITIES =====
+function bezierPt(p0, p1, p2, p3, t) {
+  let mt = 1 - t;
+  return {
+    x: mt*mt*mt*p0.x + 3*mt*mt*t*p1.x + 3*mt*t*t*p2.x + t*t*t*p3.x,
+    y: mt*mt*mt*p0.y + 3*mt*mt*t*p1.y + 3*mt*t*t*p2.y + t*t*t*p3.y
+  };
+}
+
+function bezierTangent(p0, p1, p2, p3, t) {
+  let mt = 1 - t;
+  return {
+    x: 3*mt*mt*(p1.x-p0.x) + 6*mt*t*(p2.x-p1.x) + 3*t*t*(p3.x-p2.x),
+    y: 3*mt*mt*(p1.y-p0.y) + 6*mt*t*(p2.y-p1.y) + 3*t*t*(p3.y-p2.y)
+  };
+}
+
+function bezierLength(p0, p1, p2, p3, steps) {
+  let len = 0;
+  let prev = bezierPt(p0, p1, p2, p3, 0);
+  for (let i = 1; i <= steps; i++) {
+    let cur = bezierPt(p0, p1, p2, p3, i / steps);
+    let dx = cur.x - prev.x, dy = cur.y - prev.y;
+    len += Math.sqrt(dx*dx + dy*dy);
+    prev = cur;
+  }
+  return len;
+}
+
+// ===== RESERVOIR =====
+function makeReservoir(x, y, w, h) {
+  return { x, y, w, h, particles: [] };
+}
+
+function reservoirWaterLevel(res) {
+  // Water level rises from bottom based on particle count
+  let particleArea = Math.PI * PARTICLE_R * PARTICLE_R;
+  let totalParticleArea = res.particles.length * particleArea * 0.7; // packing factor
+  let waterHeight = totalParticleArea / res.w;
+  return res.y + res.h - waterHeight;
+}
+
+function reservoirInletY(res) {
+  // Inlet is on the side, slightly above bottom
+  return res.y + res.h - res.h * 0.15;
+}
+
+// ===== SIPHON TUBE =====
+function makeSiphonTube(fromIdx, toIdx, reservoirs, crestOffset) {
+  let rFrom = reservoirs[fromIdx];
+  let rTo = reservoirs[toIdx];
+
+  // Outlet point at top of reservoir wall
+  let fromX = rFrom.x + rFrom.w;
+  let fromY = rFrom.y + rFrom.h * 0.2;
+  let toX = rTo.x;
+  let toY = rTo.y + rTo.h * 0.2;
+
+  // Crest is above both reservoir tops
+  let crestY = Math.min(rFrom.y, rTo.y) - (crestOffset || 30);
+  let midX = (fromX + toX) / 2;
+
+  // Control points for cubic bezier
+  let p0 = { x: fromX, y: fromY };
+  let p1 = { x: fromX + (midX - fromX) * 0.3, y: crestY };
+  let p2 = { x: toX - (toX - midX) * 0.3, y: crestY };
+  let p3 = { x: toX, y: toY };
+
+  return {
+    from: fromIdx,
+    to: toIdx,
+    p0, p1, p2, p3,
+    crestY,
+    diameter: sliderVal('sl-tube-dia'),
+    primed: false,
+    flowRate: 0,
+    flowParticles: [], // particles traveling through the tube
+    totalFlowed: 0
+  };
+}
+
+// ===== PARTICLE =====
+function makeParticle(x, y) {
+  return {
+    x, y,
+    vx: (Math.random() - 0.5) * 0.5,
+    vy: 0,
+    inTube: false,
+    tubeId: -1,
+    tubeT: 0,
+    alpha: 180 + Math.floor(Math.random() * 75)
+  };
+}
+
+// ===== CONFIG GENERATOR =====
+function randomConfig(cellW, cellH, isAtlas) {
+  let numRes = parseInt(document.getElementById('sl-reservoirs').value);
+  let numParticles = parseInt(document.getElementById('sl-particles').value);
+  if (isAtlas) numParticles = Math.min(numParticles, 80);
+
+  let gravity = sliderVal('sl-gravity');
+  let tubeDia = sliderVal('sl-tube-dia');
+
+  let margin = 20;
+  let usableW = cellW - margin * 2;
+  let usableH = cellH - margin * 2;
+  let resW = Math.max(30, (usableW / numRes) * 0.55);
+  let resH = usableH * 0.35;
+
+  // Generate reservoir positions: cascading with variety
+  let reservoirs = [];
+  let spacing = usableW / numRes;
+
+  // Decide height pattern: generally descending but with one "high" reservoir
+  let heights = [];
+  let baseY = margin + usableH * 0.1;
+  for (let i = 0; i < numRes; i++) {
+    // General downward slope with one bump up
+    let slope = (i / (numRes - 1)) * usableH * 0.3;
+    let bump = 0;
+    if (i === 1 && numRes >= 4) bump = -usableH * 0.15; // one goes higher
+    if (i === Math.floor(numRes / 2) && Math.random() > 0.5) bump = -usableH * 0.1;
+    heights.push(baseY + slope + bump + (Math.random() - 0.5) * usableH * 0.08);
+  }
+
+  for (let i = 0; i < numRes; i++) {
+    let rx = margin + i * spacing + spacing * 0.1;
+    let ry = heights[i];
+    reservoirs.push(makeReservoir(rx, ry, resW, resH));
+  }
+
+  // Fill first reservoir with most particles, distribute some to others
+  for (let i = 0; i < numRes; i++) {
+    let count = (i === 0) ? numParticles : Math.floor(numParticles * 0.3);
+    for (let j = 0; j < count; j++) {
+      let px = reservoirs[i].x + PARTICLE_R + Math.random() * (reservoirs[i].w - 2 * PARTICLE_R);
+      let py = reservoirs[i].y + reservoirs[i].h * 0.5 + Math.random() * (reservoirs[i].h * 0.45);
+      reservoirs[i].particles.push(makeParticle(px, py));
+    }
+  }
+
+  // Create siphon tubes between adjacent reservoirs
+  let tubes = [];
+  for (let i = 0; i < numRes - 1; i++) {
+    let crestOff = 25 + Math.random() * 25;
+    tubes.push(makeSiphonTube(i, i + 1, reservoirs, crestOff));
+  }
+  // Optionally add a long siphon from first to last for drama
+  if (numRes >= 4 && Math.random() > 0.4) {
+    tubes.push(makeSiphonTube(numRes - 1, 0, reservoirs, 40 + Math.random() * 20));
+  }
+
+  return { reservoirs, tubes, gravity, tubeDia, numParticles, score: 0 };
+}
+
+// ===== PHYSICS STEP =====
+function stepPhysics(config, dt) {
+  let g = config.gravity;
+  let speed = sliderVal('sl-speed');
+  dt *= speed;
+
+  // Step reservoir particles (gravity + wall collisions)
+  for (let ri = 0; ri < config.reservoirs.length; ri++) {
+    let res = config.reservoirs[ri];
+    for (let pi = res.particles.length - 1; pi >= 0; pi--) {
+      let p = res.particles[pi];
+      if (p.inTube) continue;
+
+      p.vy += g * dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+
+      // Wall collisions
+      let left = res.x + PARTICLE_R;
+      let right = res.x + res.w - PARTICLE_R;
+      let top = res.y + PARTICLE_R;
+      let bottom = res.y + res.h - PARTICLE_R;
+
+      if (p.x < left)  { p.x = left; p.vx = Math.abs(p.vx) * DAMPING; }
+      if (p.x > right) { p.x = right; p.vx = -Math.abs(p.vx) * DAMPING; }
+      if (p.y < top)   { p.y = top; p.vy = Math.abs(p.vy) * DAMPING; }
+      if (p.y > bottom) { p.y = bottom; p.vy = -Math.abs(p.vy) * DAMPING * 0.3; p.vx *= PARTICLE_DAMPING; }
+
+      // Simple particle-particle repulsion (only nearby)
+      for (let pj = pi + 1; pj < res.particles.length; pj++) {
+        let q = res.particles[pj];
+        if (q.inTube) continue;
+        let dx = q.x - p.x, dy = q.y - p.y;
+        let dist2 = dx*dx + dy*dy;
+        let minDist = PARTICLE_R * 2.2;
+        if (dist2 < minDist * minDist && dist2 > 0.01) {
+          let dist = Math.sqrt(dist2);
+          let overlap = minDist - dist;
+          let nx = dx / dist, ny = dy / dist;
+          let push = overlap * 0.3;
+          p.x -= nx * push;
+          p.y -= ny * push;
+          q.x += nx * push;
+          q.y += ny * push;
+          // Transfer some velocity
+          let relV = (q.vx - p.vx) * nx + (q.vy - p.vy) * ny;
+          if (relV < 0) {
+            p.vx += nx * relV * 0.3;
+            p.vy += ny * relV * 0.3;
+            q.vx -= nx * relV * 0.3;
+            q.vy -= ny * relV * 0.3;
+          }
+        }
+      }
+    }
+  }
+
+  // Step siphon tube flow
+  for (let ti = 0; ti < config.tubes.length; ti++) {
+    let tube = config.tubes[ti];
+    if (!tube.primed) continue;
+
+    let rFrom = config.reservoirs[tube.from];
+    let rTo = config.reservoirs[tube.to];
+
+    // Water levels (lower y = higher water level visually)
+    let levelFrom = reservoirWaterLevel(rFrom);
+    let levelTo = reservoirWaterLevel(rTo);
+
+    // Delta height: positive means 'from' is higher (more water / lower level y)
+    let deltaH = levelTo - levelFrom; // positive = from is higher
+
+    // Check if siphon breaks: source water level below inlet
+    let inletY = rFrom.y + rFrom.h * 0.2; // matches tube entry point
+    if (levelFrom > inletY || rFrom.particles.length < 3) {
+      tube.primed = false;
+      tube.flowRate = 0;
+      // Dump any in-transit particles back
+      for (let fp of tube.flowParticles) {
+        let pos = bezierPt(tube.p0, tube.p1, tube.p2, tube.p3, fp.tubeT);
+        fp.x = pos.x;
+        fp.y = pos.y;
+        fp.inTube = false;
+        fp.tubeId = -1;
+        // Add to nearest reservoir
+        let dFrom = Math.abs(pos.x - (rFrom.x + rFrom.w / 2));
+        let dTo = Math.abs(pos.x - (rTo.x + rTo.w / 2));
+        if (dFrom < dTo) rFrom.particles.push(fp);
+        else rTo.particles.push(fp);
+      }
+      tube.flowParticles = [];
+      continue;
+    }
+
+    // Flow rate: Torricelli v = sqrt(2*g*|deltaH|)
+    let flowSpeed = deltaH > 0 ? Math.sqrt(2 * g * Math.abs(deltaH) * 0.01) : 0;
+    if (deltaH <= 2) { // Nearly equal levels: stop flow
+      flowSpeed = 0;
+    }
+    tube.flowRate = flowSpeed;
+
+    // Move existing tube particles
+    let tubeLen = bezierLength(tube.p0, tube.p1, tube.p2, tube.p3, 20);
+    let tSpeed = (flowSpeed * 60 * dt) / Math.max(tubeLen, 1);
+
+    for (let fi = tube.flowParticles.length - 1; fi >= 0; fi--) {
+      let fp = tube.flowParticles[fi];
+      fp.tubeT += tSpeed;
+
+      if (fp.tubeT >= 1.0) {
+        // Arrived at destination reservoir
+        fp.inTube = false;
+        fp.tubeId = -1;
+        let exitPt = bezierPt(tube.p0, tube.p1, tube.p2, tube.p3, 1.0);
+        fp.x = rTo.x + PARTICLE_R + Math.random() * (rTo.w - 2 * PARTICLE_R);
+        fp.y = rTo.y + rTo.h * 0.3;
+        fp.vx = (Math.random() - 0.5) * 0.5;
+        fp.vy = 1;
+        rTo.particles.push(fp);
+        tube.flowParticles.splice(fi, 1);
+        tube.totalFlowed++;
+      } else {
+        let pos = bezierPt(tube.p0, tube.p1, tube.p2, tube.p3, fp.tubeT);
+        fp.x = pos.x;
+        fp.y = pos.y;
+      }
+    }
+
+    // Inject new particles into tube from source reservoir
+    if (flowSpeed > 0 && rFrom.particles.length > 3) {
+      // Rate of injection: proportional to flow speed
+      let injectRate = flowSpeed * 2 * dt;
+      if (Math.random() < injectRate && tube.flowParticles.length < 30) {
+        // Take a particle from source
+        let idx = rFrom.particles.length - 1;
+        // Find a particle near the outlet (top of reservoir)
+        let bestIdx = -1, bestDist = Infinity;
+        for (let i = 0; i < rFrom.particles.length; i++) {
+          let pp = rFrom.particles[i];
+          if (pp.inTube) continue;
+          let dx = pp.x - tube.p0.x, dy = pp.y - tube.p0.y;
+          let d = Math.sqrt(dx*dx + dy*dy);
+          if (d < bestDist) { bestDist = d; bestIdx = i; }
+        }
+        if (bestIdx >= 0 && bestDist < rFrom.w) {
+          let stolen = rFrom.particles.splice(bestIdx, 1)[0];
+          stolen.inTube = true;
+          stolen.tubeId = ti;
+          stolen.tubeT = 0;
+          let pos = bezierPt(tube.p0, tube.p1, tube.p2, tube.p3, 0);
+          stolen.x = pos.x;
+          stolen.y = pos.y;
+          tube.flowParticles.push(stolen);
+        }
+      }
+    }
+  }
+}
+
+// ===== ENERGY CALCULATION =====
+function computeEnergy(config) {
+  let pe = 0, ke = 0;
+  let g = config.gravity;
+  for (let res of config.reservoirs) {
+    for (let p of res.particles) {
+      pe += g * p.y;
+      ke += 0.5 * (p.vx * p.vx + p.vy * p.vy);
+    }
+  }
+  for (let tube of config.tubes) {
+    for (let fp of tube.flowParticles) {
+      pe += g * fp.y;
+    }
+  }
+  return { pe, ke, total: pe + ke };
+}
+
+// ===== SCORING =====
+function scoreConfig(config) {
+  // Score by: cascade chain length * flow complexity * visual drama
+  let activeFlows = 0;
+  let totalFlowed = 0;
+  let uphillSiphons = 0;
+
+  for (let tube of config.tubes) {
+    if (tube.primed && tube.flowRate > 0) activeFlows++;
+    totalFlowed += tube.totalFlowed;
+    // Check if tube goes uphill at some point (crest above source)
+    let rFrom = config.reservoirs[tube.from];
+    if (tube.crestY < rFrom.y) uphillSiphons++;
+  }
+
+  let chainLength = config.reservoirs.length;
+  let flowComplexity = Math.max(1, activeFlows);
+  let drama = Math.max(1, uphillSiphons);
+
+  return chainLength * flowComplexity * drama + totalFlowed * 0.01;
+}
+
+// ===== TOTAL PARTICLES =====
+function totalParticles(config) {
+  let count = 0;
+  for (let res of config.reservoirs) count += res.particles.length;
+  for (let tube of config.tubes) count += tube.flowParticles.length;
+  return count;
+}
+
+// ===== DRAWING =====
+function drawConfig(p, config, ox, oy, scale, isAtlas) {
+  p.push();
+  p.translate(ox, oy);
+  p.scale(scale);
+
+  // Draw reservoirs
+  for (let ri = 0; ri < config.reservoirs.length; ri++) {
+    let res = config.reservoirs[ri];
+
+    // Water fill
+    let waterLvl = reservoirWaterLevel(res);
+    let waterH = res.y + res.h - waterLvl;
+    if (waterH > 0) {
+      p.noStroke();
+      p.fill(70, 130, 200, 80);
+      p.rect(res.x + WALL_THICK/2, waterLvl, res.w - WALL_THICK, waterH);
+    }
+
+    // Reservoir walls
+    p.noFill();
+    p.stroke(120, 90, 60);
+    p.strokeWeight(WALL_THICK * (isAtlas ? 0.5 : 1));
+    // Bottom
+    p.line(res.x, res.y + res.h, res.x + res.w, res.y + res.h);
+    // Left wall
+    p.line(res.x, res.y, res.x, res.y + res.h);
+    // Right wall
+    p.line(res.x + res.w, res.y, res.x + res.w, res.y + res.h);
+
+    // Level indicator line
+    if (!isAtlas) {
+      p.stroke(70, 130, 200, 150);
+      p.strokeWeight(1);
+      p.line(res.x - 5, waterLvl, res.x, waterLvl);
+    }
+
+    // Label
+    if (!isAtlas) {
+      p.noStroke();
+      p.fill(100);
+      p.textSize(9);
+      p.textAlign(p.CENTER, p.TOP);
+      p.text('R' + ri + ' (' + res.particles.length + ')', res.x + res.w / 2, res.y + res.h + 4);
+    }
+
+    // Draw particles in reservoir
+    for (let pp of res.particles) {
+      if (pp.inTube) continue;
+      p.noStroke();
+      p.fill(50, 100, 200, pp.alpha);
+      let r = isAtlas ? PARTICLE_R * 0.7 : PARTICLE_R;
+      p.circle(pp.x, pp.y, r * 2);
+    }
+  }
+
+  // Draw siphon tubes
+  for (let ti = 0; ti < config.tubes.length; ti++) {
+    let tube = config.tubes[ti];
+
+    // Tube body
+    let tubeW = tube.diameter * (isAtlas ? 0.6 : 1);
+    if (tube.primed) {
+      // Primed tube: blue tint
+      p.stroke(70, 130, 200, 100);
+      p.strokeWeight(tubeW);
+      p.noFill();
+      p.bezier(tube.p0.x, tube.p0.y, tube.p1.x, tube.p1.y, tube.p2.x, tube.p2.y, tube.p3.x, tube.p3.y);
+    }
+
+    // Tube outline
+    if (tube.primed) p.stroke(100, 80, 60);
+    else p.stroke(160, 140, 120);
+    p.strokeWeight(isAtlas ? 1 : 2);
+    p.noFill();
+    p.bezier(tube.p0.x, tube.p0.y, tube.p1.x, tube.p1.y, tube.p2.x, tube.p2.y, tube.p3.x, tube.p3.y);
+
+    // Draw particles in tube
+    for (let fp of tube.flowParticles) {
+      p.noStroke();
+      p.fill(40, 90, 220, fp.alpha);
+      let r = isAtlas ? PARTICLE_R * 0.6 : PARTICLE_R;
+      p.circle(fp.x, fp.y, r * 2);
+    }
+
+    // Flow rate indicator
+    if (!isAtlas && tube.primed && tube.flowRate > 0) {
+      let midPt = bezierPt(tube.p0, tube.p1, tube.p2, tube.p3, 0.5);
+      p.noStroke();
+      p.fill(80, 60, 40);
+      p.textSize(8);
+      p.textAlign(p.CENTER, p.BOTTOM);
+      p.text('v=' + tube.flowRate.toFixed(2), midPt.x, midPt.y - 8);
+    }
+
+    // "Click to prime" hint in single mode
+    if (!isAtlas && !tube.primed) {
+      let midPt = bezierPt(tube.p0, tube.p1, tube.p2, tube.p3, 0.5);
+      p.noStroke();
+      p.fill(160, 140, 120, 150);
+      p.textSize(7);
+      p.textAlign(p.CENTER, p.CENTER);
+      p.text('click to prime', midPt.x, midPt.y - 6);
+    }
+
+    // Crest marker
+    if (!isAtlas) {
+      let crestPt = bezierPt(tube.p0, tube.p1, tube.p2, tube.p3, 0.5);
+      p.noStroke();
+      if (tube.primed) p.fill(70, 130, 200, 120);
+      else p.fill(200, 180, 160, 80);
+      p.triangle(crestPt.x - 4, crestPt.y + 4, crestPt.x + 4, crestPt.y + 4, crestPt.x, crestPt.y - 3);
+    }
+  }
+
+  p.pop();
+}
+
+// ===== CELL MANAGEMENT =====
+function initCells(count) {
+  cells = [];
+  for (let i = 0; i < count; i++) {
+    let c = randomConfig(cw, ch, mode === 'atlas');
+    cells.push(c);
+  }
+}
+
+function primeAllSiphons() {
+  for (let config of cells) {
+    for (let tube of config.tubes) {
+      tube.primed = true;
+    }
+  }
+}
+
+function resetAll() {
+  if (mode === 'atlas') {
+    initCells(COLS * ROWS);
+  } else {
+    let fullW = cw * COLS;
+    let fullH = ch * ROWS;
+    cells = [randomConfig(fullW, fullH, false)];
+  }
+  initialEnergy = null;
+}
+
+function randomizeAll() {
+  resetAll();
+  initialEnergy = null;
+}
+
+function mutateAll() {
+  for (let config of cells) {
+    // Mutate reservoir heights slightly
+    for (let res of config.reservoirs) {
+      res.y += (Math.random() - 0.5) * 15;
+    }
+    // Rebuild tubes with new crests
+    let newTubes = [];
+    for (let tube of config.tubes) {
+      let nt = makeSiphonTube(tube.from, tube.to, config.reservoirs, 25 + Math.random() * 30);
+      nt.primed = tube.primed;
+      newTubes.push(nt);
+    }
+    config.tubes = newTubes;
+  }
+}
+
+// ===== FIND BEAUTIFUL =====
+function findBeautiful() {
+  if (findBeautifulRunning) return;
+  findBeautifulRunning = true;
+  document.getElementById('btn-beautiful').disabled = true;
+  document.getElementById('progress-container').style.display = 'block';
+
+  let best = [];
+  let tested = 0;
+
+  let genW = (mode === 'atlas') ? cw : cw * COLS;
+  let genH = (mode === 'atlas') ? ch : ch * ROWS;
+
+  function chunk() {
+    for (let i = 0; i < FIND_BEAUTIFUL_CHUNK; i++) {
+      let config = randomConfig(genW, genH, mode === 'atlas');
+      // Auto-prime all
+      for (let tube of config.tubes) tube.primed = true;
+      // Simulate a few steps
+      for (let s = 0; s < 60; s++) stepPhysics(config, 0.016);
+      config.score = scoreConfig(config);
+      best.push(config);
+      tested++;
+    }
+    best.sort((a, b) => b.score - a.score);
+    if (best.length > (mode === 'atlas' ? 16 : 1)) {
+      best.length = (mode === 'atlas' ? 16 : 1);
+    }
+
+    let pct = Math.floor((tested / FIND_BEAUTIFUL_TOTAL) * 100);
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('progress-text').textContent = `Tested ${tested}/${FIND_BEAUTIFUL_TOTAL}`;
+
+    if (tested < FIND_BEAUTIFUL_TOTAL) {
+      requestAnimationFrame(chunk);
+    } else {
+      cells = best;
+      selectedIdx = 0;
+      findBeautifulRunning = false;
+      document.getElementById('btn-beautiful').disabled = false;
+      document.getElementById('progress-container').style.display = 'none';
+      initialEnergy = null;
+    }
+  }
+  chunk();
+}
+
+// ===== MODE =====
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-atlas').classList.toggle('active', m === 'atlas');
+  document.getElementById('btn-single').classList.toggle('active', m === 'single');
+  document.getElementById('hud-mode').textContent = m;
+
+  if (m === 'atlas') {
+    initCells(COLS * ROWS);
+    selectedIdx = -1;
+  } else {
+    if (selectedIdx < 0) selectedIdx = 0;
+    // Generate config at full canvas size
+    let fullW = cw * COLS;
+    let fullH = ch * ROWS;
+    cells = [randomConfig(fullW, fullH, false)];
+  }
+  initialEnergy = null;
+}
+
+// ===== CLICK HANDLING =====
+function handleClick(p, mx, my) {
+  if (mode === 'atlas') {
+    let col = Math.floor(mx / cw);
+    let row = Math.floor(my / ch);
+    if (col >= 0 && col < COLS && row >= 0 && row < ROWS) {
+      let idx = row * COLS + col;
+      if (idx < cells.length) {
+        selectedIdx = idx;
+        // Rebuild at full canvas size for single mode
+        let fullW = cw * COLS;
+        let fullH = ch * ROWS;
+        let newConfig = randomConfig(fullW, fullH, false);
+        cells = [newConfig];
+        mode = 'single';
+        document.getElementById('btn-atlas').classList.remove('active');
+        document.getElementById('btn-single').classList.add('active');
+        document.getElementById('hud-mode').textContent = 'single';
+        initialEnergy = null;
+      }
+    }
+  } else {
+    // Single mode: check if click is near a tube to prime it
+    if (cells.length > 0) {
+      let config = cells[0];
+      for (let ti = 0; ti < config.tubes.length; ti++) {
+        let tube = config.tubes[ti];
+        // Sample points along the tube and check distance
+        for (let t = 0; t < 1; t += 0.05) {
+          let pt = bezierPt(tube.p0, tube.p1, tube.p2, tube.p3, t);
+          let dx = mx - pt.x, dy = my - pt.y;
+          if (Math.sqrt(dx*dx + dy*dy) < tube.diameter + 10) {
+            tube.primed = !tube.primed;
+            if (tube.primed) {
+              // When priming, don't dump flow particles
+            } else {
+              // When un-priming, dump flow particles back to source
+              let rFrom = config.reservoirs[tube.from];
+              for (let fp of tube.flowParticles) {
+                fp.inTube = false;
+                fp.tubeId = -1;
+                fp.x = rFrom.x + PARTICLE_R + Math.random() * (rFrom.w - 2 * PARTICLE_R);
+                fp.y = rFrom.y + rFrom.h * 0.5;
+                rFrom.particles.push(fp);
+              }
+              tube.flowParticles = [];
+            }
+            return; // Only toggle one tube per click
+          }
+        }
+      }
+    }
+  }
+}
+
+// ===== UPDATE HUD =====
+function updateHUD(p, config) {
+  document.getElementById('hud-fps').textContent = Math.round(p.frameRate());
+  document.getElementById('hud-mode').textContent = mode;
+
+  if (config) {
+    document.getElementById('hud-res').textContent = config.reservoirs.length;
+    document.getElementById('hud-particles').textContent = totalParticles(config);
+
+    let activeFlows = 0;
+    for (let tube of config.tubes) {
+      if (tube.primed && tube.flowRate > 0) activeFlows++;
+    }
+    document.getElementById('hud-flows').textContent = activeFlows;
+    document.getElementById('hud-score').textContent = scoreConfig(config).toFixed(1);
+
+    // Physics HUD
+    let energy = computeEnergy(config);
+    if (initialEnergy === null) initialEnergy = energy.total;
+    let drift = initialEnergy !== 0 ? ((energy.total - initialEnergy) / Math.abs(initialEnergy) * 100) : 0;
+
+    document.getElementById('ph-pe').textContent = energy.pe.toFixed(1);
+    document.getElementById('ph-ke').textContent = energy.ke.toFixed(1);
+    document.getElementById('ph-total').textContent = energy.total.toFixed(1);
+    document.getElementById('ph-drift').textContent = drift.toFixed(1) + '%';
+
+    let phud = document.getElementById('physics-hud');
+    phud.className = '';
+    if (Math.abs(drift) > 20) phud.className = 'error';
+    else if (Math.abs(drift) > 10) phud.className = 'warn';
+
+    // Details
+    let detailHtml = '';
+    for (let ri = 0; ri < config.reservoirs.length; ri++) {
+      detailHtml += `<div class="detail-item">R${ri}: ${config.reservoirs[ri].particles.length} particles</div>`;
+    }
+    for (let ti = 0; ti < config.tubes.length; ti++) {
+      let tube = config.tubes[ti];
+      let status = tube.primed ? (tube.flowRate > 0 ? 'FLOWING' : 'PRIMED') : 'OFF';
+      detailHtml += `<div class="detail-item">T${ti} (R${tube.from}→R${tube.to}): ${status} v=${tube.flowRate.toFixed(2)} total=${tube.totalFlowed}</div>`;
+    }
+    document.getElementById('detail-list').innerHTML = detailHtml;
+  }
+}
+
+// ===== P5 SKETCH =====
+const sketch = (p) => {
+  p.setup = function() {
+    let container = document.getElementById('canvas-container');
+    let W = container.offsetWidth;
+    let H = container.offsetHeight;
+    let cnv = p.createCanvas(W, H);
+    cnv.parent('canvas-container');
+    p.textFont('Georgia');
+
+    cw = W / COLS;
+    ch = H / ROWS;
+    initCells(COLS * ROWS);
+  };
+
+  p.windowResized = function() {
+    let container = document.getElementById('canvas-container');
+    let W = container.offsetWidth;
+    let H = container.offsetHeight;
+    p.resizeCanvas(W, H);
+    cw = W / COLS;
+    ch = H / ROWS;
+  };
+
+  p.draw = function() {
+    p.background(245, 243, 238);
+    globalTime += 0.016;
+
+    if (mode === 'atlas') {
+      cw = p.width / COLS;
+      ch = p.height / ROWS;
+
+      for (let i = 0; i < cells.length; i++) {
+        let col = i % COLS;
+        let row = Math.floor(i / COLS);
+        let ox = col * cw;
+        let oy = row * ch;
+
+        // Cell background
+        if (i === hoverCell) {
+          p.noStroke();
+          p.fill(240, 237, 230);
+          p.rect(ox, oy, cw, ch);
+        }
+
+        // Cell border
+        p.stroke(200, 192, 178);
+        p.strokeWeight(0.5);
+        p.noFill();
+        p.rect(ox, oy, cw, ch);
+
+        // Physics step
+        stepPhysics(cells[i], 0.016);
+
+        // Draw
+        let margin = 8;
+        let scaleX = (cw - margin * 2) / cw;
+        let scaleY = (ch - margin * 2) / ch;
+        let sc = Math.min(scaleX, scaleY);
+        drawConfig(p, cells[i], ox + margin, oy + margin, sc, true);
+
+        // Score label
+        p.noStroke();
+        p.fill(160, 140, 120);
+        p.textSize(8);
+        p.textAlign(p.LEFT, p.TOP);
+        p.text('#' + i + ' s=' + scoreConfig(cells[i]).toFixed(0), ox + 4, oy + 3);
+      }
+
+      // Hover detection
+      let col = Math.floor(p.mouseX / cw);
+      let row = Math.floor(p.mouseY / ch);
+      if (col >= 0 && col < COLS && row >= 0 && row < ROWS) {
+        hoverCell = row * COLS + col;
+      } else {
+        hoverCell = -1;
+      }
+
+      updateHUD(p, cells.length > 0 ? cells[0] : null);
+    } else {
+      // Single mode
+      if (cells.length > 0) {
+        let config = cells[0];
+        stepPhysics(config, 0.016);
+        drawConfig(p, config, 0, 0, 1, false);
+        updateHUD(p, config);
+      }
+    }
+  };
+
+  p.mousePressed = function() {
+    if (p.mouseX < 0 || p.mouseX > p.width || p.mouseY < 0 || p.mouseY > p.height) return;
+    handleClick(p, p.mouseX, p.mouseY);
+  };
+};
+
+// ===== INIT =====
+wireSlider('sl-reservoirs', 'v-reservoirs');
+wireSlider('sl-tube-dia', 'v-tube-dia');
+wireSlider('sl-particles', 'v-particles');
+wireSlider('sl-gravity', 'v-gravity', v => parseFloat(v).toFixed(2));
+wireSlider('sl-speed', 'v-speed', v => parseFloat(v).toFixed(1));
+
+new p5(sketch, 'canvas-container');
+</script>
+</body>
+</html>
