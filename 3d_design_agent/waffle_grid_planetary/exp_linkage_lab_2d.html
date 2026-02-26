@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Linkage Lab — Dyad Composition Engine</title>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f5f3ee; overflow: hidden; font-family: 'Georgia', serif; display: flex; height: 100vh; }
+
+  #sidebar {
+    width: 280px; min-width: 280px; background: #f0ede6;
+    border-right: 1px solid #c8c0b0; overflow-y: auto; padding: 12px 14px;
+    font-size: 12px; color: #444;
+  }
+  #sidebar h1 { font-size: 14px; letter-spacing: 1.5px; color: #333; margin-bottom: 2px; font-weight: normal; }
+  #sidebar .subtitle { font-size: 10px; color: #888; margin-bottom: 12px; font-style: italic; }
+
+  .section-title {
+    font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: #8b7355;
+    margin-top: 14px; margin-bottom: 6px; border-bottom: 1px solid #d8d0c0; padding-bottom: 3px;
+  }
+  .ctrl-row { display: flex; align-items: center; margin-bottom: 5px; }
+  .ctrl-row label { flex: 0 0 95px; font-size: 11px; color: #666; }
+  .ctrl-row input[type="range"] { flex: 1; height: 3px; accent-color: #8b4513; }
+  .ctrl-row .val { flex: 0 0 40px; text-align: right; font-size: 10px; color: #555; font-family: 'Consolas', monospace; }
+
+  .btn-row { display: flex; gap: 5px; margin: 8px 0; flex-wrap: wrap; }
+  .btn {
+    padding: 5px 10px; font-size: 10px; font-family: 'Georgia', serif;
+    background: #555; color: #f5f3ee; border: none; cursor: pointer;
+    letter-spacing: 0.5px; border-radius: 2px; transition: background 0.15s;
+  }
+  .btn:hover { background: #333; }
+  .btn.active { background: #8b4513; }
+  .btn.accent { background: #2a6848; }
+  .btn.accent:hover { background: #1a4830; }
+  .btn.danger { background: #8b2020; }
+  .btn.danger:hover { background: #6b1010; }
+  .btn:disabled { background: #aaa; cursor: not-allowed; }
+
+  #canvas-container { flex: 1; position: relative; }
+  #canvas-container canvas { display: block; }
+
+  #info-bar {
+    position: fixed; bottom: 0; left: 280px; right: 0; z-index: 100;
+    background: rgba(245,243,238,0.92); border-top: 1px solid #bbb;
+    padding: 4px 16px; font-size: 10px; color: #777; font-style: italic;
+  }
+
+  #hud {
+    position: absolute; top: 8px; right: 12px; background: rgba(245,243,238,0.9);
+    border: 1px solid #c8c0b0; border-radius: 4px; padding: 8px 12px;
+    font-size: 10px; line-height: 1.7; color: #666; min-width: 160px; pointer-events: none;
+  }
+  #hud .hv { color: #444; font-family: 'Consolas', monospace; float: right; }
+
+  .topo-list { max-height: 160px; overflow-y: auto; font-size: 9px; line-height: 1.6; margin-top: 4px; }
+  .topo-item { padding: 1px 0; color: #666; font-family: 'Consolas', monospace; }
+
+  .progress-bar { width: 100%; height: 3px; background: #ddd; border-radius: 2px; margin: 4px 0; }
+  .progress-bar-fill { height: 100%; background: #8b4513; border-radius: 2px; transition: width 0.1s; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #c8c0b0; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h1>LINKAGE LAB</h1>
+  <div class="subtitle">Dyad Composition Engine &mdash; Random N-Bar Mechanisms</div>
+
+  <div class="section-title">Mechanism Structure</div>
+  <div class="ctrl-row">
+    <label>Dyads (D)</label>
+    <input type="range" id="sl-dyads" min="1" max="9" step="1" value="3">
+    <span class="val" id="v-dyads">3</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Ground</label>
+    <input type="range" id="sl-ground" min="60" max="140" step="5" value="100">
+    <span class="val" id="v-ground">100</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Crank</label>
+    <input type="range" id="sl-crank" min="10" max="70" step="2" value="35">
+    <span class="val" id="v-crank">35</span>
+  </div>
+
+  <div class="section-title">Animation</div>
+  <div class="ctrl-row">
+    <label>Speed</label>
+    <input type="range" id="sl-speed" min="0.05" max="3.0" step="0.05" value="0.6">
+    <span class="val" id="v-speed">0.60</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Trail Length</label>
+    <input type="range" id="sl-trail" min="100" max="5000" step="100" value="500">
+    <span class="val" id="v-trail">500</span>
+  </div>
+
+  <div class="section-title">Display</div>
+  <div class="ctrl-row">
+    <label>Show Bars</label>
+    <input type="range" id="sl-bars" min="0" max="1" step="1" value="1">
+    <span class="val" id="v-bars">ON</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Trail Width</label>
+    <input type="range" id="sl-tw" min="0.5" max="4.0" step="0.25" value="1.5">
+    <span class="val" id="v-tw">1.5</span>
+  </div>
+
+  <div class="section-title">Actions</div>
+  <div class="btn-row">
+    <button class="btn active" id="btn-atlas" onclick="setMode('atlas')">Atlas</button>
+    <button class="btn" id="btn-single" onclick="setMode('single')">Single</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn accent" onclick="randomizeAll()">Randomize</button>
+    <button class="btn" onclick="mutateAll()">Mutate</button>
+    <button class="btn danger" id="btn-beautiful" onclick="findBeautiful()">Find Beautiful</button>
+  </div>
+  <div id="progress-container" style="display:none;">
+    <div class="progress-bar"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
+    <span style="font-size:9px;color:#888;" id="progress-text">Searching...</span>
+  </div>
+
+  <div class="section-title">Topology</div>
+  <div class="topo-list" id="topo-list">
+    <div class="topo-item" style="color:#999;">Click a cell to see topology</div>
+  </div>
+</div>
+
+<div id="canvas-container">
+  <div id="hud">
+    <div>FPS <span class="hv" id="hud-fps">--</span></div>
+    <div>Mode <span class="hv" id="hud-mode">atlas</span></div>
+    <div>Cells <span class="hv" id="hud-cells">16</span></div>
+    <div>Bars <span class="hv" id="hud-bars">--</span></div>
+    <div>Score <span class="hv" id="hud-score">--</span></div>
+  </div>
+</div>
+
+<div id="info-bar">
+  Plate I. &mdash; Random planar mechanisms via dyad composition. Each cell traces the output joint of a unique N-bar linkage. Click to inspect.
+</div>
+
+<script>
+// ========================================================
+// LINKAGE LAB — Dyad Composition Engine
+// ========================================================
+
+// ===== CONSTANTS =====
+const COLS = 4, ROWS = 4;
+const ATLAS_TRAIL_MAX = 500;
+const SINGLE_TRAIL_MAX = 5000;
+const VALIDATION_ANGLES = 72; // every 5 degrees
+const MAX_RETRIES = 50;
+const FIND_BEAUTIFUL_TOTAL = 200;
+const FIND_BEAUTIFUL_CHUNK = 20; // configs per frame (non-blocking mitigation)
+
+// ===== COLOR PALETTE =====
+const COLORS = {
+  ground: [120, 120, 120],
+  crank: [180, 50, 50],
+  dyad: [
+    [50, 100, 160], [160, 100, 50], [50, 140, 80], [140, 50, 130],
+    [80, 130, 140], [160, 130, 50], [100, 60, 140], [50, 160, 130],
+    [140, 80, 60]
+  ],
+  trail: [139, 69, 19],   // saddle brown
+  trailFade: [200, 180, 160],
+  joint: [60, 60, 60],
+  output: [200, 50, 50],
+  bg: [245, 243, 238],
+  cellBorder: [200, 190, 175]
+};
+
+// ===== STATE =====
+let mode = 'atlas';
+let cells = [];
+let selectedIdx = -1;
+let globalAngle = 0;
+let hoverCell = -1;
+let cw, ch; // canvas size
+let findBeautifulRunning = false;
+
+// ===== CIRCLE-CIRCLE INTERSECTION SOLVER =====
+// Returns two solutions or null if no intersection
+function circleCircleIntersect(cx1, cy1, r1, cx2, cy2, r2) {
+  let dx = cx2 - cx1, dy = cy2 - cy1;
+  let d = Math.sqrt(dx * dx + dy * dy);
+  if (d > r1 + r2 - 0.001 || d < Math.abs(r1 - r2) + 0.001) return null;
+  let a = (r1 * r1 - r2 * r2 + d * d) / (2 * d);
+  let hSq = r1 * r1 - a * a;
+  if (hSq < 0) return null;
+  let h = Math.sqrt(hSq);
+  let mx = cx1 + a * dx / d;
+  let my = cy1 + a * dy / d;
+  return {
+    sol1: { x: mx + h * dy / d, y: my - h * dx / d },
+    sol2: { x: mx - h * dy / d, y: my + h * dx / d }
+  };
+}
+
+// ===== DYAD COMPOSITION SOLVER =====
+// Solves full mechanism at a given crank angle
+// Returns array of joint positions or null if failed
+function solveMechanism(config, theta, prevJoints) {
+  let joints = [];
+  // J0 = ground left (fixed)
+  joints.push({ x: 0, y: 0, fixed: true });
+  // J1 = ground right (fixed)
+  joints.push({ x: config.groundLen, y: 0, fixed: true });
+  // J2 = crank endpoint (rotates)
+  joints.push({
+    x: config.crankLen * Math.cos(theta),
+    y: config.crankLen * Math.sin(theta),
+    fixed: false
+  });
+
+  // Solve each dyad
+  for (let d = 0; d < config.dyads.length; d++) {
+    let dyad = config.dyads[d];
+    let jA = joints[dyad.connectA];
+    let jB = joints[dyad.connectB];
+    if (!jA || !jB) return null;
+
+    let result = circleCircleIntersect(jA.x, jA.y, dyad.L1, jB.x, jB.y, dyad.L2);
+    if (!result) return null;
+
+    // Branch tracking: pick solution closest to previous frame
+    let sol;
+    if (prevJoints && prevJoints.length > 3 + d) {
+      let prev = prevJoints[3 + d];
+      let d1 = (result.sol1.x - prev.x) ** 2 + (result.sol1.y - prev.y) ** 2;
+      let d2 = (result.sol2.x - prev.x) ** 2 + (result.sol2.y - prev.y) ** 2;
+      sol = d1 <= d2 ? result.sol1 : result.sol2;
+    } else {
+      // First frame: pick positive Y solution (convention)
+      sol = result.sol1.y >= result.sol2.y ? result.sol1 : result.sol2;
+    }
+
+    joints.push({ x: sol.x, y: sol.y, fixed: false });
+  }
+
+  return joints;
+}
+
+// ===== VALIDATION (early-exit mitigation) =====
+// Tests mechanism at 72 angles, EXITS on first failure
+function isValid(config) {
+  let prev = null;
+  for (let i = 0; i < VALIDATION_ANGLES; i++) {
+    let theta = (i / VALIDATION_ANGLES) * Math.PI * 2;
+    let joints = solveMechanism(config, theta, prev);
+    if (!joints) return false; // EARLY EXIT — don't test remaining angles
+    prev = joints;
+  }
+  return true;
+}
+
+// ===== FULL TRACE COMPUTATION =====
+function computeTrace(config, steps) {
+  steps = steps || 360;
+  let pts = [];
+  let prev = null;
+  for (let i = 0; i < steps; i++) {
+    let theta = (i / steps) * Math.PI * 2;
+    let joints = solveMechanism(config, theta, prev);
+    if (!joints) continue;
+    prev = joints;
+    let outJ = joints[config.outputJoint];
+    if (outJ) pts.push({ x: outJ.x, y: outJ.y });
+  }
+  return pts;
+}
+
+// ===== CONFIG GENERATORS =====
+function randomConfig(numDyadsOverride) {
+  let numDyads = numDyadsOverride || parseInt(document.getElementById('sl-dyads').value);
+  let groundLen = parseFloat(document.getElementById('sl-ground').value);
+  let crankLen = parseFloat(document.getElementById('sl-crank').value);
+
+  // Ensure crank < ground for full rotation (Grashof)
+  if (crankLen >= groundLen) crankLen = groundLen * 0.4;
+
+  let dyads = [];
+  let numJoints = 3; // J0, J1, J2 already exist
+
+  for (let d = 0; d < numDyads; d++) {
+    // Pick two DIFFERENT existing joints to connect
+    let available = [];
+    for (let j = 0; j < numJoints; j++) available.push(j);
+
+    let connectA = available[Math.floor(Math.random() * available.length)];
+    let connectB;
+    do {
+      connectB = available[Math.floor(Math.random() * available.length)];
+    } while (connectB === connectA);
+
+    // Random bar lengths — scale relative to ground
+    let scale = groundLen * 0.8;
+    let L1 = 20 + Math.random() * scale;
+    let L2 = 20 + Math.random() * scale;
+
+    dyads.push({ connectA, connectB, L1, L2 });
+    numJoints++; // new joint added
+  }
+
+  // Output joint: random non-ground, non-crank joint (prefer later joints for more complex motion)
+  let outputJoint = 3 + Math.floor(Math.random() * numDyads);
+
+  return { groundLen, crankLen, dyads, outputJoint, numDyads };
+}
+
+function mutateConfig(config) {
+  let c = JSON.parse(JSON.stringify(config)); // deep copy
+  let sigma = 0.08; // 8% perturbation
+
+  // Keep topology, perturb geometry
+  c.groundLen *= (1 + (Math.random() - 0.5) * 2 * sigma);
+  c.crankLen *= (1 + (Math.random() - 0.5) * 2 * sigma);
+  if (c.crankLen >= c.groundLen) c.crankLen = c.groundLen * 0.4;
+
+  for (let d of c.dyads) {
+    d.L1 *= (1 + (Math.random() - 0.5) * 2 * sigma);
+    d.L2 *= (1 + (Math.random() - 0.5) * 2 * sigma);
+    d.L1 = Math.max(10, d.L1);
+    d.L2 = Math.max(10, d.L2);
+  }
+
+  return c;
+}
+
+// ===== BEAUTY SCORER (sampled self-intersection mitigation) =====
+function scoreCurve(pts) {
+  if (pts.length < 10) return 0;
+
+  // Bounding box
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (let p of pts) {
+    if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x;
+    if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y;
+  }
+  let w = maxX - minX, h = maxY - minY;
+  let area = w * h;
+  if (area < 1) return 0;
+
+  // Perimeter
+  let perim = 0;
+  for (let i = 1; i < pts.length; i++) {
+    let dx = pts[i].x - pts[i - 1].x, dy = pts[i].y - pts[i - 1].y;
+    perim += Math.sqrt(dx * dx + dy * dy);
+  }
+
+  // Complexity = perimeter / sqrt(area)
+  let complexity = (perim / Math.sqrt(area)) * 3;
+
+  // Inflection points (curvature sign changes)
+  let inflections = 0;
+  for (let i = 2; i < pts.length; i++) {
+    let cross1 = (pts[i].x - pts[i - 1].x) * (pts[i - 1].y - pts[i - 2].y) -
+                 (pts[i].y - pts[i - 1].y) * (pts[i - 1].x - pts[i - 2].x);
+    if (i >= 3) {
+      let cross0 = (pts[i - 1].x - pts[i - 2].x) * (pts[i - 2].y - pts[i - 3].y) -
+                   (pts[i - 1].y - pts[i - 2].y) * (pts[i - 2].x - pts[i - 3].x);
+      if (cross1 * cross0 < 0) inflections++;
+    }
+  }
+
+  // Aspect ratio bonus
+  let aspect = Math.min(w, h) / Math.max(w, h);
+  let aspectBonus = aspect > 0.3 ? 10 : 0;
+
+  // Self-intersections (SAMPLED — every 3rd segment pair, mitigation for O(n²))
+  let crossings = 0;
+  let step = 3;
+  for (let i = step; i < pts.length; i += step) {
+    for (let j = i + step * 2; j < pts.length; j += step) {
+      if (segmentsIntersect(pts[i - step], pts[i], pts[j - step], pts[j])) crossings++;
+    }
+    if (crossings >= 10) break; // cap to prevent excessive counting
+  }
+
+  // Closure bonus
+  let closeDx = pts[pts.length - 1].x - pts[0].x;
+  let closeDy = pts[pts.length - 1].y - pts[0].y;
+  let closeDist = Math.sqrt(closeDx * closeDx + closeDy * closeDy);
+  let closureBonus = closeDist < perim * 0.05 ? 15 : 0;
+
+  return inflections * 2 + Math.min(crossings, 10) * 5 + complexity + aspectBonus + closureBonus;
+}
+
+function segmentsIntersect(a, b, c, d) {
+  let det = (b.x - a.x) * (d.y - c.y) - (b.y - a.y) * (d.x - c.x);
+  if (Math.abs(det) < 1e-10) return false;
+  let t = ((c.x - a.x) * (d.y - c.y) - (c.y - a.y) * (d.x - c.x)) / det;
+  let u = ((c.x - a.x) * (b.y - a.y) - (c.y - a.y) * (b.x - a.x)) / det;
+  return t > 0.01 && t < 0.99 && u > 0.01 && u < 0.99;
+}
+
+// ===== ACTIONS =====
+function makeCell(config) {
+  return { config: config, trail: [], prevJoints: null, curve: null, score: 0 };
+}
+
+function randomizeAll() {
+  let numDyads = parseInt(document.getElementById('sl-dyads').value);
+  cells = [];
+  for (let i = 0; i < COLS * ROWS; i++) {
+    let config = null;
+    for (let t = 0; t < MAX_RETRIES; t++) {
+      let c = randomConfig(numDyads);
+      if (isValid(c)) { config = c; break; }
+    }
+    if (!config) {
+      // Fallback: simple 1-dyad mechanism
+      config = { groundLen: 100, crankLen: 35, dyads: [{ connectA: 0, connectB: 2, L1: 80, L2: 70 }], outputJoint: 3, numDyads: 1 };
+    }
+    cells.push(makeCell(config));
+  }
+  globalAngle = 0;
+}
+
+function mutateAll() {
+  for (let cell of cells) {
+    let mutated = null;
+    for (let t = 0; t < 30; t++) {
+      let m = mutateConfig(cell.config);
+      if (isValid(m)) { mutated = m; break; }
+    }
+    if (mutated) {
+      cell.config = mutated;
+      cell.trail = [];
+      cell.prevJoints = null;
+      cell.curve = null;
+    }
+  }
+  globalAngle = 0;
+}
+
+// ===== FIND BEAUTIFUL (chunked non-blocking mitigation) =====
+function findBeautiful() {
+  if (findBeautifulRunning) return;
+  findBeautifulRunning = true;
+  document.getElementById('btn-beautiful').disabled = true;
+  document.getElementById('progress-container').style.display = 'block';
+
+  let numDyads = parseInt(document.getElementById('sl-dyads').value);
+  let candidates = [];
+  let processed = 0;
+
+  function processChunk() {
+    let chunkEnd = Math.min(processed + FIND_BEAUTIFUL_CHUNK, FIND_BEAUTIFUL_TOTAL);
+    for (let i = processed; i < chunkEnd; i++) {
+      let config = null;
+      for (let t = 0; t < MAX_RETRIES; t++) {
+        let c = randomConfig(numDyads);
+        if (isValid(c)) { config = c; break; }
+      }
+      if (config) {
+        let pts = computeTrace(config, 360);
+        let score = scoreCurve(pts);
+        candidates.push({ config, score, pts });
+      }
+    }
+    processed = chunkEnd;
+
+    // Update progress bar
+    let pct = Math.round((processed / FIND_BEAUTIFUL_TOTAL) * 100);
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('progress-text').textContent = `Scoring ${processed}/${FIND_BEAUTIFUL_TOTAL}...`;
+
+    if (processed < FIND_BEAUTIFUL_TOTAL) {
+      setTimeout(processChunk, 0); // yield to browser (non-blocking)
+    } else {
+      // Done — sort and take top 16
+      candidates.sort((a, b) => b.score - a.score);
+      cells = candidates.slice(0, COLS * ROWS).map(c => {
+        let cell = makeCell(c.config);
+        cell.score = c.score;
+        return cell;
+      });
+      globalAngle = 0;
+      findBeautifulRunning = false;
+      document.getElementById('btn-beautiful').disabled = false;
+      document.getElementById('progress-container').style.display = 'none';
+    }
+  }
+
+  processChunk();
+}
+
+// ===== MODE SWITCHING =====
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-atlas').classList.toggle('active', m === 'atlas');
+  document.getElementById('btn-single').classList.toggle('active', m === 'single');
+  document.getElementById('hud-mode').textContent = m;
+  if (m === 'atlas') {
+    selectedIdx = -1;
+    document.getElementById('info-bar').textContent =
+      'Plate I. \u2014 Random planar mechanisms via dyad composition. Each cell traces the output joint of a unique N-bar linkage. Click to inspect.';
+  }
+}
+
+// ===== SLIDER WIRING =====
+function wireSlider(id, valId, fmt) {
+  let sl = document.getElementById(id);
+  let vl = document.getElementById(valId);
+  sl.addEventListener('input', () => {
+    let v = parseFloat(sl.value);
+    if (fmt === 'int') vl.textContent = Math.round(v);
+    else if (fmt === 'bool') vl.textContent = v > 0.5 ? 'ON' : 'OFF';
+    else vl.textContent = v.toFixed(2);
+  });
+}
+
+wireSlider('sl-dyads', 'v-dyads', 'int');
+wireSlider('sl-ground', 'v-ground', 'int');
+wireSlider('sl-crank', 'v-crank', 'int');
+wireSlider('sl-speed', 'v-speed');
+wireSlider('sl-trail', 'v-trail', 'int');
+wireSlider('sl-bars', 'v-bars', 'bool');
+wireSlider('sl-tw', 'v-tw');
+
+// ===== P5.JS SKETCH =====
+const sketch = (p) => {
+  p.setup = () => {
+    let container = document.getElementById('canvas-container');
+    cw = container.clientWidth;
+    ch = container.clientHeight;
+    p.createCanvas(cw, ch).parent(container);
+    p.textFont('Georgia');
+    randomizeAll();
+  };
+
+  p.windowResized = () => {
+    let container = document.getElementById('canvas-container');
+    cw = container.clientWidth;
+    ch = container.clientHeight;
+    p.resizeCanvas(cw, ch);
+  };
+
+  p.draw = () => {
+    p.background(245, 243, 238);
+    let speed = parseFloat(document.getElementById('sl-speed').value);
+    globalAngle += speed * 0.02;
+
+    if (mode === 'atlas') drawAtlas(p);
+    else drawSingle(p);
+
+    updateHUD(p);
+  };
+
+  p.mousePressed = () => {
+    if (p.mouseX < 0 || p.mouseX > cw || p.mouseY < 0 || p.mouseY > ch) return;
+
+    if (mode === 'atlas') {
+      let cellW = cw / COLS, cellH = ch / ROWS;
+      let col = Math.floor(p.mouseX / cellW);
+      let row = Math.floor(p.mouseY / cellH);
+      if (col >= 0 && col < COLS && row >= 0 && row < ROWS) {
+        selectedIdx = row * COLS + col;
+        if (selectedIdx < cells.length) {
+          setMode('single');
+          cells[selectedIdx].trail = []; // reset trail for fresh single view
+          updateTopologyList(cells[selectedIdx].config);
+        }
+      }
+    }
+  };
+
+  p.mouseMoved = () => {
+    if (mode === 'atlas') {
+      let cellW = cw / COLS, cellH = ch / ROWS;
+      let col = Math.floor(p.mouseX / cellW);
+      let row = Math.floor(p.mouseY / cellH);
+      if (col >= 0 && col < COLS && row >= 0 && row < ROWS) {
+        hoverCell = row * COLS + col;
+      } else {
+        hoverCell = -1;
+      }
+    }
+  };
+};
+
+// ===== ATLAS RENDERER =====
+function drawAtlas(p) {
+  let cellW = cw / COLS, cellH = ch / ROWS;
+  let showBars = parseFloat(document.getElementById('sl-bars').value) > 0.5;
+  let trailW = parseFloat(document.getElementById('sl-tw').value);
+
+  for (let idx = 0; idx < cells.length; idx++) {
+    let col = idx % COLS, row = Math.floor(idx / COLS);
+    let cx = col * cellW, cy = row * cellH;
+
+    // Cell border
+    p.noFill();
+    p.stroke(200, 190, 175);
+    p.strokeWeight(0.5);
+    p.rect(cx, cy, cellW, cellH);
+
+    // Hover highlight
+    if (idx === hoverCell) {
+      p.fill(255, 255, 255, 30);
+      p.noStroke();
+      p.rect(cx, cy, cellW, cellH);
+    }
+
+    let cell = cells[idx];
+    let config = cell.config;
+
+    // Solve mechanism at current angle
+    let joints = solveMechanism(config, globalAngle, cell.prevJoints);
+    if (!joints) continue;
+    cell.prevJoints = joints;
+
+    // Output joint position
+    let outJ = joints[config.outputJoint];
+    if (!outJ) continue;
+
+    // Add to trail (capped at ATLAS_TRAIL_MAX)
+    cell.trail.push({ x: outJ.x, y: outJ.y });
+    if (cell.trail.length > ATLAS_TRAIL_MAX) cell.trail.shift();
+
+    // Compute bounding box of mechanism for auto-scaling
+    let bounds = getMechanismBounds(joints, cell.trail);
+    let scale = Math.min((cellW - 20) / bounds.w, (cellH - 20) / bounds.h) * 0.8;
+    scale = Math.min(scale, 2.5); // max zoom
+    let offX = cx + cellW / 2 - (bounds.cx) * scale;
+    let offY = cy + cellH / 2 + (bounds.cy) * scale; // flip Y
+
+    p.push();
+
+    // Draw trail
+    if (cell.trail.length > 2) {
+      for (let i = 1; i < cell.trail.length; i++) {
+        let t = i / cell.trail.length;
+        let alpha = t * 200 + 20;
+        p.stroke(139, 69, 19, alpha);
+        p.strokeWeight(trailW * t);
+        let x1 = offX + cell.trail[i - 1].x * scale;
+        let y1 = offY - cell.trail[i - 1].y * scale;
+        let x2 = offX + cell.trail[i].x * scale;
+        let y2 = offY - cell.trail[i].y * scale;
+        p.line(x1, y1, x2, y2);
+      }
+    }
+
+    // Draw mechanism bars
+    if (showBars) {
+      // Ground link
+      p.stroke(...COLORS.ground);
+      p.strokeWeight(2);
+      let gx0 = offX + 0 * scale, gy0 = offY - 0 * scale;
+      let gx1 = offX + config.groundLen * scale, gy1 = offY - 0 * scale;
+      p.line(gx0, gy0, gx1, gy1);
+
+      // Crank
+      p.stroke(...COLORS.crank);
+      p.strokeWeight(1.5);
+      p.line(gx0, gy0, offX + joints[2].x * scale, offY - joints[2].y * scale);
+
+      // Dyad bars
+      for (let d = 0; d < config.dyads.length; d++) {
+        let dyad = config.dyads[d];
+        let jA = joints[dyad.connectA];
+        let jNew = joints[3 + d];
+        let jB = joints[dyad.connectB];
+        let dColor = COLORS.dyad[d % COLORS.dyad.length];
+
+        p.stroke(...dColor, 180);
+        p.strokeWeight(1.2);
+        p.line(offX + jA.x * scale, offY - jA.y * scale,
+               offX + jNew.x * scale, offY - jNew.y * scale);
+        p.line(offX + jB.x * scale, offY - jB.y * scale,
+               offX + jNew.x * scale, offY - jNew.y * scale);
+      }
+
+      // Joints
+      for (let j = 0; j < joints.length; j++) {
+        let jt = joints[j];
+        let sx = offX + jt.x * scale, sy = offY - jt.y * scale;
+        p.noStroke();
+        if (j === config.outputJoint) {
+          p.fill(200, 50, 50);
+          p.circle(sx, sy, 5);
+        } else if (jt.fixed) {
+          p.fill(60, 60, 60);
+          p.rect(sx - 2.5, sy - 2.5, 5, 5);
+        } else {
+          p.fill(80, 80, 80);
+          p.circle(sx, sy, 3.5);
+        }
+      }
+    }
+
+    // Cell label
+    p.noStroke();
+    p.fill(180, 170, 155);
+    p.textSize(8);
+    p.textAlign(p.LEFT, p.TOP);
+    let barCount = 2 + config.dyads.length * 2; // ground + crank + 2 per dyad
+    p.text(`${barCount}-bar`, cx + 4, cy + 3);
+
+    p.pop();
+  }
+}
+
+// ===== SINGLE MODE RENDERER =====
+function drawSingle(p) {
+  if (selectedIdx < 0 || selectedIdx >= cells.length) return;
+
+  let cell = cells[selectedIdx];
+  let config = cell.config;
+  let showBars = parseFloat(document.getElementById('sl-bars').value) > 0.5;
+  let trailW = parseFloat(document.getElementById('sl-tw').value);
+  let maxTrail = Math.min(parseInt(document.getElementById('sl-trail').value), SINGLE_TRAIL_MAX);
+
+  // Solve
+  let joints = solveMechanism(config, globalAngle, cell.prevJoints);
+  if (!joints) return;
+  cell.prevJoints = joints;
+
+  let outJ = joints[config.outputJoint];
+  if (!outJ) return;
+
+  cell.trail.push({ x: outJ.x, y: outJ.y });
+  if (cell.trail.length > maxTrail) cell.trail.shift();
+
+  // Auto-scale to fill canvas
+  let bounds = getMechanismBounds(joints, cell.trail);
+  let scale = Math.min((cw - 80) / bounds.w, (ch - 80) / bounds.h) * 0.75;
+  scale = Math.min(scale, 4.0);
+  let offX = cw / 2 - bounds.cx * scale;
+  let offY = ch / 2 + bounds.cy * scale;
+
+  // Draw trail (longer, thicker)
+  if (cell.trail.length > 2) {
+    for (let i = 1; i < cell.trail.length; i++) {
+      let t = i / cell.trail.length;
+      let alpha = t * 220 + 20;
+      p.stroke(139, 69, 19, alpha);
+      p.strokeWeight(trailW * 1.5 * t + 0.3);
+      p.line(
+        offX + cell.trail[i - 1].x * scale, offY - cell.trail[i - 1].y * scale,
+        offX + cell.trail[i].x * scale, offY - cell.trail[i].y * scale
+      );
+    }
+  }
+
+  // Draw mechanism
+  if (showBars) {
+    // Ground
+    p.stroke(...COLORS.ground);
+    p.strokeWeight(3);
+    p.line(offX, offY, offX + config.groundLen * scale, offY);
+
+    // Ground hatching
+    p.strokeWeight(0.5);
+    for (let i = 0; i < config.groundLen * scale; i += 8) {
+      p.line(offX + i, offY, offX + i - 4, offY + 6);
+    }
+
+    // Crank
+    p.stroke(...COLORS.crank);
+    p.strokeWeight(2.5);
+    p.line(offX, offY, offX + joints[2].x * scale, offY - joints[2].y * scale);
+
+    // Dyad bars
+    for (let d = 0; d < config.dyads.length; d++) {
+      let dyad = config.dyads[d];
+      let jA = joints[dyad.connectA];
+      let jNew = joints[3 + d];
+      let jB = joints[dyad.connectB];
+      let dColor = COLORS.dyad[d % COLORS.dyad.length];
+
+      p.stroke(...dColor);
+      p.strokeWeight(2);
+      p.line(offX + jA.x * scale, offY - jA.y * scale,
+             offX + jNew.x * scale, offY - jNew.y * scale);
+      p.line(offX + jB.x * scale, offY - jB.y * scale,
+             offX + jNew.x * scale, offY - jNew.y * scale);
+    }
+
+    // Joints with labels
+    for (let j = 0; j < joints.length; j++) {
+      let jt = joints[j];
+      let sx = offX + jt.x * scale, sy = offY - jt.y * scale;
+      p.noStroke();
+
+      if (j === config.outputJoint) {
+        p.fill(200, 50, 50);
+        p.circle(sx, sy, 9);
+        p.fill(255);
+        p.textSize(7);
+        p.textAlign(p.CENTER, p.CENTER);
+        p.text('O', sx, sy);
+      } else if (jt.fixed) {
+        p.fill(60, 60, 60);
+        p.rect(sx - 4, sy - 4, 8, 8);
+      } else {
+        p.fill(80, 80, 80);
+        p.circle(sx, sy, 6);
+      }
+
+      // Joint label
+      p.fill(120);
+      p.noStroke();
+      p.textSize(8);
+      p.textAlign(p.LEFT, p.BOTTOM);
+      p.text('J' + j, sx + 5, sy - 3);
+    }
+  }
+
+  // Back button hint
+  p.fill(150);
+  p.noStroke();
+  p.textSize(10);
+  p.textAlign(p.LEFT, p.BOTTOM);
+  p.text('\u2190 Press Atlas to return', 10, ch - 30);
+
+  // Score
+  if (!cell.curve) {
+    cell.curve = computeTrace(config, 360);
+    cell.score = scoreCurve(cell.curve);
+  }
+
+  // Info bar
+  let barCount = 2 + config.dyads.length * 2;
+  document.getElementById('info-bar').textContent =
+    `Cell ${selectedIdx + 1} \u2014 ${barCount}-bar mechanism, ${config.dyads.length} dyad${config.dyads.length > 1 ? 's' : ''}, output J${config.outputJoint}. Beauty score: ${cell.score.toFixed(1)}`;
+}
+
+// ===== HELPERS =====
+function getMechanismBounds(joints, trail) {
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (let j of joints) {
+    if (j.x < minX) minX = j.x; if (j.x > maxX) maxX = j.x;
+    if (j.y < minY) minY = j.y; if (j.y > maxY) maxY = j.y;
+  }
+  for (let p of trail) {
+    if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x;
+    if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y;
+  }
+  let pad = 20;
+  let w = Math.max(maxX - minX, 1) + pad;
+  let h = Math.max(maxY - minY, 1) + pad;
+  let cx = (minX + maxX) / 2;
+  let cy = (minY + maxY) / 2;
+  return { minX, maxX, minY, maxY, w, h, cx, cy };
+}
+
+function updateTopologyList(config) {
+  let list = document.getElementById('topo-list');
+  let html = '';
+  html += `<div class="topo-item">Ground: ${config.groundLen.toFixed(0)}mm</div>`;
+  html += `<div class="topo-item">Crank: ${config.crankLen.toFixed(0)}mm</div>`;
+  for (let d = 0; d < config.dyads.length; d++) {
+    let dy = config.dyads[d];
+    html += `<div class="topo-item">D${d}: J${dy.connectA}\u2194J${dy.connectB} L1=${dy.L1.toFixed(0)} L2=${dy.L2.toFixed(0)}</div>`;
+  }
+  html += `<div class="topo-item" style="color:#8b4513;">Output: J${config.outputJoint}</div>`;
+  list.innerHTML = html;
+}
+
+function updateHUD(p) {
+  document.getElementById('hud-fps').textContent = Math.round(p.frameRate());
+  document.getElementById('hud-cells').textContent = mode === 'atlas' ? cells.length : '1';
+
+  if (selectedIdx >= 0 && selectedIdx < cells.length) {
+    let config = cells[selectedIdx].config;
+    let barCount = 2 + config.dyads.length * 2;
+    document.getElementById('hud-bars').textContent = barCount;
+    document.getElementById('hud-score').textContent = cells[selectedIdx].score ? cells[selectedIdx].score.toFixed(1) : '--';
+  } else {
+    document.getElementById('hud-bars').textContent = '--';
+    document.getElementById('hud-score').textContent = '--';
+  }
+}
+
+// ===== LAUNCH =====
+new p5(sketch, 'canvas-container');
+</script>
+</body>
+</html>
