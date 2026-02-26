@@ -1,0 +1,1175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Ball Run / Marble Machine — Matter.js Rigid Body Track</title>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/matter-js@0.20.0/build/matter.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f5f3ee; overflow: hidden; font-family: 'Georgia', serif; display: flex; height: 100vh; }
+  #sidebar { width: 280px; min-width: 280px; background: #f0ede6; border-right: 1px solid #c8c0b0; overflow-y: auto; padding: 12px 14px; font-size: 12px; color: #444; }
+  #sidebar h1 { font-size: 14px; letter-spacing: 1.5px; color: #333; margin-bottom: 2px; font-weight: normal; }
+  #sidebar .subtitle { font-size: 10px; color: #888; margin-bottom: 12px; font-style: italic; }
+  .section-title { font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: #8b7355; margin-top: 14px; margin-bottom: 6px; border-bottom: 1px solid #d8d0c0; padding-bottom: 3px; }
+  .ctrl-row { display: flex; align-items: center; margin-bottom: 5px; }
+  .ctrl-row label { flex: 0 0 95px; font-size: 11px; color: #666; }
+  .ctrl-row input[type="range"] { flex: 1; height: 3px; accent-color: #8b4513; }
+  .ctrl-row .val { flex: 0 0 40px; text-align: right; font-size: 10px; color: #555; font-family: 'Consolas', monospace; }
+  select { width: 100%; padding: 4px 8px; font-size: 11px; font-family: 'Georgia', serif; background: #faf8f3; color: #555; border: 1px solid #c8c0b0; border-radius: 3px; margin-bottom: 4px; }
+  .btn-row { display: flex; gap: 5px; margin: 8px 0; flex-wrap: wrap; }
+  .btn { padding: 5px 10px; font-size: 10px; font-family: 'Georgia', serif; background: #555; color: #f5f3ee; border: none; cursor: pointer; letter-spacing: 0.5px; border-radius: 2px; transition: background 0.15s; }
+  .btn:hover { background: #333; }
+  .btn.active { background: #8b4513; }
+  .btn.accent { background: #2a6848; }
+  .btn.accent:hover { background: #1a4830; }
+  .btn.danger { background: #8b2020; }
+  .btn:disabled { background: #aaa; cursor: not-allowed; }
+  #canvas-container { flex: 1; position: relative; }
+  #canvas-container canvas { display: block; }
+  #info-bar { position: fixed; bottom: 0; left: 280px; right: 0; z-index: 100; background: rgba(245,243,238,0.92); border-top: 1px solid #bbb; padding: 4px 16px; font-size: 10px; color: #777; font-style: italic; }
+  #hud { position: absolute; top: 8px; right: 12px; background: rgba(245,243,238,0.9); border: 1px solid #c8c0b0; border-radius: 4px; padding: 8px 12px; font-size: 10px; line-height: 1.7; color: #666; min-width: 160px; pointer-events: none; }
+  #hud .hv { color: #444; font-family: 'Consolas', monospace; float: right; }
+  .progress-bar { width: 100%; height: 3px; background: #ddd; border-radius: 2px; margin: 4px 0; }
+  .progress-bar-fill { height: 100%; background: #8b4513; border-radius: 2px; transition: width 0.1s; }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #c8c0b0; border-radius: 2px; }
+  #physics-hud { position: absolute; top: 8px; left: 8px; background: rgba(245,243,238,0.9); border: 1px solid #c8c0b0; border-radius: 4px; padding: 6px 10px; font-size: 9px; line-height: 1.6; color: #666; min-width: 140px; pointer-events: none; font-family: 'Consolas', monospace; }
+  #physics-hud.warn { border-color: #cc8800; background: rgba(255,240,200,0.9); }
+  #physics-hud.error { border-color: #cc2020; background: rgba(255,220,220,0.9); }
+  .toggle-row { display: flex; align-items: center; margin-bottom: 5px; gap: 6px; }
+  .toggle-row label { font-size: 11px; color: #666; }
+  .toggle-row input[type="checkbox"] { accent-color: #8b4513; }
+  .detail-list { max-height: 160px; overflow-y: auto; font-size: 9px; line-height: 1.5; margin-top: 4px; }
+  .detail-item { padding: 1px 0; color: #666; font-family: 'Consolas', monospace; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h1>BALL RUN</h1>
+  <div class="subtitle">Marble Machine &mdash; Matter.js Rigid Body Physics</div>
+
+  <div class="section-title">Mode</div>
+  <div class="btn-row">
+    <button class="btn active" id="btn-single" onclick="setMode('single')">Single</button>
+    <button class="btn" id="btn-atlas" onclick="setMode('atlas')">Atlas 4&times;4</button>
+  </div>
+
+  <div class="section-title">Track</div>
+  <div class="ctrl-row">
+    <label>Elements</label>
+    <input type="range" id="sl-elements" min="5" max="12" step="1" value="8">
+    <span class="val" id="v-elements">8</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Gravity</label>
+    <input type="range" id="sl-gravity" min="0.2" max="3.0" step="0.1" value="1.0">
+    <span class="val" id="v-gravity">1.00</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Restitution</label>
+    <input type="range" id="sl-restitution" min="0.1" max="0.9" step="0.05" value="0.50">
+    <span class="val" id="v-restitution">0.50</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Friction</label>
+    <input type="range" id="sl-friction" min="0.01" max="0.20" step="0.01" value="0.05">
+    <span class="val" id="v-friction">0.05</span>
+  </div>
+
+  <div class="section-title">Display</div>
+  <div class="toggle-row">
+    <input type="checkbox" id="chk-trail" checked>
+    <label for="chk-trail">Motion Trail</label>
+  </div>
+  <div class="toggle-row">
+    <input type="checkbox" id="chk-velocity" checked>
+    <label for="chk-velocity">Velocity Vectors</label>
+  </div>
+  <div class="toggle-row">
+    <input type="checkbox" id="chk-zones">
+    <label for="chk-zones">Show Zones</label>
+  </div>
+  <div class="toggle-row">
+    <input type="checkbox" id="chk-labels" checked>
+    <label for="chk-labels">Element Labels</label>
+  </div>
+
+  <div class="section-title">Actions</div>
+  <div class="btn-row">
+    <button class="btn accent" onclick="regenerateTrack()">New Track</button>
+    <button class="btn" onclick="clearBalls()">Clear Balls</button>
+    <button class="btn danger" onclick="resetAll()">Reset</button>
+  </div>
+
+  <div class="section-title">Find Beautiful v2</div>
+  <div class="btn-row">
+    <button class="btn accent" id="btn-search" onclick="startSearch()">Search 200</button>
+    <button class="btn danger" id="btn-stop-search" onclick="stopSearch()" disabled>Stop</button>
+  </div>
+  <div class="progress-bar"><div class="progress-bar-fill" id="search-progress" style="width:0%"></div></div>
+  <div id="search-status" style="font-size:9px;color:#888;margin-top:2px;"></div>
+  <div id="best-score" style="font-size:10px;color:#8b4513;margin-top:4px;"></div>
+
+  <div class="section-title">Ball Log</div>
+  <div class="detail-list" id="ball-log"></div>
+</div>
+
+<div id="canvas-container">
+  <div id="hud"></div>
+  <div id="physics-hud"></div>
+</div>
+
+<div id="info-bar">
+  Click in the green start zone to drop a ball. New Track randomizes layout. Atlas mode shows 16 variations.
+</div>
+
+<script>
+// ANALYTICAL CHECK: Ball on frictionless ramp, angle alpha, height h
+// Exit speed v = sqrt(2*g*h) regardless of angle (energy conservation)
+// With friction: v = sqrt(2*g*h*(1 - mu*cos(alpha)/sin(alpha)))
+// Matter.js friction model is Coulomb: F_friction = mu * F_normal
+
+const { Engine, World, Bodies, Body, Composite, Constraint, Events } = Matter;
+
+// ── State ──
+let mode = 'single';
+let W, H;
+let singleEngine, singleTrack;
+let atlasCells = [];
+let balls = [];
+let searching = false;
+let searchAbort = false;
+let bestConfig = null;
+let bestScore = -Infinity;
+
+// ── Element types and colors ──
+const ELEM_COLORS = {
+  ramp:    { fill: '#8b7355', stroke: '#6b5540', label: 'Ramp' },
+  funnel:  { fill: '#7b6b55', stroke: '#5b4b35', label: 'Funnel' },
+  bumper:  { fill: '#a06040', stroke: '#804020', label: 'Bumper' },
+  seesaw:  { fill: '#6b8b55', stroke: '#4b6b35', label: 'Seesaw' },
+  loop:    { fill: '#557b8b', stroke: '#3b5b6b', label: 'Loop' },
+  gate:    { fill: '#8b5570', stroke: '#6b3550', label: 'Gate' },
+  wall:    { fill: '#aaa', stroke: '#888', label: '' },
+};
+
+const BALL_RADIUS = 8;
+const BALL_COLOR = '#8b4513';
+const TRAIL_COLOR = '#d4a060';
+const MAX_BALLS = 5;
+const MAX_TRAIL = 30;
+
+// ── Helpers ──
+function rng(min, max) { return Math.random() * (max - min) + min; }
+function rngi(min, max) { return Math.floor(rng(min, max + 1)); }
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+function getSlider(id) { return parseFloat(document.getElementById(id).value); }
+
+function updateSliderDisplays() {
+  document.getElementById('v-elements').textContent = getSlider('sl-elements');
+  document.getElementById('v-gravity').textContent = getSlider('sl-gravity').toFixed(2);
+  document.getElementById('v-restitution').textContent = getSlider('sl-restitution').toFixed(2);
+  document.getElementById('v-friction').textContent = getSlider('sl-friction').toFixed(2);
+}
+
+document.querySelectorAll('#sidebar input[type="range"]').forEach(sl => {
+  sl.addEventListener('input', updateSliderDisplays);
+});
+
+// ── Track Generation ──
+function weightedType() {
+  const r = Math.random();
+  if (r < 0.40) return 'ramp';
+  if (r < 0.60) return 'bumper';
+  if (r < 0.75) return 'funnel';
+  if (r < 0.85) return 'seesaw';
+  if (r < 0.95) return 'loop';
+  return 'gate';
+}
+
+function ensureVariety(types) {
+  const unique = new Set(types);
+  if (unique.size >= 3) return types;
+  const allTypes = ['ramp', 'bumper', 'funnel', 'seesaw', 'loop', 'gate'];
+  while (unique.size < 3) {
+    const t = pick(allTypes);
+    if (!unique.has(t)) {
+      unique.add(t);
+      types[rngi(0, types.length - 1)] = t;
+    }
+  }
+  return types;
+}
+
+function boxesOverlap(a, b, margin) {
+  margin = margin || 10;
+  return !(a.x + a.w + margin < b.x || b.x + b.w + margin < a.x ||
+           a.y + a.h + margin < b.y || b.y + b.h + margin < a.y);
+}
+
+function createTrackElements(engine, areaW, areaH, count, seed) {
+  const elements = [];
+  const bboxes = [];
+  const startZone = { x: 20, y: 20, w: 120, h: 50 };
+  const exitZone  = { x: areaW - 140, y: areaH - 70, w: 120, h: 50 };
+
+  // Generate element types with variety
+  let types = [];
+  for (let i = 0; i < count; i++) types.push(weightedType());
+  types = ensureVariety(types);
+
+  // Zone from top to bottom — cascade
+  const yStep = (areaH - 160) / (count + 1);
+
+  for (let i = 0; i < count; i++) {
+    const type = types[i];
+    const baseY = 80 + yStep * (i + 0.5) + rng(-yStep * 0.2, yStep * 0.2);
+    const baseX = rng(40, areaW - 80);
+    let placed = false;
+    let attempts = 0;
+
+    while (!placed && attempts < 30) {
+      attempts++;
+      const x = baseX + rng(-40, 40);
+      const y = baseY + rng(-15, 15);
+      let elem = null;
+      let bbox = null;
+
+      if (type === 'ramp') {
+        const len = rng(80, Math.min(200, areaW * 0.35));
+        const ang = rng(0.26, 1.05) * (Math.random() < 0.5 ? 1 : -1); // 15-60 deg
+        const body = Bodies.rectangle(x, y, len, 8, {
+          isStatic: true, angle: ang,
+          friction: 0.3,
+          render: { fillStyle: ELEM_COLORS.ramp.fill }
+        });
+        body.elemType = 'ramp';
+        body.elemAngle = ang;
+        body.elemLen = len;
+        elem = body;
+        const hw = Math.abs(Math.cos(ang) * len / 2) + Math.abs(Math.sin(ang) * 4);
+        const hh = Math.abs(Math.sin(ang) * len / 2) + Math.abs(Math.cos(ang) * 4);
+        bbox = { x: x - hw, y: y - hh, w: hw * 2, h: hh * 2 };
+
+      } else if (type === 'funnel') {
+        const gap = BALL_RADIUS * 2 + 4;
+        const armLen = rng(40, 70);
+        const ang = rng(0.4, 0.8);
+        const left = Bodies.rectangle(x - gap / 2 - armLen * Math.cos(ang) / 2,
+          y - armLen * Math.sin(ang) / 2, armLen, 6,
+          { isStatic: true, angle: ang, friction: 0.3 });
+        const right = Bodies.rectangle(x + gap / 2 + armLen * Math.cos(ang) / 2,
+          y - armLen * Math.sin(ang) / 2, armLen, 6,
+          { isStatic: true, angle: -ang, friction: 0.3 });
+        left.elemType = 'funnel';
+        right.elemType = 'funnel';
+        left.funnelPair = true;
+        right.funnelPair = true;
+        Composite.add(engine.world, [left, right]);
+        elements.push({ type: 'funnel', bodies: [left, right], x, y });
+        const bw = gap + armLen * 2;
+        const bh = armLen * Math.sin(ang) + 10;
+        bbox = { x: x - bw / 2, y: y - bh, w: bw, h: bh };
+        placed = true;
+        bboxes.push(bbox);
+        continue;
+
+      } else if (type === 'bumper') {
+        const r = rng(10, 25);
+        const rest = rng(0.8, 1.3);
+        const body = Bodies.circle(x, y, r, {
+          isStatic: true, restitution: rest,
+          friction: 0.05,
+          render: { fillStyle: ELEM_COLORS.bumper.fill }
+        });
+        body.elemType = 'bumper';
+        body.circleRadius = r;
+        body.elemRest = rest;
+        elem = body;
+        bbox = { x: x - r, y: y - r, w: r * 2, h: r * 2 };
+
+      } else if (type === 'seesaw') {
+        const len = rng(80, 150);
+        const body = Bodies.rectangle(x, y, len, 8, {
+          friction: 0.4, density: 0.005,
+          render: { fillStyle: ELEM_COLORS.seesaw.fill }
+        });
+        body.elemType = 'seesaw';
+        body.elemLen = len;
+        // Pivot constraint
+        const pivot = Constraint.create({
+          pointA: { x: x, y: y },
+          bodyB: body,
+          pointB: { x: 0, y: 0 },
+          stiffness: 1,
+          length: 0
+        });
+        // Small triangle base
+        const base = Bodies.polygon(x, y + 12, 3, 10, {
+          isStatic: true, angle: Math.PI,
+          render: { fillStyle: '#555' }
+        });
+        base.elemType = 'seesaw';
+        Composite.add(engine.world, [body, pivot, base]);
+        elements.push({ type: 'seesaw', bodies: [body, base], constraint: pivot, x, y });
+        bbox = { x: x - len / 2, y: y - 10, w: len, h: 30 };
+        placed = true;
+        bboxes.push(bbox);
+        continue;
+
+      } else if (type === 'loop') {
+        const loopR = rng(30, 50);
+        const segments = 16;
+        const loopBodies = [];
+        const segLen = (2 * Math.PI * loopR) / segments;
+        // Open at top-left for entry
+        for (let s = 2; s < segments; s++) {
+          const a = (s / segments) * Math.PI * 2 - Math.PI / 2;
+          const sx = x + Math.cos(a) * loopR;
+          const sy = y + Math.sin(a) * loopR;
+          const seg = Bodies.rectangle(sx, sy, segLen * 0.9, 4, {
+            isStatic: true, angle: a + Math.PI / 2,
+            friction: 0.1,
+            render: { fillStyle: ELEM_COLORS.loop.fill }
+          });
+          seg.elemType = 'loop';
+          loopBodies.push(seg);
+        }
+        Composite.add(engine.world, loopBodies);
+        elements.push({ type: 'loop', bodies: loopBodies, x, y, r: loopR });
+        bbox = { x: x - loopR - 5, y: y - loopR - 5, w: loopR * 2 + 10, h: loopR * 2 + 10 };
+        placed = true;
+        bboxes.push(bbox);
+        continue;
+
+      } else if (type === 'gate') {
+        const gateW = rng(50, 90);
+        const body = Bodies.rectangle(x, y, gateW, 8, {
+          isStatic: true, friction: 0.3,
+          render: { fillStyle: ELEM_COLORS.gate.fill }
+        });
+        body.elemType = 'gate';
+        body.gateOpen = false;
+        body.gateTimer = 0;
+        body.gatePeriod = rng(1.5, 4.0);
+        body.elemLen = gateW;
+        elem = body;
+        bbox = { x: x - gateW / 2, y: y - 4, w: gateW, h: 8 };
+      }
+
+      if (elem && bbox) {
+        // Check overlap
+        let overlaps = false;
+        for (const bb of bboxes) {
+          if (boxesOverlap(bbox, bb)) { overlaps = true; break; }
+        }
+        if (!overlaps) {
+          Composite.add(engine.world, elem);
+          elements.push({ type, bodies: [elem], x, y });
+          bboxes.push(bbox);
+          placed = true;
+        }
+      }
+    }
+  }
+
+  return { elements, startZone, exitZone };
+}
+
+function createWalls(engine, w, h) {
+  const thickness = 20;
+  const walls = [
+    Bodies.rectangle(w / 2, -thickness / 2, w + 40, thickness, { isStatic: true }),     // top
+    Bodies.rectangle(w / 2, h + thickness / 2, w + 40, thickness, { isStatic: true }),   // bottom
+    Bodies.rectangle(-thickness / 2, h / 2, thickness, h + 40, { isStatic: true }),       // left
+    Bodies.rectangle(w + thickness / 2, h / 2, thickness, h + 40, { isStatic: true }),    // right
+  ];
+  walls.forEach(w => { w.elemType = 'wall'; });
+  Composite.add(engine.world, walls);
+  return walls;
+}
+
+function createSingleEngine() {
+  if (singleEngine) {
+    World.clear(singleEngine.world);
+    Engine.clear(singleEngine);
+  }
+  balls = [];
+  singleEngine = Engine.create({ gravity: { x: 0, y: getSlider('sl-gravity') } });
+  const w = W;
+  const h = H - 20; // info bar
+  createWalls(singleEngine, w, h);
+  singleTrack = createTrackElements(singleEngine, w, h, getSlider('sl-elements'));
+
+  // Track collisions for ball touchedElems and bounce counting
+  Events.on(singleEngine, 'collisionStart', function(event) {
+    for (const pair of event.pairs) {
+      const a = pair.bodyA, b = pair.bodyB;
+      if (a.isBall && b.elemType) { a.touchedElems.add(b.elemType); a.bounceCount++; }
+      if (b.isBall && a.elemType) { b.touchedElems.add(a.elemType); b.bounceCount++; }
+    }
+  });
+
+  return singleEngine;
+}
+
+function dropBall(engine, x, y, opts) {
+  opts = opts || {};
+  const rest = opts.restitution !== undefined ? opts.restitution : getSlider('sl-restitution');
+  const fric = opts.friction !== undefined ? opts.friction : getSlider('sl-friction');
+  const ball = Bodies.circle(x, y, BALL_RADIUS, {
+    restitution: rest,
+    friction: fric,
+    density: 0.002,
+    frictionAir: 0.001,
+    render: { fillStyle: BALL_COLOR }
+  });
+  ball.isBall = true;
+  ball.trail = [];
+  ball.dropTime = performance.now();
+  ball.exitTime = null;
+  ball.exitSpeed = null;
+  ball.touchedElems = new Set();
+  ball.bounceCount = 0;
+  ball.initialE = null;
+  ball.stuck = false;
+  Composite.add(engine.world, ball);
+  return ball;
+}
+
+// ── Atlas Mode ──
+function createAtlasCell(cellW, cellH) {
+  const eng = Engine.create({ gravity: { x: 0, y: 1.0 } });
+  createWalls(eng, cellW, cellH);
+  const track = createTrackElements(eng, cellW, cellH, rngi(4, 6));
+  const ball = dropBall(eng,
+    track.startZone.x + track.startZone.w / 2,
+    track.startZone.y + track.startZone.h / 2,
+    { restitution: rng(0.3, 0.7), friction: rng(0.02, 0.08) }
+  );
+  return { engine: eng, track, ball, transitTime: null, status: 'running' };
+}
+
+function createAtlas() {
+  atlasCells = [];
+  const cols = 4, rows = 4;
+  const cellW = Math.floor(W / cols);
+  const cellH = Math.floor((H - 20) / rows);
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const cell = createAtlasCell(cellW, cellH);
+      cell.col = c;
+      cell.row = r;
+      cell.cellW = cellW;
+      cell.cellH = cellH;
+      atlasCells.push(cell);
+    }
+  }
+}
+
+// ── Find Beautiful v2 ──
+function scoreTrack(results) {
+  if (!results || results.stuck) return 0;
+  const pathComplexity = results.uniqueTouched / Math.max(results.totalElements, 1);
+  const timeScore = Math.min(results.transitTime / 3000, 1.5); // longer = more interesting up to a point
+  const dramaScore = (results.bounces * 0.2 + (results.loopComplete ? 1 : 0));
+  return pathComplexity * 0.4 + timeScore * 0.3 + dramaScore * 0.3;
+}
+
+async function simulateTrack(config) {
+  return new Promise(resolve => {
+    const eng = Engine.create({ gravity: { x: 0, y: config.gravity } });
+    const w = 800, h = 600;
+    createWalls(eng, w, h);
+    // Use fixed seed-like approach: set random params
+    const track = createTrackElements(eng, w, h, config.elements);
+    const ball = dropBall(eng,
+      track.startZone.x + track.startZone.w / 2,
+      track.startZone.y + track.startZone.h / 2,
+      { restitution: config.restitution, friction: config.friction }
+    );
+
+    let frames = 0;
+    const maxFrames = 600; // 10 seconds at 60fps
+    const exitZone = track.exitZone;
+
+    function step() {
+      Engine.update(eng, 1000 / 60);
+      frames++;
+
+      // Check contacts for touched elements
+      const pairs = eng.pairs;
+      if (pairs && pairs.list) {
+        pairs.list.forEach(pair => {
+          if (pair.bodyA === ball && pair.bodyB.elemType) ball.touchedElems.add(pair.bodyB.elemType);
+          if (pair.bodyB === ball && pair.bodyA.elemType) ball.touchedElems.add(pair.bodyA.elemType);
+          if (pair.bodyA === ball || pair.bodyB === ball) ball.bounceCount++;
+        });
+      }
+
+      // Check exit
+      const bx = ball.position.x, by = ball.position.y;
+      if (bx >= exitZone.x && bx <= exitZone.x + exitZone.w &&
+          by >= exitZone.y && by <= exitZone.y + exitZone.h) {
+        World.clear(eng.world); Engine.clear(eng);
+        resolve({
+          transitTime: frames * (1000 / 60),
+          uniqueTouched: ball.touchedElems.size,
+          totalElements: track.elements.length,
+          bounces: ball.bounceCount,
+          loopComplete: ball.touchedElems.has('loop'),
+          stuck: false,
+          config
+        });
+        return;
+      }
+
+      if (frames >= maxFrames) {
+        World.clear(eng.world); Engine.clear(eng);
+        resolve({ stuck: true, config });
+        return;
+      }
+
+      // Immediate next step (not setTimeout for speed)
+      if (frames % 10 === 0) {
+        setTimeout(step, 0); // yield to UI every 10 frames
+      } else {
+        step();
+      }
+    }
+    step();
+  });
+}
+
+async function startSearch() {
+  if (searching) return;
+  searching = true;
+  searchAbort = false;
+  bestScore = -Infinity;
+  bestConfig = null;
+
+  const btn = document.getElementById('btn-search');
+  const stopBtn = document.getElementById('btn-stop-search');
+  btn.disabled = true;
+  stopBtn.disabled = false;
+
+  const total = 200;
+  const chunkSize = 25;
+  const statusEl = document.getElementById('search-status');
+  const progressEl = document.getElementById('search-progress');
+  const bestEl = document.getElementById('best-score');
+
+  for (let i = 0; i < total && !searchAbort; i += chunkSize) {
+    const chunk = Math.min(chunkSize, total - i);
+    const promises = [];
+    for (let j = 0; j < chunk; j++) {
+      promises.push(simulateTrack({
+        elements: rngi(5, 12),
+        gravity: rng(0.5, 2.0),
+        restitution: rng(0.3, 0.8),
+        friction: rng(0.02, 0.10)
+      }));
+    }
+    const results = await Promise.all(promises);
+    for (const r of results) {
+      const s = scoreTrack(r);
+      if (s > bestScore) {
+        bestScore = s;
+        bestConfig = r.config;
+        bestEl.textContent = `Best: ${s.toFixed(3)} (${bestConfig.elements} elems, g=${bestConfig.gravity.toFixed(1)})`;
+      }
+    }
+    const pct = Math.min(100, ((i + chunk) / total) * 100);
+    progressEl.style.width = pct + '%';
+    statusEl.textContent = `Tested ${Math.min(i + chunk, total)} / ${total}`;
+    await new Promise(r => setTimeout(r, 10));
+  }
+
+  if (bestConfig && !searchAbort) {
+    // Apply best config
+    document.getElementById('sl-elements').value = bestConfig.elements;
+    document.getElementById('sl-gravity').value = bestConfig.gravity;
+    document.getElementById('sl-restitution').value = bestConfig.restitution;
+    document.getElementById('sl-friction').value = bestConfig.friction;
+    updateSliderDisplays();
+    regenerateTrack();
+    statusEl.textContent = 'Applied best config!';
+  }
+
+  searching = false;
+  btn.disabled = false;
+  stopBtn.disabled = true;
+}
+
+function stopSearch() {
+  searchAbort = true;
+}
+
+// ── Mode switching ──
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-single').className = m === 'single' ? 'btn active' : 'btn';
+  document.getElementById('btn-atlas').className = m === 'atlas' ? 'btn active' : 'btn';
+  if (m === 'single') {
+    createSingleEngine();
+  } else {
+    createAtlas();
+  }
+}
+
+function regenerateTrack() {
+  if (mode === 'single') createSingleEngine();
+  else createAtlas();
+}
+
+function clearBalls() {
+  if (mode === 'single' && singleEngine) {
+    const toRemove = Composite.allBodies(singleEngine.world).filter(b => b.isBall);
+    toRemove.forEach(b => Composite.remove(singleEngine.world, b));
+    balls = [];
+    document.getElementById('ball-log').innerHTML = '';
+  }
+}
+
+function resetAll() {
+  clearBalls();
+  regenerateTrack();
+  document.getElementById('search-progress').style.width = '0%';
+  document.getElementById('search-status').textContent = '';
+  document.getElementById('best-score').textContent = '';
+}
+
+// ── p5.js Sketch ──
+const sketch = (p) => {
+  p.setup = function() {
+    W = document.getElementById('canvas-container').offsetWidth;
+    H = document.getElementById('canvas-container').offsetHeight;
+    p.createCanvas(W, H);
+    createSingleEngine();
+  };
+
+  p.windowResized = function() {
+    W = document.getElementById('canvas-container').offsetWidth;
+    H = document.getElementById('canvas-container').offsetHeight;
+    p.resizeCanvas(W, H);
+    regenerateTrack();
+  };
+
+  p.mousePressed = function() {
+    if (mode === 'atlas') {
+      // Click cell to enter single mode
+      const mx = p.mouseX, my = p.mouseY;
+      if (mx < 0 || my < 0 || mx > W || my > H) return;
+      setMode('single');
+      return;
+    }
+
+    if (mode === 'single' && singleTrack) {
+      const mx = p.mouseX, my = p.mouseY;
+      const sz = singleTrack.startZone;
+      // Allow dropping anywhere in the upper portion
+      if (my < H * 0.25 && mx > 0 && mx < W) {
+        const activeBalls = Composite.allBodies(singleEngine.world).filter(b => b.isBall);
+        if (activeBalls.length >= MAX_BALLS) return;
+        const ball = dropBall(singleEngine, mx, my);
+        balls.push(ball);
+      }
+    }
+  };
+
+  p.draw = function() {
+    p.background(245, 243, 238);
+
+    if (mode === 'single') {
+      drawSingle(p);
+    } else {
+      drawAtlas(p);
+    }
+  };
+
+  function drawSingle(p) {
+    // Update physics
+    singleEngine.gravity.y = getSlider('sl-gravity');
+    Engine.update(singleEngine, 1000 / 60);
+
+    // Update gate timers
+    updateGates(singleEngine);
+
+    const showTrail = document.getElementById('chk-trail').checked;
+    const showVel = document.getElementById('chk-velocity').checked;
+    const showZones = document.getElementById('chk-zones').checked;
+    const showLabels = document.getElementById('chk-labels').checked;
+
+    // Draw zones
+    if (singleTrack) {
+      const sz = singleTrack.startZone;
+      const ez = singleTrack.exitZone;
+
+      // Start zone — always show as faded, highlight if showZones
+      p.noStroke();
+      p.fill(46, 139, 87, showZones ? 60 : 30);
+      p.rect(sz.x, sz.y, sz.w, sz.h, 4);
+      if (showZones) {
+        p.fill(46, 139, 87, 180);
+        p.textSize(9);
+        p.textAlign(p.CENTER, p.CENTER);
+        p.text('DROP ZONE', sz.x + sz.w / 2, sz.y + sz.h / 2);
+      }
+
+      // Exit zone
+      p.fill(178, 34, 34, showZones ? 60 : 30);
+      p.rect(ez.x, ez.y, ez.w, ez.h, 4);
+      if (showZones) {
+        p.fill(178, 34, 34, 180);
+        p.textSize(9);
+        p.textAlign(p.CENTER, p.CENTER);
+        p.text('EXIT', ez.x + ez.w / 2, ez.y + ez.h / 2);
+      }
+    }
+
+    // Draw all bodies
+    const allBodies = Composite.allBodies(singleEngine.world);
+    for (const body of allBodies) {
+      if (body.isBall) continue; // draw balls separately
+      drawBody(p, body, showLabels);
+    }
+
+    // Draw balls with trails
+    const activeBalls = allBodies.filter(b => b.isBall);
+    for (const ball of activeBalls) {
+      // Update trail
+      ball.trail = ball.trail || [];
+      ball.trail.push({ x: ball.position.x, y: ball.position.y });
+      if (ball.trail.length > MAX_TRAIL) ball.trail.shift();
+
+      // Draw trail
+      if (showTrail) {
+        for (let i = 0; i < ball.trail.length - 1; i++) {
+          const alpha = p.map(i, 0, ball.trail.length - 1, 20, 180);
+          const sz = p.map(i, 0, ball.trail.length - 1, 2, BALL_RADIUS * 0.6);
+          p.noStroke();
+          p.fill(212, 160, 96, alpha);
+          p.ellipse(ball.trail[i].x, ball.trail[i].y, sz * 2);
+        }
+      }
+
+      // Draw ball
+      p.fill(139, 69, 19);
+      p.stroke(100, 50, 10);
+      p.strokeWeight(1);
+      p.ellipse(ball.position.x, ball.position.y, BALL_RADIUS * 2);
+
+      // Velocity vector
+      if (showVel) {
+        const vx = ball.velocity.x, vy = ball.velocity.y;
+        const spd = Math.sqrt(vx * vx + vy * vy);
+        if (spd > 0.5) {
+          p.stroke(200, 80, 30, 180);
+          p.strokeWeight(1.5);
+          const scale = 3;
+          p.line(ball.position.x, ball.position.y,
+                 ball.position.x + vx * scale, ball.position.y + vy * scale);
+          // Arrowhead
+          const angle = Math.atan2(vy, vx);
+          const ax = ball.position.x + vx * scale;
+          const ay = ball.position.y + vy * scale;
+          p.line(ax, ay, ax - 6 * Math.cos(angle - 0.4), ay - 6 * Math.sin(angle - 0.4));
+          p.line(ax, ay, ax - 6 * Math.cos(angle + 0.4), ay - 6 * Math.sin(angle + 0.4));
+        }
+      }
+
+      // Check exit zone
+      if (singleTrack && !ball.exitTime) {
+        const ez = singleTrack.exitZone;
+        if (ball.position.x >= ez.x && ball.position.x <= ez.x + ez.w &&
+            ball.position.y >= ez.y && ball.position.y <= ez.y + ez.h) {
+          ball.exitTime = performance.now();
+          const spd = Math.sqrt(ball.velocity.x ** 2 + ball.velocity.y ** 2);
+          ball.exitSpeed = spd;
+          logBall(ball);
+        }
+      }
+
+      // Check stuck (10 seconds)
+      if (!ball.exitTime && !ball.stuck) {
+        const elapsed = (performance.now() - ball.dropTime) / 1000;
+        if (elapsed > 10) {
+          const spd = Math.sqrt(ball.velocity.x ** 2 + ball.velocity.y ** 2);
+          if (spd < 0.3) {
+            ball.stuck = true;
+            logBall(ball);
+          }
+        }
+      }
+    }
+
+    // Update HUD
+    updateHUD(activeBalls);
+    updatePhysicsHUD(activeBalls);
+
+    // Drop zone hint
+    p.noStroke();
+    p.fill(100, 100, 100, 40);
+    p.rect(0, 0, W, H * 0.25);
+    p.fill(120, 120, 120, 60);
+    p.textSize(10);
+    p.textAlign(p.CENTER, p.TOP);
+    p.text('Click here to drop a ball', W / 2, 4);
+  }
+
+  function drawAtlas(p) {
+    const cols = 4, rows = 4;
+    const cellW = Math.floor(W / cols);
+    const cellH = Math.floor((H - 20) / rows);
+
+    for (let i = 0; i < atlasCells.length; i++) {
+      const cell = atlasCells[i];
+      const ox = cell.col * cellW;
+      const oy = cell.row * cellH;
+
+      // Update physics
+      if (cell.status === 'running') {
+        Engine.update(cell.engine, 1000 / 60);
+        updateGates(cell.engine);
+
+        // Check exit
+        if (cell.ball && !cell.ball.exitTime) {
+          const ez = cell.track.exitZone;
+          const bx = cell.ball.position.x, by = cell.ball.position.y;
+          if (bx >= ez.x && bx <= ez.x + ez.w && by >= ez.y && by <= ez.y + ez.h) {
+            cell.ball.exitTime = performance.now();
+            cell.transitTime = (cell.ball.exitTime - cell.ball.dropTime) / 1000;
+            cell.status = 'done';
+          }
+          // Stuck check
+          const elapsed = (performance.now() - cell.ball.dropTime) / 1000;
+          if (elapsed > 10) {
+            const spd = Math.sqrt(cell.ball.velocity.x ** 2 + cell.ball.velocity.y ** 2);
+            if (spd < 0.3) {
+              cell.status = 'stuck';
+            }
+          }
+        }
+      }
+
+      // Draw cell
+      p.push();
+      p.translate(ox, oy);
+
+      // Background
+      p.fill(250, 248, 243);
+      p.stroke(200, 195, 180);
+      p.strokeWeight(1);
+      p.rect(1, 1, cellW - 2, cellH - 2, 2);
+
+      // Clip manually by drawing
+      p.push();
+      // Scale bodies to fit cell
+      const allBodies = Composite.allBodies(cell.engine.world);
+      const scaleX = cellW / cell.cellW;
+      const scaleY = cellH / cell.cellH;
+
+      // Draw zones (small)
+      if (cell.track) {
+        const sz = cell.track.startZone;
+        const ez = cell.track.exitZone;
+        p.noStroke();
+        p.fill(46, 139, 87, 40);
+        p.rect(sz.x * scaleX, sz.y * scaleY, sz.w * scaleX, sz.h * scaleY, 2);
+        p.fill(178, 34, 34, 40);
+        p.rect(ez.x * scaleX, ez.y * scaleY, ez.w * scaleX, ez.h * scaleY, 2);
+      }
+
+      // Draw bodies
+      for (const body of allBodies) {
+        if (body.isBall) continue;
+        drawBodyScaled(p, body, scaleX, scaleY, false);
+      }
+
+      // Draw ball
+      if (cell.ball) {
+        const bx = cell.ball.position.x * scaleX;
+        const by = cell.ball.position.y * scaleY;
+        p.fill(139, 69, 19);
+        p.noStroke();
+        p.ellipse(bx, by, BALL_RADIUS * 1.5);
+      }
+
+      // Status overlay
+      if (cell.status === 'done') {
+        p.fill(46, 139, 87, 30);
+        p.noStroke();
+        p.rect(0, 0, cellW, cellH);
+        p.fill(46, 139, 87);
+        p.textSize(10);
+        p.textAlign(p.CENTER, p.CENTER);
+        p.text(cell.transitTime.toFixed(1) + 's', cellW / 2, cellH / 2);
+      } else if (cell.status === 'stuck') {
+        p.fill(178, 34, 34, 30);
+        p.noStroke();
+        p.rect(0, 0, cellW, cellH);
+        p.fill(178, 34, 34);
+        p.textSize(10);
+        p.textAlign(p.CENTER, p.CENTER);
+        p.text('STUCK', cellW / 2, cellH / 2);
+      }
+
+      p.pop();
+      p.pop();
+    }
+
+    // Atlas info
+    p.fill(100);
+    p.noStroke();
+    p.textSize(10);
+    p.textAlign(p.LEFT, p.BOTTOM);
+    p.text('Click any cell to enter single mode', 8, H - 24);
+  }
+
+  function drawBody(p, body, showLabels) {
+    const type = body.elemType;
+    if (!type || type === 'wall') {
+      // Walls — subtle
+      if (type === 'wall') return; // don't draw walls
+      return;
+    }
+
+    const col = ELEM_COLORS[type] || ELEM_COLORS.ramp;
+
+    // Gate — toggle visibility
+    if (type === 'gate' && body.gateOpen) {
+      p.push();
+      p.stroke(col.stroke);
+      p.strokeWeight(1);
+      p.noFill();
+      drawVertices(p, body.vertices);
+      p.pop();
+
+      if (showLabels) {
+        p.fill(140, 100, 100, 150);
+        p.noStroke();
+        p.textSize(8);
+        p.textAlign(p.CENTER, p.BOTTOM);
+        p.text('OPEN', body.position.x, body.position.y - 8);
+      }
+      return;
+    }
+
+    p.push();
+
+    if (body.circleRadius) {
+      // Circle (bumper)
+      p.fill(col.fill);
+      p.stroke(col.stroke);
+      p.strokeWeight(1.5);
+      p.ellipse(body.position.x, body.position.y, body.circleRadius * 2);
+
+      // Spring-like hatching for bumpers
+      if (type === 'bumper') {
+        const r = body.circleRadius;
+        p.stroke(col.stroke);
+        p.strokeWeight(0.5);
+        for (let a = 0; a < Math.PI * 2; a += Math.PI / 4) {
+          const x1 = body.position.x + Math.cos(a) * r * 0.3;
+          const y1 = body.position.y + Math.sin(a) * r * 0.3;
+          const x2 = body.position.x + Math.cos(a) * r * 0.85;
+          const y2 = body.position.y + Math.sin(a) * r * 0.85;
+          p.line(x1, y1, x2, y2);
+        }
+      }
+    } else {
+      // Polygon
+      p.fill(col.fill);
+      p.stroke(col.stroke);
+      p.strokeWeight(1);
+      drawVertices(p, body.vertices);
+
+      // Hatching on ramps
+      if (type === 'ramp' && body.elemLen) {
+        const cx = body.position.x, cy = body.position.y;
+        const ang = body.angle || 0;
+        const len = body.elemLen;
+        p.stroke(col.stroke);
+        p.strokeWeight(0.4);
+        const steps = Math.floor(len / 12);
+        for (let s = -steps; s <= steps; s++) {
+          const d = s * 6;
+          const hx = cx + Math.cos(ang) * d;
+          const hy = cy + Math.sin(ang) * d;
+          const nx = -Math.sin(ang) * 3;
+          const ny = Math.cos(ang) * 3;
+          p.line(hx - nx, hy - ny, hx + nx, hy + ny);
+        }
+      }
+    }
+
+    // Label
+    if (showLabels && col.label) {
+      p.fill(80, 80, 80, 180);
+      p.noStroke();
+      p.textSize(8);
+      p.textAlign(p.CENTER, p.BOTTOM);
+      let labelY = body.position.y;
+      if (body.circleRadius) labelY -= body.circleRadius - 2;
+      else labelY -= 10;
+      p.text(col.label, body.position.x, labelY);
+    }
+
+    p.pop();
+  }
+
+  function drawBodyScaled(p, body, sx, sy, showLabels) {
+    const type = body.elemType;
+    if (!type || type === 'wall') return;
+    if (type === 'gate' && body.gateOpen) return;
+
+    const col = ELEM_COLORS[type] || ELEM_COLORS.ramp;
+    p.push();
+
+    if (body.circleRadius) {
+      p.fill(col.fill);
+      p.stroke(col.stroke);
+      p.strokeWeight(0.8);
+      p.ellipse(body.position.x * sx, body.position.y * sy, body.circleRadius * 2 * sx);
+    } else {
+      p.fill(col.fill);
+      p.stroke(col.stroke);
+      p.strokeWeight(0.8);
+      p.beginShape();
+      for (const v of body.vertices) {
+        p.vertex(v.x * sx, v.y * sy);
+      }
+      p.endShape(p.CLOSE);
+    }
+    p.pop();
+  }
+
+  function drawVertices(p, verts) {
+    p.beginShape();
+    for (const v of verts) {
+      p.vertex(v.x, v.y);
+    }
+    p.endShape(p.CLOSE);
+  }
+};
+
+function updateGates(engine) {
+  const bodies = Composite.allBodies(engine.world);
+  const time = performance.now() / 1000;
+  for (const body of bodies) {
+    if (body.elemType === 'gate') {
+      const cycle = time / body.gatePeriod;
+      const wasOpen = body.gateOpen;
+      body.gateOpen = (cycle % 1) > 0.5;
+      if (body.gateOpen !== wasOpen) {
+        // Toggle collision
+        body.collisionFilter = body.gateOpen
+          ? { group: -1, category: 0, mask: 0 }
+          : { group: 0, category: 1, mask: 0xFFFFFFFF };
+      }
+    }
+  }
+}
+
+function updateHUD(activeBalls) {
+  const hud = document.getElementById('hud');
+  if (mode === 'atlas') {
+    const done = atlasCells.filter(c => c.status === 'done').length;
+    const stuck = atlasCells.filter(c => c.status === 'stuck').length;
+    const running = atlasCells.length - done - stuck;
+    hud.innerHTML = `
+      <div>Running <span class="hv">${running}</span></div>
+      <div>Done <span class="hv">${done}</span></div>
+      <div>Stuck <span class="hv">${stuck}</span></div>
+    `;
+    return;
+  }
+
+  if (!activeBalls || activeBalls.length === 0) {
+    hud.innerHTML = '<div style="color:#999">Drop a ball to begin</div>';
+    return;
+  }
+
+  const ball = activeBalls[activeBalls.length - 1]; // latest ball
+  const vx = ball.velocity.x, vy = ball.velocity.y;
+  const speed = Math.sqrt(vx * vx + vy * vy);
+  const elapsed = ball.exitTime
+    ? ((ball.exitTime - ball.dropTime) / 1000).toFixed(2)
+    : ((performance.now() - ball.dropTime) / 1000).toFixed(1);
+
+  hud.innerHTML = `
+    <div>Balls <span class="hv">${activeBalls.length} / ${MAX_BALLS}</span></div>
+    <div>Speed <span class="hv">${(speed * 60).toFixed(0)} px/s</span></div>
+    <div>Time <span class="hv">${elapsed}s</span></div>
+    ${ball.exitTime ? '<div style="color:#2a6848">Reached exit!</div>' : ''}
+    ${ball.stuck ? '<div style="color:#8b2020">STUCK</div>' : ''}
+  `;
+}
+
+function updatePhysicsHUD(activeBalls) {
+  const phud = document.getElementById('physics-hud');
+  if (mode === 'atlas' || !activeBalls || activeBalls.length === 0) {
+    phud.innerHTML = '';
+    phud.className = '';
+    phud.id = 'physics-hud';
+    return;
+  }
+
+  const ball = activeBalls[activeBalls.length - 1];
+  const vx = ball.velocity.x, vy = ball.velocity.y;
+  const speed = Math.sqrt(vx * vx + vy * vy);
+  const mass = ball.mass;
+  const g = singleEngine.gravity.y;
+  const height = H - ball.position.y; // distance from bottom
+
+  const KE = 0.5 * mass * speed * speed * 3600; // speed in px/s (×60)
+  const PE = mass * g * height * 60;
+  const totalE = KE + PE;
+
+  if (!ball.initialE && totalE > 0) {
+    ball.initialE = totalE;
+  }
+
+  const drift = ball.initialE ? ((totalE - ball.initialE) / ball.initialE * 100) : 0;
+  const absDrift = Math.abs(drift);
+
+  let cls = 'physics-hud';
+  if (absDrift > 20) cls = 'physics-hud error';
+  else if (absDrift > 10) cls = 'physics-hud warn';
+
+  phud.className = '';
+  phud.id = 'physics-hud';
+  if (absDrift > 20) phud.classList.add('error');
+  else if (absDrift > 10) phud.classList.add('warn');
+
+  phud.innerHTML = `
+    <div>Height: ${height.toFixed(0)} px</div>
+    <div>Speed: ${(speed * 60).toFixed(0)} px/s</div>
+    <div>KE: ${KE.toFixed(1)}</div>
+    <div>PE: ${PE.toFixed(1)}</div>
+    <div>Total: ${totalE.toFixed(1)}</div>
+    <div>Drift: ${drift.toFixed(1)}%</div>
+  `;
+}
+
+function logBall(ball) {
+  const log = document.getElementById('ball-log');
+  const elapsed = ball.exitTime
+    ? ((ball.exitTime - ball.dropTime) / 1000).toFixed(2) + 's'
+    : 'STUCK';
+  const speed = ball.exitSpeed ? (ball.exitSpeed * 60).toFixed(0) + ' px/s' : '--';
+  const div = document.createElement('div');
+  div.className = 'detail-item';
+  div.textContent = `${elapsed} | exit ${speed} | ${ball.touchedElems ? ball.touchedElems.size : 0} types`;
+  log.insertBefore(div, log.firstChild);
+}
+
+// ── Init ──
+new p5(sketch, 'canvas-container');
+</script>
+</body>
+</html>
