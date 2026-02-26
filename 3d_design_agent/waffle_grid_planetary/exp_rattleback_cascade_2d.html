@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Rattleback Cascade Grid — Spin Reversal Propagation</title>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f5f3ee; overflow: hidden; font-family: 'Georgia', serif; display: flex; height: 100vh; }
+
+  #sidebar {
+    width: 280px; min-width: 280px; background: #f0ede6;
+    border-right: 1px solid #c8c0b0; overflow-y: auto; padding: 12px 14px;
+    font-size: 12px; color: #444;
+  }
+  #sidebar h1 { font-size: 14px; letter-spacing: 1.5px; color: #333; margin-bottom: 2px; font-weight: normal; }
+  #sidebar .subtitle { font-size: 10px; color: #888; margin-bottom: 12px; font-style: italic; }
+
+  .section-title {
+    font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: #8b7355;
+    margin-top: 14px; margin-bottom: 6px; border-bottom: 1px solid #d8d0c0; padding-bottom: 3px;
+  }
+  .ctrl-row { display: flex; align-items: center; margin-bottom: 5px; }
+  .ctrl-row label { flex: 0 0 95px; font-size: 11px; color: #666; }
+  .ctrl-row input[type="range"] { flex: 1; height: 3px; accent-color: #8b4513; }
+  .ctrl-row .val { flex: 0 0 40px; text-align: right; font-size: 10px; color: #555; font-family: 'Consolas', monospace; }
+
+  select {
+    width: 100%; padding: 4px 8px; font-size: 11px; font-family: 'Georgia', serif;
+    background: #faf8f3; color: #555; border: 1px solid #c8c0b0; border-radius: 3px; margin-bottom: 4px;
+  }
+
+  .btn-row { display: flex; gap: 5px; margin: 8px 0; flex-wrap: wrap; }
+  .btn {
+    padding: 5px 10px; font-size: 10px; font-family: 'Georgia', serif;
+    background: #555; color: #f5f3ee; border: none; cursor: pointer;
+    letter-spacing: 0.5px; border-radius: 2px; transition: background 0.15s;
+  }
+  .btn:hover { background: #333; }
+  .btn.active { background: #8b4513; }
+  .btn.accent { background: #2a6848; }
+  .btn.accent:hover { background: #1a4830; }
+  .btn.danger { background: #8b2020; }
+  .btn:disabled { background: #aaa; cursor: not-allowed; }
+
+  #canvas-container { flex: 1; position: relative; }
+  #canvas-container canvas { display: block; }
+
+  #info-bar {
+    position: fixed; bottom: 0; left: 280px; right: 0; z-index: 100;
+    background: rgba(245,243,238,0.92); border-top: 1px solid #bbb;
+    padding: 4px 16px; font-size: 10px; color: #777; font-style: italic;
+  }
+
+  #hud {
+    position: absolute; top: 8px; right: 12px; background: rgba(245,243,238,0.9);
+    border: 1px solid #c8c0b0; border-radius: 4px; padding: 8px 12px;
+    font-size: 10px; line-height: 1.7; color: #666; min-width: 160px; pointer-events: none;
+  }
+  #hud .hv { color: #444; font-family: 'Consolas', monospace; float: right; }
+
+  .progress-bar { width: 100%; height: 3px; background: #ddd; border-radius: 2px; margin: 4px 0; }
+  .progress-bar-fill { height: 100%; background: #8b4513; border-radius: 2px; transition: width 0.1s; }
+
+  .stats-list { max-height: 160px; overflow-y: auto; font-size: 9px; line-height: 1.5; margin-top: 4px; }
+  .stats-item { padding: 1px 0; color: #666; font-family: 'Consolas', monospace; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #c8c0b0; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h1>RATTLEBACK CASCADE</h1>
+  <div class="subtitle">Spin Reversal Propagation on Coupled Grids</div>
+
+  <div class="section-title">Topology</div>
+  <div class="ctrl-row">
+    <label>Grid Size</label>
+    <input type="range" id="sl-gridsize" min="3" max="8" step="1" value="5">
+    <span class="val" id="v-gridsize">5</span>
+  </div>
+  <select id="sel-topology">
+    <option value="grid" selected>Grid (4 neighbors)</option>
+    <option value="hex">Hexagonal (6 neighbors)</option>
+    <option value="ring">Ring</option>
+    <option value="random">Random</option>
+  </select>
+
+  <div class="section-title">Physics</div>
+  <div class="ctrl-row">
+    <label>Asymmetry</label>
+    <input type="range" id="sl-asymmetry" min="0.1" max="0.5" step="0.01" value="0.30">
+    <span class="val" id="v-asymmetry">0.30</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Coupling</label>
+    <input type="range" id="sl-coupling" min="0.1" max="1.0" step="0.01" value="0.50">
+    <span class="val" id="v-coupling">0.50</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Damping</label>
+    <input type="range" id="sl-damping" min="0.01" max="0.5" step="0.01" value="0.10">
+    <span class="val" id="v-damping">0.10</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Speed</label>
+    <input type="range" id="sl-speed" min="0.5" max="5.0" step="0.1" value="2.0">
+    <span class="val" id="v-speed">2.0</span>
+  </div>
+
+  <div class="section-title">Mode</div>
+  <div class="btn-row">
+    <button class="btn" id="btn-atlas" onclick="setMode('atlas')">Atlas 4&times;4</button>
+    <button class="btn active" id="btn-single" onclick="setMode('single')">Single</button>
+  </div>
+
+  <div class="section-title">Actions</div>
+  <div class="btn-row">
+    <button class="btn accent" onclick="randomizeAll()">Randomize</button>
+    <button class="btn" onclick="mutateAll()">Mutate</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn danger" id="btn-beautiful" onclick="findBeautiful()">Find Beautiful</button>
+    <button class="btn" onclick="triggerCascade()">Trigger</button>
+  </div>
+  <div id="progress-container" style="display:none;">
+    <div class="progress-bar"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
+    <span style="font-size:9px;color:#888;" id="progress-text">Searching...</span>
+  </div>
+
+  <div class="section-title">Statistics</div>
+  <div class="stats-list" id="stats-list">
+    <div class="stats-item" style="color:#999;">Click a rattleback to spin it</div>
+  </div>
+</div>
+
+<div id="canvas-container">
+  <div id="hud">
+    <div>FPS <span class="hv" id="hud-fps">--</span></div>
+    <div>Mode <span class="hv" id="hud-mode">single</span></div>
+    <div>Topology <span class="hv" id="hud-topo">grid</span></div>
+    <div>Elements <span class="hv" id="hud-count">--</span></div>
+    <div>Reversals <span class="hv" id="hud-reversals">0</span></div>
+    <div>Active <span class="hv" id="hud-active">0</span></div>
+  </div>
+</div>
+
+<div id="info-bar">
+  Plate VII. &mdash; Rattleback cascade: chirally asymmetric tops reverse spin and propagate energy through coupled networks. Click to disturb.
+</div>
+
+<script>
+// ========================================================
+// RATTLEBACK CASCADE GRID — Spin Reversal Propagation
+// ========================================================
+
+const ATLAS_COLS = 4, ATLAS_ROWS = 4;
+const FIND_BEAUTIFUL_TOTAL = 200;
+const FIND_BEAUTIFUL_CHUNK = 20;
+
+// ===== STATE =====
+let mode = 'single';
+let rattlebacks = [];
+let connections = [];
+let cw, ch;
+let totalReversals = 0;
+let findBeautifulRunning = false;
+let atlasConfigs = [];
+let selectedAtlasIdx = -1;
+let hoverAtlasIdx = -1;
+let simTime = 0;
+
+// ===== RATTLEBACK PHYSICS =====
+function createRattleback(x, y, id) {
+  let asymmetry = parseFloat(document.getElementById('sl-asymmetry').value);
+  return {
+    id: id,
+    x: x,
+    y: y,
+    spin: 0,
+    rock: 0,
+    asymmetry: asymmetry,
+    preferredDir: Math.random() < 0.5 ? 1 : -1,
+    angle: 0,
+    reversalCount: 0,
+    lastSpinSign: 0,
+    flashTimer: 0,
+    neighbors: [],
+    // Visual
+    baseRadius: 0, // computed during draw
+    pulsePhase: Math.random() * Math.PI * 2
+  };
+}
+
+function stepRattleback(rb, dt) {
+  let damping = parseFloat(document.getElementById('sl-damping').value);
+
+  // If spinning against preferred direction, energy converts to rocking
+  let wrongDir = Math.sign(rb.spin) !== rb.preferredDir;
+  if (wrongDir && Math.abs(rb.spin) > 0.1) {
+    rb.rock += rb.asymmetry * Math.abs(rb.spin) * dt * 2;
+    rb.spin *= (1 - rb.asymmetry * dt * 3);
+  }
+
+  // If rocking amplitude is high enough, convert back to spin (in preferred direction)
+  if (rb.rock > 0.5) {
+    rb.spin += rb.preferredDir * rb.rock * rb.asymmetry * dt * 2;
+    rb.rock *= (1 - dt * 1.5);
+  }
+
+  // Natural damping
+  rb.spin *= (1 - dt * damping);
+  rb.rock *= (1 - dt * damping * 2);
+
+  // Update visual angle
+  rb.angle += rb.spin * dt;
+
+  // Flash timer decay
+  if (rb.flashTimer > 0) rb.flashTimer -= dt * 2;
+
+  // Detect reversal
+  let currentSign = Math.sign(rb.spin);
+  if (rb.lastSpinSign !== 0 && currentSign !== 0 && currentSign !== rb.lastSpinSign) {
+    rb.reversalCount++;
+    rb.flashTimer = 1.0;
+    totalReversals++;
+    // Cascade: bump neighbors
+    cascadeBump(rb);
+  }
+  if (currentSign !== 0) rb.lastSpinSign = currentSign;
+}
+
+function cascadeBump(rb) {
+  let coupling = parseFloat(document.getElementById('sl-coupling').value);
+  let bumpForce = Math.abs(rb.spin) * coupling * 0.5;
+
+  for (let nid of rb.neighbors) {
+    let neighbor = rattlebacks[nid];
+    if (neighbor) {
+      // Push neighbor in the WRONG direction (against its preference) to trigger cascade
+      neighbor.spin += (-neighbor.preferredDir) * bumpForce;
+      neighbor.rock += bumpForce * 0.3;
+    }
+  }
+}
+
+// ===== TOPOLOGY BUILDERS =====
+function buildTopology() {
+  let gridSize = parseInt(document.getElementById('sl-gridsize').value);
+  let topo = document.getElementById('sel-topology').value;
+
+  rattlebacks = [];
+  connections = [];
+  totalReversals = 0;
+  simTime = 0;
+
+  if (topo === 'grid') buildGrid(gridSize);
+  else if (topo === 'hex') buildHex(gridSize);
+  else if (topo === 'ring') buildRing(gridSize);
+  else if (topo === 'random') buildRandom(gridSize);
+
+  updateStatsDisplay();
+}
+
+function buildGrid(n) {
+  let spacing = 1.0 / (n + 1);
+  for (let row = 0; row < n; row++) {
+    for (let col = 0; col < n; col++) {
+      let id = row * n + col;
+      let x = (col + 1) * spacing;
+      let y = (row + 1) * spacing;
+      rattlebacks.push(createRattleback(x, y, id));
+    }
+  }
+  // Connect 4-cardinal neighbors
+  for (let row = 0; row < n; row++) {
+    for (let col = 0; col < n; col++) {
+      let id = row * n + col;
+      if (col > 0) { addConnection(id, id - 1); }
+      if (col < n - 1) { addConnection(id, id + 1); }
+      if (row > 0) { addConnection(id, id - n); }
+      if (row < n - 1) { addConnection(id, id + n); }
+    }
+  }
+}
+
+function buildHex(n) {
+  let idx = 0;
+  let rows = n;
+  let cols = n;
+  let spacing = 1.0 / (Math.max(rows, cols) + 1);
+  let lookup = {};
+
+  for (let row = 0; row < rows; row++) {
+    let offset = (row % 2) * 0.5;
+    for (let col = 0; col < cols; col++) {
+      let x = (col + 1 + offset) * spacing;
+      let y = (row + 1) * spacing * 0.866;
+      rattlebacks.push(createRattleback(x, y, idx));
+      lookup[row + ',' + col] = idx;
+      idx++;
+    }
+  }
+  // 6 neighbors for hex
+  let dirs_even = [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1]];
+  let dirs_odd = [[-1,0],[1,0],[0,-1],[0,1],[1,-1],[1,1]];
+  for (let row = 0; row < rows; row++) {
+    let dirs = (row % 2 === 0) ? dirs_even : dirs_odd;
+    for (let col = 0; col < cols; col++) {
+      let id = lookup[row + ',' + col];
+      for (let d of dirs) {
+        let nr = row + d[0], nc = col + d[1];
+        let nkey = nr + ',' + nc;
+        if (lookup[nkey] !== undefined) {
+          addConnection(id, lookup[nkey]);
+        }
+      }
+    }
+  }
+}
+
+function buildRing(n) {
+  let count = n * n;
+  let cx = 0.5, cy = 0.5;
+  for (let i = 0; i < count; i++) {
+    let angle = (i / count) * Math.PI * 2;
+    let r = 0.35;
+    let x = cx + r * Math.cos(angle);
+    let y = cy + r * Math.sin(angle);
+    rattlebacks.push(createRattleback(x, y, i));
+  }
+  // Ring: each connected to neighbors on both sides
+  for (let i = 0; i < count; i++) {
+    addConnection(i, (i + 1) % count);
+    addConnection(i, (i - 1 + count) % count);
+  }
+}
+
+function buildRandom(n) {
+  let count = n * n;
+  for (let i = 0; i < count; i++) {
+    let x = 0.1 + Math.random() * 0.8;
+    let y = 0.1 + Math.random() * 0.8;
+    rattlebacks.push(createRattleback(x, y, i));
+  }
+  // Connect each to nearest 3-5 neighbors
+  for (let i = 0; i < count; i++) {
+    let dists = [];
+    for (let j = 0; j < count; j++) {
+      if (i === j) continue;
+      let dx = rattlebacks[i].x - rattlebacks[j].x;
+      let dy = rattlebacks[i].y - rattlebacks[j].y;
+      dists.push({ idx: j, d: Math.sqrt(dx * dx + dy * dy) });
+    }
+    dists.sort((a, b) => a.d - b.d);
+    let numNeighbors = 3 + Math.floor(Math.random() * 3);
+    for (let k = 0; k < Math.min(numNeighbors, dists.length); k++) {
+      addConnection(i, dists[k].idx);
+    }
+  }
+}
+
+function addConnection(a, b) {
+  if (a === b) return;
+  if (!rattlebacks[a].neighbors.includes(b)) rattlebacks[a].neighbors.push(b);
+  if (!rattlebacks[b].neighbors.includes(a)) rattlebacks[b].neighbors.push(a);
+  // Track unique connection pairs
+  let key = Math.min(a, b) + '-' + Math.max(a, b);
+  if (!connections.includes(key)) connections.push(key);
+}
+
+// ===== ATLAS CONFIGS =====
+function generateAtlasConfig(idx) {
+  let topos = ['grid', 'hex', 'ring', 'random'];
+  let sizes = [3, 4, 5, 6];
+  let asymmetries = [0.15, 0.25, 0.35, 0.45];
+  let couplings = [0.2, 0.4, 0.6, 0.8];
+
+  return {
+    topology: topos[idx % 4],
+    gridSize: sizes[Math.floor(idx / 4) % 4],
+    asymmetry: asymmetries[Math.floor(idx / 2) % 4],
+    coupling: couplings[Math.floor(idx / 3) % 4],
+    damping: 0.08 + Math.random() * 0.12,
+    rbs: [],
+    conns: [],
+    reversals: 0,
+    simTime: 0,
+    triggered: false
+  };
+}
+
+function buildAtlasCell(config) {
+  config.rbs = [];
+  config.conns = [];
+  config.reversals = 0;
+  config.simTime = 0;
+  config.triggered = false;
+
+  let n = config.gridSize;
+  let topo = config.topology;
+
+  if (topo === 'grid') {
+    let spacing = 1.0 / (n + 1);
+    for (let row = 0; row < n; row++) {
+      for (let col = 0; col < n; col++) {
+        let id = row * n + col;
+        config.rbs.push({
+          id: id, x: (col + 1) * spacing, y: (row + 1) * spacing,
+          spin: 0, rock: 0, asymmetry: config.asymmetry,
+          preferredDir: Math.random() < 0.5 ? 1 : -1,
+          angle: 0, reversalCount: 0, lastSpinSign: 0, flashTimer: 0,
+          neighbors: [], pulsePhase: Math.random() * Math.PI * 2
+        });
+      }
+    }
+    for (let row = 0; row < n; row++) {
+      for (let col = 0; col < n; col++) {
+        let id = row * n + col;
+        if (col > 0) addAtlasConn(config, id, id - 1);
+        if (col < n - 1) addAtlasConn(config, id, id + 1);
+        if (row > 0) addAtlasConn(config, id, id - n);
+        if (row < n - 1) addAtlasConn(config, id, id + n);
+      }
+    }
+  } else if (topo === 'hex') {
+    let spacing = 1.0 / (n + 1);
+    let lookup = {};
+    let idx = 0;
+    for (let row = 0; row < n; row++) {
+      let offset = (row % 2) * 0.5;
+      for (let col = 0; col < n; col++) {
+        config.rbs.push({
+          id: idx, x: (col + 1 + offset) * spacing, y: (row + 1) * spacing * 0.866,
+          spin: 0, rock: 0, asymmetry: config.asymmetry,
+          preferredDir: Math.random() < 0.5 ? 1 : -1,
+          angle: 0, reversalCount: 0, lastSpinSign: 0, flashTimer: 0,
+          neighbors: [], pulsePhase: Math.random() * Math.PI * 2
+        });
+        lookup[row + ',' + col] = idx;
+        idx++;
+      }
+    }
+    let dirs_even = [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1]];
+    let dirs_odd = [[-1,0],[1,0],[0,-1],[0,1],[1,-1],[1,1]];
+    for (let row = 0; row < n; row++) {
+      let dirs = (row % 2 === 0) ? dirs_even : dirs_odd;
+      for (let col = 0; col < n; col++) {
+        let id = lookup[row + ',' + col];
+        for (let d of dirs) {
+          let nkey = (row + d[0]) + ',' + (col + d[1]);
+          if (lookup[nkey] !== undefined) addAtlasConn(config, id, lookup[nkey]);
+        }
+      }
+    }
+  } else if (topo === 'ring') {
+    let count = n * n;
+    for (let i = 0; i < count; i++) {
+      let angle = (i / count) * Math.PI * 2;
+      config.rbs.push({
+        id: i, x: 0.5 + 0.35 * Math.cos(angle), y: 0.5 + 0.35 * Math.sin(angle),
+        spin: 0, rock: 0, asymmetry: config.asymmetry,
+        preferredDir: Math.random() < 0.5 ? 1 : -1,
+        angle: 0, reversalCount: 0, lastSpinSign: 0, flashTimer: 0,
+        neighbors: [], pulsePhase: Math.random() * Math.PI * 2
+      });
+    }
+    for (let i = 0; i < count; i++) {
+      addAtlasConn(config, i, (i + 1) % count);
+    }
+  } else {
+    let count = n * n;
+    for (let i = 0; i < count; i++) {
+      config.rbs.push({
+        id: i, x: 0.1 + Math.random() * 0.8, y: 0.1 + Math.random() * 0.8,
+        spin: 0, rock: 0, asymmetry: config.asymmetry,
+        preferredDir: Math.random() < 0.5 ? 1 : -1,
+        angle: 0, reversalCount: 0, lastSpinSign: 0, flashTimer: 0,
+        neighbors: [], pulsePhase: Math.random() * Math.PI * 2
+      });
+    }
+    for (let i = 0; i < count; i++) {
+      let dists = [];
+      for (let j = 0; j < count; j++) {
+        if (i === j) continue;
+        let dx = config.rbs[i].x - config.rbs[j].x;
+        let dy = config.rbs[i].y - config.rbs[j].y;
+        dists.push({ idx: j, d: Math.sqrt(dx * dx + dy * dy) });
+      }
+      dists.sort((a, b) => a.d - b.d);
+      let nn = 3 + Math.floor(Math.random() * 3);
+      for (let k = 0; k < Math.min(nn, dists.length); k++) {
+        addAtlasConn(config, i, dists[k].idx);
+      }
+    }
+  }
+}
+
+function addAtlasConn(config, a, b) {
+  if (a === b) return;
+  if (!config.rbs[a].neighbors.includes(b)) config.rbs[a].neighbors.push(b);
+  if (!config.rbs[b].neighbors.includes(a)) config.rbs[b].neighbors.push(a);
+  let key = Math.min(a, b) + '-' + Math.max(a, b);
+  if (!config.conns.includes(key)) config.conns.push(key);
+}
+
+function stepAtlasCell(config, dt) {
+  // Auto-trigger at simTime = 0.5
+  if (!config.triggered && config.simTime > 0.5) {
+    config.triggered = true;
+    let center = Math.floor(config.rbs.length / 2);
+    if (config.rbs[center]) {
+      config.rbs[center].spin = -config.rbs[center].preferredDir * 8;
+    }
+  }
+
+  for (let rb of config.rbs) {
+    let wrongDir = Math.sign(rb.spin) !== rb.preferredDir;
+    if (wrongDir && Math.abs(rb.spin) > 0.1) {
+      rb.rock += rb.asymmetry * Math.abs(rb.spin) * dt * 2;
+      rb.spin *= (1 - rb.asymmetry * dt * 3);
+    }
+    if (rb.rock > 0.5) {
+      rb.spin += rb.preferredDir * rb.rock * rb.asymmetry * dt * 2;
+      rb.rock *= (1 - dt * 1.5);
+    }
+    rb.spin *= (1 - dt * config.damping);
+    rb.rock *= (1 - dt * config.damping * 2);
+    rb.angle += rb.spin * dt;
+    if (rb.flashTimer > 0) rb.flashTimer -= dt * 2;
+
+    let currentSign = Math.sign(rb.spin);
+    if (rb.lastSpinSign !== 0 && currentSign !== 0 && currentSign !== rb.lastSpinSign) {
+      rb.reversalCount++;
+      rb.flashTimer = 1.0;
+      config.reversals++;
+      // Cascade
+      let bumpForce = Math.abs(rb.spin) * config.coupling * 0.5;
+      for (let nid of rb.neighbors) {
+        let neighbor = config.rbs[nid];
+        if (neighbor) {
+          neighbor.spin += (-neighbor.preferredDir) * bumpForce;
+          neighbor.rock += bumpForce * 0.3;
+        }
+      }
+    }
+    if (currentSign !== 0) rb.lastSpinSign = currentSign;
+  }
+  config.simTime += dt;
+}
+
+// ===== ACTIONS =====
+function randomizeAll() {
+  if (mode === 'single') {
+    buildTopology();
+  } else {
+    atlasConfigs = [];
+    for (let i = 0; i < ATLAS_COLS * ATLAS_ROWS; i++) {
+      let config = generateAtlasConfig(i);
+      buildAtlasCell(config);
+      atlasConfigs.push(config);
+    }
+  }
+}
+
+function mutateAll() {
+  let delta = 0.06;
+  if (mode === 'single') {
+    for (let rb of rattlebacks) {
+      rb.asymmetry = Math.max(0.1, Math.min(0.5, rb.asymmetry + (Math.random() - 0.5) * delta));
+      rb.preferredDir = Math.random() < 0.1 ? -rb.preferredDir : rb.preferredDir;
+    }
+  } else {
+    for (let config of atlasConfigs) {
+      config.asymmetry = Math.max(0.1, Math.min(0.5, config.asymmetry + (Math.random() - 0.5) * delta));
+      config.coupling = Math.max(0.1, Math.min(1.0, config.coupling + (Math.random() - 0.5) * delta));
+      buildAtlasCell(config);
+    }
+  }
+}
+
+function triggerCascade() {
+  if (mode === 'single') {
+    if (rattlebacks.length > 0) {
+      let center = Math.floor(rattlebacks.length / 2);
+      rattlebacks[center].spin = -rattlebacks[center].preferredDir * 8;
+      totalReversals = 0;
+      for (let rb of rattlebacks) rb.reversalCount = 0;
+    }
+  } else {
+    for (let config of atlasConfigs) {
+      config.triggered = false;
+      config.simTime = 0;
+      config.reversals = 0;
+      for (let rb of config.rbs) {
+        rb.spin = 0; rb.rock = 0; rb.angle = 0;
+        rb.reversalCount = 0; rb.lastSpinSign = 0; rb.flashTimer = 0;
+      }
+    }
+  }
+}
+
+// ===== FIND BEAUTIFUL =====
+function findBeautiful() {
+  if (findBeautifulRunning) return;
+  findBeautifulRunning = true;
+  document.getElementById('btn-beautiful').disabled = true;
+  document.getElementById('progress-container').style.display = 'block';
+
+  let candidates = [];
+  let processed = 0;
+
+  function processChunk() {
+    let chunkEnd = Math.min(processed + FIND_BEAUTIFUL_CHUNK, FIND_BEAUTIFUL_TOTAL);
+    for (let i = processed; i < chunkEnd; i++) {
+      let config = {
+        topology: ['grid', 'hex', 'ring', 'random'][Math.floor(Math.random() * 4)],
+        gridSize: 3 + Math.floor(Math.random() * 4),
+        asymmetry: 0.1 + Math.random() * 0.4,
+        coupling: 0.1 + Math.random() * 0.9,
+        damping: 0.05 + Math.random() * 0.15,
+        rbs: [], conns: [], reversals: 0, simTime: 0, triggered: false
+      };
+      buildAtlasCell(config);
+
+      // Simulate for a fixed number of steps
+      let dt = 0.05;
+      // Trigger center
+      let center = Math.floor(config.rbs.length / 2);
+      if (config.rbs[center]) {
+        config.rbs[center].spin = -config.rbs[center].preferredDir * 8;
+      }
+      config.triggered = true;
+
+      for (let step = 0; step < 200; step++) {
+        stepAtlasCell(config, dt);
+      }
+
+      // Score: partial cascades (30-70% reversed) score highest
+      let reversedCount = 0;
+      for (let rb of config.rbs) {
+        if (rb.reversalCount > 0) reversedCount++;
+      }
+      let reversedPct = reversedCount / config.rbs.length;
+      let partialScore = 1.0 - Math.abs(reversedPct - 0.5) * 2; // peaks at 50%
+      if (reversedPct < 0.3 || reversedPct > 0.7) partialScore *= 0.5;
+
+      // Wave-like propagation bonus: count how many distinct "reversal times" there are
+      let reversalSpread = 0;
+      let maxReversals = 0;
+      for (let rb of config.rbs) {
+        if (rb.reversalCount > maxReversals) maxReversals = rb.reversalCount;
+        if (rb.reversalCount > 0 && rb.reversalCount < 5) reversalSpread++;
+      }
+      let waveBonus = reversalSpread / config.rbs.length;
+
+      let score = partialScore * 60 + waveBonus * 30 + Math.min(config.reversals, 50) * 0.2;
+
+      // Reset for display
+      config.reversals = 0;
+      config.simTime = 0;
+      config.triggered = false;
+      for (let rb of config.rbs) {
+        rb.spin = 0; rb.rock = 0; rb.angle = 0;
+        rb.reversalCount = 0; rb.lastSpinSign = 0; rb.flashTimer = 0;
+      }
+
+      candidates.push({ config, score });
+    }
+    processed = chunkEnd;
+
+    let pct = Math.round((processed / FIND_BEAUTIFUL_TOTAL) * 100);
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('progress-text').textContent = 'Scoring ' + processed + '/' + FIND_BEAUTIFUL_TOTAL + '...';
+
+    if (processed < FIND_BEAUTIFUL_TOTAL) {
+      setTimeout(processChunk, 0);
+    } else {
+      candidates.sort((a, b) => b.score - a.score);
+      atlasConfigs = candidates.slice(0, ATLAS_COLS * ATLAS_ROWS).map(c => c.config);
+      setMode('atlas');
+      findBeautifulRunning = false;
+      document.getElementById('btn-beautiful').disabled = false;
+      document.getElementById('progress-container').style.display = 'none';
+    }
+  }
+  processChunk();
+}
+
+// ===== MODE =====
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-atlas').classList.toggle('active', m === 'atlas');
+  document.getElementById('btn-single').classList.toggle('active', m === 'single');
+  document.getElementById('hud-mode').textContent = m;
+  if (m === 'single') {
+    buildTopology();
+    document.getElementById('info-bar').textContent =
+      'Plate VII. \u2014 Rattleback cascade: click any element to apply spin. Watch reversal waves propagate through the network.';
+  } else {
+    if (atlasConfigs.length === 0) {
+      atlasConfigs = [];
+      for (let i = 0; i < ATLAS_COLS * ATLAS_ROWS; i++) {
+        let config = generateAtlasConfig(i);
+        buildAtlasCell(config);
+        atlasConfigs.push(config);
+      }
+    }
+    document.getElementById('info-bar').textContent =
+      'Plate VII. \u2014 Atlas of 16 rattleback cascade configurations. Each auto-triggers and runs independently. Click to inspect.';
+  }
+}
+
+// ===== STATS =====
+function updateStatsDisplay() {
+  let list = document.getElementById('stats-list');
+  if (mode === 'single' && rattlebacks.length > 0) {
+    let active = 0;
+    let maxRev = 0;
+    for (let rb of rattlebacks) {
+      if (Math.abs(rb.spin) > 0.1 || rb.rock > 0.1) active++;
+      if (rb.reversalCount > maxRev) maxRev = rb.reversalCount;
+    }
+    let html = '';
+    html += '<div class="stats-item">Total: ' + rattlebacks.length + ' elements</div>';
+    html += '<div class="stats-item">Connections: ' + connections.length + '</div>';
+    html += '<div class="stats-item">Active: ' + active + '</div>';
+    html += '<div class="stats-item">Reversals: ' + totalReversals + '</div>';
+    html += '<div class="stats-item">Max per element: ' + maxRev + '</div>';
+
+    // Top 5 most active
+    let sorted = [...rattlebacks].sort((a, b) => b.reversalCount - a.reversalCount);
+    html += '<div class="stats-item" style="color:#8b4513;margin-top:4px;">--- Top Reverters ---</div>';
+    for (let i = 0; i < Math.min(5, sorted.length); i++) {
+      let rb = sorted[i];
+      if (rb.reversalCount === 0) break;
+      let dirStr = rb.preferredDir > 0 ? 'CW' : 'CCW';
+      html += '<div class="stats-item">#' + rb.id + ': ' + rb.reversalCount + ' rev (' + dirStr + ')</div>';
+    }
+    list.innerHTML = html;
+  }
+}
+
+// ===== SLIDER WIRING =====
+function wireSlider(id, valId, fmt) {
+  let sl = document.getElementById(id);
+  let vl = document.getElementById(valId);
+  sl.addEventListener('input', () => {
+    let v = parseFloat(sl.value);
+    if (fmt === 'int') vl.textContent = Math.round(v);
+    else vl.textContent = v.toFixed(2);
+  });
+}
+wireSlider('sl-gridsize', 'v-gridsize', 'int');
+wireSlider('sl-asymmetry', 'v-asymmetry');
+wireSlider('sl-coupling', 'v-coupling');
+wireSlider('sl-damping', 'v-damping');
+wireSlider('sl-speed', 'v-speed');
+
+// Rebuild on topology or gridsize change
+document.getElementById('sel-topology').addEventListener('change', () => {
+  if (mode === 'single') buildTopology();
+});
+document.getElementById('sl-gridsize').addEventListener('change', () => {
+  if (mode === 'single') buildTopology();
+});
+
+// ===== P5.JS SKETCH =====
+const sketch = (p) => {
+  p.setup = () => {
+    let container = document.getElementById('canvas-container');
+    cw = container.clientWidth; ch = container.clientHeight;
+    p.createCanvas(cw, ch).parent(container);
+    p.textFont('Georgia');
+    buildTopology();
+  };
+
+  p.windowResized = () => {
+    let container = document.getElementById('canvas-container');
+    cw = container.clientWidth; ch = container.clientHeight;
+    p.resizeCanvas(cw, ch);
+  };
+
+  p.draw = () => {
+    p.background(245, 243, 238);
+    let speed = parseFloat(document.getElementById('sl-speed').value);
+    let dt = speed * 0.016;
+
+    if (mode === 'single') {
+      // Step physics
+      for (let rb of rattlebacks) stepRattleback(rb, dt);
+      simTime += dt;
+      drawSingle(p);
+      // Update stats every 30 frames
+      if (p.frameCount % 30 === 0) updateStatsDisplay();
+    } else {
+      // Step all atlas cells
+      for (let config of atlasConfigs) stepAtlasCell(config, dt);
+      drawAtlas(p);
+    }
+
+    // HUD
+    document.getElementById('hud-fps').textContent = Math.round(p.frameRate());
+    document.getElementById('hud-topo').textContent = document.getElementById('sel-topology').value;
+
+    if (mode === 'single') {
+      document.getElementById('hud-count').textContent = rattlebacks.length;
+      document.getElementById('hud-reversals').textContent = totalReversals;
+      let active = 0;
+      for (let rb of rattlebacks) {
+        if (Math.abs(rb.spin) > 0.1 || rb.rock > 0.1) active++;
+      }
+      document.getElementById('hud-active').textContent = active;
+    } else {
+      let totalRbs = 0, totalRev = 0;
+      for (let c of atlasConfigs) { totalRbs += c.rbs.length; totalRev += c.reversals; }
+      document.getElementById('hud-count').textContent = totalRbs;
+      document.getElementById('hud-reversals').textContent = totalRev;
+      document.getElementById('hud-active').textContent = atlasConfigs.length;
+    }
+  };
+
+  p.mousePressed = () => {
+    if (p.mouseX < 0 || p.mouseX > cw || p.mouseY < 0 || p.mouseY > ch) return;
+
+    if (mode === 'single') {
+      // Find closest rattleback
+      let bestDist = Infinity, bestIdx = -1;
+      for (let i = 0; i < rattlebacks.length; i++) {
+        let rb = rattlebacks[i];
+        let sx = rb.x * cw, sy = rb.y * ch;
+        let d = Math.sqrt((p.mouseX - sx) * (p.mouseX - sx) + (p.mouseY - sy) * (p.mouseY - sy));
+        if (d < bestDist) { bestDist = d; bestIdx = i; }
+      }
+      if (bestIdx >= 0 && bestDist < 40) {
+        // Apply strong spin against preferred direction
+        rattlebacks[bestIdx].spin += (-rattlebacks[bestIdx].preferredDir) * 8;
+      }
+    } else {
+      // Atlas: click to inspect
+      let cellW = cw / ATLAS_COLS, cellH = ch / ATLAS_ROWS;
+      let col = Math.floor(p.mouseX / cellW);
+      let row = Math.floor(p.mouseY / cellH);
+      let idx = row * ATLAS_COLS + col;
+      if (idx >= 0 && idx < atlasConfigs.length) {
+        // Load this config into single mode
+        let config = atlasConfigs[idx];
+        document.getElementById('sl-gridsize').value = config.gridSize;
+        document.getElementById('v-gridsize').textContent = config.gridSize;
+        document.getElementById('sl-asymmetry').value = config.asymmetry;
+        document.getElementById('v-asymmetry').textContent = config.asymmetry.toFixed(2);
+        document.getElementById('sl-coupling').value = config.coupling;
+        document.getElementById('v-coupling').textContent = config.coupling.toFixed(2);
+        document.getElementById('sel-topology').value = config.topology;
+        setMode('single');
+      }
+    }
+  };
+
+  p.mouseMoved = () => {
+    if (mode === 'atlas') {
+      let cellW = cw / ATLAS_COLS, cellH = ch / ATLAS_ROWS;
+      let col = Math.floor(p.mouseX / cellW);
+      let row = Math.floor(p.mouseY / cellH);
+      hoverAtlasIdx = (col >= 0 && col < ATLAS_COLS && row >= 0 && row < ATLAS_ROWS) ? row * ATLAS_COLS + col : -1;
+    }
+  };
+};
+
+// ===== SINGLE MODE RENDERER =====
+function drawSingle(p) {
+  let margin = 40;
+  let drawW = cw - margin * 2;
+  let drawH = ch - margin * 2;
+
+  // Draw connections
+  for (let key of connections) {
+    let parts = key.split('-');
+    let a = rattlebacks[parseInt(parts[0])];
+    let b = rattlebacks[parseInt(parts[1])];
+    if (!a || !b) continue;
+
+    let ax = margin + a.x * drawW, ay = margin + a.y * drawH;
+    let bx = margin + b.x * drawW, by = margin + b.y * drawH;
+
+    // Color connection by activity
+    let activity = (Math.abs(a.spin) + Math.abs(b.spin)) * 0.1;
+    let alpha = Math.min(200, 40 + activity * 150);
+    p.stroke(160, 140, 120, alpha);
+    p.strokeWeight(0.5 + activity * 0.5);
+    p.line(ax, ay, bx, by);
+  }
+
+  // Draw rattlebacks
+  let gridSize = parseInt(document.getElementById('sl-gridsize').value);
+  let baseR = Math.min(drawW, drawH) / (gridSize + 1) * 0.35;
+  baseR = Math.min(baseR, 30);
+
+  for (let rb of rattlebacks) {
+    let sx = margin + rb.x * drawW;
+    let sy = margin + rb.y * drawH;
+
+    // Size pulses with rock amplitude
+    let pulse = 1.0 + rb.rock * 0.3;
+    let r = baseR * pulse;
+    rb.baseRadius = r;
+
+    // Color: CW=blue, CCW=red, reversing=yellow flash
+    let spinNorm = Math.max(-1, Math.min(1, rb.spin * 0.3));
+    let rr, gg, bb;
+    if (rb.flashTimer > 0) {
+      // Yellow flash
+      let flash = rb.flashTimer;
+      rr = 255;
+      gg = 220 * flash + 100 * (1 - flash);
+      bb = 50 * (1 - flash);
+    } else if (spinNorm > 0) {
+      // CW = blue tint
+      rr = 100 - spinNorm * 60;
+      gg = 120 - spinNorm * 40;
+      bb = 160 + spinNorm * 80;
+    } else {
+      // CCW = red tint
+      let s = -spinNorm;
+      rr = 160 + s * 80;
+      gg = 100 - s * 40;
+      bb = 100 - s * 60;
+    }
+
+    // Outer glow for active elements
+    if (Math.abs(rb.spin) > 0.5 || rb.rock > 0.3) {
+      p.noStroke();
+      let glowAlpha = Math.min(80, (Math.abs(rb.spin) + rb.rock) * 20);
+      p.fill(rr, gg, bb, glowAlpha);
+      p.circle(sx, sy, r * 2.5);
+    }
+
+    // Main body
+    p.fill(rr, gg, bb, 180);
+    p.stroke(rr * 0.6, gg * 0.6, bb * 0.6);
+    p.strokeWeight(1);
+    p.circle(sx, sy, r * 2);
+
+    // Draw asymmetric shape (ellipse rotated by angle to show spin)
+    p.push();
+    p.translate(sx, sy);
+    p.rotate(rb.angle);
+    p.noFill();
+    p.stroke(rr * 0.4, gg * 0.4, bb * 0.4, 150);
+    p.strokeWeight(1.5);
+    p.ellipse(0, 0, r * 1.6, r * 0.8);
+    // Asymmetry marker (one end heavier)
+    p.fill(rr * 0.5, gg * 0.5, bb * 0.5, 120);
+    p.noStroke();
+    p.circle(r * 0.5, 0, r * 0.4);
+    p.pop();
+
+    // Preferred direction indicator (small arrow)
+    let arrowAngle = rb.preferredDir > 0 ? 0 : Math.PI;
+    p.stroke(100, 100, 100, 80);
+    p.strokeWeight(0.8);
+    p.noFill();
+    let arrowR = r * 1.3;
+    p.arc(sx, sy, arrowR * 2, arrowR * 2,
+      arrowAngle - 0.4, arrowAngle + 0.4);
+
+    // Reversal count
+    if (rb.reversalCount > 0) {
+      p.noStroke();
+      p.fill(80, 80, 80, 180);
+      p.textSize(8);
+      p.textAlign(p.CENTER, p.CENTER);
+      p.text(rb.reversalCount, sx, sy + r + 8);
+    }
+  }
+}
+
+// ===== ATLAS RENDERER =====
+function drawAtlas(p) {
+  let cellW = cw / ATLAS_COLS, cellH = ch / ATLAS_ROWS;
+
+  for (let idx = 0; idx < atlasConfigs.length; idx++) {
+    let col = idx % ATLAS_COLS, row = Math.floor(idx / ATLAS_COLS);
+    let cx = col * cellW, cy = row * cellH;
+
+    // Cell border
+    p.noFill(); p.stroke(200, 190, 175); p.strokeWeight(0.5);
+    p.rect(cx, cy, cellW, cellH);
+
+    if (idx === hoverAtlasIdx) {
+      p.fill(255, 255, 255, 30); p.noStroke();
+      p.rect(cx, cy, cellW, cellH);
+    }
+
+    let config = atlasConfigs[idx];
+    let margin = 8;
+    let dw = cellW - margin * 2;
+    let dh = cellH - margin * 2 - 16; // leave room for label
+
+    // Draw connections
+    for (let key of config.conns) {
+      let parts = key.split('-');
+      let a = config.rbs[parseInt(parts[0])];
+      let b = config.rbs[parseInt(parts[1])];
+      if (!a || !b) continue;
+      let ax = cx + margin + a.x * dw, ay = cy + margin + a.y * dh;
+      let bx = cx + margin + b.x * dw, by = cy + margin + b.y * dh;
+      let activity = (Math.abs(a.spin) + Math.abs(b.spin)) * 0.1;
+      p.stroke(170, 160, 145, 30 + activity * 100);
+      p.strokeWeight(0.3 + activity * 0.3);
+      p.line(ax, ay, bx, by);
+    }
+
+    // Draw rattlebacks
+    let baseR = Math.min(dw, dh) / (config.gridSize + 2) * 0.3;
+    baseR = Math.min(baseR, 10);
+
+    for (let rb of config.rbs) {
+      let sx = cx + margin + rb.x * dw;
+      let sy = cy + margin + rb.y * dh;
+      let pulse = 1.0 + rb.rock * 0.3;
+      let r = baseR * pulse;
+
+      let spinNorm = Math.max(-1, Math.min(1, rb.spin * 0.3));
+      let rr, gg, bb;
+      if (rb.flashTimer > 0) {
+        rr = 255; gg = 220 * rb.flashTimer + 100 * (1 - rb.flashTimer); bb = 50 * (1 - rb.flashTimer);
+      } else if (spinNorm > 0) {
+        rr = 100 - spinNorm * 60; gg = 120 - spinNorm * 40; bb = 160 + spinNorm * 80;
+      } else {
+        let s = -spinNorm;
+        rr = 160 + s * 80; gg = 100 - s * 40; bb = 100 - s * 60;
+      }
+
+      p.fill(rr, gg, bb, 180);
+      p.noStroke();
+      p.circle(sx, sy, r * 2);
+    }
+
+    // Label
+    p.noStroke(); p.fill(160, 150, 140); p.textSize(8); p.textAlign(p.LEFT, p.BOTTOM);
+    p.text(config.topology + ' ' + config.gridSize + 'x' + config.gridSize, cx + 4, cy + cellH - 2);
+
+    // Reversal count
+    p.textAlign(p.RIGHT, p.BOTTOM);
+    p.fill(139, 69, 19, 150);
+    p.text(config.reversals + ' rev', cx + cellW - 4, cy + cellH - 2);
+  }
+}
+
+// ===== LAUNCH =====
+new p5(sketch, 'canvas-container');
+</script>
+</body>
+</html>
