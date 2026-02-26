@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Math Function Drivers — Strange Curves from Pure Math</title>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f5f3ee; overflow: hidden; font-family: 'Georgia', serif; display: flex; height: 100vh; }
+  #sidebar { width: 280px; min-width: 280px; background: #f0ede6; border-right: 1px solid #c8c0b0; overflow-y: auto; padding: 12px 14px; font-size: 12px; color: #444; }
+  #sidebar h1 { font-size: 14px; letter-spacing: 1.5px; color: #333; margin-bottom: 2px; font-weight: normal; }
+  #sidebar .subtitle { font-size: 10px; color: #888; margin-bottom: 12px; font-style: italic; }
+  .section-title { font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: #8b7355; margin-top: 14px; margin-bottom: 6px; border-bottom: 1px solid #d8d0c0; padding-bottom: 3px; }
+  .ctrl-row { display: flex; align-items: center; margin-bottom: 5px; }
+  .ctrl-row label { flex: 0 0 95px; font-size: 11px; color: #666; }
+  .ctrl-row input[type="range"] { flex: 1; height: 3px; accent-color: #8b4513; }
+  .ctrl-row .val { flex: 0 0 40px; text-align: right; font-size: 10px; color: #555; font-family: 'Consolas', monospace; }
+  select { width: 100%; padding: 4px 8px; font-size: 11px; font-family: 'Georgia', serif; background: #faf8f3; color: #555; border: 1px solid #c8c0b0; border-radius: 3px; margin-bottom: 4px; }
+  .btn-row { display: flex; gap: 5px; margin: 8px 0; flex-wrap: wrap; }
+  .btn { padding: 5px 10px; font-size: 10px; font-family: 'Georgia', serif; background: #555; color: #f5f3ee; border: none; cursor: pointer; letter-spacing: 0.5px; border-radius: 2px; transition: background 0.15s; }
+  .btn:hover { background: #333; }
+  .btn.active { background: #8b4513; }
+  .btn.accent { background: #2a6848; }
+  .btn.accent:hover { background: #1a4830; }
+  .btn.danger { background: #8b2020; }
+  .btn:disabled { background: #aaa; cursor: not-allowed; }
+  #canvas-container { flex: 1; position: relative; }
+  #info-bar { position: fixed; bottom: 0; left: 280px; right: 0; z-index: 100; background: rgba(245,243,238,0.92); border-top: 1px solid #bbb; padding: 4px 16px; font-size: 10px; color: #777; font-style: italic; }
+  #hud { position: absolute; top: 8px; right: 12px; background: rgba(245,243,238,0.9); border: 1px solid #c8c0b0; border-radius: 4px; padding: 8px 12px; font-size: 10px; line-height: 1.7; color: #666; min-width: 180px; pointer-events: none; }
+  #hud .hv { color: #444; font-family: 'Consolas', monospace; float: right; }
+  .progress-bar { width: 100%; height: 3px; background: #ddd; border-radius: 2px; margin: 4px 0; }
+  .progress-bar-fill { height: 100%; background: #8b4513; border-radius: 2px; transition: width 0.1s; }
+  .param-info { max-height: 160px; overflow-y: auto; font-size: 9px; line-height: 1.6; margin-top: 4px; }
+  .param-item { padding: 1px 0; color: #666; font-family: 'Consolas', monospace; }
+  .drive-mode-hint { font-size: 9px; color: #999; margin: 2px 0 6px 0; font-style: italic; }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #c8c0b0; border-radius: 2px; }
+</style>
+</head>
+<body>
+<div id="sidebar">
+  <h1>MATH DRIVERS</h1>
+  <div class="subtitle">Strange Curves from Pure Mathematics</div>
+
+  <div class="section-title">Driving Mode</div>
+  <select id="sel-drive">
+    <option value="xy-split">X-Y Split (one func per axis)</option>
+    <option value="parametric">Parametric ({x,y} output)</option>
+    <option value="sequential">Sequential (path from sequence)</option>
+  </select>
+  <div class="drive-mode-hint" id="drive-hint">Two functions drive X and Y independently</div>
+
+  <div id="xy-controls">
+    <div class="section-title">Function X</div>
+    <select id="sel-funcX">
+      <option value="weierstrass">Weierstrass</option>
+      <option value="logistic">Logistic Bifurcation</option>
+      <option value="collatz">Collatz Path</option>
+    </select>
+    <div class="section-title">Function Y</div>
+    <select id="sel-funcY">
+      <option value="logistic" selected>Logistic Bifurcation</option>
+      <option value="weierstrass">Weierstrass</option>
+      <option value="collatz">Collatz Path</option>
+    </select>
+  </div>
+  <div id="param-controls" style="display:none;">
+    <div class="section-title">Function</div>
+    <select id="sel-funcP">
+      <option value="zeta">Riemann Zeta (critical line)</option>
+      <option value="mandelbrot">Mandelbrot Boundary</option>
+    </select>
+  </div>
+  <div id="seq-controls" style="display:none;">
+    <div class="section-title">Sequence Function</div>
+    <select id="sel-funcS">
+      <option value="collatz">Collatz Path (3n+1)</option>
+      <option value="logistic">Logistic Map Orbit</option>
+    </select>
+  </div>
+
+  <div class="section-title">Parameters</div>
+  <div class="ctrl-row">
+    <label>Speed</label>
+    <input type="range" id="sl-speed" min="0.1" max="5.0" step="0.1" value="1.0">
+    <span class="val" id="v-speed">1.00</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Trail Length</label>
+    <input type="range" id="sl-trail" min="200" max="6000" step="200" value="2000">
+    <span class="val" id="v-trail">2000</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Trail Width</label>
+    <input type="range" id="sl-tw" min="0.3" max="3.0" step="0.1" value="1.2">
+    <span class="val" id="v-tw">1.20</span>
+  </div>
+
+  <div id="weier-params">
+    <div class="section-title">Weierstrass</div>
+    <div class="ctrl-row">
+      <label>a (decay)</label>
+      <input type="range" id="sl-wa" min="0.3" max="0.9" step="0.05" value="0.5">
+      <span class="val" id="v-wa">0.50</span>
+    </div>
+    <div class="ctrl-row">
+      <label>b (freq)</label>
+      <input type="range" id="sl-wb" min="3" max="11" step="2" value="7">
+      <span class="val" id="v-wb">7</span>
+    </div>
+    <div class="ctrl-row">
+      <label>N (terms)</label>
+      <input type="range" id="sl-wn" min="10" max="50" step="5" value="20">
+      <span class="val" id="v-wn">20</span>
+    </div>
+  </div>
+
+  <div id="zeta-params" style="display:none;">
+    <div class="section-title">Riemann Zeta</div>
+    <div class="ctrl-row">
+      <label>N (terms)</label>
+      <input type="range" id="sl-zn" min="20" max="50" step="5" value="30">
+      <span class="val" id="v-zn">30</span>
+    </div>
+  </div>
+
+  <div id="mandel-params" style="display:none;">
+    <div class="section-title">Mandelbrot</div>
+    <div class="ctrl-row">
+      <label>Max Iter</label>
+      <input type="range" id="sl-mi" min="50" max="200" step="25" value="100">
+      <span class="val" id="v-mi">100</span>
+    </div>
+  </div>
+
+  <div id="logistic-params" style="display:none;">
+    <div class="section-title">Logistic Map</div>
+    <div class="ctrl-row">
+      <label>r (rate)</label>
+      <input type="range" id="sl-lr" min="2.5" max="4.0" step="0.01" value="3.57">
+      <span class="val" id="v-lr">3.57</span>
+    </div>
+    <div class="ctrl-row">
+      <label>x0 (seed)</label>
+      <input type="range" id="sl-lx" min="0.1" max="0.9" step="0.05" value="0.5">
+      <span class="val" id="v-lx">0.50</span>
+    </div>
+    <div class="ctrl-row">
+      <label>N (steps)</label>
+      <input type="range" id="sl-ln" min="100" max="500" step="50" value="200">
+      <span class="val" id="v-ln">200</span>
+    </div>
+  </div>
+
+  <div id="collatz-params" style="display:none;">
+    <div class="section-title">Collatz</div>
+    <div class="ctrl-row">
+      <label>Start n</label>
+      <input type="range" id="sl-cn" min="3" max="10000" step="1" value="27">
+      <span class="val" id="v-cn">27</span>
+    </div>
+  </div>
+
+  <div class="section-title">Actions</div>
+  <div class="btn-row">
+    <button class="btn active" id="btn-atlas" onclick="setMode('atlas')">Atlas 4x4</button>
+    <button class="btn" id="btn-single" onclick="setMode('single')">Single</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn accent" onclick="randomizeAll()">Randomize</button>
+    <button class="btn" onclick="mutateAll()">Mutate</button>
+    <button class="btn danger" id="btn-beautiful" onclick="findBeautiful()">Find Beautiful</button>
+  </div>
+  <div id="progress-container" style="display:none;">
+    <div class="progress-bar"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
+    <span style="font-size:9px;color:#888;" id="progress-text">Searching...</span>
+  </div>
+
+  <div class="section-title">Cell Info</div>
+  <div class="param-info" id="param-info">
+    <div class="param-item" style="color:#999;">Click a cell to see parameters</div>
+  </div>
+</div>
+
+<div id="canvas-container">
+  <div id="hud">
+    <div>FPS <span class="hv" id="hud-fps">--</span></div>
+    <div>Mode <span class="hv" id="hud-mode">atlas</span></div>
+    <div>Drive <span class="hv" id="hud-drive">xy-split</span></div>
+    <div>FuncX <span class="hv" id="hud-fx">--</span></div>
+    <div>FuncY <span class="hv" id="hud-fy">--</span></div>
+    <div>Score <span class="hv" id="hud-score">--</span></div>
+  </div>
+</div>
+
+<div id="info-bar">
+  Plate IX. &mdash; Strange mathematical functions drive coordinate traces &mdash; Weierstrass, Riemann zeta, Mandelbrot boundary, logistic bifurcation, Collatz paths. Click a cell to inspect.
+</div>
+
+<script>
+// ========================================================
+// MATH FUNCTION DRIVERS — Strange Curves from Pure Math
+// ========================================================
+
+const COLS = 4, ROWS = 4;
+const ATLAS_TRAIL = 600;
+const SINGLE_TRAIL = 6000;
+const FIND_BEAUTIFUL_TOTAL = 200;
+const FIND_BEAUTIFUL_CHUNK = 25;
+
+let mode = 'atlas', cells = [], selectedIdx = -1, globalTime = 0, hoverCell = -1;
+let cw, ch, findBeautifulRunning = false;
+
+// Palette for cells (warm earth tones + jewel accents)
+const CELL_COLORS = [
+  [139, 69, 19], [70, 40, 90], [20, 80, 100], [120, 50, 30],
+  [40, 80, 60], [100, 40, 70], [30, 60, 90], [90, 70, 20],
+  [60, 30, 80], [50, 90, 40], [110, 30, 50], [20, 70, 80],
+  [80, 60, 30], [45, 55, 85], [95, 35, 60], [35, 75, 55]
+];
+
+// ===== MATH FUNCTION LIBRARY =====
+
+function weierstrass(t, a, b, N) {
+  let sum = 0;
+  for (let n = 0; n < N; n++) sum += Math.pow(a, n) * Math.cos(Math.pow(b, n) * Math.PI * t);
+  return sum;
+}
+
+function zetaCritical(t, N) {
+  let re = 0, im = 0;
+  for (let n = 1; n <= N; n++) {
+    let logn = Math.log(n);
+    re += Math.cos(t * logn) / Math.sqrt(n);
+    im -= Math.sin(t * logn) / Math.sqrt(n);
+  }
+  return { x: re, y: im };
+}
+
+function escapes(cr, ci, maxIter) {
+  let zr = 0, zi = 0;
+  for (let i = 0; i < maxIter; i++) {
+    let zr2 = zr * zr - zi * zi + cr;
+    let zi2 = 2 * zr * zi + ci;
+    zr = zr2; zi = zi2;
+    if (zr * zr + zi * zi > 4) return true;
+  }
+  return false;
+}
+
+function mandelbrotBoundaryPoint(angle, maxIter) {
+  let rMin = 0, rMax = 2;
+  for (let i = 0; i < 20; i++) {
+    let r = (rMin + rMax) / 2;
+    let cr = r * Math.cos(angle), ci = r * Math.sin(angle);
+    if (escapes(cr, ci, maxIter)) rMax = r; else rMin = r;
+  }
+  let r = (rMin + rMax) / 2;
+  return { x: r * Math.cos(angle), y: r * Math.sin(angle) };
+}
+
+// PRE-COMPUTE mandelbrot boundary: 360 points cached at config time
+function precomputeMandelbrotBoundary(maxIter) {
+  let pts = [];
+  for (let i = 0; i < 360; i++) {
+    let angle = (i / 360) * Math.PI * 2;
+    pts.push(mandelbrotBoundaryPoint(angle, maxIter));
+  }
+  return pts;
+}
+
+function logisticSequence(r, x0, N) {
+  let path = [x0];
+  let x = x0;
+  for (let i = 0; i < N; i++) { x = r * x * (1 - x); path.push(x); }
+  return path;
+}
+
+function collatzPath(n) {
+  let path = [n];
+  n = Math.floor(n);
+  if (n < 1) n = 1;
+  while (n > 1 && path.length < 500) {
+    n = (n % 2 === 0) ? n / 2 : 3 * n + 1;
+    path.push(n);
+  }
+  return path;
+}
+
+// ===== DRIVING MODES =====
+// Each config generates a full pre-computed curve
+
+const FUNC_NAMES = ['weierstrass', 'logistic', 'collatz', 'zeta', 'mandelbrot'];
+const XY_FUNCS = ['weierstrass', 'logistic', 'collatz'];
+const PARAM_FUNCS = ['zeta', 'mandelbrot'];
+const SEQ_FUNCS = ['collatz', 'logistic'];
+
+// Random param generators for each function
+function randomWeierParams() {
+  return {
+    a: 0.3 + Math.random() * 0.6,
+    b: [3, 5, 7, 9, 11][Math.floor(Math.random() * 5)],
+    N: 10 + Math.floor(Math.random() * 41) // 10-50
+  };
+}
+
+function randomZetaParams() {
+  return { N: 20 + Math.floor(Math.random() * 31) }; // 20-50
+}
+
+function randomMandelParams() {
+  return { maxIter: 50 + Math.floor(Math.random() * 4) * 50 }; // 50,100,150,200
+}
+
+function randomLogisticParams() {
+  return {
+    r: 2.5 + Math.random() * 1.5,
+    x0: 0.1 + Math.random() * 0.8,
+    N: 100 + Math.floor(Math.random() * 5) * 100 // 100-500
+  };
+}
+
+function randomCollatzParams() {
+  return { n: 3 + Math.floor(Math.random() * 9998) };
+}
+
+function randomParamsFor(funcName) {
+  switch (funcName) {
+    case 'weierstrass': return randomWeierParams();
+    case 'zeta': return randomZetaParams();
+    case 'mandelbrot': return randomMandelParams();
+    case 'logistic': return randomLogisticParams();
+    case 'collatz': return randomCollatzParams();
+  }
+  return {};
+}
+
+// Evaluate a single-value function at parameter t, returning a scalar
+function evalScalar(funcName, params, t) {
+  switch (funcName) {
+    case 'weierstrass': return weierstrass(t, params.a, params.b, params.N);
+    case 'logistic': {
+      // Use logistic as a continuous oscillator: pick index from sequence
+      let seq = params._cachedSeq;
+      if (!seq) { seq = logisticSequence(params.r, params.x0, params.N); params._cachedSeq = seq; }
+      let idx = ((t % 1) + 1) % 1; // normalize to [0,1)
+      let fi = idx * (seq.length - 1);
+      let i0 = Math.floor(fi), i1 = Math.min(i0 + 1, seq.length - 1);
+      let frac = fi - i0;
+      return seq[i0] * (1 - frac) + seq[i1] * frac; // interpolated
+    }
+    case 'collatz': {
+      let seq = params._cachedSeq;
+      if (!seq) { seq = collatzPath(params.n); params._cachedSeq = seq; }
+      let idx = ((t % 1) + 1) % 1;
+      let fi = idx * (seq.length - 1);
+      let i0 = Math.floor(fi), i1 = Math.min(i0 + 1, seq.length - 1);
+      let frac = fi - i0;
+      return seq[i0] * (1 - frac) + seq[i1] * frac;
+    }
+  }
+  return 0;
+}
+
+// Generate a full curve from a config
+function generateCurve(config, numPts) {
+  let pts = [];
+  if (config.driveMode === 'xy-split') {
+    // Clear caches
+    config.paramsX._cachedSeq = null;
+    config.paramsY._cachedSeq = null;
+    for (let i = 0; i < numPts; i++) {
+      let t = i / numPts;
+      // Scale t differently for X and Y to create more variety
+      let tx = t * config.scaleX;
+      let ty = t * config.scaleY;
+      let x = evalScalar(config.funcX, config.paramsX, tx);
+      let y = evalScalar(config.funcY, config.paramsY, ty);
+      pts.push({ x, y });
+    }
+  } else if (config.driveMode === 'parametric') {
+    if (config.funcP === 'zeta') {
+      for (let i = 0; i < numPts; i++) {
+        let t = config.tMin + (i / numPts) * (config.tMax - config.tMin);
+        let p = zetaCritical(t, config.paramsP.N);
+        pts.push(p);
+      }
+    } else if (config.funcP === 'mandelbrot') {
+      // Use pre-computed boundary
+      let boundary = config._mandelCache;
+      if (!boundary) {
+        boundary = precomputeMandelbrotBoundary(config.paramsP.maxIter);
+        config._mandelCache = boundary;
+      }
+      for (let i = 0; i < numPts; i++) {
+        let fi = (i / numPts) * (boundary.length - 1);
+        let i0 = Math.floor(fi), i1 = Math.min(i0 + 1, boundary.length - 1);
+        let frac = fi - i0;
+        pts.push({
+          x: boundary[i0].x * (1 - frac) + boundary[i1].x * frac,
+          y: boundary[i0].y * (1 - frac) + boundary[i1].y * frac
+        });
+      }
+    }
+  } else if (config.driveMode === 'sequential') {
+    let seq;
+    if (config.funcS === 'collatz') {
+      seq = collatzPath(config.paramsS.n || 27);
+    } else {
+      seq = logisticSequence(config.paramsS.r || 3.57, config.paramsS.x0 || 0.5, config.paramsS.N || 200);
+    }
+    // Map sequence to 2D: index = X, value = Y
+    for (let i = 0; i < seq.length; i++) {
+      pts.push({ x: i, y: seq[i] });
+    }
+  }
+  return pts;
+}
+
+// Normalize curve to fit in [-1, 1] range
+function normalizeCurve(pts) {
+  if (pts.length < 2) return pts;
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (let p of pts) {
+    if (isFinite(p.x) && isFinite(p.y)) {
+      minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+      minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+    }
+  }
+  let w = maxX - minX || 1;
+  let h = maxY - minY || 1;
+  let scale = Math.max(w, h);
+  let cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+  return pts.map(p => ({
+    x: isFinite(p.x) ? (p.x - cx) / scale * 2 : 0,
+    y: isFinite(p.y) ? (p.y - cy) / scale * 2 : 0
+  }));
+}
+
+// ===== CONFIG GENERATION =====
+
+const DRIVE_MODES = ['xy-split', 'parametric', 'sequential'];
+
+function randomConfig() {
+  let driveMode = DRIVE_MODES[Math.floor(Math.random() * DRIVE_MODES.length)];
+  let config = { driveMode };
+
+  if (driveMode === 'xy-split') {
+    config.funcX = XY_FUNCS[Math.floor(Math.random() * XY_FUNCS.length)];
+    config.funcY = XY_FUNCS[Math.floor(Math.random() * XY_FUNCS.length)];
+    config.paramsX = randomParamsFor(config.funcX);
+    config.paramsY = randomParamsFor(config.funcY);
+    config.scaleX = 1 + Math.random() * 8;
+    config.scaleY = 1 + Math.random() * 8;
+  } else if (driveMode === 'parametric') {
+    config.funcP = PARAM_FUNCS[Math.floor(Math.random() * PARAM_FUNCS.length)];
+    config.paramsP = randomParamsFor(config.funcP);
+    config.tMin = Math.random() * 5;
+    config.tMax = config.tMin + 10 + Math.random() * 40;
+    if (config.funcP === 'mandelbrot') {
+      config._mandelCache = precomputeMandelbrotBoundary(config.paramsP.maxIter);
+    }
+  } else if (driveMode === 'sequential') {
+    config.funcS = SEQ_FUNCS[Math.floor(Math.random() * SEQ_FUNCS.length)];
+    config.paramsS = randomParamsFor(config.funcS);
+  }
+
+  return config;
+}
+
+function configFromUI() {
+  let driveMode = document.getElementById('sel-drive').value;
+  let config = { driveMode };
+
+  if (driveMode === 'xy-split') {
+    config.funcX = document.getElementById('sel-funcX').value;
+    config.funcY = document.getElementById('sel-funcY').value;
+    config.paramsX = getUIParams(config.funcX, 'X');
+    config.paramsY = getUIParams(config.funcY, 'Y');
+    config.scaleX = 1 + Math.random() * 8;
+    config.scaleY = 1 + Math.random() * 8;
+  } else if (driveMode === 'parametric') {
+    config.funcP = document.getElementById('sel-funcP').value;
+    config.paramsP = getUIParams(config.funcP, 'P');
+    config.tMin = Math.random() * 5;
+    config.tMax = config.tMin + 10 + Math.random() * 40;
+    if (config.funcP === 'mandelbrot') {
+      config._mandelCache = precomputeMandelbrotBoundary(config.paramsP.maxIter);
+    }
+  } else if (driveMode === 'sequential') {
+    config.funcS = document.getElementById('sel-funcS').value;
+    config.paramsS = getUIParams(config.funcS, 'S');
+  }
+
+  return config;
+}
+
+function getUIParams(funcName, suffix) {
+  switch (funcName) {
+    case 'weierstrass':
+      return { a: parseFloat(document.getElementById('sl-wa').value), b: parseInt(document.getElementById('sl-wb').value), N: parseInt(document.getElementById('sl-wn').value) };
+    case 'zeta':
+      return { N: parseInt(document.getElementById('sl-zn').value) };
+    case 'mandelbrot':
+      return { maxIter: parseInt(document.getElementById('sl-mi').value) };
+    case 'logistic':
+      return { r: parseFloat(document.getElementById('sl-lr').value), x0: parseFloat(document.getElementById('sl-lx').value), N: parseInt(document.getElementById('sl-ln').value) };
+    case 'collatz':
+      return { n: parseInt(document.getElementById('sl-cn').value) };
+  }
+  return {};
+}
+
+function mutateConfig(config) {
+  let c = JSON.parse(JSON.stringify(config));
+  // Don't copy cached data
+  delete c._mandelCache;
+
+  function mutateParams(params, funcName) {
+    delete params._cachedSeq;
+    switch (funcName) {
+      case 'weierstrass':
+        params.a = Math.max(0.3, Math.min(0.9, params.a + (Math.random() - 0.5) * 0.15));
+        if (Math.random() < 0.3) params.b = [3, 5, 7, 9, 11][Math.floor(Math.random() * 5)];
+        params.N = Math.max(10, Math.min(50, params.N + Math.floor((Math.random() - 0.5) * 10)));
+        break;
+      case 'logistic':
+        params.r = Math.max(2.5, Math.min(4.0, params.r + (Math.random() - 0.5) * 0.2));
+        params.x0 = Math.max(0.1, Math.min(0.9, params.x0 + (Math.random() - 0.5) * 0.1));
+        break;
+      case 'collatz':
+        params.n = Math.max(3, Math.min(10000, params.n + Math.floor((Math.random() - 0.5) * 500)));
+        break;
+      case 'zeta':
+        params.N = Math.max(20, Math.min(50, params.N + Math.floor((Math.random() - 0.5) * 10)));
+        break;
+      case 'mandelbrot':
+        params.maxIter = Math.max(50, Math.min(200, params.maxIter + Math.floor((Math.random() - 0.5) * 50)));
+        break;
+    }
+    return params;
+  }
+
+  if (c.driveMode === 'xy-split') {
+    c.paramsX = mutateParams(c.paramsX, c.funcX);
+    c.paramsY = mutateParams(c.paramsY, c.funcY);
+    c.scaleX *= (1 + (Math.random() - 0.5) * 0.3);
+    c.scaleY *= (1 + (Math.random() - 0.5) * 0.3);
+    // Small chance to swap functions
+    if (Math.random() < 0.15) {
+      c.funcX = XY_FUNCS[Math.floor(Math.random() * XY_FUNCS.length)];
+      c.paramsX = randomParamsFor(c.funcX);
+    }
+  } else if (c.driveMode === 'parametric') {
+    c.paramsP = mutateParams(c.paramsP, c.funcP);
+    c.tMin += (Math.random() - 0.5) * 3;
+    c.tMax += (Math.random() - 0.5) * 5;
+    if (c.funcP === 'mandelbrot') {
+      c._mandelCache = precomputeMandelbrotBoundary(c.paramsP.maxIter);
+    }
+  } else if (c.driveMode === 'sequential') {
+    c.paramsS = mutateParams(c.paramsS, c.funcS);
+  }
+
+  return c;
+}
+
+// ===== BEAUTY SCORING =====
+function scoreCurve(pts) {
+  if (pts.length < 10) return 0;
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (let p of pts) {
+    if (!isFinite(p.x) || !isFinite(p.y)) continue;
+    minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+    minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+  }
+  let w = maxX - minX, h = maxY - minY, area = w * h;
+  if (area < 0.001) return 0;
+
+  // Perimeter (path length)
+  let perim = 0;
+  for (let i = 1; i < pts.length; i++) {
+    let dx = pts[i].x - pts[i - 1].x, dy = pts[i].y - pts[i - 1].y;
+    if (isFinite(dx) && isFinite(dy)) perim += Math.sqrt(dx * dx + dy * dy);
+  }
+  if (perim < 0.01) return 0;
+
+  // Complexity: path length relative to bounding box
+  let complexity = (perim / Math.sqrt(area)) * 3;
+
+  // Inflection points (curvature sign changes)
+  let inflections = 0;
+  for (let i = 3; i < pts.length; i++) {
+    let cross1 = (pts[i].x - pts[i - 1].x) * (pts[i - 1].y - pts[i - 2].y) - (pts[i].y - pts[i - 1].y) * (pts[i - 1].x - pts[i - 2].x);
+    let cross0 = (pts[i - 1].x - pts[i - 2].x) * (pts[i - 2].y - pts[i - 3].y) - (pts[i - 1].y - pts[i - 2].y) * (pts[i - 2].x - pts[i - 3].x);
+    if (isFinite(cross1) && isFinite(cross0) && cross1 * cross0 < 0) inflections++;
+  }
+
+  // Aspect ratio bonus (prefer balanced curves)
+  let aspect = Math.min(w, h) / Math.max(w, h);
+  let aspectBonus = aspect > 0.3 ? 15 : aspect > 0.15 ? 8 : 0;
+
+  // Near-closure bonus
+  let dx = pts[pts.length - 1].x - pts[0].x, dy = pts[pts.length - 1].y - pts[0].y;
+  let closeDist = Math.sqrt(dx * dx + dy * dy);
+  let closureBonus = closeDist < perim * 0.02 ? 20 : (closeDist < perim * 0.05 ? 10 : 0);
+
+  // Self-intersections (sampled)
+  let crossings = 0;
+  let step = Math.max(2, Math.floor(pts.length / 100));
+  for (let i = step; i < pts.length && crossings < 20; i += step) {
+    for (let j = i + step * 2; j < pts.length && crossings < 20; j += step) {
+      if (segsIntersect(pts[i - step], pts[i], pts[j - step], pts[j])) crossings++;
+    }
+  }
+
+  return inflections * 1.2 + Math.min(crossings, 20) * 3 + complexity * 0.4 + aspectBonus + closureBonus;
+}
+
+function segsIntersect(a, b, c, d) {
+  if (!a || !b || !c || !d) return false;
+  let det = (b.x - a.x) * (d.y - c.y) - (b.y - a.y) * (d.x - c.x);
+  if (Math.abs(det) < 1e-10) return false;
+  let t = ((c.x - a.x) * (d.y - c.y) - (c.y - a.y) * (d.x - c.x)) / det;
+  let u = ((c.x - a.x) * (b.y - a.y) - (c.y - a.y) * (b.x - a.x)) / det;
+  return t > 0.01 && t < 0.99 && u > 0.01 && u < 0.99;
+}
+
+// ===== CELL MANAGEMENT =====
+
+function makeCell(config) {
+  let rawPts = generateCurve(config, 1200);
+  let normPts = normalizeCurve(rawPts);
+  let score = scoreCurve(normPts);
+  return { config, rawPts, normPts, score, drawIdx: 0 };
+}
+
+function randomizeAll() {
+  cells = [];
+  for (let i = 0; i < COLS * ROWS; i++) cells.push(makeCell(randomConfig()));
+  globalTime = 0;
+}
+
+function mutateAll() {
+  for (let i = 0; i < cells.length; i++) {
+    let mc = mutateConfig(cells[i].config);
+    cells[i] = makeCell(mc);
+  }
+  globalTime = 0;
+}
+
+function findBeautiful() {
+  if (findBeautifulRunning) return;
+  findBeautifulRunning = true;
+  document.getElementById('btn-beautiful').disabled = true;
+  document.getElementById('progress-container').style.display = 'block';
+  let candidates = [], processed = 0;
+
+  function chunk() {
+    let end = Math.min(processed + FIND_BEAUTIFUL_CHUNK, FIND_BEAUTIFUL_TOTAL);
+    for (let i = processed; i < end; i++) {
+      let config = randomConfig();
+      let rawPts = generateCurve(config, 1200);
+      let normPts = normalizeCurve(rawPts);
+      let score = scoreCurve(normPts);
+      candidates.push({ config, rawPts, normPts, score });
+    }
+    processed = end;
+    document.getElementById('progress-fill').style.width = Math.round(processed / FIND_BEAUTIFUL_TOTAL * 100) + '%';
+    document.getElementById('progress-text').textContent = `Scoring ${processed}/${FIND_BEAUTIFUL_TOTAL}...`;
+
+    if (processed < FIND_BEAUTIFUL_TOTAL) {
+      setTimeout(chunk, 0);
+    } else {
+      candidates.sort((a, b) => b.score - a.score);
+      cells = candidates.slice(0, COLS * ROWS).map(c => ({
+        config: c.config, rawPts: c.rawPts, normPts: c.normPts, score: c.score, drawIdx: 0
+      }));
+      globalTime = 0;
+      findBeautifulRunning = false;
+      document.getElementById('btn-beautiful').disabled = false;
+      document.getElementById('progress-container').style.display = 'none';
+    }
+  }
+  chunk();
+}
+
+// ===== MODE & UI =====
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-atlas').className = m === 'atlas' ? 'btn active' : 'btn';
+  document.getElementById('btn-single').className = m === 'single' ? 'btn active' : 'btn';
+  document.getElementById('hud-mode').textContent = m;
+  if (m === 'atlas') {
+    selectedIdx = -1;
+    globalTime = 0;
+    for (let c of cells) c.drawIdx = 0;
+  } else if (m === 'single' && selectedIdx >= 0) {
+    // Regenerate with more points for single view
+    let cfg = cells[selectedIdx].config;
+    let rawPts = generateCurve(cfg, 4000);
+    let normPts = normalizeCurve(rawPts);
+    cells[selectedIdx].rawPts = rawPts;
+    cells[selectedIdx].normPts = normPts;
+    cells[selectedIdx].drawIdx = 0;
+  }
+}
+
+function updateDriveUI() {
+  let dm = document.getElementById('sel-drive').value;
+  document.getElementById('xy-controls').style.display = dm === 'xy-split' ? 'block' : 'none';
+  document.getElementById('param-controls').style.display = dm === 'parametric' ? 'block' : 'none';
+  document.getElementById('seq-controls').style.display = dm === 'sequential' ? 'block' : 'none';
+
+  let hints = {
+    'xy-split': 'Two functions drive X and Y independently',
+    'parametric': 'Function returns {x,y} directly (zeta, mandelbrot)',
+    'sequential': 'Sequence plotted as path (index vs value)'
+  };
+  document.getElementById('drive-hint').textContent = hints[dm];
+  updateParamVisibility();
+}
+
+function updateParamVisibility() {
+  let dm = document.getElementById('sel-drive').value;
+  // Hide all
+  ['weier-params', 'zeta-params', 'mandel-params', 'logistic-params', 'collatz-params'].forEach(id => {
+    document.getElementById(id).style.display = 'none';
+  });
+
+  if (dm === 'xy-split') {
+    let fx = document.getElementById('sel-funcX').value;
+    let fy = document.getElementById('sel-funcY').value;
+    showParamsFor(fx);
+    showParamsFor(fy);
+  } else if (dm === 'parametric') {
+    let fp = document.getElementById('sel-funcP').value;
+    showParamsFor(fp);
+  } else if (dm === 'sequential') {
+    let fs = document.getElementById('sel-funcS').value;
+    showParamsFor(fs);
+  }
+}
+
+function showParamsFor(funcName) {
+  switch (funcName) {
+    case 'weierstrass': document.getElementById('weier-params').style.display = 'block'; break;
+    case 'zeta': document.getElementById('zeta-params').style.display = 'block'; break;
+    case 'mandelbrot': document.getElementById('mandel-params').style.display = 'block'; break;
+    case 'logistic': document.getElementById('logistic-params').style.display = 'block'; break;
+    case 'collatz': document.getElementById('collatz-params').style.display = 'block'; break;
+  }
+}
+
+function updateCellInfo(idx) {
+  let el = document.getElementById('param-info');
+  if (idx < 0 || idx >= cells.length) {
+    el.innerHTML = '<div class="param-item" style="color:#999;">Click a cell to see parameters</div>';
+    return;
+  }
+  let c = cells[idx].config;
+  let lines = [];
+  lines.push(`<div class="param-item">drive: ${c.driveMode}</div>`);
+  lines.push(`<div class="param-item">score: ${cells[idx].score.toFixed(1)}</div>`);
+
+  if (c.driveMode === 'xy-split') {
+    lines.push(`<div class="param-item">funcX: ${c.funcX}</div>`);
+    lines.push(`<div class="param-item">funcY: ${c.funcY}</div>`);
+    lines.push(`<div class="param-item">scaleX: ${c.scaleX.toFixed(2)}</div>`);
+    lines.push(`<div class="param-item">scaleY: ${c.scaleY.toFixed(2)}</div>`);
+    lines.push(`<div class="param-item">--- X params ---</div>`);
+    for (let k in c.paramsX) { if (k[0] !== '_') lines.push(`<div class="param-item">  ${k}: ${typeof c.paramsX[k] === 'number' ? c.paramsX[k].toFixed ? c.paramsX[k].toFixed(3) : c.paramsX[k] : c.paramsX[k]}</div>`); }
+    lines.push(`<div class="param-item">--- Y params ---</div>`);
+    for (let k in c.paramsY) { if (k[0] !== '_') lines.push(`<div class="param-item">  ${k}: ${typeof c.paramsY[k] === 'number' ? c.paramsY[k].toFixed ? c.paramsY[k].toFixed(3) : c.paramsY[k] : c.paramsY[k]}</div>`); }
+  } else if (c.driveMode === 'parametric') {
+    lines.push(`<div class="param-item">func: ${c.funcP}</div>`);
+    lines.push(`<div class="param-item">tRange: [${c.tMin.toFixed(1)}, ${c.tMax.toFixed(1)}]</div>`);
+    for (let k in c.paramsP) { if (k[0] !== '_') lines.push(`<div class="param-item">  ${k}: ${c.paramsP[k]}</div>`); }
+  } else if (c.driveMode === 'sequential') {
+    lines.push(`<div class="param-item">func: ${c.funcS}</div>`);
+    for (let k in c.paramsS) { if (k[0] !== '_') lines.push(`<div class="param-item">  ${k}: ${typeof c.paramsS[k] === 'number' ? c.paramsS[k] : c.paramsS[k]}</div>`); }
+  }
+  el.innerHTML = lines.join('');
+}
+
+function updateHUD(idx) {
+  if (idx < 0 || idx >= cells.length) {
+    document.getElementById('hud-fx').textContent = '--';
+    document.getElementById('hud-fy').textContent = '--';
+    document.getElementById('hud-score').textContent = '--';
+    document.getElementById('hud-drive').textContent = '--';
+    return;
+  }
+  let c = cells[idx].config;
+  document.getElementById('hud-drive').textContent = c.driveMode;
+  if (c.driveMode === 'xy-split') {
+    document.getElementById('hud-fx').textContent = c.funcX;
+    document.getElementById('hud-fy').textContent = c.funcY;
+  } else if (c.driveMode === 'parametric') {
+    document.getElementById('hud-fx').textContent = c.funcP;
+    document.getElementById('hud-fy').textContent = '(pair)';
+  } else {
+    document.getElementById('hud-fx').textContent = c.funcS;
+    document.getElementById('hud-fy').textContent = '(seq)';
+  }
+  document.getElementById('hud-score').textContent = cells[idx].score.toFixed(1);
+}
+
+// ===== p5.js SKETCH =====
+
+const sketch = (p) => {
+  p.setup = function() {
+    let container = document.getElementById('canvas-container');
+    cw = container.offsetWidth;
+    ch = container.offsetHeight;
+    let canvas = p.createCanvas(cw, ch);
+    canvas.parent('canvas-container');
+    p.pixelDensity(1);
+    randomizeAll();
+  };
+
+  p.windowResized = function() {
+    let container = document.getElementById('canvas-container');
+    cw = container.offsetWidth;
+    ch = container.offsetHeight;
+    p.resizeCanvas(cw, ch);
+  };
+
+  p.draw = function() {
+    let speed = parseFloat(document.getElementById('sl-speed').value);
+    let trailMax = parseInt(document.getElementById('sl-trail').value);
+    let trailW = parseFloat(document.getElementById('sl-tw').value);
+
+    // Update val displays
+    document.getElementById('v-speed').textContent = speed.toFixed(2);
+    document.getElementById('v-trail').textContent = trailMax;
+    document.getElementById('v-tw').textContent = trailW.toFixed(2);
+    document.getElementById('v-wa').textContent = parseFloat(document.getElementById('sl-wa').value).toFixed(2);
+    document.getElementById('v-wb').textContent = document.getElementById('sl-wb').value;
+    document.getElementById('v-wn').textContent = document.getElementById('sl-wn').value;
+    document.getElementById('v-zn').textContent = document.getElementById('sl-zn').value;
+    document.getElementById('v-mi').textContent = document.getElementById('sl-mi').value;
+    document.getElementById('v-lr').textContent = parseFloat(document.getElementById('sl-lr').value).toFixed(2);
+    document.getElementById('v-lx').textContent = parseFloat(document.getElementById('sl-lx').value).toFixed(2);
+    document.getElementById('v-ln').textContent = document.getElementById('sl-ln').value;
+    document.getElementById('v-cn').textContent = document.getElementById('sl-cn').value;
+
+    document.getElementById('hud-fps').textContent = Math.round(p.frameRate());
+
+    globalTime += speed * 0.005;
+
+    p.background(245, 243, 238);
+
+    if (mode === 'atlas') {
+      drawAtlas(p, speed, trailMax, trailW);
+    } else {
+      drawSingle(p, speed, trailMax, trailW);
+    }
+  };
+
+  function drawAtlas(p, speed, trailMax, trailW) {
+    let pad = 8;
+    let topBar = 0;
+    let botBar = 24;
+    let cellW = (cw - pad * (COLS + 1)) / COLS;
+    let cellH = (ch - topBar - botBar - pad * (ROWS + 1)) / ROWS;
+    let mxLocal = p.mouseX, myLocal = p.mouseY;
+    hoverCell = -1;
+
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        let idx = row * COLS + col;
+        if (idx >= cells.length) continue;
+        let cell = cells[idx];
+        let cx = pad + col * (cellW + pad);
+        let cy = topBar + pad + row * (cellH + pad);
+
+        // Check hover
+        if (mxLocal >= cx && mxLocal <= cx + cellW && myLocal >= cy && myLocal <= cy + cellH) {
+          hoverCell = idx;
+        }
+
+        // Cell background
+        let isHover = idx === hoverCell;
+        let isSel = idx === selectedIdx;
+        p.noStroke();
+        if (isSel) {
+          p.fill(245, 230, 210);
+        } else if (isHover) {
+          p.fill(250, 248, 242);
+        } else {
+          p.fill(252, 250, 246);
+        }
+        p.rect(cx, cy, cellW, cellH, 3);
+
+        if (isSel) {
+          p.stroke(139, 69, 19);
+          p.strokeWeight(2);
+          p.noFill();
+          p.rect(cx, cy, cellW, cellH, 3);
+        }
+
+        // Draw curve
+        let pts = cell.normPts;
+        let drawCount = Math.min(Math.floor(globalTime * 200 * speed), pts.length);
+        let trailStart = Math.max(0, drawCount - ATLAS_TRAIL);
+
+        let cColor = CELL_COLORS[idx % CELL_COLORS.length];
+        let halfW = cellW / 2;
+        let halfH = cellH / 2;
+        let scale = Math.min(halfW, halfH) * 0.85;
+
+        p.push();
+        p.translate(cx + halfW, cy + halfH);
+
+        // Trail
+        p.noFill();
+        p.strokeWeight(trailW * 0.8);
+        for (let i = trailStart + 1; i < drawCount && i < pts.length; i++) {
+          let alpha = p.map(i, trailStart, drawCount, 30, 220);
+          p.stroke(cColor[0], cColor[1], cColor[2], alpha);
+          let x0 = pts[i - 1].x * scale;
+          let y0 = pts[i - 1].y * scale;
+          let x1 = pts[i].x * scale;
+          let y1 = pts[i].y * scale;
+          p.line(x0, y0, x1, y1);
+        }
+
+        // Current point
+        if (drawCount > 0 && drawCount <= pts.length) {
+          let ci = drawCount - 1;
+          p.fill(cColor[0], cColor[1], cColor[2]);
+          p.noStroke();
+          p.circle(pts[ci].x * scale, pts[ci].y * scale, 4);
+        }
+
+        p.pop();
+
+        // Label
+        let label = configLabel(cell.config);
+        p.noStroke();
+        p.fill(100, 90, 80, 160);
+        p.textSize(8);
+        p.textAlign(p.LEFT, p.BOTTOM);
+        p.text(label, cx + 3, cy + cellH - 2);
+
+        // Score
+        p.textAlign(p.RIGHT, p.BOTTOM);
+        p.fill(139, 69, 19, 140);
+        p.text(cell.score.toFixed(0), cx + cellW - 3, cy + cellH - 2);
+      }
+    }
+  }
+
+  function drawSingle(p, speed, trailMax, trailW) {
+    if (selectedIdx < 0 || selectedIdx >= cells.length) return;
+    let cell = cells[selectedIdx];
+    let pts = cell.normPts;
+    let drawCount = Math.min(Math.floor(globalTime * 120 * speed), pts.length);
+    let trailStart = Math.max(0, drawCount - trailMax);
+
+    let scale = Math.min(cw, ch - 48) * 0.42;
+    let cx = cw / 2;
+    let cy = (ch - 24) / 2;
+
+    let cColor = CELL_COLORS[selectedIdx % CELL_COLORS.length];
+
+    p.push();
+    p.translate(cx, cy);
+
+    // Subtle axes
+    p.stroke(200, 195, 185);
+    p.strokeWeight(0.5);
+    p.line(-scale, 0, scale, 0);
+    p.line(0, -scale, 0, scale);
+
+    // Full faded curve
+    p.stroke(cColor[0], cColor[1], cColor[2], 25);
+    p.strokeWeight(0.5);
+    p.noFill();
+    p.beginShape();
+    for (let i = 0; i < pts.length; i++) {
+      p.vertex(pts[i].x * scale, pts[i].y * scale);
+    }
+    p.endShape();
+
+    // Active trail
+    p.noFill();
+    for (let i = trailStart + 1; i < drawCount && i < pts.length; i++) {
+      let alpha = p.map(i, trailStart, drawCount, 20, 255);
+      let w = p.map(i, trailStart, drawCount, trailW * 0.3, trailW * 2.0);
+      p.stroke(cColor[0], cColor[1], cColor[2], alpha);
+      p.strokeWeight(w);
+      p.line(pts[i - 1].x * scale, pts[i - 1].y * scale, pts[i].x * scale, pts[i].y * scale);
+    }
+
+    // Current point
+    if (drawCount > 0 && drawCount <= pts.length) {
+      let ci = drawCount - 1;
+      // Glow
+      p.noStroke();
+      p.fill(cColor[0], cColor[1], cColor[2], 40);
+      p.circle(pts[ci].x * scale, pts[ci].y * scale, 16);
+      p.fill(cColor[0], cColor[1], cColor[2]);
+      p.circle(pts[ci].x * scale, pts[ci].y * scale, 6);
+    }
+
+    p.pop();
+
+    // Title
+    p.noStroke();
+    p.fill(80, 70, 60);
+    p.textSize(12);
+    p.textAlign(p.LEFT, p.TOP);
+    p.text(configLabel(cell.config) + '  |  score: ' + cell.score.toFixed(1), 12, 8);
+
+    // Progress
+    let pct = pts.length > 0 ? drawCount / pts.length : 0;
+    p.fill(200, 190, 175);
+    p.rect(0, ch - 27, cw, 3);
+    p.fill(139, 69, 19);
+    p.rect(0, ch - 27, cw * Math.min(1, pct), 3);
+  }
+
+  p.mousePressed = function() {
+    if (mode === 'atlas' && hoverCell >= 0) {
+      selectedIdx = hoverCell;
+      updateCellInfo(selectedIdx);
+      updateHUD(selectedIdx);
+      // Double-click behavior: switch to single
+    }
+  };
+
+  p.doubleClicked = function() {
+    if (mode === 'atlas' && hoverCell >= 0) {
+      selectedIdx = hoverCell;
+      setMode('single');
+      updateCellInfo(selectedIdx);
+      updateHUD(selectedIdx);
+    }
+  };
+};
+
+function configLabel(c) {
+  if (c.driveMode === 'xy-split') return `${c.funcX} x ${c.funcY}`;
+  if (c.driveMode === 'parametric') return c.funcP;
+  if (c.driveMode === 'sequential') return `seq:${c.funcS}`;
+  return '?';
+}
+
+// ===== INIT =====
+
+// Wire up UI events
+document.getElementById('sel-drive').addEventListener('change', updateDriveUI);
+document.getElementById('sel-funcX').addEventListener('change', updateParamVisibility);
+document.getElementById('sel-funcY').addEventListener('change', updateParamVisibility);
+document.getElementById('sel-funcP').addEventListener('change', updateParamVisibility);
+document.getElementById('sel-funcS').addEventListener('change', updateParamVisibility);
+
+updateDriveUI();
+new p5(sketch, document.getElementById('canvas-container'));
+
+</script>
+</body>
+</html>
