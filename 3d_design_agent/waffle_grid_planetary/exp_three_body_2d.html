@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>3-Body Gravitational Orrery — Chaotic Orbit Discovery</title>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f5f3ee; overflow: hidden; font-family: 'Georgia', serif; display: flex; height: 100vh; }
+  #sidebar { width: 280px; min-width: 280px; background: #f0ede6; border-right: 1px solid #c8c0b0; overflow-y: auto; padding: 12px 14px; font-size: 12px; color: #444; }
+  #sidebar h1 { font-size: 14px; letter-spacing: 1.5px; color: #333; margin-bottom: 2px; font-weight: normal; }
+  #sidebar .subtitle { font-size: 10px; color: #888; margin-bottom: 12px; font-style: italic; }
+  .section-title { font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: #8b7355; margin-top: 14px; margin-bottom: 6px; border-bottom: 1px solid #d8d0c0; padding-bottom: 3px; }
+  .ctrl-row { display: flex; align-items: center; margin-bottom: 5px; }
+  .ctrl-row label { flex: 0 0 95px; font-size: 11px; color: #666; }
+  .ctrl-row input[type="range"] { flex: 1; height: 3px; accent-color: #8b4513; }
+  .ctrl-row .val { flex: 0 0 40px; text-align: right; font-size: 10px; color: #555; font-family: 'Consolas', monospace; }
+  select { width: 100%; padding: 4px 8px; font-size: 11px; font-family: 'Georgia', serif; background: #faf8f3; color: #555; border: 1px solid #c8c0b0; border-radius: 3px; margin-bottom: 4px; }
+  .btn-row { display: flex; gap: 5px; margin: 8px 0; flex-wrap: wrap; }
+  .btn { padding: 5px 10px; font-size: 10px; font-family: 'Georgia', serif; background: #555; color: #f5f3ee; border: none; cursor: pointer; letter-spacing: 0.5px; border-radius: 2px; transition: background 0.15s; }
+  .btn:hover { background: #333; }
+  .btn.active { background: #8b4513; }
+  .btn.accent { background: #2a6848; }
+  .btn.accent:hover { background: #1a4830; }
+  .btn:disabled { background: #aaa; cursor: not-allowed; }
+  #canvas-container { flex: 1; position: relative; }
+  #canvas-container canvas { display: block; }
+  #info-bar { position: fixed; bottom: 0; left: 280px; right: 0; z-index: 100; background: rgba(245,243,238,0.92); border-top: 1px solid #bbb; padding: 4px 16px; font-size: 10px; color: #777; font-style: italic; }
+  #hud { position: absolute; top: 8px; right: 12px; background: rgba(245,243,238,0.9); border: 1px solid #c8c0b0; border-radius: 4px; padding: 8px 12px; font-size: 10px; line-height: 1.7; color: #666; min-width: 160px; pointer-events: none; }
+  #hud .hv { color: #444; font-family: 'Consolas', monospace; float: right; }
+  .progress-bar { width: 100%; height: 3px; background: #ddd; border-radius: 2px; margin: 4px 0; }
+  .progress-bar-fill { height: 100%; background: #8b4513; border-radius: 2px; transition: width 0.1s; }
+  .body-info { max-height: 180px; overflow-y: auto; font-size: 9px; line-height: 1.6; margin-top: 4px; }
+  .body-item { padding: 1px 0; color: #666; font-family: 'Consolas', monospace; }
+  .preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; margin-top: 6px; }
+  .preset-btn { padding: 4px 6px; font-size: 9px; font-family: 'Georgia', serif; background: #e8e4dc; color: #555; border: 1px solid #c8c0b0; cursor: pointer; border-radius: 2px; text-align: center; }
+  .preset-btn:hover { background: #d8d4cc; }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #c8c0b0; border-radius: 2px; }
+</style>
+</head>
+<body>
+<div id="sidebar">
+  <h1>3-BODY ORRERY</h1>
+  <div class="subtitle">Gravitational Chaos &mdash; Find Stable Orbits</div>
+  <div class="section-title">Physics</div>
+  <div class="ctrl-row"><label>G (gravity)</label><input type="range" id="gravity" min="0.1" max="5.0" value="1.0" step="0.1"><span class="val" id="gravityVal">1.0</span></div>
+  <div class="ctrl-row"><label>Softening</label><input type="range" id="softening" min="1" max="20" value="5" step="1"><span class="val" id="softeningVal">5</span></div>
+  <div class="ctrl-row"><label>Speed</label><input type="range" id="speed" min="0.1" max="5.0" value="1.0" step="0.1"><span class="val" id="speedVal">1.0</span></div>
+  <div class="ctrl-row"><label>Trail Length</label><input type="range" id="trailLen" min="50" max="2000" value="500" step="50"><span class="val" id="trailLenVal">500</span></div>
+  <div class="section-title">Presets</div>
+  <div class="preset-grid">
+    <div class="preset-btn" onclick="loadPreset('figure8')">Figure-8</div>
+    <div class="preset-btn" onclick="loadPreset('lagrange')">Lagrange</div>
+    <div class="preset-btn" onclick="loadPreset('euler')">Euler</div>
+    <div class="preset-btn" onclick="loadPreset('butterfly')">Butterfly</div>
+  </div>
+  <div class="section-title">Mode</div>
+  <div class="btn-row">
+    <button class="btn active" id="btnAtlas" onclick="setMode('atlas')">Atlas 4&times;4</button>
+    <button class="btn" id="btnSingle" onclick="setMode('single')">Single</button>
+  </div>
+  <div class="section-title">Actions</div>
+  <div class="btn-row">
+    <button class="btn" onclick="randomizeAll()">Randomize</button>
+    <button class="btn" onclick="mutateSelected()">Mutate</button>
+    <button class="btn accent" id="btnFind" onclick="findBeautiful()">Find Beautiful</button>
+  </div>
+  <div class="progress-bar" id="progressWrap" style="display:none;"><div class="progress-bar-fill" id="progressFill" style="width:0%"></div></div>
+  <div class="section-title">Body Info</div>
+  <div class="body-info" id="bodyInfo"></div>
+</div>
+<div id="canvas-container"><div id="hud"></div></div>
+<div id="info-bar">3-Body Gravitational Orrery &mdash; discover stable orbits in chaos</div>
+
+<script>
+const sketch = (p) => {
+  const ATLAS_COLS = 4, ATLAS_ROWS = 4;
+  const BODY_COLORS = [[200, 80, 80], [80, 140, 200], [80, 180, 100]];
+  let mode = 'atlas', configs = [], simStates = [], selectedIdx = 0;
+  let cW, cH, fps = 60, fpsFrames = 0, fpsLast = 0;
+
+  // ─── RK4 integrator ─────────────────────────────────────
+  function computeAccels(bodies, G, soft) {
+    let n = bodies.length;
+    let ax = new Float64Array(n), ay = new Float64Array(n);
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < n; j++) {
+        if (i === j) continue;
+        let dx = bodies[j].x - bodies[i].x;
+        let dy = bodies[j].y - bodies[i].y;
+        let r2 = dx * dx + dy * dy;
+        let r = Math.sqrt(r2);
+        let rs = Math.max(r, soft);
+        let f = G * bodies[j].mass / (rs * rs * rs);
+        ax[i] += f * dx;
+        ay[i] += f * dy;
+      }
+    }
+    return { ax, ay };
+  }
+
+  function rk4Step(bodies, dt, G, soft) {
+    let n = bodies.length;
+    // Save state
+    let x0 = bodies.map(b => b.x), y0 = bodies.map(b => b.y);
+    let vx0 = bodies.map(b => b.vx), vy0 = bodies.map(b => b.vy);
+
+    // k1
+    let a1 = computeAccels(bodies, G, soft);
+
+    // k2
+    let temp = bodies.map((b, i) => ({
+      x: x0[i] + vx0[i] * dt / 2, y: y0[i] + vy0[i] * dt / 2,
+      vx: vx0[i] + a1.ax[i] * dt / 2, vy: vy0[i] + a1.ay[i] * dt / 2,
+      mass: b.mass
+    }));
+    let a2 = computeAccels(temp, G, soft);
+
+    // k3
+    temp = bodies.map((b, i) => ({
+      x: x0[i] + temp[i].vx * dt / 2, y: y0[i] + temp[i].vy * dt / 2,
+      vx: vx0[i] + a2.ax[i] * dt / 2, vy: vy0[i] + a2.ay[i] * dt / 2,
+      mass: b.mass
+    }));
+    let a3 = computeAccels(temp, G, soft);
+
+    // k4
+    temp = bodies.map((b, i) => ({
+      x: x0[i] + temp[i].vx * dt, y: y0[i] + temp[i].vy * dt,
+      vx: vx0[i] + a3.ax[i] * dt, vy: vy0[i] + a3.ay[i] * dt,
+      mass: b.mass
+    }));
+    let a4 = computeAccels(temp, G, soft);
+
+    // Combine
+    for (let i = 0; i < n; i++) {
+      bodies[i].vx = vx0[i] + (a1.ax[i] + 2 * a2.ax[i] + 2 * a3.ax[i] + a4.ax[i]) * dt / 6;
+      bodies[i].vy = vy0[i] + (a1.ay[i] + 2 * a2.ay[i] + 2 * a3.ay[i] + a4.ay[i]) * dt / 6;
+      bodies[i].x = x0[i] + (vx0[i] + 2 * (vx0[i] + a1.ax[i] * dt / 2) + 2 * (vx0[i] + a2.ax[i] * dt / 2) + (vx0[i] + a3.ax[i] * dt)) * dt / 6;
+      bodies[i].y = y0[i] + (vy0[i] + 2 * (vy0[i] + a1.ay[i] * dt / 2) + 2 * (vy0[i] + a2.ay[i] * dt / 2) + (vy0[i] + a3.ay[i] * dt)) * dt / 6;
+    }
+  }
+
+  // ─── config & state ─────────────────────────────────────
+  function makeConfig() {
+    let bodies = [];
+    for (let i = 0; i < 3; i++) {
+      bodies.push({
+        mass: p.random(0.5, 3.0),
+        x: p.random(-80, 80), y: p.random(-80, 80),
+        vx: p.random(-1.5, 1.5), vy: p.random(-1.5, 1.5)
+      });
+    }
+    // Center of mass correction
+    let totalM = bodies.reduce((s, b) => s + b.mass, 0);
+    let cmx = bodies.reduce((s, b) => s + b.mass * b.x, 0) / totalM;
+    let cmy = bodies.reduce((s, b) => s + b.mass * b.y, 0) / totalM;
+    let cmvx = bodies.reduce((s, b) => s + b.mass * b.vx, 0) / totalM;
+    let cmvy = bodies.reduce((s, b) => s + b.mass * b.vy, 0) / totalM;
+    for (let b of bodies) {
+      b.x -= cmx; b.y -= cmy;
+      b.vx -= cmvx; b.vy -= cmvy;
+    }
+    return { bodies };
+  }
+
+  function makeSimState(cfg) {
+    let bodies = cfg.bodies.map(b => ({ ...b }));
+    let trails = bodies.map(() => []);
+    return { bodies, trails, steps: 0, ejected: false };
+  }
+
+  function mutateConfig(cfg) {
+    let newBodies = cfg.bodies.map(b => ({
+      mass: Math.max(0.3, b.mass * (1 + (p.random() - 0.5) * 0.2)),
+      x: b.x + p.random(-10, 10), y: b.y + p.random(-10, 10),
+      vx: b.vx + p.random(-0.3, 0.3), vy: b.vy + p.random(-0.3, 0.3)
+    }));
+    return { bodies: newBodies };
+  }
+
+  function scoreConfig(cfg) {
+    let G = 1.0, soft = 5;
+    let bodies = cfg.bodies.map(b => ({ ...b }));
+    let dt = 0.1;
+    let maxDist = 0, stableSteps = 0;
+    let trailComplexity = 0;
+    let prevX = bodies.map(b => b.x), prevY = bodies.map(b => b.y);
+
+    for (let s = 0; s < 300; s++) {
+      rk4Step(bodies, dt, G, soft);
+      // Check ejection
+      for (let b of bodies) {
+        let d = Math.sqrt(b.x * b.x + b.y * b.y);
+        maxDist = Math.max(maxDist, d);
+      }
+      if (maxDist > 500) break;
+      stableSteps++;
+
+      // Trail complexity: angular change
+      for (let i = 0; i < 3; i++) {
+        let dx = bodies[i].x - prevX[i], dy = bodies[i].y - prevY[i];
+        trailComplexity += Math.abs(Math.atan2(dy, dx));
+        prevX[i] = bodies[i].x; prevY[i] = bodies[i].y;
+      }
+    }
+
+    let stabilityScore = stableSteps * 0.3;
+    let complexityScore = Math.min(trailComplexity * 0.1, 30);
+    let boundScore = maxDist < 300 ? 20 : 0;
+    return stabilityScore + complexityScore + boundScore;
+  }
+
+  // ─── presets ────────────────────────────────────────────
+  window.loadPreset = function(name) {
+    let cfg;
+    if (name === 'figure8') {
+      // Chenciner-Montgomery figure-8
+      cfg = { bodies: [
+        { mass: 1, x: -50, y: 0, vx: 0.347111, vy: 0.532728 },
+        { mass: 1, x: 50, y: 0, vx: 0.347111, vy: 0.532728 },
+        { mass: 1, x: 0, y: 0, vx: -0.694222, vy: -1.065456 }
+      ]};
+    } else if (name === 'lagrange') {
+      let r = 60, v = 0.8;
+      cfg = { bodies: [
+        { mass: 1, x: r, y: 0, vx: 0, vy: v },
+        { mass: 1, x: r * Math.cos(2 * Math.PI / 3), y: r * Math.sin(2 * Math.PI / 3), vx: -v * Math.sin(2 * Math.PI / 3), vy: v * Math.cos(2 * Math.PI / 3) },
+        { mass: 1, x: r * Math.cos(4 * Math.PI / 3), y: r * Math.sin(4 * Math.PI / 3), vx: -v * Math.sin(4 * Math.PI / 3), vy: v * Math.cos(4 * Math.PI / 3) }
+      ]};
+    } else if (name === 'euler') {
+      cfg = { bodies: [
+        { mass: 1, x: -50, y: 0, vx: 0, vy: 0.6 },
+        { mass: 1, x: 0, y: 0, vx: 0, vy: -1.2 },
+        { mass: 1, x: 50, y: 0, vx: 0, vy: 0.6 }
+      ]};
+    } else {
+      // Butterfly-like
+      cfg = { bodies: [
+        { mass: 1, x: -30, y: 20, vx: 0.5, vy: 0.3 },
+        { mass: 1.5, x: 30, y: -20, vx: -0.3, vy: 0.5 },
+        { mass: 0.8, x: 0, y: -40, vx: -0.2, vy: -0.8 }
+      ]};
+    }
+
+    configs[selectedIdx] = cfg;
+    simStates[selectedIdx] = makeSimState(cfg);
+    if (mode === 'atlas') setMode('single');
+  };
+
+  // ─── drawing ────────────────────────────────────────────
+  function drawOrrery(p, state, cx, cy, scale, showLabels) {
+    let G = parseFloat(document.getElementById('gravity').value);
+    let soft = parseInt(document.getElementById('softening').value);
+    let trailLen = parseInt(document.getElementById('trailLen').value);
+    let maxTrail = mode === 'atlas' ? Math.min(trailLen, 300) : trailLen;
+
+    // Draw trails
+    for (let i = 0; i < 3; i++) {
+      let trail = state.trails[i];
+      if (trail.length < 2) continue;
+      let start = Math.max(0, trail.length - maxTrail);
+      for (let t = start; t < trail.length - 1; t++) {
+        let alpha = ((t - start) / (trail.length - start)) * 200;
+        p.stroke(BODY_COLORS[i][0], BODY_COLORS[i][1], BODY_COLORS[i][2], alpha);
+        p.strokeWeight(1);
+        p.line(
+          cx + trail[t].x * scale, cy + trail[t].y * scale,
+          cx + trail[t + 1].x * scale, cy + trail[t + 1].y * scale
+        );
+      }
+    }
+
+    // Draw bodies
+    for (let i = 0; i < 3; i++) {
+      let b = state.bodies[i];
+      let bx = cx + b.x * scale, by = cy + b.y * scale;
+      let r = Math.sqrt(b.mass) * 6 * Math.max(scale, 0.3);
+
+      p.fill(BODY_COLORS[i][0], BODY_COLORS[i][1], BODY_COLORS[i][2]);
+      p.noStroke();
+      p.ellipse(bx, by, r * 2, r * 2);
+
+      // Glow
+      p.fill(BODY_COLORS[i][0], BODY_COLORS[i][1], BODY_COLORS[i][2], 30);
+      p.ellipse(bx, by, r * 4, r * 4);
+
+      if (showLabels) {
+        p.fill(80);
+        p.textSize(9);
+        p.textAlign(p.CENTER);
+        p.text('m=' + b.mass.toFixed(1), bx, by - r - 5);
+      }
+    }
+  }
+
+  function stepSimulation(state) {
+    if (state.ejected) return;
+    let G = parseFloat(document.getElementById('gravity').value);
+    let soft = parseInt(document.getElementById('softening').value);
+    let spd = parseFloat(document.getElementById('speed').value);
+    let dt = 0.15 * spd;
+    let substeps = 3;
+
+    for (let s = 0; s < substeps; s++) {
+      rk4Step(state.bodies, dt / substeps, G, soft);
+    }
+
+    // Record trails
+    for (let i = 0; i < 3; i++) {
+      state.trails[i].push({ x: state.bodies[i].x, y: state.bodies[i].y });
+      if (state.trails[i].length > 5000) state.trails[i].shift();
+    }
+
+    // Check ejection
+    for (let b of state.bodies) {
+      if (Math.abs(b.x) > 500 || Math.abs(b.y) > 500) {
+        state.ejected = true;
+        break;
+      }
+    }
+    state.steps++;
+  }
+
+  // ─── atlas / single ─────────────────────────────────────
+  function getAtlasCell(mx, my) {
+    let cellW = cW / ATLAS_COLS, cellH = cH / ATLAS_ROWS;
+    let col = Math.floor(mx / cellW), row = Math.floor(my / cellH);
+    if (col < 0 || col >= ATLAS_COLS || row < 0 || row >= ATLAS_ROWS) return -1;
+    return row * ATLAS_COLS + col;
+  }
+
+  p.setup = function() {
+    let c = document.getElementById('canvas-container');
+    cW = c.clientWidth; cH = c.clientHeight;
+    p.createCanvas(cW, cH).parent('canvas-container');
+    randomizeAll(); fpsLast = p.millis();
+  };
+
+  p.windowResized = function() {
+    let c = document.getElementById('canvas-container');
+    cW = c.clientWidth; cH = c.clientHeight; p.resizeCanvas(cW, cH);
+  };
+
+  p.draw = function() {
+    p.background(245, 243, 238);
+
+    fpsFrames++;
+    let now = p.millis();
+    if (now - fpsLast > 500) { fps = Math.round(fpsFrames / ((now - fpsLast) / 1000)); fpsFrames = 0; fpsLast = now; }
+
+    if (mode === 'atlas') {
+      let cellW = cW / ATLAS_COLS, cellH = cH / ATLAS_ROWS;
+      for (let i = 0; i < Math.min(16, simStates.length); i++) {
+        let row = Math.floor(i / ATLAS_COLS), col = i % ATLAS_COLS;
+        let cx = col * cellW + cellW / 2, cy = row * cellH + cellH / 2;
+
+        // Cell bg
+        p.noStroke(); p.fill(252, 250, 245);
+        p.rect(col * cellW + 2, row * cellH + 2, cellW - 4, cellH - 4, 3);
+
+        if (simStates[i]) {
+          stepSimulation(simStates[i]);
+          let scale = Math.min(cellW, cellH) / 300;
+          drawOrrery(p, simStates[i], cx, cy, scale, false);
+
+          // Ejection indicator
+          if (simStates[i].ejected) {
+            p.fill(180, 60, 60, 100);
+            p.textSize(8);
+            p.textAlign(p.CENTER);
+            p.text('EJECTED', cx, row * cellH + cellH - 8);
+          }
+        }
+
+        // Roman numeral
+        p.fill(180); p.textSize(9); p.textAlign(p.RIGHT);
+        let rom = ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV','XVI'];
+        p.text(rom[i], col * cellW + cellW - 6, row * cellH + 14);
+
+        if (i === selectedIdx) {
+          p.noFill(); p.stroke(139, 69, 19); p.strokeWeight(2);
+          p.rect(col * cellW + 2, row * cellH + 2, cellW - 4, cellH - 4, 3);
+        }
+      }
+      p.stroke(200, 190, 175); p.strokeWeight(0.5);
+      for (let c = 1; c < ATLAS_COLS; c++) p.line(c * cellW, 0, c * cellW, cH);
+      for (let r = 1; r < ATLAS_ROWS; r++) p.line(0, r * cellH, cW, r * cellH);
+    } else {
+      let state = simStates[selectedIdx];
+      if (state) {
+        stepSimulation(state);
+        let scale = Math.min(cW, cH) / 300;
+        drawOrrery(p, state, cW / 2, cH / 2, scale, true);
+
+        // Update body info
+        let el = document.getElementById('bodyInfo');
+        let lines = state.bodies.map((b, i) =>
+          `<div class="body-item" style="color:rgb(${BODY_COLORS[i].join(',')})">Body ${i+1}: m=${b.mass.toFixed(2)} pos=(${b.x.toFixed(1)},${b.y.toFixed(1)}) v=(${b.vx.toFixed(2)},${b.vy.toFixed(2)})</div>`
+        );
+        lines.push(`<div class="body-item">Steps: ${state.steps} ${state.ejected ? '(EJECTED)' : ''}</div>`);
+        el.innerHTML = lines.join('');
+      }
+    }
+
+    let hud = document.getElementById('hud');
+    hud.innerHTML = `FPS <span class="hv">${fps}</span>` +
+      (mode === 'single' && simStates[selectedIdx] ?
+        `<br>Steps <span class="hv">${simStates[selectedIdx].steps}</span><br>Status <span class="hv">${simStates[selectedIdx].ejected ? 'Ejected' : 'Active'}</span>` : '');
+  };
+
+  p.mousePressed = function() {
+    if (mode === 'atlas') {
+      let idx = getAtlasCell(p.mouseX, p.mouseY);
+      if (idx >= 0 && idx < configs.length) { selectedIdx = idx; setMode('single'); }
+    }
+  };
+
+  window.setMode = function(m) { mode = m; document.getElementById('btnAtlas').classList.toggle('active', m === 'atlas'); document.getElementById('btnSingle').classList.toggle('active', m === 'single'); };
+  window.randomizeAll = function() {
+    configs = []; simStates = [];
+    for (let i = 0; i < 16; i++) { let c = makeConfig(); configs.push(c); simStates.push(makeSimState(c)); }
+    selectedIdx = 0;
+  };
+  window.mutateSelected = function() {
+    let c = mutateConfig(configs[selectedIdx]);
+    configs[selectedIdx] = c;
+    simStates[selectedIdx] = makeSimState(c);
+  };
+  window.findBeautiful = function() {
+    let btn = document.getElementById('btnFind'); btn.disabled = true;
+    let wrap = document.getElementById('progressWrap'), fill = document.getElementById('progressFill');
+    wrap.style.display = 'block'; fill.style.width = '0%';
+    let candidates = [], total = 200, perChunk = 20, done = 0;
+    function chunk() {
+      for (let i = done; i < Math.min(done + perChunk, total); i++) {
+        let c = makeConfig(); candidates.push({ cfg: c, score: scoreConfig(c) });
+      }
+      done = Math.min(done + perChunk, total); fill.style.width = (done / total * 100) + '%';
+      if (done < total) setTimeout(chunk, 0);
+      else {
+        candidates.sort((a, b) => b.score - a.score);
+        configs = candidates.slice(0, 16).map(c => c.cfg);
+        simStates = configs.map(c => makeSimState(c));
+        selectedIdx = 0; btn.disabled = false; wrap.style.display = 'none';
+      }
+    }
+    setTimeout(chunk, 0);
+  };
+
+  ['gravity', 'softening', 'speed', 'trailLen'].forEach(id => {
+    let el = document.getElementById(id), val = document.getElementById(id + 'Val');
+    el.addEventListener('input', () => { val.textContent = el.value; });
+  });
+};
+new p5(sketch, 'canvas-container');
+</script>
+</body>
+</html>
