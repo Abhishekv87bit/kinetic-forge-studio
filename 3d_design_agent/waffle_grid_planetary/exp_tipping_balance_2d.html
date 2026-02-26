@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Tipping Balance Automata &mdash; Counterweight Cascade with Matter.js</title>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/matter-js@0.20.0/build/matter.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f5f3ee; overflow: hidden; font-family: 'Georgia', serif; display: flex; height: 100vh; }
+  #sidebar { width: 280px; min-width: 280px; background: #f0ede6; border-right: 1px solid #c8c0b0; overflow-y: auto; padding: 12px 14px; font-size: 12px; color: #444; }
+  #sidebar h1 { font-size: 14px; letter-spacing: 1.5px; color: #333; margin-bottom: 2px; font-weight: normal; }
+  #sidebar .subtitle { font-size: 10px; color: #888; margin-bottom: 12px; font-style: italic; }
+  .section-title { font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: #8b7355; margin-top: 14px; margin-bottom: 6px; border-bottom: 1px solid #d8d0c0; padding-bottom: 3px; }
+  .ctrl-row { display: flex; align-items: center; margin-bottom: 5px; }
+  .ctrl-row label { flex: 0 0 95px; font-size: 11px; color: #666; }
+  .ctrl-row input[type="range"] { flex: 1; height: 3px; accent-color: #8b4513; }
+  .ctrl-row .val { flex: 0 0 40px; text-align: right; font-size: 10px; color: #555; font-family: 'Consolas', monospace; }
+  select { width: 100%; padding: 4px 8px; font-size: 11px; font-family: 'Georgia', serif; background: #faf8f3; color: #555; border: 1px solid #c8c0b0; border-radius: 3px; margin-bottom: 4px; }
+  .btn-row { display: flex; gap: 5px; margin: 8px 0; flex-wrap: wrap; }
+  .btn { padding: 5px 10px; font-size: 10px; font-family: 'Georgia', serif; background: #555; color: #f5f3ee; border: none; cursor: pointer; letter-spacing: 0.5px; border-radius: 2px; transition: background 0.15s; }
+  .btn:hover { background: #333; }
+  .btn.active { background: #8b4513; }
+  .btn.accent { background: #2a6848; }
+  .btn.accent:hover { background: #1a4830; }
+  .btn.danger { background: #8b2020; }
+  .btn:disabled { background: #aaa; cursor: not-allowed; }
+  #canvas-container { flex: 1; position: relative; }
+  #canvas-container canvas { display: block; }
+  #info-bar { position: fixed; bottom: 0; left: 280px; right: 0; z-index: 100; background: rgba(245,243,238,0.92); border-top: 1px solid #bbb; padding: 4px 16px; font-size: 10px; color: #777; font-style: italic; }
+  #hud { position: absolute; top: 8px; right: 12px; background: rgba(245,243,238,0.9); border: 1px solid #c8c0b0; border-radius: 4px; padding: 8px 12px; font-size: 10px; line-height: 1.7; color: #666; min-width: 160px; pointer-events: none; }
+  #hud .hv { color: #444; font-family: 'Consolas', monospace; float: right; }
+  .progress-bar { width: 100%; height: 3px; background: #ddd; border-radius: 2px; margin: 4px 0; }
+  .progress-bar-fill { height: 100%; background: #8b4513; border-radius: 2px; transition: width 0.1s; }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #c8c0b0; border-radius: 2px; }
+  #physics-hud { position: absolute; top: 8px; left: 8px; background: rgba(245,243,238,0.9); border: 1px solid #c8c0b0; border-radius: 4px; padding: 6px 10px; font-size: 9px; line-height: 1.6; color: #666; min-width: 140px; pointer-events: none; font-family: 'Consolas', monospace; }
+  #physics-hud.warn { border-color: #cc8800; background: rgba(255,240,200,0.9); }
+  #physics-hud.error { border-color: #cc2020; background: rgba(255,220,220,0.9); }
+  .toggle-row { display: flex; align-items: center; margin-bottom: 5px; gap: 6px; }
+  .toggle-row label { font-size: 11px; color: #666; }
+  .toggle-row input[type="checkbox"] { accent-color: #8b4513; }
+  .detail-list { max-height: 160px; overflow-y: auto; font-size: 9px; line-height: 1.5; margin-top: 4px; }
+  .detail-item { padding: 1px 0; color: #666; font-family: 'Consolas', monospace; }
+  #cascade-graph { width: 100%; height: 100px; margin-top: 4px; background: #faf8f3; border: 1px solid #d8d0c0; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h1>TIPPING BALANCE</h1>
+  <div class="subtitle">Counterweight Cascade &mdash; Matter.js Rigid Body Physics</div>
+
+  <div class="section-title">Mode</div>
+  <div class="btn-row">
+    <button class="btn active" id="btn-single" onclick="setMode('single')">Single</button>
+    <button class="btn" id="btn-atlas" onclick="setMode('atlas')">Atlas 4&times;4</button>
+  </div>
+
+  <div class="section-title">Layout</div>
+  <div class="ctrl-row">
+    <label>Beam Count</label>
+    <input type="range" id="sl-beams" min="5" max="12" step="1" value="8">
+    <span class="val" id="v-beams">8</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Arm Ratio</label>
+    <input type="range" id="sl-arm-ratio" min="0.30" max="0.70" step="0.05" value="0.50">
+    <span class="val" id="v-arm-ratio">0.50</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Emit Rate</label>
+    <input type="range" id="sl-emit-rate" min="1" max="10" step="1" value="3">
+    <span class="val" id="v-emit-rate">3</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Gravity</label>
+    <input type="range" id="sl-gravity" min="0.50" max="2.00" step="0.05" value="1.00">
+    <span class="val" id="v-gravity">1.00</span>
+  </div>
+
+  <div class="section-title">Particles</div>
+  <div class="btn-row">
+    <button class="btn active" id="btn-light" onclick="setMass('light')">Light</button>
+    <button class="btn" id="btn-heavy" onclick="setMass('heavy')">Heavy</button>
+    <button class="btn" id="btn-mixed" onclick="setMass('mixed')">Mixed</button>
+  </div>
+
+  <div class="section-title">Speed</div>
+  <div class="ctrl-row">
+    <label>Sim Speed</label>
+    <input type="range" id="sl-speed" min="0.25" max="3.00" step="0.25" value="1.00">
+    <span class="val" id="v-speed">1.00</span>
+  </div>
+
+  <div class="section-title">Display</div>
+  <div class="toggle-row">
+    <input type="checkbox" id="chk-pivots" checked>
+    <label for="chk-pivots">Pivot Markers</label>
+  </div>
+  <div class="toggle-row">
+    <input type="checkbox" id="chk-torque" checked>
+    <label for="chk-torque">Torque Indicators</label>
+  </div>
+  <div class="toggle-row">
+    <input type="checkbox" id="chk-labels" checked>
+    <label for="chk-labels">Beam Labels</label>
+  </div>
+  <div class="toggle-row">
+    <input type="checkbox" id="chk-trail">
+    <label for="chk-trail">Particle Trails</label>
+  </div>
+
+  <div class="section-title">Actions</div>
+  <div class="btn-row">
+    <button class="btn accent" onclick="randomizeLayout()">Randomize</button>
+    <button class="btn" onclick="mutateLayout()">Mutate</button>
+    <button class="btn danger" onclick="resetAll()">Reset</button>
+  </div>
+
+  <div class="section-title">Find Beautiful v2</div>
+  <div class="btn-row">
+    <button class="btn accent" id="btn-search" onclick="startSearch()">Search 200</button>
+    <button class="btn danger" id="btn-stop-search" onclick="stopSearch()" disabled>Stop</button>
+  </div>
+  <div class="progress-bar"><div class="progress-bar-fill" id="search-progress" style="width:0%"></div></div>
+  <div id="search-status" style="font-size:9px;color:#888;margin-top:2px;"></div>
+  <div id="best-score" style="font-size:10px;color:#8b4513;margin-top:4px;"></div>
+
+  <div class="section-title">Cascade Timeline</div>
+  <canvas id="cascade-graph"></canvas>
+
+  <div class="section-title">Tip Log</div>
+  <div class="detail-list" id="tip-log"></div>
+</div>
+
+<div id="canvas-container">
+  <div id="hud"></div>
+  <div id="physics-hud"></div>
+</div>
+
+<div id="info-bar">
+  Click a beam to manually tip it. Emitter drops weights onto the top beam. Cascading dumps trigger chain reactions.
+</div>
+
+<script>
+// ANALYTICAL CHECK: Balance beam torque
+// Torque = sum(m_i * g * d_i) where d_i = horizontal distance from pivot
+// Beam tips when net torque exceeds pivot friction torque
+// Angular accel = net_torque / I_beam, I = (1/12)*m*L^2 for uniform beam
+// Cascade: particles slide off tipped arm, fall to next beam below
+
+const { Engine, World, Bodies, Body, Composite, Constraint, Events, Vector } = Matter;
+
+// -- State --
+let mode = 'single';
+let W, H;
+let engine, beamData = [], particles = [], emitters = [];
+let atlasCells = [];
+let massMode = 'light';
+let totalTips = 0;
+let longestChain = 0;
+let currentChain = 0;
+let lastTipTime = 0;
+let tipEvents = []; // {beamIdx, time, chain}
+let searching = false, searchAbort = false;
+let bestConfig = null, bestScore = -Infinity;
+let frameCount = 0;
+let simStartTime = 0;
+let draggingEmitter = -1;
+
+// -- Constants --
+const BEAM_THICKNESS = 8;
+const PARTICLE_R_LIGHT = 4;
+const PARTICLE_R_HEAVY = 6;
+const PARTICLE_DENSITY_LIGHT = 0.003;
+const PARTICLE_DENSITY_HEAVY = 0.008;
+const BEAM_DENSITY = 0.002;
+const BEAM_FRICTION = 0.5;
+const ANGULAR_LIMIT = Math.PI / 4; // 45 degrees
+const MAX_PARTICLES = 150;
+const TRAIL_LEN = 20;
+const CASCADE_TIMEOUT = 800; // ms to consider same cascade chain
+const BEAM_COLORS = [
+  '#8b7355', '#7b6b55', '#6b8b55', '#557b8b', '#8b5570',
+  '#a06040', '#5b7b6b', '#7b5b8b', '#8b8b55', '#558b8b',
+  '#8b5555', '#5b8b5b'
+];
+
+// -- Helpers --
+function rng(min, max) { return Math.random() * (max - min) + min; }
+function rngi(min, max) { return Math.floor(rng(min, max + 1)); }
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+function getSlider(id) { return parseFloat(document.getElementById(id).value); }
+
+function updateSliderDisplays() {
+  document.getElementById('v-beams').textContent = getSlider('sl-beams');
+  document.getElementById('v-arm-ratio').textContent = getSlider('sl-arm-ratio').toFixed(2);
+  document.getElementById('v-emit-rate').textContent = getSlider('sl-emit-rate');
+  document.getElementById('v-gravity').textContent = getSlider('sl-gravity').toFixed(2);
+  document.getElementById('v-speed').textContent = getSlider('sl-speed').toFixed(2);
+}
+
+document.querySelectorAll('#sidebar input[type="range"]').forEach(sl => {
+  sl.addEventListener('input', updateSliderDisplays);
+});
+
+function setMass(m) {
+  massMode = m;
+  document.getElementById('btn-light').className = m === 'light' ? 'btn active' : 'btn';
+  document.getElementById('btn-heavy').className = m === 'heavy' ? 'btn active' : 'btn';
+  document.getElementById('btn-mixed').className = m === 'mixed' ? 'btn active' : 'btn';
+}
+
+// -- Layout generation --
+function generateBeamLayout(count, areaW, areaH, armRatio) {
+  const layout = [];
+  const margin = 60;
+  const usableH = areaH - margin * 2;
+  const tierH = usableH / (count + 1);
+
+  // First beam centered near top
+  // Subsequent beams offset alternating left/right, cascading down
+  let prevX = areaW / 2;
+  let direction = 1; // alternating direction
+
+  for (let i = 0; i < count; i++) {
+    const y = margin + tierH * (i + 1);
+
+    // Arm length varies: 60-160px scaled to area
+    const armLen = rng(60, Math.min(160, areaW * 0.25));
+    // Pivot position as ratio along beam
+    const pivotRatio = armRatio + rng(-0.08, 0.08);
+    const clampedRatio = clamp(pivotRatio, 0.25, 0.75);
+
+    // Position so that the heavy (long) arm end is roughly under the previous beam's short arm
+    const longArmLen = armLen * (1 - clampedRatio) * 2;
+    const shortArmLen = armLen * clampedRatio * 2;
+
+    let x;
+    if (i === 0) {
+      x = areaW / 2 + rng(-40, 40);
+    } else {
+      // Offset from previous to create cascade path
+      const prevBeam = layout[i - 1];
+      const prevAngle = prevBeam.pivotRatio < 0.5 ? 1 : -1;
+      // The short arm side dumps particles, so next beam catches them
+      const dumpSide = prevBeam.pivotRatio < 0.5 ? -1 : 1;
+      const offset = dumpSide * rng(30, 80);
+      x = clamp(prevBeam.x + offset, margin + armLen, areaW - margin - armLen);
+      direction *= -1;
+    }
+
+    layout.push({
+      x, y,
+      armLen: armLen,
+      pivotRatio: clampedRatio,
+      color: BEAM_COLORS[i % BEAM_COLORS.length],
+      tipCount: 0,
+      tipping: false,
+      lastTipFrame: -999
+    });
+  }
+
+  return layout;
+}
+
+function generateEmitters(layout, areaW) {
+  if (layout.length === 0) return [];
+  // Place emitter above the first beam
+  const firstBeam = layout[0];
+  return [{
+    x: firstBeam.x,
+    y: 30,
+    active: true,
+    timer: 0
+  }];
+}
+
+// -- Physics setup --
+function createWorld(areaW, areaH, layout, emitterList) {
+  const eng = Engine.create({ gravity: { x: 0, y: getSlider('sl-gravity') } });
+
+  const beams = [];
+  const walls = createWalls(eng, areaW, areaH);
+
+  // Create collection basin at bottom
+  const basinY = areaH - 15;
+  const basin = Bodies.rectangle(areaW / 2, basinY, areaW - 20, 10, {
+    isStatic: true, friction: 0.8,
+    render: { fillStyle: '#999' }
+  });
+  basin.isBasin = true;
+  Composite.add(eng.world, basin);
+
+  for (let i = 0; i < layout.length; i++) {
+    const cfg = layout[i];
+    const totalLen = cfg.armLen * 2;
+
+    // Beam body: rectangle centered at pivot
+    // pivotRatio determines where pivot is: 0.5 = center, <0.5 = pivot left of center
+    const pivotOffset = (cfg.pivotRatio - 0.5) * totalLen;
+
+    const beam = Bodies.rectangle(cfg.x, cfg.y, totalLen, BEAM_THICKNESS, {
+      density: BEAM_DENSITY,
+      friction: BEAM_FRICTION,
+      frictionAir: 0.02,
+      restitution: 0.1,
+      collisionFilter: { category: 0x0002, mask: 0x0001 | 0x0002 }
+    });
+    beam.beamIndex = i;
+    beam.isBeam = true;
+
+    // Pivot constraint at offset from beam center
+    const pivot = Constraint.create({
+      bodyA: beam,
+      pointA: { x: pivotOffset, y: 0 },
+      pointB: { x: cfg.x + pivotOffset, y: cfg.y },
+      stiffness: 1.0,
+      length: 0
+    });
+
+    // Pivot triangle (visual only, static)
+    const triSize = 10;
+    const pivotBase = Bodies.polygon(cfg.x + pivotOffset, cfg.y + BEAM_THICKNESS / 2 + triSize * 0.6, 3, triSize, {
+      isStatic: true,
+      angle: Math.PI,
+      collisionFilter: { category: 0x0000, mask: 0x0000 }, // no collisions
+      render: { fillStyle: '#777' }
+    });
+    pivotBase.isPivotBase = true;
+    pivotBase.beamIndex = i;
+
+    Composite.add(eng.world, [beam, pivot, pivotBase]);
+
+    beams.push({
+      body: beam,
+      constraint: pivot,
+      pivotBase: pivotBase,
+      config: cfg,
+      pivotWorldX: cfg.x + pivotOffset,
+      pivotWorldY: cfg.y,
+      totalLen: totalLen,
+      leftArmLen: totalLen / 2 + pivotOffset, // distance from left end to pivot
+      rightArmLen: totalLen / 2 - pivotOffset,
+      tipped: false,
+      tipDirection: 0,
+      tipTime: 0,
+      particlesOnLeft: 0,
+      particlesOnRight: 0
+    });
+  }
+
+  return { engine: eng, beams, walls, basin };
+}
+
+function createWalls(eng, w, h) {
+  const thickness = 20;
+  const walls = [
+    Bodies.rectangle(w / 2, -thickness / 2, w + 40, thickness, { isStatic: true }),
+    Bodies.rectangle(w / 2, h + thickness / 2, w + 40, thickness, { isStatic: true }),
+    Bodies.rectangle(-thickness / 2, h / 2, thickness, h + 40, { isStatic: true }),
+    Bodies.rectangle(w + thickness / 2, h / 2, thickness, h + 40, { isStatic: true }),
+  ];
+  walls.forEach(w => { w.isWall = true; });
+  Composite.add(eng.world, walls);
+  return walls;
+}
+
+function spawnParticle(eng, x, y, heavy) {
+  const r = heavy ? PARTICLE_R_HEAVY : PARTICLE_R_LIGHT;
+  const d = heavy ? PARTICLE_DENSITY_HEAVY : PARTICLE_DENSITY_LIGHT;
+  const particle = Bodies.circle(x, y, r, {
+    density: d,
+    restitution: 0.15,
+    friction: 0.5,
+    frictionAir: 0.001,
+    collisionFilter: { category: 0x0001, mask: 0x0001 | 0x0002 }
+  });
+  particle.isParticle = true;
+  particle.isHeavy = heavy;
+  particle.trail = [];
+  particle.spawnTime = performance.now();
+  Composite.add(eng.world, particle);
+  return particle;
+}
+
+// -- Angular limits enforcement --
+function enforceAngularLimits(beamList) {
+  for (const bd of beamList) {
+    const beam = bd.body;
+    const angle = beam.angle;
+    if (Math.abs(angle) > ANGULAR_LIMIT) {
+      const clamped = clamp(angle, -ANGULAR_LIMIT, ANGULAR_LIMIT);
+      Body.setAngle(beam, clamped);
+      // Dampen angular velocity when hitting limit
+      Body.setAngularVelocity(beam, beam.angularVelocity * -0.3);
+
+      // Register tip event
+      if (!bd.tipped) {
+        bd.tipped = true;
+        bd.tipDirection = angle > 0 ? 1 : -1;
+        bd.tipTime = performance.now();
+        bd.config.tipCount++;
+        registerTip(bd.body.beamIndex);
+      }
+    } else if (Math.abs(angle) < ANGULAR_LIMIT * 0.5) {
+      // Reset tip state when beam returns toward center
+      bd.tipped = false;
+    }
+  }
+}
+
+function registerTip(beamIdx) {
+  const now = performance.now();
+  totalTips++;
+
+  // Track cascade chains
+  if (now - lastTipTime < CASCADE_TIMEOUT) {
+    currentChain++;
+  } else {
+    currentChain = 1;
+  }
+  lastTipTime = now;
+  longestChain = Math.max(longestChain, currentChain);
+
+  tipEvents.push({ beamIdx, time: now - simStartTime, chain: currentChain });
+
+  // Log
+  const log = document.getElementById('tip-log');
+  const div = document.createElement('div');
+  div.className = 'detail-item';
+  const t = ((now - simStartTime) / 1000).toFixed(2);
+  div.textContent = `Beam #${beamIdx + 1} tipped @ ${t}s (chain: ${currentChain})`;
+  log.insertBefore(div, log.firstChild);
+  if (log.children.length > 50) log.removeChild(log.lastChild);
+}
+
+// -- Emitter update --
+function updateEmitters(eng, emitterList, particleList, areaW) {
+  const rate = getSlider('sl-emit-rate');
+  const interval = 60 / rate; // frames between emissions
+
+  for (const em of emitterList) {
+    if (!em.active) continue;
+    em.timer++;
+    if (em.timer >= interval) {
+      em.timer = 0;
+      if (particleList.length < MAX_PARTICLES) {
+        const heavy = massMode === 'heavy' || (massMode === 'mixed' && Math.random() < 0.3);
+        const px = em.x + rng(-8, 8);
+        const p = spawnParticle(eng, px, em.y, heavy);
+        particleList.push(p);
+      }
+    }
+  }
+}
+
+// -- Cleanup offscreen particles --
+function cleanupParticles(eng, particleList, areaW, areaH) {
+  for (let i = particleList.length - 1; i >= 0; i--) {
+    const p = particleList[i];
+    const pos = p.position;
+    // Remove if way below screen or stale (>30s)
+    if (pos.y > areaH + 50 || pos.x < -50 || pos.x > areaW + 50 ||
+        performance.now() - p.spawnTime > 30000) {
+      Composite.remove(eng.world, p);
+      particleList.splice(i, 1);
+    }
+  }
+
+  // Hard cap
+  while (particleList.length > MAX_PARTICLES) {
+    const oldest = particleList.shift();
+    Composite.remove(eng.world, oldest);
+  }
+}
+
+// -- Single mode setup --
+function createSingleWorld() {
+  if (engine) {
+    World.clear(engine.world);
+    Engine.clear(engine);
+  }
+  particles = [];
+  beamData = [];
+  totalTips = 0;
+  longestChain = 0;
+  currentChain = 0;
+  lastTipTime = 0;
+  tipEvents = [];
+  frameCount = 0;
+  simStartTime = performance.now();
+
+  const count = getSlider('sl-beams');
+  const armRatio = getSlider('sl-arm-ratio');
+  const layout = generateBeamLayout(count, W, H - 20, armRatio);
+  emitters = generateEmitters(layout, W);
+
+  const world = createWorld(W, H - 20, layout, emitters);
+  engine = world.engine;
+  beamData = world.beams;
+
+  document.getElementById('tip-log').innerHTML = '';
+}
+
+// -- Atlas mode --
+function createAtlasCell(cellW, cellH) {
+  const count = rngi(5, 10);
+  const armRatio = rng(0.30, 0.70);
+  const layout = generateBeamLayout(count, cellW, cellH, armRatio);
+  const ems = generateEmitters(layout, cellW);
+
+  const eng = Engine.create({ gravity: { x: 0, y: rng(0.5, 1.5) } });
+  createWalls(eng, cellW, cellH);
+
+  // Basin
+  const basin = Bodies.rectangle(cellW / 2, cellH - 15, cellW - 20, 10, {
+    isStatic: true, friction: 0.8
+  });
+  basin.isBasin = true;
+  Composite.add(eng.world, basin);
+
+  const beams = [];
+  for (let i = 0; i < layout.length; i++) {
+    const cfg = layout[i];
+    const totalLen = cfg.armLen * 2;
+    const pivotOffset = (cfg.pivotRatio - 0.5) * totalLen;
+
+    const beam = Bodies.rectangle(cfg.x, cfg.y, totalLen, BEAM_THICKNESS, {
+      density: BEAM_DENSITY, friction: BEAM_FRICTION, frictionAir: 0.02, restitution: 0.1,
+      collisionFilter: { category: 0x0002, mask: 0x0001 | 0x0002 }
+    });
+    beam.beamIndex = i;
+    beam.isBeam = true;
+
+    const pivot = Constraint.create({
+      bodyA: beam,
+      pointA: { x: pivotOffset, y: 0 },
+      pointB: { x: cfg.x + pivotOffset, y: cfg.y },
+      stiffness: 1.0, length: 0
+    });
+
+    Composite.add(eng.world, [beam, pivot]);
+    beams.push({
+      body: beam, constraint: pivot, config: cfg,
+      pivotWorldX: cfg.x + pivotOffset, pivotWorldY: cfg.y,
+      totalLen, tipped: false, tipDirection: 0, tipTime: 0
+    });
+  }
+
+  return {
+    engine: eng, beams, emitters: ems, particles: [],
+    tipCount: 0, bestChain: 0, currentChain: 0, lastTipTime: 0,
+    cellW, cellH, massMode: pick(['light', 'heavy', 'mixed']),
+    startTime: performance.now()
+  };
+}
+
+function createAtlas() {
+  atlasCells = [];
+  const cols = 4, rows = 4;
+  const cellW = Math.floor(W / cols);
+  const cellH = Math.floor((H - 20) / rows);
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const cell = createAtlasCell(cellW, cellH);
+      cell.col = c;
+      cell.row = r;
+      atlasCells.push(cell);
+    }
+  }
+}
+
+function updateAtlasCell(cell) {
+  const speed = getSlider('sl-speed');
+  const steps = Math.round(speed);
+  for (let s = 0; s < steps; s++) {
+    Engine.update(cell.engine, 1000 / 60);
+  }
+
+  // Emitters
+  const rate = 4;
+  const interval = 60 / rate;
+  for (const em of cell.emitters) {
+    if (!em.active) continue;
+    em.timer = (em.timer || 0) + speed;
+    if (em.timer >= interval) {
+      em.timer = 0;
+      if (cell.particles.length < 60) {
+        const heavy = cell.massMode === 'heavy' || (cell.massMode === 'mixed' && Math.random() < 0.3);
+        const p = spawnParticle(cell.engine, em.x + rng(-5, 5), em.y, heavy);
+        cell.particles.push(p);
+      }
+    }
+  }
+
+  // Angular limits
+  for (const bd of cell.beams) {
+    const angle = bd.body.angle;
+    if (Math.abs(angle) > ANGULAR_LIMIT) {
+      Body.setAngle(bd.body, clamp(angle, -ANGULAR_LIMIT, ANGULAR_LIMIT));
+      Body.setAngularVelocity(bd.body, bd.body.angularVelocity * -0.3);
+      if (!bd.tipped) {
+        bd.tipped = true;
+        bd.config.tipCount++;
+        cell.tipCount++;
+        const now = performance.now();
+        if (now - cell.lastTipTime < CASCADE_TIMEOUT) {
+          cell.currentChain++;
+        } else {
+          cell.currentChain = 1;
+        }
+        cell.lastTipTime = now;
+        cell.bestChain = Math.max(cell.bestChain, cell.currentChain);
+      }
+    } else if (Math.abs(angle) < ANGULAR_LIMIT * 0.5) {
+      bd.tipped = false;
+    }
+  }
+
+  // Cleanup
+  for (let i = cell.particles.length - 1; i >= 0; i--) {
+    const p = cell.particles[i];
+    if (p.position.y > cell.cellH + 30 || p.position.x < -30 || p.position.x > cell.cellW + 30 ||
+        performance.now() - p.spawnTime > 20000) {
+      Composite.remove(cell.engine.world, p);
+      cell.particles.splice(i, 1);
+    }
+  }
+  while (cell.particles.length > 60) {
+    Composite.remove(cell.engine.world, cell.particles.shift());
+  }
+}
+
+// -- Mode switching --
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-single').className = m === 'single' ? 'btn active' : 'btn';
+  document.getElementById('btn-atlas').className = m === 'atlas' ? 'btn active' : 'btn';
+  if (m === 'single') createSingleWorld();
+  else createAtlas();
+}
+
+function randomizeLayout() {
+  if (mode === 'single') {
+    document.getElementById('sl-beams').value = rngi(5, 12);
+    document.getElementById('sl-arm-ratio').value = rng(0.30, 0.70).toFixed(2);
+    document.getElementById('sl-gravity').value = rng(0.50, 2.00).toFixed(2);
+    updateSliderDisplays();
+    createSingleWorld();
+  } else {
+    createAtlas();
+  }
+}
+
+function mutateLayout() {
+  if (mode === 'single') {
+    // Nudge existing params
+    const beams = clamp(getSlider('sl-beams') + rngi(-2, 2), 5, 12);
+    const ratio = clamp(getSlider('sl-arm-ratio') + rng(-0.1, 0.1), 0.30, 0.70);
+    document.getElementById('sl-beams').value = beams;
+    document.getElementById('sl-arm-ratio').value = ratio.toFixed(2);
+    updateSliderDisplays();
+    createSingleWorld();
+  } else {
+    createAtlas();
+  }
+}
+
+function resetAll() {
+  if (mode === 'single') createSingleWorld();
+  else createAtlas();
+  document.getElementById('search-progress').style.width = '0%';
+  document.getElementById('search-status').textContent = '';
+  document.getElementById('best-score').textContent = '';
+}
+
+// -- Find Beautiful v2 --
+async function simulateForScore(config) {
+  return new Promise(resolve => {
+    const w = 600, h = 500;
+    const eng = Engine.create({ gravity: { x: 0, y: config.gravity } });
+    createWalls(eng, w, h);
+
+    const layout = generateBeamLayout(config.beams, w, h, config.armRatio);
+    const beams = [];
+    for (let i = 0; i < layout.length; i++) {
+      const cfg = layout[i];
+      const totalLen = cfg.armLen * 2;
+      const pivotOffset = (cfg.pivotRatio - 0.5) * totalLen;
+      const beam = Bodies.rectangle(cfg.x, cfg.y, totalLen, BEAM_THICKNESS, {
+        density: BEAM_DENSITY, friction: BEAM_FRICTION, frictionAir: 0.02, restitution: 0.1,
+        collisionFilter: { category: 0x0002, mask: 0x0001 | 0x0002 }
+      });
+      beam.beamIndex = i;
+      const pivot = Constraint.create({
+        bodyA: beam, pointA: { x: pivotOffset, y: 0 },
+        pointB: { x: cfg.x + pivotOffset, y: cfg.y },
+        stiffness: 1.0, length: 0
+      });
+      Composite.add(eng.world, [beam, pivot]);
+      beams.push({ body: beam, config: cfg, tipped: false });
+    }
+
+    // Emitter above first beam
+    const emX = layout.length > 0 ? layout[0].x : w / 2;
+    let pList = [];
+    let tips = 0, chain = 0, bestChain = 0, lastTip = 0;
+    let frames = 0;
+    const maxFrames = 480; // 8 seconds
+    let simultaneousTips = 0, maxSimultaneous = 0;
+
+    function step() {
+      Engine.update(eng, 1000 / 60);
+      frames++;
+
+      // Emit particles
+      if (frames % Math.round(60 / config.emitRate) === 0 && pList.length < 80) {
+        const heavy = config.massMode === 'heavy' || (config.massMode === 'mixed' && Math.random() < 0.3);
+        const p = spawnParticle(eng, emX + rng(-5, 5), 25, heavy);
+        pList.push(p);
+      }
+
+      // Angular limits + tip tracking
+      simultaneousTips = 0;
+      for (const bd of beams) {
+        const angle = bd.body.angle;
+        if (Math.abs(angle) > ANGULAR_LIMIT) {
+          Body.setAngle(bd.body, clamp(angle, -ANGULAR_LIMIT, ANGULAR_LIMIT));
+          Body.setAngularVelocity(bd.body, bd.body.angularVelocity * -0.3);
+          simultaneousTips++;
+          if (!bd.tipped) {
+            bd.tipped = true;
+            tips++;
+            if (frames - lastTip < 48) chain++; else chain = 1;
+            lastTip = frames;
+            bestChain = Math.max(bestChain, chain);
+          }
+        } else if (Math.abs(angle) < ANGULAR_LIMIT * 0.5) {
+          bd.tipped = false;
+        }
+      }
+      maxSimultaneous = Math.max(maxSimultaneous, simultaneousTips);
+
+      // Cleanup
+      for (let i = pList.length - 1; i >= 0; i--) {
+        if (pList[i].position.y > h + 30) {
+          Composite.remove(eng.world, pList[i]);
+          pList.splice(i, 1);
+        }
+      }
+
+      if (frames >= maxFrames) {
+        World.clear(eng.world); Engine.clear(eng);
+        // Drama: how many beams are at extreme angles
+        let extremeCount = 0;
+        for (const bd of beams) {
+          if (Math.abs(bd.body.angle) > ANGULAR_LIMIT * 0.7) extremeCount++;
+        }
+        resolve({ tips, bestChain, maxSimultaneous, extremeCount, beamCount: beams.length, config });
+        return;
+      }
+
+      if (frames % 10 === 0) setTimeout(step, 0);
+      else step();
+    }
+    step();
+  });
+}
+
+function scoreResult(r) {
+  if (!r || r.tips === 0) return 0;
+  const cascadeScore = r.bestChain / Math.max(r.beamCount, 1);
+  const simultaneousBonus = r.maxSimultaneous / Math.max(r.beamCount, 1);
+  const dramaScore = r.extremeCount / Math.max(r.beamCount, 1);
+  const tipRate = r.tips / r.beamCount;
+  return cascadeScore * 0.35 + simultaneousBonus * 0.25 + dramaScore * 0.2 + Math.min(tipRate, 2) * 0.1 + (r.bestChain > 3 ? 0.1 : 0);
+}
+
+async function startSearch() {
+  if (searching) return;
+  searching = true;
+  searchAbort = false;
+  bestScore = -Infinity;
+  bestConfig = null;
+
+  document.getElementById('btn-search').disabled = true;
+  document.getElementById('btn-stop-search').disabled = false;
+
+  const total = 200, chunkSize = 20;
+  const statusEl = document.getElementById('search-status');
+  const progressEl = document.getElementById('search-progress');
+  const bestEl = document.getElementById('best-score');
+
+  for (let i = 0; i < total && !searchAbort; i += chunkSize) {
+    const chunk = Math.min(chunkSize, total - i);
+    const promises = [];
+    for (let j = 0; j < chunk; j++) {
+      promises.push(simulateForScore({
+        beams: rngi(5, 12),
+        armRatio: rng(0.30, 0.70),
+        gravity: rng(0.5, 2.0),
+        emitRate: rngi(2, 8),
+        massMode: pick(['light', 'heavy', 'mixed'])
+      }));
+    }
+    const results = await Promise.all(promises);
+    for (const r of results) {
+      const s = scoreResult(r);
+      if (s > bestScore) {
+        bestScore = s;
+        bestConfig = r.config;
+        bestEl.textContent = `Best: ${s.toFixed(3)} (${bestConfig.beams} beams, chain=${r.bestChain})`;
+      }
+    }
+    const pct = Math.min(100, ((i + chunk) / total) * 100);
+    progressEl.style.width = pct + '%';
+    statusEl.textContent = `Tested ${Math.min(i + chunk, total)} / ${total}`;
+    await new Promise(r => setTimeout(r, 10));
+  }
+
+  if (bestConfig && !searchAbort) {
+    document.getElementById('sl-beams').value = bestConfig.beams;
+    document.getElementById('sl-arm-ratio').value = bestConfig.armRatio.toFixed(2);
+    document.getElementById('sl-gravity').value = bestConfig.gravity.toFixed(2);
+    document.getElementById('sl-emit-rate').value = bestConfig.emitRate;
+    setMass(bestConfig.massMode);
+    updateSliderDisplays();
+    createSingleWorld();
+    statusEl.textContent = 'Applied best config!';
+  }
+
+  searching = false;
+  document.getElementById('btn-search').disabled = false;
+  document.getElementById('btn-stop-search').disabled = true;
+}
+
+function stopSearch() { searchAbort = true; }
+
+// -- Cascade graph --
+function drawCascadeGraph() {
+  const canvas = document.getElementById('cascade-graph');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = canvas.offsetWidth * dpr;
+  canvas.height = canvas.offsetHeight * dpr;
+  ctx.scale(dpr, dpr);
+  const cw = canvas.offsetWidth;
+  const ch = canvas.offsetHeight;
+
+  ctx.clearRect(0, 0, cw, ch);
+
+  if (tipEvents.length === 0) {
+    ctx.fillStyle = '#bbb';
+    ctx.font = '9px Georgia';
+    ctx.textAlign = 'center';
+    ctx.fillText('No tips yet', cw / 2, ch / 2);
+    return;
+  }
+
+  const beamCount = getSlider('sl-beams');
+  const maxTime = Math.max(...tipEvents.map(e => e.time), 1000);
+  const rowH = Math.max(6, Math.min(12, (ch - 16) / beamCount));
+
+  // Label
+  ctx.fillStyle = '#999';
+  ctx.font = '8px Consolas';
+  ctx.textAlign = 'left';
+
+  for (let i = 0; i < beamCount; i++) {
+    const y = 8 + i * rowH;
+    // Beam label
+    ctx.fillStyle = '#aaa';
+    ctx.fillText(`B${i + 1}`, 2, y + rowH * 0.7);
+
+    // Draw tip bars
+    const myTips = tipEvents.filter(e => e.beamIdx === i);
+    for (const tip of myTips) {
+      const x = 20 + (tip.time / maxTime) * (cw - 24);
+      const barW = Math.max(3, (cw - 24) * 0.01);
+
+      // Color by chain length
+      const hue = clamp(tip.chain * 30, 0, 120);
+      ctx.fillStyle = `hsl(${hue}, 60%, 45%)`;
+      ctx.fillRect(x, y, barW, rowH - 2);
+    }
+  }
+}
+
+// -- p5.js Sketch --
+const sketch = (p) => {
+  p.setup = function() {
+    W = document.getElementById('canvas-container').offsetWidth;
+    H = document.getElementById('canvas-container').offsetHeight;
+    p.createCanvas(W, H);
+    createSingleWorld();
+  };
+
+  p.windowResized = function() {
+    W = document.getElementById('canvas-container').offsetWidth;
+    H = document.getElementById('canvas-container').offsetHeight;
+    p.resizeCanvas(W, H);
+    if (mode === 'single') createSingleWorld();
+    else createAtlas();
+  };
+
+  p.mousePressed = function() {
+    const mx = p.mouseX, my = p.mouseY;
+    if (mx < 0 || my < 0 || mx > W || my > H) return;
+
+    if (mode === 'atlas') {
+      setMode('single');
+      return;
+    }
+
+    // Check if clicking near an emitter to drag it
+    for (let i = 0; i < emitters.length; i++) {
+      const em = emitters[i];
+      if (Math.abs(mx - em.x) < 20 && Math.abs(my - em.y) < 20) {
+        draggingEmitter = i;
+        return;
+      }
+    }
+
+    // Check if clicking a beam to manually tip it
+    if (engine) {
+      for (const bd of beamData) {
+        const bx = bd.body.position.x;
+        const by = bd.body.position.y;
+        const halfLen = bd.totalLen / 2;
+        // Rough check
+        if (Math.abs(mx - bx) < halfLen && Math.abs(my - by) < 25) {
+          // Apply angular impulse in direction of click relative to pivot
+          const clickSide = mx < bd.pivotWorldX ? -1 : 1;
+          Body.setAngularVelocity(bd.body, clickSide * 0.15);
+          return;
+        }
+      }
+    }
+  };
+
+  p.mouseDragged = function() {
+    if (draggingEmitter >= 0 && emitters[draggingEmitter]) {
+      emitters[draggingEmitter].x = clamp(p.mouseX, 20, W - 20);
+      emitters[draggingEmitter].y = clamp(p.mouseY, 15, 80);
+    }
+  };
+
+  p.mouseReleased = function() {
+    draggingEmitter = -1;
+  };
+
+  p.draw = function() {
+    p.background(245, 243, 238);
+
+    if (mode === 'single') {
+      drawSingle(p);
+    } else {
+      drawAtlas(p);
+    }
+  };
+
+  function drawSingle(p) {
+    const speed = getSlider('sl-speed');
+    const steps = Math.max(1, Math.round(speed));
+
+    // Update physics
+    engine.gravity.y = getSlider('sl-gravity');
+    for (let s = 0; s < steps; s++) {
+      Engine.update(engine, 1000 / 60);
+      enforceAngularLimits(beamData);
+      updateEmitters(engine, emitters, particles, W);
+    }
+    cleanupParticles(engine, particles, W, H);
+    frameCount += steps;
+
+    const showPivots = document.getElementById('chk-pivots').checked;
+    const showTorque = document.getElementById('chk-torque').checked;
+    const showLabels = document.getElementById('chk-labels').checked;
+    const showTrail = document.getElementById('chk-trail').checked;
+
+    // Draw emitters
+    for (const em of emitters) {
+      p.push();
+      // Emitter body
+      p.fill(70, 130, 90, 200);
+      p.stroke(50, 100, 70);
+      p.strokeWeight(1);
+      p.rectMode(p.CENTER);
+      p.rect(em.x, em.y, 30, 16, 3);
+      // Nozzle
+      p.fill(50, 100, 70);
+      p.noStroke();
+      p.triangle(em.x - 5, em.y + 8, em.x + 5, em.y + 8, em.x, em.y + 14);
+      // Label
+      p.fill(255, 255, 255, 200);
+      p.noStroke();
+      p.textSize(7);
+      p.textAlign(p.CENTER, p.CENTER);
+      p.text('EMIT', em.x, em.y);
+      p.pop();
+    }
+
+    // Draw beams
+    for (let i = 0; i < beamData.length; i++) {
+      const bd = beamData[i];
+      drawBeam(p, bd, i, showPivots, showTorque, showLabels);
+    }
+
+    // Draw collection basin
+    p.push();
+    p.fill(160, 155, 145);
+    p.stroke(120, 115, 105);
+    p.strokeWeight(1);
+    p.rectMode(p.CENTER);
+    p.rect(W / 2, H - 35, W - 40, 10, 2);
+    p.pop();
+
+    // Draw particles
+    for (const part of particles) {
+      // Trail
+      if (showTrail) {
+        part.trail.push({ x: part.position.x, y: part.position.y });
+        if (part.trail.length > TRAIL_LEN) part.trail.shift();
+        for (let t = 0; t < part.trail.length - 1; t++) {
+          const alpha = p.map(t, 0, part.trail.length - 1, 10, 120);
+          const sz = p.map(t, 0, part.trail.length - 1, 1, part.isHeavy ? 4 : 2.5);
+          p.noStroke();
+          p.fill(part.isHeavy ? 180 : 212, part.isHeavy ? 80 : 160, part.isHeavy ? 40 : 96, alpha);
+          p.ellipse(part.trail[t].x, part.trail[t].y, sz * 2);
+        }
+      }
+
+      // Particle body
+      const r = part.circleRadius || PARTICLE_R_LIGHT;
+      if (part.isHeavy) {
+        p.fill(160, 60, 30);
+        p.stroke(120, 40, 20);
+      } else {
+        p.fill(180, 140, 80);
+        p.stroke(140, 100, 50);
+      }
+      p.strokeWeight(0.8);
+      p.ellipse(part.position.x, part.position.y, r * 2);
+    }
+
+    // HUD
+    updateSingleHUD();
+    updatePhysicsHUD();
+    drawCascadeGraph();
+  }
+
+  function drawBeam(p, bd, idx, showPivots, showTorque, showLabels) {
+    const beam = bd.body;
+    const verts = beam.vertices;
+
+    // Beam color based on tip state
+    const baseColor = p.color(bd.config.color);
+    let fillC;
+    if (bd.tipped) {
+      // Flash brighter when tipping
+      const flash = Math.sin((performance.now() - bd.tipTime) * 0.01) * 0.5 + 0.5;
+      fillC = p.lerpColor(baseColor, p.color(255, 200, 100), flash * 0.4);
+    } else {
+      fillC = baseColor;
+    }
+
+    p.push();
+    p.fill(fillC);
+    p.stroke(p.red(baseColor) * 0.7, p.green(baseColor) * 0.7, p.blue(baseColor) * 0.7);
+    p.strokeWeight(1.5);
+
+    // Draw beam shape
+    p.beginShape();
+    for (const v of verts) {
+      p.vertex(v.x, v.y);
+    }
+    p.endShape(p.CLOSE);
+
+    // Arm end caps (small circles for visual weight)
+    const angle = beam.angle;
+    const halfLen = bd.totalLen / 2;
+    const lx = beam.position.x - Math.cos(angle) * halfLen;
+    const ly = beam.position.y - Math.sin(angle) * halfLen;
+    const rx = beam.position.x + Math.cos(angle) * halfLen;
+    const ry = beam.position.y + Math.sin(angle) * halfLen;
+
+    p.fill(fillC);
+    p.noStroke();
+    p.ellipse(lx, ly, 10, 10);
+    p.ellipse(rx, ry, 10, 10);
+
+    p.pop();
+
+    // Pivot marker
+    if (showPivots) {
+      p.push();
+      // Pivot dot
+      p.fill(80, 80, 80);
+      p.stroke(50);
+      p.strokeWeight(1);
+      p.ellipse(bd.pivotWorldX, bd.pivotWorldY, 8, 8);
+
+      // Triangle base
+      p.fill(120, 115, 105);
+      p.stroke(90, 85, 75);
+      p.strokeWeight(1);
+      const triY = bd.pivotWorldY + BEAM_THICKNESS / 2 + 2;
+      p.triangle(
+        bd.pivotWorldX - 8, triY + 12,
+        bd.pivotWorldX + 8, triY + 12,
+        bd.pivotWorldX, triY
+      );
+      p.pop();
+    }
+
+    // Torque indicator
+    if (showTorque) {
+      const absAngle = Math.abs(beam.angle);
+      const torquePct = absAngle / ANGULAR_LIMIT;
+      if (torquePct > 0.1) {
+        p.push();
+        // Arc showing angle
+        p.noFill();
+        const arcColor = torquePct > 0.8 ? p.color(200, 50, 30, 150) :
+                         torquePct > 0.5 ? p.color(200, 150, 30, 120) :
+                         p.color(100, 150, 100, 80);
+        p.stroke(arcColor);
+        p.strokeWeight(2);
+        const arcR = 20;
+        if (beam.angle > 0) {
+          p.arc(bd.pivotWorldX, bd.pivotWorldY, arcR * 2, arcR * 2, -Math.PI / 2, -Math.PI / 2 + beam.angle);
+        } else {
+          p.arc(bd.pivotWorldX, bd.pivotWorldY, arcR * 2, arcR * 2, -Math.PI / 2 + beam.angle, -Math.PI / 2);
+        }
+        p.pop();
+      }
+    }
+
+    // Label
+    if (showLabels) {
+      p.push();
+      p.fill(100, 100, 100, 180);
+      p.noStroke();
+      p.textSize(9);
+      p.textAlign(p.CENTER, p.BOTTOM);
+      const labelY = bd.pivotWorldY - 18;
+      let label = `#${idx + 1}`;
+      if (bd.config.tipCount > 0) label += ` (${bd.config.tipCount})`;
+      p.text(label, bd.pivotWorldX, labelY);
+      p.pop();
+    }
+  }
+
+  function drawAtlas(p) {
+    const cols = 4, rows = 4;
+    const cellW = Math.floor(W / cols);
+    const cellH = Math.floor((H - 20) / rows);
+
+    for (let i = 0; i < atlasCells.length; i++) {
+      const cell = atlasCells[i];
+      updateAtlasCell(cell);
+
+      const ox = cell.col * cellW;
+      const oy = cell.row * cellH;
+
+      p.push();
+      p.translate(ox, oy);
+
+      // Background
+      p.fill(250, 248, 243);
+      p.stroke(200, 195, 180);
+      p.strokeWeight(1);
+      p.rect(1, 1, cellW - 2, cellH - 2, 2);
+
+      const sx = cellW / cell.cellW;
+      const sy = cellH / cell.cellH;
+
+      // Draw beams
+      for (const bd of cell.beams) {
+        const beam = bd.body;
+        p.push();
+        const col = p.color(bd.config.color);
+        p.fill(bd.tipped ? p.lerpColor(col, p.color(255, 200, 100), 0.3) : col);
+        p.stroke(p.red(col) * 0.7, p.green(col) * 0.7, p.blue(col) * 0.7);
+        p.strokeWeight(0.8);
+        p.beginShape();
+        for (const v of beam.vertices) {
+          p.vertex(v.x * sx, v.y * sy);
+        }
+        p.endShape(p.CLOSE);
+
+        // Pivot
+        p.fill(80);
+        p.noStroke();
+        p.ellipse(bd.pivotWorldX * sx, bd.pivotWorldY * sy, 4, 4);
+        p.pop();
+      }
+
+      // Draw particles
+      for (const part of cell.particles) {
+        p.fill(part.isHeavy ? p.color(160, 60, 30) : p.color(180, 140, 80));
+        p.noStroke();
+        const r = (part.circleRadius || PARTICLE_R_LIGHT) * Math.min(sx, sy);
+        p.ellipse(part.position.x * sx, part.position.y * sy, r * 2);
+      }
+
+      // Overlay info
+      p.fill(80, 80, 80, 200);
+      p.noStroke();
+      p.textSize(9);
+      p.textAlign(p.LEFT, p.TOP);
+      p.text(`Tips: ${cell.tipCount}`, 4, 4);
+      if (cell.bestChain > 1) {
+        p.fill(139, 69, 19, 200);
+        p.text(`Chain: ${cell.bestChain}`, 4, 16);
+      }
+
+      p.pop();
+    }
+
+    // Atlas hint
+    p.fill(100);
+    p.noStroke();
+    p.textSize(10);
+    p.textAlign(p.LEFT, p.BOTTOM);
+    p.text('Click any cell to enter single mode', 8, H - 24);
+
+    // Atlas HUD
+    const totalTipsAtlas = atlasCells.reduce((s, c) => s + c.tipCount, 0);
+    const maxChainAtlas = Math.max(...atlasCells.map(c => c.bestChain));
+    const hud = document.getElementById('hud');
+    hud.innerHTML = `
+      <div>Total Tips <span class="hv">${totalTipsAtlas}</span></div>
+      <div>Best Chain <span class="hv">${maxChainAtlas}</span></div>
+      <div>Cells <span class="hv">${atlasCells.length}</span></div>
+    `;
+    document.getElementById('physics-hud').innerHTML = '';
+  }
+};
+
+function updateSingleHUD() {
+  const hud = document.getElementById('hud');
+  const elapsed = ((performance.now() - simStartTime) / 1000).toFixed(1);
+  const tippingNow = beamData.filter(bd => bd.tipped).length;
+
+  hud.innerHTML = `
+    <div>Beams <span class="hv">${beamData.length}</span></div>
+    <div>Particles <span class="hv">${particles.length}</span></div>
+    <div>Tipping Now <span class="hv">${tippingNow}</span></div>
+    <div>Total Tips <span class="hv">${totalTips}</span></div>
+    <div>Best Chain <span class="hv">${longestChain}</span></div>
+    <div>Time <span class="hv">${elapsed}s</span></div>
+  `;
+}
+
+function updatePhysicsHUD() {
+  const phud = document.getElementById('physics-hud');
+  if (mode !== 'single' || !engine) {
+    phud.innerHTML = '';
+    return;
+  }
+
+  // Compute total kinetic + potential energy
+  const allBodies = Composite.allBodies(engine.world);
+  let totalKE = 0, totalPE = 0;
+  const g = engine.gravity.y;
+  const refY = H; // bottom of screen
+
+  for (const body of allBodies) {
+    if (body.isStatic || body.isWall || body.isPivotBase || body.isBasin) continue;
+    const vx = body.velocity.x, vy = body.velocity.y;
+    const speed2 = vx * vx + vy * vy;
+    totalKE += 0.5 * body.mass * speed2;
+    // Rotational KE
+    totalKE += 0.5 * body.inertia * body.angularVelocity * body.angularVelocity;
+    // PE (higher = more PE, using inverted y)
+    totalPE += body.mass * g * (refY - body.position.y);
+  }
+
+  const totalE = totalKE + totalPE;
+  const tippingBeams = beamData.filter(bd => bd.tipped).length;
+
+  let cls = '';
+  if (tippingBeams > beamData.length * 0.5) cls = 'warn';
+  if (tippingBeams === beamData.length) cls = 'error';
+
+  phud.className = cls;
+  phud.id = 'physics-hud';
+
+  phud.innerHTML = `
+    <div>KE: ${totalKE.toFixed(1)}</div>
+    <div>PE: ${totalPE.toFixed(1)}</div>
+    <div>Total E: ${totalE.toFixed(1)}</div>
+    <div>Active: ${tippingBeams}/${beamData.length}</div>
+    <div>Particles: ${particles.length}/${MAX_PARTICLES}</div>
+  `;
+}
+
+// -- Init --
+new p5(sketch, 'canvas-container');
+</script>
+</body>
+</html>
