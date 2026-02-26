@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Magnetic Gear Pairs — Contactless Torque via Dipole Fields</title>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f5f3ee; overflow: hidden; font-family: 'Georgia', serif; display: flex; height: 100vh; }
+
+  #sidebar {
+    width: 280px; min-width: 280px; background: #f0ede6;
+    border-right: 1px solid #c8c0b0; overflow-y: auto; padding: 12px 14px;
+    font-size: 12px; color: #444;
+  }
+  #sidebar h1 { font-size: 14px; letter-spacing: 1.5px; color: #333; margin-bottom: 2px; font-weight: normal; }
+  #sidebar .subtitle { font-size: 10px; color: #888; margin-bottom: 12px; font-style: italic; }
+
+  .section-title {
+    font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: #8b7355;
+    margin-top: 14px; margin-bottom: 6px; border-bottom: 1px solid #d8d0c0; padding-bottom: 3px;
+  }
+  .ctrl-row { display: flex; align-items: center; margin-bottom: 5px; }
+  .ctrl-row label { flex: 0 0 100px; font-size: 11px; color: #666; }
+  .ctrl-row input[type="range"] { flex: 1; height: 3px; accent-color: #8b4513; }
+  .ctrl-row .val { flex: 0 0 44px; text-align: right; font-size: 10px; color: #555; font-family: 'Consolas', monospace; }
+
+  .btn-row { display: flex; gap: 5px; margin: 8px 0; flex-wrap: wrap; }
+  .btn {
+    padding: 5px 10px; font-size: 10px; font-family: 'Georgia', serif;
+    background: #555; color: #f5f3ee; border: none; cursor: pointer;
+    letter-spacing: 0.5px; border-radius: 2px; transition: background 0.15s;
+  }
+  .btn:hover { background: #333; }
+  .btn.active { background: #8b4513; }
+  .btn.accent { background: #2a6848; }
+  .btn.accent:hover { background: #1a4830; }
+  .btn:disabled { background: #aaa; cursor: not-allowed; }
+
+  .toggle-row { display: flex; align-items: center; margin-bottom: 5px; gap: 6px; }
+  .toggle-row label { font-size: 11px; color: #666; }
+  .toggle-row input[type="checkbox"] { accent-color: #8b4513; }
+
+  #canvas-container { flex: 1; position: relative; }
+  #canvas-container canvas { display: block; }
+
+  #info-bar {
+    position: fixed; bottom: 0; left: 280px; right: 0; z-index: 100;
+    background: rgba(245,243,238,0.92); border-top: 1px solid #bbb;
+    padding: 4px 16px; font-size: 10px; color: #777; font-style: italic;
+  }
+
+  #hud {
+    position: absolute; top: 8px; right: 12px; background: rgba(245,243,238,0.92);
+    border: 1px solid #c8c0b0; border-radius: 4px; padding: 8px 12px;
+    font-size: 10px; line-height: 1.7; color: #666; min-width: 180px; pointer-events: none;
+  }
+  #hud .hv { color: #444; font-family: 'Consolas', monospace; float: right; }
+
+  .progress-bar { width: 100%; height: 3px; background: #ddd; border-radius: 2px; margin: 4px 0; }
+  .progress-bar-fill { height: 100%; background: #8b4513; border-radius: 2px; transition: width 0.1s; }
+
+  .physics-info { max-height: 200px; overflow-y: auto; font-size: 9px; line-height: 1.6; margin-top: 4px; }
+  .physics-item { padding: 1px 0; color: #666; font-family: 'Consolas', monospace; }
+  .physics-item.warn { color: #b33; font-weight: bold; }
+  .physics-item.ok { color: #2a6848; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #c8c0b0; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h1>MAGNETIC GEARS</h1>
+  <div class="subtitle">Contactless Torque &mdash; Dipole Field Simulation</div>
+
+  <div class="section-title">Inner Ring</div>
+  <div class="ctrl-row">
+    <label>Magnets</label>
+    <input type="range" id="nInner" min="4" max="20" value="8" step="1">
+    <span class="val" id="nInnerVal">8</span>
+  </div>
+
+  <div class="section-title">Outer Ring</div>
+  <div class="ctrl-row">
+    <label>Magnets</label>
+    <input type="range" id="nOuter" min="4" max="20" value="12" step="1">
+    <span class="val" id="nOuterVal">12</span>
+  </div>
+
+  <div class="section-title">Physics</div>
+  <div class="ctrl-row">
+    <label>Strength</label>
+    <input type="range" id="magStrength" min="0.1" max="2.0" value="1.0" step="0.05">
+    <span class="val" id="magStrengthVal">1.00</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Air Gap</label>
+    <input type="range" id="airGap" min="10" max="50" value="25" step="1">
+    <span class="val" id="airGapVal">25</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Load Torque</label>
+    <input type="range" id="loadTorque" min="0" max="100" value="20" step="1">
+    <span class="val" id="loadTorqueVal">20</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Damping</label>
+    <input type="range" id="damping" min="0.01" max="0.50" value="0.10" step="0.01">
+    <span class="val" id="dampingVal">0.10</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Driver Speed</label>
+    <input type="range" id="driverSpeed" min="0.1" max="4.0" value="1.0" step="0.1">
+    <span class="val" id="driverSpeedVal">1.0</span>
+  </div>
+
+  <div class="section-title">Display</div>
+  <div class="toggle-row">
+    <input type="checkbox" id="showFieldLines" checked>
+    <label for="showFieldLines">Field Lines</label>
+  </div>
+  <div class="toggle-row">
+    <input type="checkbox" id="showCogging">
+    <label for="showCogging">Cogging Markers</label>
+  </div>
+
+  <div class="section-title">Mode</div>
+  <div class="btn-row">
+    <button class="btn active" id="btnAtlas" onclick="setMode('atlas')">Atlas 4&times;4</button>
+    <button class="btn" id="btnSingle" onclick="setMode('single')">Single</button>
+  </div>
+
+  <div class="section-title">Actions</div>
+  <div class="btn-row">
+    <button class="btn" onclick="randomizeAll()">Randomize</button>
+    <button class="btn" onclick="mutateSelected()">Mutate</button>
+    <button class="btn accent" id="btnFind" onclick="findBeautiful()">Find Beautiful</button>
+  </div>
+  <div class="progress-bar" id="progressWrap" style="display:none;">
+    <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
+  </div>
+
+  <div class="section-title">Physics Info</div>
+  <div class="physics-info" id="physicsInfo"></div>
+</div>
+
+<div id="canvas-container">
+  <div id="hud"></div>
+</div>
+<div id="info-bar">Magnetic Gear Pairs &mdash; click cell to inspect, drag load torque to test slip threshold</div>
+
+<script>
+// ANALYTICAL CHECK: N_inner = N_outer = 8
+// Gear ratio = 1:1, cogging period = 45 deg (360/8)
+// For N_inner = 4, N_outer = 6: gear ratio = 1.5:1
+// Cogging period = 360/lcm(4,6) = 360/12 = 30 deg
+
+const sketch = (p) => {
+  // ---- constants & state ----
+  const ATLAS_COLS = 4, ATLAS_ROWS = 4;
+  let mode = 'atlas';
+  let configs = [];
+  let selectedIdx = 0;
+  let cW, cH;
+  let fps = 60, fpsFrames = 0, fpsLast = 0;
+
+  // ---- math helpers ----
+  function gcd(a, b) { a = Math.abs(a); b = Math.abs(b); while (b) { [a, b] = [b, a % b]; } return a; }
+  function lcm(a, b) { return Math.abs(a * b) / gcd(a, b); }
+
+  // ---- magnetic dipole physics ----
+  function makeMagnets(n, radius) {
+    let mags = [];
+    for (let i = 0; i < n; i++) {
+      let angle = (i / n) * Math.PI * 2;
+      // Alternate polarity: even=outward, odd=inward
+      let polarity = (i % 2 === 0) ? 1 : -1;
+      mags.push({ angle, r: radius, polarity });
+    }
+    return mags;
+  }
+
+  function computeMagneticTorque(magnetsInner, magnetsOuter, innerAngle, outerAngle, strength) {
+    let totalTorque = 0;
+    let scaleFactor = strength * 1e4; // scale for visible dynamics
+
+    for (let i = 0; i < magnetsInner.length; i++) {
+      let a1 = magnetsInner[i].angle + innerAngle;
+      let r1 = magnetsInner[i].r;
+      let pol1 = magnetsInner[i].polarity;
+      let px1 = r1 * Math.cos(a1);
+      let py1 = r1 * Math.sin(a1);
+      // Dipole moment oriented radially, with polarity
+      let mx1 = scaleFactor * pol1 * Math.cos(a1);
+      let my1 = scaleFactor * pol1 * Math.sin(a1);
+
+      for (let j = 0; j < magnetsOuter.length; j++) {
+        let a2 = magnetsOuter[j].angle + outerAngle;
+        let r2 = magnetsOuter[j].r;
+        let pol2 = magnetsOuter[j].polarity;
+        let px2 = r2 * Math.cos(a2);
+        let py2 = r2 * Math.sin(a2);
+        let mx2 = scaleFactor * pol2 * Math.cos(a2);
+        let my2 = scaleFactor * pol2 * Math.sin(a2);
+
+        let dx = px2 - px1, dy = py2 - py1;
+        let r = Math.sqrt(dx * dx + dy * dy);
+        if (r < 5) continue; // prevent singularity
+
+        let rx = dx / r, ry = dy / r;
+        let m1_dot_r = mx1 * rx + my1 * ry;
+        // B field from dipole 1 at dipole 2 position
+        let Bx = (3 * m1_dot_r * rx - mx1) / (r * r * r);
+        let By = (3 * m1_dot_r * ry - my1) / (r * r * r);
+        // Torque on dipole 2 = m2 cross B (z-component)
+        let tau = mx2 * By - my2 * Bx;
+        totalTorque += tau;
+      }
+    }
+    return totalTorque;
+  }
+
+  // Sweep torque curve to find max torque capacity
+  function computeTorqueCurve(cfg, steps) {
+    let curve = [];
+    let maxT = 0;
+    let minT = Infinity;
+    let cogPeriod = (2 * Math.PI) / lcm(cfg.nInner, cfg.nOuter);
+    for (let s = 0; s <= steps; s++) {
+      let offset = (s / steps) * cogPeriod;
+      let tau = computeMagneticTorque(cfg.innerMagnets, cfg.outerMagnets, 0, offset, cfg.strength);
+      curve.push({ angle: offset, torque: tau });
+      if (Math.abs(tau) > maxT) maxT = Math.abs(tau);
+      if (Math.abs(tau) < minT) minT = Math.abs(tau);
+    }
+    return { curve, maxTorque: maxT, minTorque: minT, cogPeriod };
+  }
+
+  // ---- config generation ----
+  function makeConfigFromParams(nI, nO, strength, gap, damping) {
+    let rInner = 60;
+    let rOuter = rInner + gap;
+    let innerMagnets = makeMagnets(nI, rInner);
+    let outerMagnets = makeMagnets(nO, rOuter);
+    let gearRatio = nO / nI;
+
+    let cfg = {
+      nInner: nI, nOuter: nO,
+      strength, gap, damping,
+      rInner, rOuter,
+      innerMagnets, outerMagnets,
+      gearRatio,
+      // Dynamic state
+      innerAngle: 0,
+      outerAngle: 0,
+      outerOmega: 0,
+      slipping: false,
+      maxTorque: 0,
+      minTorque: 0,
+      cogPeriod: 0,
+      torqueCurve: [],
+      currentTorque: 0,
+      // Precompute torque curve
+    };
+
+    let tc = computeTorqueCurve(cfg, 64);
+    cfg.maxTorque = tc.maxTorque;
+    cfg.minTorque = tc.minTorque;
+    cfg.cogPeriod = tc.cogPeriod;
+    cfg.torqueCurve = tc.curve;
+
+    return cfg;
+  }
+
+  function makeConfig() {
+    let nI = parseInt(document.getElementById('nInner').value);
+    let nO = parseInt(document.getElementById('nOuter').value);
+    let str = parseFloat(document.getElementById('magStrength').value);
+    let gap = parseInt(document.getElementById('airGap').value);
+    let damp = parseFloat(document.getElementById('damping').value);
+    return makeConfigFromParams(nI, nO, str, gap, damp);
+  }
+
+  function makeRandomConfig() {
+    let nI = Math.floor(p.random(4, 17));
+    let nO = Math.floor(p.random(4, 17));
+    let str = p.random(0.3, 1.8);
+    let gap = Math.floor(p.random(12, 45));
+    let damp = p.random(0.03, 0.3);
+    return makeConfigFromParams(nI, nO, str, gap, damp);
+  }
+
+  function mutateConfig(cfg) {
+    let nI = cfg.nInner + Math.floor(p.random(-2, 3));
+    let nO = cfg.nOuter + Math.floor(p.random(-2, 3));
+    nI = p.constrain(nI, 4, 20);
+    nO = p.constrain(nO, 4, 20);
+    let str = cfg.strength + p.random(-0.3, 0.3);
+    str = p.constrain(str, 0.1, 2.0);
+    let gap = cfg.gap + Math.floor(p.random(-5, 6));
+    gap = p.constrain(gap, 10, 50);
+    let damp = cfg.damping + p.random(-0.05, 0.05);
+    damp = p.constrain(damp, 0.01, 0.5);
+    return makeConfigFromParams(nI, nO, str, gap, damp);
+  }
+
+  function scoreConfig(cfg) {
+    // Torque capacity score
+    let torqueScore = Math.min(cfg.maxTorque, 50) * 1.5;
+    // Low cogging ripple = smooth
+    let ripple = (cfg.maxTorque - cfg.minTorque) / (cfg.maxTorque + 0.001);
+    let smoothScore = (1 - ripple) * 40;
+    // Interesting ratio (non-integer ratios score higher)
+    let ratio = cfg.gearRatio;
+    let fracPart = ratio - Math.floor(ratio);
+    let ratioScore = Math.min(fracPart * 2, 1) * 30;
+    // Higher magnet counts = more complex
+    let complexScore = (cfg.nInner + cfg.nOuter) * 0.5;
+    return torqueScore + smoothScore + ratioScore + complexScore;
+  }
+
+  // ---- simulation update ----
+  function updateConfig(cfg, dt) {
+    let driverSpeed = parseFloat(document.getElementById('driverSpeed').value);
+    let loadTorque = parseFloat(document.getElementById('loadTorque').value);
+    let damping = cfg.damping;
+
+    // Driver: constant angular velocity
+    cfg.innerAngle += driverSpeed * dt;
+
+    // Expected outer angle for perfect gear coupling
+    let expectedOuterAngle = cfg.innerAngle * (cfg.nInner / cfg.nOuter);
+
+    // Compute magnetic torque on outer ring from angular offset
+    let tau = computeMagneticTorque(
+      cfg.innerMagnets, cfg.outerMagnets,
+      cfg.innerAngle, cfg.outerAngle,
+      cfg.strength
+    );
+    cfg.currentTorque = tau;
+
+    // Net torque = magnetic coupling - load - damping
+    let outerInertia = 0.05 + cfg.nOuter * 0.005;
+    let netTorque = tau - loadTorque * 0.01 * Math.sign(cfg.outerOmega + 0.001) - damping * cfg.outerOmega;
+    let alpha = netTorque / outerInertia;
+    cfg.outerOmega += alpha * dt;
+    cfg.outerAngle += cfg.outerOmega * dt;
+
+    // Slip detection
+    let expectedOmega = driverSpeed * (cfg.nInner / cfg.nOuter);
+    let omegaError = Math.abs(cfg.outerOmega - expectedOmega) / (Math.abs(expectedOmega) + 0.001);
+    cfg.slipping = omegaError > 0.4;
+  }
+
+  // ---- drawing: magnet ring ----
+  function drawMagnetRing(p, cx, cy, magnets, angle, ringR, magnetSize, scale, showField) {
+    p.push();
+    p.translate(cx, cy);
+
+    // Ring circle
+    p.noFill();
+    p.stroke(160, 150, 135);
+    p.strokeWeight(1);
+    p.ellipse(0, 0, ringR * 2 * scale, ringR * 2 * scale);
+
+    // Draw each magnet
+    for (let i = 0; i < magnets.length; i++) {
+      let a = magnets[i].angle + angle;
+      let r = magnets[i].r;
+      let pol = magnets[i].polarity;
+      let mx = r * Math.cos(a) * scale;
+      let my = r * Math.sin(a) * scale;
+
+      p.push();
+      p.translate(mx, my);
+      p.rotate(a);
+
+      // Magnet body: rectangle oriented radially
+      let mw = magnetSize * scale;
+      let mh = magnetSize * 0.5 * scale;
+
+      // North half (outward = red), South half (inward = blue)
+      if (pol > 0) {
+        // N pole outward
+        p.fill(200, 60, 60, 200);
+        p.noStroke();
+        p.rect(0, -mh / 2, mw / 2, mh);
+        p.fill(60, 80, 200, 200);
+        p.rect(-mw / 2, -mh / 2, mw / 2, mh);
+      } else {
+        // S pole outward
+        p.fill(60, 80, 200, 200);
+        p.noStroke();
+        p.rect(0, -mh / 2, mw / 2, mh);
+        p.fill(200, 60, 60, 200);
+        p.rect(-mw / 2, -mh / 2, mw / 2, mh);
+      }
+
+      // Outline
+      p.noFill();
+      p.stroke(80);
+      p.strokeWeight(0.5);
+      p.rect(-mw / 2, -mh / 2, mw, mh);
+
+      p.pop();
+    }
+    p.pop();
+  }
+
+  // ---- drawing: field lines between nearest pairs ----
+  function drawFieldLines(p, cx, cy, cfg, scale) {
+    let innerAngle = cfg.innerAngle;
+    let outerAngle = cfg.outerAngle;
+
+    p.push();
+    p.translate(cx, cy);
+    p.noFill();
+
+    for (let i = 0; i < cfg.innerMagnets.length; i++) {
+      let a1 = cfg.innerMagnets[i].angle + innerAngle;
+      let r1 = cfg.innerMagnets[i].r;
+      let pol1 = cfg.innerMagnets[i].polarity;
+      let px1 = r1 * Math.cos(a1) * scale;
+      let py1 = r1 * Math.sin(a1) * scale;
+
+      // Find nearest outer magnet
+      let bestJ = 0, bestDist = Infinity;
+      for (let j = 0; j < cfg.outerMagnets.length; j++) {
+        let a2 = cfg.outerMagnets[j].angle + outerAngle;
+        let r2 = cfg.outerMagnets[j].r;
+        let px2 = r2 * Math.cos(a2) * scale;
+        let py2 = r2 * Math.sin(a2) * scale;
+        let d = Math.sqrt((px2 - px1) * (px2 - px1) + (py2 - py1) * (py2 - py1));
+        if (d < bestDist) { bestDist = d; bestJ = j; }
+      }
+
+      let a2 = cfg.outerMagnets[bestJ].angle + outerAngle;
+      let r2 = cfg.outerMagnets[bestJ].r;
+      let pol2 = cfg.outerMagnets[bestJ].polarity;
+      let px2 = r2 * Math.cos(a2) * scale;
+      let py2 = r2 * Math.sin(a2) * scale;
+
+      // Attract (opposite poles) = warm color, repel (same) = cool
+      let attract = pol1 !== pol2;
+      if (attract) {
+        p.stroke(180, 80, 40, 80);
+      } else {
+        p.stroke(40, 80, 180, 60);
+      }
+      p.strokeWeight(1);
+
+      // Bezier field line
+      let midR = (r1 + r2) / 2 * scale;
+      let midA = (a1 + a2) / 2;
+      // Offset control points perpendicular to line
+      let cpx = midR * Math.cos(midA) * (attract ? 0.8 : 1.2);
+      let cpy = midR * Math.sin(midA) * (attract ? 0.8 : 1.2);
+
+      p.bezier(px1, py1, cpx * 0.7 + px1 * 0.3, cpy * 0.7 + py1 * 0.3,
+               cpx * 0.7 + px2 * 0.3, cpy * 0.7 + py2 * 0.3, px2, py2);
+    }
+    p.pop();
+  }
+
+  // ---- drawing: cogging markers ----
+  function drawCoggingMarkers(p, cx, cy, cfg, scale) {
+    let innerAngle = cfg.innerAngle;
+    let outerAngle = cfg.outerAngle;
+
+    p.push();
+    p.translate(cx, cy);
+
+    // Check alignment between nearest pairs
+    for (let i = 0; i < cfg.innerMagnets.length; i++) {
+      let a1 = cfg.innerMagnets[i].angle + innerAngle;
+      let r1 = cfg.innerMagnets[i].r;
+
+      for (let j = 0; j < cfg.outerMagnets.length; j++) {
+        let a2 = cfg.outerMagnets[j].angle + outerAngle;
+        let r2 = cfg.outerMagnets[j].r;
+
+        // Angular alignment check
+        let aDiff = Math.abs(((a1 - a2) % (Math.PI * 2) + Math.PI * 3) % (Math.PI * 2) - Math.PI);
+        if (aDiff < 0.15) {
+          // Magnets are aligned - show lock indicator
+          let mx = ((r1 + r2) / 2) * Math.cos((a1 + a2) / 2) * scale;
+          let my = ((r1 + r2) / 2) * Math.sin((a1 + a2) / 2) * scale;
+
+          p.fill(40, 160, 60, 150);
+          p.noStroke();
+          p.ellipse(mx, my, 6, 6);
+        } else if (aDiff > 0.3 && aDiff < 0.7) {
+          // Between alignment - show spring compression
+          let mx = ((r1 + r2) / 2) * Math.cos((a1 + a2) / 2) * scale;
+          let my = ((r1 + r2) / 2) * Math.sin((a1 + a2) / 2) * scale;
+
+          p.stroke(200, 160, 40, 100);
+          p.strokeWeight(1);
+          p.noFill();
+          // Small zigzag
+          let sz = 3;
+          p.line(mx - sz, my - sz, mx + sz, my + sz);
+          p.line(mx + sz, my - sz, mx - sz, my + sz);
+        }
+      }
+    }
+    p.pop();
+  }
+
+  // ---- drawing: slip effect ----
+  function drawSlipEffect(p, cx, cy, cfg, scale, time) {
+    if (!cfg.slipping) return;
+    p.push();
+    p.translate(cx, cy);
+
+    // Flash effect at outer ring
+    let flash = Math.sin(time * 15) * 0.5 + 0.5;
+    p.noFill();
+    p.stroke(220, 50, 30, flash * 150);
+    p.strokeWeight(3);
+    p.ellipse(0, 0, cfg.rOuter * 2 * scale + 8, cfg.rOuter * 2 * scale + 8);
+
+    // "SLIP" sparks at random magnet positions
+    if (Math.random() < 0.3) {
+      let idx = Math.floor(Math.random() * cfg.outerMagnets.length);
+      let a = cfg.outerMagnets[idx].angle + cfg.outerAngle;
+      let r = cfg.outerMagnets[idx].r * scale;
+      let sx = r * Math.cos(a), sy = r * Math.sin(a);
+      p.fill(255, 200, 50, 200);
+      p.noStroke();
+      let sparkSize = p.random(2, 5);
+      p.ellipse(sx, sy, sparkSize, sparkSize);
+    }
+
+    p.pop();
+  }
+
+  // ---- drawing: torque graph ----
+  function drawTorqueGraph(p, cfg, x, y, w, h) {
+    p.push();
+    p.translate(x, y);
+
+    // Background
+    p.fill(250, 248, 242);
+    p.stroke(180);
+    p.strokeWeight(0.5);
+    p.rect(0, 0, w, h, 3);
+
+    // Title
+    p.noStroke();
+    p.fill(100);
+    p.textSize(9);
+    p.textAlign(p.LEFT);
+    p.text('Torque vs. Angular Offset', 8, 14);
+
+    let plotX = 40, plotY = 22;
+    let plotW = w - 55, plotH = h - 38;
+
+    // Plot area
+    p.stroke(220);
+    p.strokeWeight(0.5);
+    p.noFill();
+    p.rect(plotX, plotY, plotW, plotH);
+
+    // Axes
+    p.stroke(150);
+    p.line(plotX, plotY + plotH / 2, plotX + plotW, plotY + plotH / 2); // zero line
+
+    if (cfg.torqueCurve.length < 2) { p.pop(); return; }
+
+    // Scale
+    let maxVal = cfg.maxTorque * 1.2 + 0.001;
+    let loadTorque = parseFloat(document.getElementById('loadTorque').value) * 0.01 * cfg.maxTorque;
+
+    // Grid lines
+    p.stroke(230);
+    p.strokeWeight(0.3);
+    for (let i = 1; i < 4; i++) {
+      let gy = plotY + (i / 4) * plotH;
+      p.line(plotX, gy, plotX + plotW, gy);
+    }
+
+    // Torque curve
+    p.stroke(80, 120, 180);
+    p.strokeWeight(1.5);
+    p.noFill();
+    p.beginShape();
+    for (let i = 0; i < cfg.torqueCurve.length; i++) {
+      let pt = cfg.torqueCurve[i];
+      let px = plotX + (pt.angle / cfg.cogPeriod) * plotW;
+      let py = plotY + plotH / 2 - (pt.torque / maxVal) * (plotH / 2);
+      p.vertex(px, py);
+    }
+    p.endShape();
+
+    // Load torque line
+    if (loadTorque > 0) {
+      p.stroke(200, 60, 60);
+      p.strokeWeight(1);
+      p.drawingContext.setLineDash([4, 3]);
+      let ly = plotY + plotH / 2 - (loadTorque / maxVal) * (plotH / 2);
+      p.line(plotX, ly, plotX + plotW, ly);
+      p.drawingContext.setLineDash([]);
+
+      // Label
+      p.noStroke();
+      p.fill(200, 60, 60);
+      p.textSize(8);
+      p.textAlign(p.LEFT);
+      p.text('load', plotX + plotW + 3, ly + 3);
+    }
+
+    // Max torque line
+    p.stroke(40, 160, 60, 100);
+    p.strokeWeight(1);
+    p.drawingContext.setLineDash([2, 2]);
+    let maxY = plotY + plotH / 2 - (cfg.maxTorque / maxVal) * (plotH / 2);
+    p.line(plotX, maxY, plotX + plotW, maxY);
+    p.drawingContext.setLineDash([]);
+
+    p.noStroke();
+    p.fill(40, 160, 60);
+    p.textSize(7);
+    p.text('max', plotX + plotW + 3, maxY + 3);
+
+    // Current operating point
+    let cogAngle = ((cfg.outerAngle - cfg.innerAngle * cfg.nInner / cfg.nOuter) % cfg.cogPeriod + cfg.cogPeriod) % cfg.cogPeriod;
+    let cpx = plotX + (cogAngle / cfg.cogPeriod) * plotW;
+    let normTau = cfg.currentTorque;
+    let cpy = plotY + plotH / 2 - (normTau / maxVal) * (plotH / 2);
+    cpy = p.constrain(cpy, plotY, plotY + plotH);
+
+    p.fill(cfg.slipping ? p.color(220, 50, 30) : p.color(80, 120, 180));
+    p.noStroke();
+    p.ellipse(cpx, cpy, 6, 6);
+
+    // Y-axis label
+    p.fill(120);
+    p.textSize(7);
+    p.textAlign(p.RIGHT);
+    p.text(cfg.maxTorque.toFixed(1), plotX - 3, maxY + 3);
+    p.text('0', plotX - 3, plotY + plotH / 2 + 3);
+
+    // X-axis label
+    p.textAlign(p.CENTER);
+    p.text('0', plotX, plotY + plotH + 10);
+    let degLabel = (cfg.cogPeriod * 180 / Math.PI).toFixed(0) + '\u00B0';
+    p.text(degLabel, plotX + plotW, plotY + plotH + 10);
+    p.text('Cogging Period', plotX + plotW / 2, plotY + plotH + 10);
+
+    // SLIP warning
+    if (cfg.slipping) {
+      p.fill(220, 50, 30);
+      p.textSize(14);
+      p.textAlign(p.CENTER);
+      p.text('SLIP', plotX + plotW / 2, plotY + plotH / 2 - 5);
+    }
+
+    p.pop();
+  }
+
+  // ---- drawing: full mechanism ----
+  function drawMechanism(p, cfg, cx, cy, scale, showLabels, time) {
+    let showField = document.getElementById('showFieldLines').checked;
+    let showCog = document.getElementById('showCogging').checked;
+    let magnetSize = Math.max(8, 25 - cfg.nOuter);
+
+    // Center dot
+    p.fill(60);
+    p.noStroke();
+    p.ellipse(cx, cy, 4 * scale, 4 * scale);
+
+    // Inner ring hub
+    p.fill(230, 225, 215, 100);
+    p.stroke(160, 150, 135, 100);
+    p.strokeWeight(0.5);
+    p.ellipse(cx, cy, cfg.rInner * 1.4 * scale, cfg.rInner * 1.4 * scale);
+
+    // Outer ring backing
+    p.noFill();
+    p.stroke(160, 150, 135, 60);
+    p.strokeWeight(cfg.gap * 0.3 * scale);
+    p.ellipse(cx, cy, (cfg.rInner + cfg.rOuter) * scale, (cfg.rInner + cfg.rOuter) * scale);
+
+    // Field lines (behind magnets)
+    if (showField) {
+      drawFieldLines(p, cx, cy, cfg, scale);
+    }
+
+    // Inner magnets
+    drawMagnetRing(p, cx, cy, cfg.innerMagnets, cfg.innerAngle, cfg.rInner, magnetSize, scale, false);
+
+    // Outer magnets
+    drawMagnetRing(p, cx, cy, cfg.outerMagnets, cfg.outerAngle, cfg.rOuter, magnetSize, scale, false);
+
+    // Cogging markers
+    if (showCog) {
+      drawCoggingMarkers(p, cx, cy, cfg, scale);
+    }
+
+    // Slip effect
+    drawSlipEffect(p, cx, cy, cfg, scale, time);
+
+    // Labels
+    if (showLabels) {
+      p.noStroke();
+      p.textAlign(p.CENTER);
+
+      // Inner ring label
+      p.fill(200, 60, 60);
+      p.textSize(10 * scale);
+      p.text('N=' + cfg.nInner, cx, cy - cfg.rInner * scale * 0.4);
+      p.textSize(8 * scale);
+      p.text('driver', cx, cy - cfg.rInner * scale * 0.4 + 12 * scale);
+
+      // Outer ring label
+      p.fill(60, 80, 200);
+      p.textSize(10 * scale);
+      p.text('N=' + cfg.nOuter, cx, cy + cfg.rOuter * scale + 18 * scale);
+
+      // Ratio
+      p.fill(100);
+      p.textSize(9 * scale);
+      let ratioStr = cfg.gearRatio.toFixed(2) + ':1';
+      p.text(ratioStr, cx, cy + cfg.rOuter * scale + 32 * scale);
+
+      // Status
+      if (cfg.slipping) {
+        p.fill(220, 50, 30);
+        p.textSize(12 * scale);
+        p.text('SLIPPING', cx, cy);
+      } else {
+        p.fill(40, 140, 60, 180);
+        p.textSize(9 * scale);
+        p.text('LOCKED', cx, cy);
+      }
+    }
+
+    // Direction arrows on rings
+    drawRotationArrow(p, cx, cy, cfg.rInner * 0.7 * scale, cfg.innerAngle, scale, [180, 60, 60]);
+    if (Math.abs(cfg.outerOmega) > 0.01) {
+      drawRotationArrow(p, cx, cy, (cfg.rOuter + 12) * scale, cfg.outerAngle, scale, [60, 80, 180]);
+    }
+  }
+
+  function drawRotationArrow(p, cx, cy, r, angle, scale, col) {
+    let ax = cx + r * Math.cos(angle);
+    let ay = cy + r * Math.sin(angle);
+    p.push();
+    p.translate(ax, ay);
+    p.rotate(angle + Math.PI / 2);
+    p.fill(col[0], col[1], col[2], 160);
+    p.noStroke();
+    let s = 4 * scale;
+    p.triangle(0, -s, -s * 0.6, s * 0.5, s * 0.6, s * 0.5);
+    p.pop();
+  }
+
+  // ---- atlas / single drawing ----
+  function drawAtlas() {
+    let cellW = cW / ATLAS_COLS, cellH = cH / ATLAS_ROWS;
+    let dt = 0.016 * parseFloat(document.getElementById('driverSpeed').value);
+
+    for (let i = 0; i < Math.min(configs.length, 16); i++) {
+      let row = Math.floor(i / ATLAS_COLS), col = i % ATLAS_COLS;
+      let cx = col * cellW, cy = row * cellH;
+
+      let cfg = configs[i];
+      if (!cfg) continue;
+
+      // Update simulation
+      updateConfig(cfg, dt);
+
+      // Cell background
+      p.noStroke();
+      p.fill(252, 250, 245);
+      p.rect(cx + 2, cy + 2, cellW - 4, cellH - 4, 3);
+
+      // Scale to fit
+      let maxR = cfg.rOuter + 15;
+      let fitScale = Math.min((cellW - 20) / (maxR * 2), (cellH - 40) / (maxR * 2));
+      fitScale = Math.min(fitScale, 1.2);
+
+      drawMechanism(p, cfg, cx + cellW / 2, cy + cellH / 2 - 8, fitScale, false, p.millis() / 1000);
+
+      // Cell label
+      p.noStroke();
+      p.fill(100);
+      p.textSize(8);
+      p.textAlign(p.LEFT);
+      p.text(cfg.nInner + ':' + cfg.nOuter + '  r=' + cfg.gearRatio.toFixed(2), cx + 5, cy + cellH - 8);
+
+      // Status badge
+      p.textAlign(p.RIGHT);
+      if (cfg.slipping) {
+        p.fill(220, 50, 30);
+        p.text('SLIP', cx + cellW - 5, cy + 14);
+      } else {
+        p.fill(40, 140, 60);
+        p.text('LOCK', cx + cellW - 5, cy + 14);
+      }
+
+      // Roman numeral
+      p.fill(180);
+      p.textSize(9);
+      p.textAlign(p.LEFT);
+      let rom = ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV','XVI'];
+      p.text(rom[i], cx + 5, cy + 14);
+
+      // Border: green=locked, red=slipping
+      p.noFill();
+      p.stroke(cfg.slipping ? p.color(220, 50, 30, 120) : p.color(40, 140, 60, 80));
+      p.strokeWeight(i === selectedIdx ? 2.5 : 1.5);
+      p.rect(cx + 2, cy + 2, cellW - 4, cellH - 4, 3);
+
+      // Selected highlight
+      if (i === selectedIdx) {
+        p.stroke(139, 69, 19);
+        p.strokeWeight(2);
+        p.noFill();
+        p.rect(cx + 1, cy + 1, cellW - 2, cellH - 2, 3);
+      }
+    }
+
+    // Grid lines
+    p.stroke(200, 190, 175);
+    p.strokeWeight(0.5);
+    for (let c = 1; c < ATLAS_COLS; c++) p.line(c * cellW, 0, c * cellW, cH);
+    for (let r = 1; r < ATLAS_ROWS; r++) p.line(0, r * cellH, cW, r * cellH);
+  }
+
+  function drawSingle() {
+    let cfg = configs[selectedIdx];
+    if (!cfg) return;
+
+    let dt = 0.016 * parseFloat(document.getElementById('driverSpeed').value);
+    updateConfig(cfg, dt);
+
+    // Mechanism: left 55%
+    let mechW = cW * 0.55;
+    let mechH = cH - 30;
+    let maxR = cfg.rOuter + 20;
+    let fitScale = Math.min((mechW - 40) / (maxR * 2), (mechH - 80) / (maxR * 2));
+    fitScale = Math.min(fitScale, 2.0);
+
+    drawMechanism(p, cfg, mechW / 2, mechH / 2, fitScale, true, p.millis() / 1000);
+
+    // Torque graph: right 45%
+    let graphX = mechW + 10;
+    let graphW = cW - mechW - 20;
+    let graphH = cH * 0.45;
+    drawTorqueGraph(p, cfg, graphX, 20, graphW, graphH);
+
+    // Cogging info box below graph
+    let infoY = graphH + 40;
+    let infoH = cH - infoY - 30;
+    drawCoggingInfo(p, cfg, graphX, infoY, graphW, infoH);
+
+    updatePhysicsInfo(cfg);
+  }
+
+  function drawCoggingInfo(p, cfg, x, y, w, h) {
+    p.push();
+    p.translate(x, y);
+
+    p.fill(250, 248, 242);
+    p.stroke(180);
+    p.strokeWeight(0.5);
+    p.rect(0, 0, w, h, 3);
+
+    p.noStroke();
+    p.fill(100);
+    p.textSize(9);
+    p.textAlign(p.LEFT);
+    p.text('Cogging Analysis', 8, 16);
+
+    let lh = 16;
+    let ty = 32;
+    p.fill(80);
+    p.textSize(10);
+    p.textFont('Consolas');
+
+    let cogDeg = (cfg.cogPeriod * 180 / Math.PI).toFixed(1);
+    let lcmVal = lcm(cfg.nInner, cfg.nOuter);
+    let ripple = cfg.maxTorque > 0 ? ((cfg.maxTorque - cfg.minTorque) / cfg.maxTorque * 100).toFixed(1) : '0';
+
+    p.text('Cogging period: ' + cogDeg + '\u00B0', 10, ty); ty += lh;
+    p.text('LCM(N_i,N_o): ' + lcmVal, 10, ty); ty += lh;
+    p.text('Poles/rev: ' + lcmVal, 10, ty); ty += lh;
+    p.text('Max torque: ' + cfg.maxTorque.toFixed(2), 10, ty); ty += lh;
+    p.text('Min torque: ' + cfg.minTorque.toFixed(2), 10, ty); ty += lh;
+    p.text('Ripple: ' + ripple + '%', 10, ty); ty += lh;
+    p.text('Gear ratio: ' + cfg.gearRatio.toFixed(3) + ':1', 10, ty); ty += lh;
+
+    ty += 4;
+    p.fill(cfg.slipping ? p.color(220, 50, 30) : p.color(40, 140, 60));
+    p.textSize(12);
+    p.text(cfg.slipping ? 'STATUS: SLIPPING' : 'STATUS: LOCKED', 10, ty); ty += lh;
+
+    // Design notes
+    ty += 6;
+    p.fill(120);
+    p.textSize(8);
+    p.textFont('Georgia');
+    if (cfg.gearRatio === 1) {
+      p.text('1:1 ratio = direct coupling.', 10, ty); ty += 12;
+      p.text('Ideal for torque transfer.', 10, ty);
+    } else if (cfg.gearRatio > 1) {
+      p.text('Speed reduction, torque multiply.', 10, ty); ty += 12;
+      p.text('Outer ring slower, higher torque.', 10, ty);
+    } else {
+      p.text('Speed increase, torque divide.', 10, ty); ty += 12;
+      p.text('Outer ring faster, lower torque.', 10, ty);
+    }
+
+    p.pop();
+  }
+
+  function updatePhysicsInfo(cfg) {
+    let el = document.getElementById('physicsInfo');
+    let lines = [];
+    let ratioActual = cfg.innerAngle !== 0 ? (cfg.outerAngle / cfg.innerAngle).toFixed(3) : '0';
+    let ratioTheory = (cfg.nInner / cfg.nOuter).toFixed(3);
+    lines.push(`<div class="physics-item">Inner: ${cfg.nInner} magnets</div>`);
+    lines.push(`<div class="physics-item">Outer: ${cfg.nOuter} magnets</div>`);
+    lines.push(`<div class="physics-item">Gap: ${cfg.gap}px</div>`);
+    lines.push(`<div class="physics-item">Strength: ${cfg.strength.toFixed(2)}</div>`);
+    lines.push(`<div class="physics-item">Ratio (theory): ${ratioTheory}</div>`);
+    lines.push(`<div class="physics-item">Ratio (actual): ${ratioActual}</div>`);
+    lines.push(`<div class="physics-item">Torque: ${cfg.currentTorque.toFixed(2)}</div>`);
+    lines.push(`<div class="physics-item">Max capacity: ${cfg.maxTorque.toFixed(2)}</div>`);
+
+    let cogDeg = (cfg.cogPeriod * 180 / Math.PI).toFixed(1);
+    lines.push(`<div class="physics-item">Cog period: ${cogDeg}&deg;</div>`);
+
+    if (cfg.slipping) {
+      lines.push(`<div class="physics-item warn">STATUS: SLIPPING</div>`);
+    } else {
+      lines.push(`<div class="physics-item ok">STATUS: LOCKED</div>`);
+    }
+    el.innerHTML = lines.join('');
+  }
+
+  // ---- atlas click ----
+  function getAtlasCell(mx, my) {
+    let cellW = cW / ATLAS_COLS, cellH = cH / ATLAS_ROWS;
+    let col = Math.floor(mx / cellW), row = Math.floor(my / cellH);
+    if (col < 0 || col >= ATLAS_COLS || row < 0 || row >= ATLAS_ROWS) return -1;
+    return row * ATLAS_COLS + col;
+  }
+
+  // ---- p5 lifecycle ----
+  p.setup = function() {
+    let container = document.getElementById('canvas-container');
+    cW = container.clientWidth;
+    cH = container.clientHeight;
+    p.createCanvas(cW, cH).parent('canvas-container');
+    p.textFont('Georgia');
+    randomizeAll();
+    fpsLast = p.millis();
+  };
+
+  p.windowResized = function() {
+    let container = document.getElementById('canvas-container');
+    cW = container.clientWidth;
+    cH = container.clientHeight;
+    p.resizeCanvas(cW, cH);
+  };
+
+  p.draw = function() {
+    p.background(245, 243, 238);
+
+    fpsFrames++;
+    let now = p.millis();
+    if (now - fpsLast > 500) {
+      fps = Math.round(fpsFrames / ((now - fpsLast) / 1000));
+      fpsFrames = 0;
+      fpsLast = now;
+    }
+
+    if (mode === 'atlas') {
+      drawAtlas();
+    } else {
+      drawSingle();
+    }
+
+    // HUD
+    let hud = document.getElementById('hud');
+    if (mode === 'atlas') {
+      hud.innerHTML =
+        `FPS <span class="hv">${fps}</span><br>` +
+        `Configs <span class="hv">${configs.length}</span><br>` +
+        `Selected <span class="hv">#${selectedIdx + 1}</span>`;
+    } else if (configs[selectedIdx]) {
+      let cfg = configs[selectedIdx];
+      let actualR = cfg.innerAngle !== 0 ? (cfg.outerAngle / cfg.innerAngle).toFixed(3) : '-';
+      hud.innerHTML =
+        `FPS <span class="hv">${fps}</span><br>` +
+        `Inner &ang; <span class="hv">${(cfg.innerAngle * 180 / Math.PI % 360).toFixed(1)}&deg;</span><br>` +
+        `Outer &ang; <span class="hv">${(cfg.outerAngle * 180 / Math.PI % 360).toFixed(1)}&deg;</span><br>` +
+        `Ratio <span class="hv">${cfg.gearRatio.toFixed(2)}:1</span><br>` +
+        `Actual <span class="hv">${actualR}</span><br>` +
+        `Torque <span class="hv">${cfg.currentTorque.toFixed(2)}</span><br>` +
+        `Max &tau; <span class="hv">${cfg.maxTorque.toFixed(2)}</span><br>` +
+        `Status <span class="hv">${cfg.slipping ? 'SLIP' : 'LOCK'}</span>`;
+    }
+  };
+
+  p.mousePressed = function() {
+    let mx = p.mouseX, my = p.mouseY;
+    if (mx < 0 || mx > cW || my < 0 || my > cH) return;
+
+    if (mode === 'atlas') {
+      let idx = getAtlasCell(mx, my);
+      if (idx >= 0 && idx < configs.length) {
+        selectedIdx = idx;
+        setMode('single');
+      }
+    }
+  };
+
+  // ---- global functions ----
+  window.setMode = function(m) {
+    mode = m;
+    document.getElementById('btnAtlas').classList.toggle('active', m === 'atlas');
+    document.getElementById('btnSingle').classList.toggle('active', m === 'single');
+  };
+
+  window.randomizeAll = function() {
+    configs = [];
+    for (let i = 0; i < 16; i++) configs.push(makeRandomConfig());
+    selectedIdx = 0;
+  };
+
+  window.mutateSelected = function() {
+    if (configs[selectedIdx]) {
+      let oldCfg = configs[selectedIdx];
+      let newCfg = mutateConfig(oldCfg);
+      configs[selectedIdx] = newCfg;
+    }
+  };
+
+  window.findBeautiful = function() {
+    let btn = document.getElementById('btnFind');
+    btn.disabled = true;
+    let wrap = document.getElementById('progressWrap');
+    let fill = document.getElementById('progressFill');
+    wrap.style.display = 'block';
+    fill.style.width = '0%';
+
+    let candidates = [];
+    let total = 200, perChunk = 20, done = 0;
+
+    function processChunk() {
+      let chunkEnd = Math.min(done + perChunk, total);
+      for (let i = done; i < chunkEnd; i++) {
+        let cfg = makeRandomConfig();
+        candidates.push({ cfg, score: scoreConfig(cfg) });
+      }
+      done = chunkEnd;
+      fill.style.width = (done / total * 100) + '%';
+
+      if (done < total) {
+        setTimeout(processChunk, 0);
+      } else {
+        candidates.sort((a, b) => b.score - a.score);
+        configs = candidates.slice(0, 16).map(c => c.cfg);
+        selectedIdx = 0;
+        btn.disabled = false;
+        wrap.style.display = 'none';
+      }
+    }
+    setTimeout(processChunk, 0);
+  };
+
+  // ---- slider hookup ----
+  function hookSlider(id, suffix) {
+    let el = document.getElementById(id);
+    let valEl = document.getElementById(id + 'Val');
+    el.addEventListener('input', () => {
+      valEl.textContent = parseFloat(el.value).toFixed(suffix === 'int' ? 0 : 2);
+      if (suffix === 'int') valEl.textContent = el.value;
+    });
+  }
+  hookSlider('nInner', 'int');
+  hookSlider('nOuter', 'int');
+  hookSlider('magStrength', 'f');
+  hookSlider('airGap', 'int');
+  hookSlider('loadTorque', 'int');
+  hookSlider('damping', 'f');
+  hookSlider('driverSpeed', 'f');
+};
+
+new p5(sketch, 'canvas-container');
+</script>
+</body>
+</html>

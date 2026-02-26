@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>String Art Machine — Mathematical Envelope Curves</title>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f5f3ee; overflow: hidden; font-family: 'Georgia', serif; display: flex; height: 100vh; }
+
+  #sidebar {
+    width: 280px; min-width: 280px; background: #f0ede6;
+    border-right: 1px solid #c8c0b0; overflow-y: auto; padding: 12px 14px;
+    font-size: 12px; color: #444;
+  }
+  #sidebar h1 { font-size: 14px; letter-spacing: 1.5px; color: #333; margin-bottom: 2px; font-weight: normal; }
+  #sidebar .subtitle { font-size: 10px; color: #888; margin-bottom: 12px; font-style: italic; }
+
+  .section-title {
+    font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: #8b7355;
+    margin-top: 14px; margin-bottom: 6px; border-bottom: 1px solid #d8d0c0; padding-bottom: 3px;
+  }
+  .ctrl-row { display: flex; align-items: center; margin-bottom: 5px; }
+  .ctrl-row label { flex: 0 0 85px; font-size: 11px; color: #666; }
+  .ctrl-row input[type="range"] { flex: 1; height: 3px; accent-color: #8b4513; }
+  .ctrl-row .val { flex: 0 0 50px; text-align: right; font-size: 10px; color: #555; font-family: 'Consolas', monospace; }
+
+  select {
+    width: 100%; padding: 4px 8px; font-size: 11px; font-family: 'Georgia', serif;
+    background: #faf8f3; color: #555; border: 1px solid #c8c0b0; border-radius: 3px; margin-bottom: 4px;
+  }
+
+  .btn-row { display: flex; gap: 5px; margin: 8px 0; flex-wrap: wrap; }
+  .btn {
+    padding: 5px 10px; font-size: 10px; font-family: 'Georgia', serif;
+    background: #555; color: #f5f3ee; border: none; cursor: pointer;
+    letter-spacing: 0.5px; border-radius: 2px; transition: background 0.15s;
+  }
+  .btn:hover { background: #333; }
+  .btn.active { background: #8b4513; }
+  .btn.accent { background: #2a6848; }
+  .btn.accent:hover { background: #1a4830; }
+  .btn.warn { background: #a0522d; }
+  .btn.warn:hover { background: #8b4513; }
+
+  .checkbox-row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; font-size: 11px; color: #666; }
+  .checkbox-row input[type="checkbox"] { accent-color: #8b4513; }
+
+  #canvas-container { flex: 1; position: relative; }
+  #canvas-container canvas { display: block; }
+
+  #info-bar {
+    position: fixed; bottom: 0; left: 280px; right: 0; z-index: 100;
+    background: rgba(245,243,238,0.92); border-top: 1px solid #bbb;
+    padding: 4px 16px; font-size: 10px; color: #777; font-style: italic;
+  }
+
+  #hud {
+    position: absolute; top: 8px; right: 12px; background: rgba(245,243,238,0.9);
+    border: 1px solid #c8c0b0; border-radius: 4px; padding: 8px 12px;
+    font-size: 10px; line-height: 1.7; color: #666; min-width: 170px; pointer-events: none;
+  }
+  #hud .hv { color: #444; font-family: 'Consolas', monospace; float: right; }
+  #hud .hud-divider { border-top: 1px solid #d8d0c0; margin: 3px 0; }
+
+  .progress-bar {
+    position: absolute; bottom: 28px; left: 12px; right: 12px; height: 4px;
+    background: #ddd; border-radius: 2px; overflow: hidden;
+  }
+  .progress-bar-inner {
+    height: 100%; background: #8b4513; border-radius: 2px; transition: width 0.05s;
+  }
+
+  .preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; margin: 5px 0; }
+  .preset-btn {
+    background: #eae6de; border: 1px solid #c8c0b0; color: #555; padding: 4px 5px;
+    font-size: 9px; cursor: pointer; border-radius: 3px; text-align: center;
+    font-family: 'Georgia', serif; transition: all 0.15s;
+  }
+  .preset-btn:hover { background: #ddd8cc; color: #333; }
+  .preset-btn.active { background: #8b4513; border-color: #8b4513; color: #fff; }
+
+  .layer-indicators { display: flex; gap: 4px; margin: 6px 0; }
+  .layer-dot {
+    width: 12px; height: 12px; border-radius: 50%; border: 2px solid #c8c0b0;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .layer-dot.active { border-color: #555; }
+  .layer-info { font-size: 9px; color: #888; margin-top: 2px; line-height: 1.4; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #c8c0b0; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h1>STRING ART MACHINE</h1>
+  <div class="subtitle">Mathematical Winding Rules &amp; Envelope Curves</div>
+
+  <div class="section-title">Boundary Shape</div>
+  <select id="sel-shape">
+    <option value="circle" selected>Circle</option>
+    <option value="ellipse">Ellipse</option>
+    <option value="square">Square</option>
+    <option value="triangle">Triangle</option>
+    <option value="pentagon">Pentagon</option>
+    <option value="hexagon">Hexagon</option>
+  </select>
+
+  <div class="section-title">Pin Configuration</div>
+  <div class="ctrl-row">
+    <label>Pin Count</label>
+    <input type="range" id="sl-pins" min="10" max="60" step="1" value="36">
+    <span class="val" id="v-pins">36</span>
+  </div>
+
+  <div class="section-title">Winding Rule</div>
+  <select id="sel-rule">
+    <option value="modular" selected>Modular (i + K)</option>
+    <option value="multiplication">Multiplication (i x K)</option>
+    <option value="fibonacci">Fibonacci</option>
+    <option value="power">Power (i^2)</option>
+    <option value="custom">Custom Sequence</option>
+  </select>
+  <div id="custom-seq-row" style="display:none; margin-top: 4px;">
+    <input type="text" id="custom-seq" value="3,5,3,5" style="width:100%; padding:3px 6px; font-size:10px; font-family:'Georgia',serif; border:1px solid #c8c0b0; border-radius:3px; background:#faf8f3; color:#555;">
+    <div style="font-size:8px; color:#999; margin-top:2px;">Comma-separated step pattern (repeating)</div>
+  </div>
+
+  <div class="section-title">String Layers</div>
+  <div class="ctrl-row">
+    <label>Layer Count</label>
+    <input type="range" id="sl-layer-count" min="1" max="4" step="1" value="1">
+    <span class="val" id="v-layer-count">1</span>
+  </div>
+  <div class="layer-indicators" id="layer-dots"></div>
+
+  <div id="layer-controls">
+    <div class="ctrl-row">
+      <label>K (Layer 1)</label>
+      <input type="range" id="sl-k1" min="1" max="30" step="1" value="11">
+      <span class="val" id="v-k1">11</span>
+    </div>
+    <div class="ctrl-row" id="row-k2" style="display:none">
+      <label>K (Layer 2)</label>
+      <input type="range" id="sl-k2" min="1" max="30" step="1" value="7">
+      <span class="val" id="v-k2">7</span>
+    </div>
+    <div class="ctrl-row" id="row-k3" style="display:none">
+      <label>K (Layer 3)</label>
+      <input type="range" id="sl-k3" min="1" max="30" step="1" value="5">
+      <span class="val" id="v-k3">5</span>
+    </div>
+    <div class="ctrl-row" id="row-k4" style="display:none">
+      <label>K (Layer 4)</label>
+      <input type="range" id="sl-k4" min="1" max="30" step="1" value="3">
+      <span class="val" id="v-k4">3</span>
+    </div>
+  </div>
+
+  <div class="section-title">String Appearance</div>
+  <div class="ctrl-row">
+    <label>Alpha</label>
+    <input type="range" id="sl-alpha" min="0.05" max="1.0" step="0.05" value="0.40">
+    <span class="val" id="v-alpha">0.40</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Width</label>
+    <input type="range" id="sl-width" min="0.5" max="3.0" step="0.25" value="1.0">
+    <span class="val" id="v-width">1.0</span>
+  </div>
+
+  <div class="section-title">Animation</div>
+  <div class="ctrl-row">
+    <label>Speed</label>
+    <input type="range" id="sl-speed" min="1" max="20" step="1" value="4">
+    <span class="val" id="v-speed">4</span>
+  </div>
+  <div class="checkbox-row">
+    <input type="checkbox" id="cb-animate" checked> <label for="cb-animate">Animate Drawing</label>
+  </div>
+
+  <div class="section-title">Display</div>
+  <div class="checkbox-row">
+    <input type="checkbox" id="cb-envelope"> <label for="cb-envelope">Show Envelope</label>
+  </div>
+  <div class="checkbox-row">
+    <input type="checkbox" id="cb-intersections"> <label for="cb-intersections">Show Intersections</label>
+  </div>
+  <div class="checkbox-row">
+    <input type="checkbox" id="cb-boundary" checked> <label for="cb-boundary">Show Boundary</label>
+  </div>
+  <div class="checkbox-row">
+    <input type="checkbox" id="cb-pins" checked> <label for="cb-pins">Show Pins</label>
+  </div>
+
+  <div class="section-title">Mode</div>
+  <div class="btn-row">
+    <button class="btn" id="btn-atlas">Atlas 4x4</button>
+    <button class="btn active" id="btn-single">Single</button>
+  </div>
+
+  <div class="section-title">Presets</div>
+  <div class="preset-grid">
+    <button class="preset-btn" id="pre-cardioid" onclick="applyPreset('cardioid')">Cardioid</button>
+    <button class="preset-btn" id="pre-nephroid" onclick="applyPreset('nephroid')">Nephroid</button>
+    <button class="preset-btn" id="pre-starburst" onclick="applyPreset('starburst')">Star Burst</button>
+    <button class="preset-btn" id="pre-fibonacci" onclick="applyPreset('fibonacci')">Fibonacci</button>
+    <button class="preset-btn" id="pre-deltoid" onclick="applyPreset('deltoid')">Deltoid</button>
+    <button class="preset-btn" id="pre-astroid" onclick="applyPreset('astroid')">Astroid</button>
+  </div>
+
+  <div class="section-title">Actions</div>
+  <div class="btn-row">
+    <button class="btn accent" onclick="randomize()">Randomize</button>
+    <button class="btn accent" onclick="mutate()">Mutate</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn warn" onclick="findBeautiful()">Find Beautiful</button>
+    <button class="btn" onclick="resetAnimation()">Reset Anim</button>
+  </div>
+</div>
+
+<div id="canvas-container">
+  <div id="hud">
+    <div>Pins <span class="hv" id="h-pins">36</span></div>
+    <div>Shape <span class="hv" id="h-shape">Circle</span></div>
+    <div>Rule <span class="hv" id="h-rule">Modular</span></div>
+    <div class="hud-divider"></div>
+    <div>Strings Drawn <span class="hv" id="h-drawn">0 / 0</span></div>
+    <div>Intersections <span class="hv" id="h-xcount">--</span></div>
+    <div>Envelope <span class="hv" id="h-envelope">--</span></div>
+    <div class="hud-divider"></div>
+    <div>Density <span class="hv" id="h-density">--</span></div>
+    <div>FPS <span class="hv" id="h-fps">60</span></div>
+  </div>
+  <div class="progress-bar">
+    <div class="progress-bar-inner" id="progress-fill" style="width:0%"></div>
+  </div>
+</div>
+
+<div id="info-bar">
+  Plate VII. &mdash; Pins on boundary shapes connected by mathematical winding rules. Multiple K values create layered envelope patterns. Click a pin to highlight its strings.
+</div>
+
+<script>
+// ================================================================
+//  STRING ART MACHINE
+//  Pins on boundary shapes, connected by winding rules (modular,
+//  multiplication, Fibonacci, power, custom). Multiple layers.
+//  Animated string drawing reveals envelope curve patterns.
+// ================================================================
+
+// ----- Config -----
+const LAYER_COLORS = [
+  { r: 139, g: 69, b: 19 },   // brown (saddlebrown)
+  { r: 0, g: 128, b: 128 },   // teal
+  { r: 178, g: 34, b: 34 },   // firebrick/rust
+  { r: 85, g: 107, b: 47 }    // dark olive green
+];
+
+let mode = 'single'; // 'single' or 'atlas'
+let p5inst = null;
+
+// State
+let pins = [];
+let allStrings = [];    // {from, to, layerIdx}
+let drawnCount = 0;
+let animating = true;
+let highlightPin = -1;
+let hoveredRegion = null;
+let intersectionPts = [];
+let intersectionsDirty = true;
+
+// Atlas
+let atlasCells = [];
+const ATLAS_COLS = 4, ATLAS_ROWS = 4;
+
+// Find Beautiful
+let searching = false;
+let searchBest = null;
+let searchBestScore = -1;
+let searchIter = 0;
+let searchMax = 200;
+
+// FPS tracking
+let frameCount_ = 0;
+let lastFpsTime = 0;
+let currentFps = 60;
+
+// Fibonacci cache
+const fibCache = [0, 1];
+function fib(n) {
+  while (fibCache.length <= n) {
+    fibCache.push(fibCache[fibCache.length - 1] + fibCache[fibCache.length - 2]);
+  }
+  return fibCache[n];
+}
+
+// ----- Pin placement -----
+function getPinPosition(index, total, shape, cx, cy, radius) {
+  let t = index / total;
+  let angle = t * Math.PI * 2;
+  switch (shape) {
+    case 'circle':
+      return { x: cx + radius * Math.cos(angle - Math.PI / 2), y: cy + radius * Math.sin(angle - Math.PI / 2) };
+    case 'ellipse':
+      return { x: cx + radius * Math.cos(angle - Math.PI / 2), y: cy + radius * 0.6 * Math.sin(angle - Math.PI / 2) };
+    case 'square': {
+      let p = t * 4;
+      if (p < 1) return { x: cx - radius + 2 * radius * p, y: cy - radius };
+      if (p < 2) return { x: cx + radius, y: cy - radius + 2 * radius * (p - 1) };
+      if (p < 3) return { x: cx + radius - 2 * radius * (p - 2), y: cy + radius };
+      return { x: cx - radius, y: cy + radius - 2 * radius * (p - 3) };
+    }
+    case 'triangle':
+      return polygonPin(index, total, 3, cx, cy, radius);
+    case 'pentagon':
+      return polygonPin(index, total, 5, cx, cy, radius);
+    case 'hexagon':
+      return polygonPin(index, total, 6, cx, cy, radius);
+    default:
+      return { x: cx + radius * Math.cos(angle), y: cy + radius * Math.sin(angle) };
+  }
+}
+
+function polygonPin(index, total, sides, cx, cy, radius) {
+  let t = index / total;
+  let perimeter = sides;
+  let p = t * perimeter;
+  let sideIdx = Math.floor(p);
+  if (sideIdx >= sides) sideIdx = sides - 1;
+  let frac = p - sideIdx;
+  let a1 = (sideIdx / sides) * Math.PI * 2 - Math.PI / 2;
+  let a2 = ((sideIdx + 1) / sides) * Math.PI * 2 - Math.PI / 2;
+  let x1 = cx + radius * Math.cos(a1);
+  let y1 = cy + radius * Math.sin(a1);
+  let x2 = cx + radius * Math.cos(a2);
+  let y2 = cy + radius * Math.sin(a2);
+  return { x: x1 + (x2 - x1) * frac, y: y1 + (y2 - y1) * frac };
+}
+
+// ----- String generation -----
+function getTargetPin(i, N, rule, K) {
+  switch (rule) {
+    case 'modular': return (i + K) % N;
+    case 'multiplication': return (i * K) % N;
+    case 'fibonacci': return fib(i + 1) % N;
+    case 'power': return (i * i) % N;
+    case 'custom': {
+      let seq = parseCustomSeq();
+      if (seq.length === 0) return (i + K) % N;
+      let step = seq[i % seq.length];
+      return (i + step) % N;
+    }
+    default: return (i + K) % N;
+  }
+}
+
+function parseCustomSeq() {
+  let txt = document.getElementById('custom-seq').value;
+  let parts = txt.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n) && n > 0);
+  return parts;
+}
+
+function generateStrings(N, shape, rule, layers, kValues, cx, cy, radius) {
+  let pinArr = [];
+  for (let i = 0; i < N; i++) {
+    pinArr.push(getPinPosition(i, N, shape, cx, cy, radius));
+  }
+
+  let strings = [];
+  for (let L = 0; L < layers; L++) {
+    let K = kValues[L] || 1;
+    for (let i = 0; i < N; i++) {
+      let target = getTargetPin(i, N, rule, K);
+      if (target !== i) {
+        strings.push({ from: i, to: target, layerIdx: L });
+      }
+    }
+  }
+  return { pins: pinArr, strings: strings };
+}
+
+// ----- Intersection detection -----
+function segIntersect(ax, ay, bx, by, cx, cy, dx, dy) {
+  let dABx = bx - ax, dABy = by - ay;
+  let dCDx = dx - cx, dCDy = dy - cy;
+  let denom = dABx * dCDy - dABy * dCDx;
+  if (Math.abs(denom) < 1e-10) return null;
+  let t = ((cx - ax) * dCDy - (cy - ay) * dCDx) / denom;
+  let u = ((cx - ax) * dABy - (cy - ay) * dABx) / denom;
+  if (t > 0.01 && t < 0.99 && u > 0.01 && u < 0.99) {
+    return { x: ax + t * dABx, y: ay + t * dABy };
+  }
+  return null;
+}
+
+function computeIntersections(pinArr, strings, maxSample) {
+  let pts = [];
+  let n = strings.length;
+  if (n < 2) return pts;
+  let step = Math.max(1, Math.floor(n / maxSample));
+  for (let i = 0; i < n; i += step) {
+    let s1 = strings[i];
+    let p1a = pinArr[s1.from], p1b = pinArr[s1.to];
+    for (let j = i + 1; j < n; j += step) {
+      let s2 = strings[j];
+      if (s1.from === s2.from || s1.from === s2.to || s1.to === s2.from || s1.to === s2.to) continue;
+      let ix = segIntersect(p1a.x, p1a.y, p1b.x, p1b.y, pinArr[s2.from].x, pinArr[s2.from].y, pinArr[s2.to].x, pinArr[s2.to].y);
+      if (ix) pts.push(ix);
+      if (pts.length > 500) return pts;
+    }
+  }
+  return pts;
+}
+
+// ----- Envelope detection (tangent sampling) -----
+function detectEnvelopeType(N, rule, K) {
+  if (rule === 'multiplication') {
+    if (K === 2) return 'Cardioid';
+    if (K === 3) return 'Nephroid';
+    if (K === 4) return 'Epicycloid (3)';
+    if (K === N - 1) return 'Cardioid (inv)';
+    return 'Epicycloid (' + (K - 1) + ')';
+  }
+  if (rule === 'modular') {
+    if (K === 1) return 'Adjacent (trivial)';
+    if (K === Math.floor(N / 2)) return 'Diametric';
+    if (K === Math.floor(N / 3)) return 'Deltoid-like';
+    if (K === Math.floor(N / 4)) return 'Astroid-like';
+    return 'Modular K=' + K;
+  }
+  if (rule === 'fibonacci') return 'Fibonacci spiral';
+  if (rule === 'power') return 'Quadratic residue';
+  if (rule === 'custom') return 'Custom pattern';
+  return '--';
+}
+
+// Approximate envelope by finding dense tangent regions
+function computeEnvelopeCurve(pinArr, strings, cx, cy, radius) {
+  if (strings.length < 3) return [];
+  // Sample midpoints and perpendicular offsets to find the curve
+  // that all strings are tangent to
+  let gridSize = 20;
+  let density = [];
+  let hw = radius * 1.2;
+  for (let gy = 0; gy < gridSize; gy++) {
+    for (let gx = 0; gx < gridSize; gx++) {
+      let x = cx - hw + (gx / (gridSize - 1)) * 2 * hw;
+      let y = cy - hw + (gy / (gridSize - 1)) * 2 * hw;
+      let minDist = Infinity;
+      let sampleStep = Math.max(1, Math.floor(strings.length / 60));
+      for (let si = 0; si < strings.length; si += sampleStep) {
+        let s = strings[si];
+        let ax = pinArr[s.from].x, ay = pinArr[s.from].y;
+        let bx = pinArr[s.to].x, by = pinArr[s.to].y;
+        let dx = bx - ax, dy = by - ay;
+        let len2 = dx * dx + dy * dy;
+        if (len2 < 1) continue;
+        let t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / len2));
+        let px = ax + t * dx, py = ay + t * dy;
+        let d = Math.sqrt((x - px) * (x - px) + (y - py) * (y - py));
+        if (d < minDist) minDist = d;
+      }
+      density.push({ x, y, d: minDist });
+    }
+  }
+  // Find points where many strings are nearly tangent (distance close to some threshold)
+  let threshold = radius * 0.06;
+  let envelopePts = density.filter(p => p.d < threshold && p.d > threshold * 0.1);
+  // Sort by angle from center for drawing order
+  envelopePts.sort((a, b) => Math.atan2(a.y - cy, a.x - cx) - Math.atan2(b.y - cy, b.x - cx));
+  return envelopePts;
+}
+
+// ----- Scoring -----
+function scoreConfig(N, shape, rule, layers, kValues) {
+  let cx = 200, cy = 200, radius = 150;
+  let result = generateStrings(N, shape, rule, layers, kValues, cx, cy, radius);
+
+  // Envelope complexity: how varied the tangent curve is
+  let envelope = computeEnvelopeCurve(result.pins, result.strings, cx, cy, radius);
+  let envelopeScore = Math.min(1, envelope.length / 30);
+
+  // Density uniformity
+  let sectorCounts = new Array(12).fill(0);
+  for (let s of result.strings) {
+    let mx = (result.pins[s.from].x + result.pins[s.to].x) / 2;
+    let my = (result.pins[s.from].y + result.pins[s.to].y) / 2;
+    let angle = Math.atan2(my - cy, mx - cx);
+    let sector = Math.floor(((angle + Math.PI) / (2 * Math.PI)) * 12);
+    sector = Math.max(0, Math.min(11, sector));
+    sectorCounts[sector]++;
+  }
+  let maxS = Math.max(...sectorCounts);
+  let minS = Math.min(...sectorCounts);
+  let uniformity = maxS > 0 ? minS / maxS : 0;
+
+  // Symmetry: compare diametrically opposite sectors
+  let symScore = 0;
+  for (let i = 0; i < 6; i++) {
+    let a = sectorCounts[i], b = sectorCounts[i + 6];
+    let mx = Math.max(a, b);
+    if (mx > 0) symScore += Math.min(a, b) / mx;
+  }
+  symScore /= 6;
+
+  // Intersection richness
+  let ixPts = computeIntersections(result.pins, result.strings, 40);
+  let ixScore = Math.min(1, ixPts.length / 80);
+
+  // Total strings (prefer more)
+  let coverageScore = Math.min(1, result.strings.length / (N * 2));
+
+  return envelopeScore * 2 + uniformity * 1.5 + symScore * 2 + ixScore * 1.5 + coverageScore;
+}
+
+// ----- Presets -----
+function applyPreset(name) {
+  let presets = {
+    cardioid:   { shape: 'circle', pins: 60, rule: 'multiplication', k1: 2, k2: 7, k3: 5, k4: 3, layers: 1 },
+    nephroid:   { shape: 'circle', pins: 60, rule: 'multiplication', k1: 3, k2: 7, k3: 5, k4: 3, layers: 1 },
+    starburst:  { shape: 'circle', pins: 30, rule: 'modular', k1: 13, k2: 7, k3: 5, k4: 3, layers: 1 },
+    fibonacci:  { shape: 'circle', pins: 50, rule: 'fibonacci', k1: 1, k2: 7, k3: 5, k4: 3, layers: 1 },
+    deltoid:    { shape: 'circle', pins: 48, rule: 'multiplication', k1: 16, k2: 7, k3: 5, k4: 3, layers: 1 },
+    astroid:    { shape: 'square',  pins: 40, rule: 'modular', k1: 10, k2: 7, k3: 5, k4: 3, layers: 1 },
+  };
+  let p = presets[name];
+  if (!p) return;
+
+  document.getElementById('sel-shape').value = p.shape;
+  document.getElementById('sl-pins').value = p.pins;
+  document.getElementById('v-pins').textContent = p.pins;
+  document.getElementById('sel-rule').value = p.rule;
+  document.getElementById('sl-layer-count').value = p.layers;
+  document.getElementById('v-layer-count').textContent = p.layers;
+  document.getElementById('sl-k1').value = p.k1;
+  document.getElementById('v-k1').textContent = p.k1;
+  document.getElementById('sl-k2').value = p.k2;
+  document.getElementById('v-k2').textContent = p.k2;
+  document.getElementById('sl-k3').value = p.k3;
+  document.getElementById('v-k3').textContent = p.k3;
+  document.getElementById('sl-k4').value = p.k4;
+  document.getElementById('v-k4').textContent = p.k4;
+
+  // Highlight preset button
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  let btn = document.getElementById('pre-' + name);
+  if (btn) btn.classList.add('active');
+
+  updateLayerVisibility();
+  updateCustomSeqVisibility();
+  rebuildStrings();
+}
+
+// ----- UI helpers -----
+function readUI() {
+  return {
+    N: parseInt(document.getElementById('sl-pins').value),
+    shape: document.getElementById('sel-shape').value,
+    rule: document.getElementById('sel-rule').value,
+    layers: parseInt(document.getElementById('sl-layer-count').value),
+    kValues: [
+      parseInt(document.getElementById('sl-k1').value),
+      parseInt(document.getElementById('sl-k2').value),
+      parseInt(document.getElementById('sl-k3').value),
+      parseInt(document.getElementById('sl-k4').value),
+    ],
+    alpha: parseFloat(document.getElementById('sl-alpha').value),
+    width: parseFloat(document.getElementById('sl-width').value),
+    speed: parseInt(document.getElementById('sl-speed').value),
+    showEnvelope: document.getElementById('cb-envelope').checked,
+    showIntersections: document.getElementById('cb-intersections').checked,
+    showBoundary: document.getElementById('cb-boundary').checked,
+    showPins: document.getElementById('cb-pins').checked,
+    doAnimate: document.getElementById('cb-animate').checked,
+  };
+}
+
+function updateLayerVisibility() {
+  let n = parseInt(document.getElementById('sl-layer-count').value);
+  document.getElementById('row-k2').style.display = n >= 2 ? 'flex' : 'none';
+  document.getElementById('row-k3').style.display = n >= 3 ? 'flex' : 'none';
+  document.getElementById('row-k4').style.display = n >= 4 ? 'flex' : 'none';
+
+  // Update layer dots
+  let dotsEl = document.getElementById('layer-dots');
+  dotsEl.innerHTML = '';
+  for (let i = 0; i < n; i++) {
+    let dot = document.createElement('div');
+    dot.className = 'layer-dot active';
+    let c = LAYER_COLORS[i];
+    dot.style.backgroundColor = 'rgb(' + c.r + ',' + c.g + ',' + c.b + ')';
+    dotsEl.appendChild(dot);
+  }
+}
+
+function updateCustomSeqVisibility() {
+  let rule = document.getElementById('sel-rule').value;
+  document.getElementById('custom-seq-row').style.display = rule === 'custom' ? 'block' : 'none';
+}
+
+function updateKSliderMax() {
+  let N = parseInt(document.getElementById('sl-pins').value);
+  let maxK = Math.max(1, Math.floor(N / 2));
+  for (let i = 1; i <= 4; i++) {
+    let sl = document.getElementById('sl-k' + i);
+    sl.max = maxK;
+    if (parseInt(sl.value) > maxK) {
+      sl.value = maxK;
+      document.getElementById('v-k' + i).textContent = maxK;
+    }
+  }
+}
+
+function rebuildStrings() {
+  let ui = readUI();
+  let container = document.getElementById('canvas-container');
+  let w = container.clientWidth;
+  let h = container.clientHeight - 30; // minus info bar
+  let cx = w / 2;
+  let cy = h / 2;
+  let radius = Math.min(w, h) * 0.38;
+
+  let result = generateStrings(ui.N, ui.shape, ui.rule, ui.layers, ui.kValues, cx, cy, radius);
+  pins = result.pins;
+  allStrings = result.strings;
+  drawnCount = ui.doAnimate ? 0 : allStrings.length;
+  highlightPin = -1;
+  intersectionsDirty = true;
+  intersectionPts = [];
+  animating = ui.doAnimate;
+
+  // Update HUD
+  document.getElementById('h-pins').textContent = ui.N;
+  document.getElementById('h-shape').textContent = ui.shape.charAt(0).toUpperCase() + ui.shape.slice(1);
+  document.getElementById('h-rule').textContent = ui.rule.charAt(0).toUpperCase() + ui.rule.slice(1);
+  document.getElementById('h-drawn').textContent = drawnCount + ' / ' + allStrings.length;
+  document.getElementById('h-envelope').textContent = detectEnvelopeType(ui.N, ui.rule, ui.kValues[0]);
+}
+
+function resetAnimation() {
+  drawnCount = 0;
+  animating = true;
+  intersectionsDirty = true;
+  intersectionPts = [];
+}
+
+function randomize() {
+  let shapes = ['circle', 'ellipse', 'square', 'triangle', 'pentagon', 'hexagon'];
+  let rules = ['modular', 'multiplication', 'fibonacci', 'power'];
+  document.getElementById('sel-shape').value = shapes[Math.floor(Math.random() * shapes.length)];
+  document.getElementById('sel-rule').value = rules[Math.floor(Math.random() * rules.length)];
+
+  let N = 10 + Math.floor(Math.random() * 51);
+  document.getElementById('sl-pins').value = N;
+  document.getElementById('v-pins').textContent = N;
+
+  let layers = 1 + Math.floor(Math.random() * 3);
+  document.getElementById('sl-layer-count').value = layers;
+  document.getElementById('v-layer-count').textContent = layers;
+
+  updateKSliderMax();
+  let maxK = Math.max(1, Math.floor(N / 2));
+  for (let i = 1; i <= 4; i++) {
+    let kv = 1 + Math.floor(Math.random() * maxK);
+    document.getElementById('sl-k' + i).value = kv;
+    document.getElementById('v-k' + i).textContent = kv;
+  }
+
+  updateLayerVisibility();
+  updateCustomSeqVisibility();
+  rebuildStrings();
+}
+
+function mutate() {
+  // Small random perturbation of current settings
+  let N = parseInt(document.getElementById('sl-pins').value);
+  N = Math.max(10, Math.min(60, N + Math.floor(Math.random() * 7) - 3));
+  document.getElementById('sl-pins').value = N;
+  document.getElementById('v-pins').textContent = N;
+
+  updateKSliderMax();
+  let maxK = Math.max(1, Math.floor(N / 2));
+  let layers = parseInt(document.getElementById('sl-layer-count').value);
+  for (let i = 1; i <= layers; i++) {
+    let kv = parseInt(document.getElementById('sl-k' + i).value);
+    kv = Math.max(1, Math.min(maxK, kv + Math.floor(Math.random() * 5) - 2));
+    document.getElementById('sl-k' + i).value = kv;
+    document.getElementById('v-k' + i).textContent = kv;
+  }
+
+  rebuildStrings();
+}
+
+function findBeautiful() {
+  if (searching) return;
+  searching = true;
+  searchBest = null;
+  searchBestScore = -1;
+  searchIter = 0;
+  searchMax = 200;
+  searchStep();
+}
+
+function searchStep() {
+  if (!searching || searchIter >= searchMax) {
+    searching = false;
+    // Apply best
+    if (searchBest) {
+      document.getElementById('sel-shape').value = searchBest.shape;
+      document.getElementById('sel-rule').value = searchBest.rule;
+      document.getElementById('sl-pins').value = searchBest.N;
+      document.getElementById('v-pins').textContent = searchBest.N;
+      document.getElementById('sl-layer-count').value = searchBest.layers;
+      document.getElementById('v-layer-count').textContent = searchBest.layers;
+      updateKSliderMax();
+      for (let i = 0; i < 4; i++) {
+        document.getElementById('sl-k' + (i + 1)).value = searchBest.kValues[i];
+        document.getElementById('v-k' + (i + 1)).textContent = searchBest.kValues[i];
+      }
+      updateLayerVisibility();
+      updateCustomSeqVisibility();
+      rebuildStrings();
+    }
+    return;
+  }
+
+  // Generate random config, score it
+  let shapes = ['circle', 'ellipse', 'square', 'triangle', 'pentagon', 'hexagon'];
+  let rules = ['modular', 'multiplication', 'fibonacci', 'power'];
+  let shape = shapes[Math.floor(Math.random() * shapes.length)];
+  let rule = rules[Math.floor(Math.random() * rules.length)];
+  let N = 15 + Math.floor(Math.random() * 46);
+  let layers = 1 + Math.floor(Math.random() * 3);
+  let maxK = Math.max(1, Math.floor(N / 2));
+  let kValues = [];
+  for (let i = 0; i < 4; i++) kValues.push(1 + Math.floor(Math.random() * maxK));
+
+  let score = scoreConfig(N, shape, rule, layers, kValues);
+  if (score > searchBestScore) {
+    searchBestScore = score;
+    searchBest = { N, shape, rule, layers, kValues };
+  }
+
+  searchIter++;
+  // Update progress bar as search indicator
+  document.getElementById('progress-fill').style.width = ((searchIter / searchMax) * 100) + '%';
+
+  // Chunked: 10 per frame
+  if (searchIter % 10 === 0) {
+    requestAnimationFrame(searchStep);
+  } else {
+    searchStep();
+  }
+}
+
+// ----- Atlas -----
+function generateAtlasCells() {
+  let configs = [
+    { shape: 'circle', N: 36, rule: 'modular', k: 11, label: 'Modular K=11' },
+    { shape: 'circle', N: 60, rule: 'multiplication', k: 2, label: 'Cardioid' },
+    { shape: 'circle', N: 60, rule: 'multiplication', k: 3, label: 'Nephroid' },
+    { shape: 'circle', N: 48, rule: 'multiplication', k: 16, label: 'Deltoid' },
+    { shape: 'ellipse', N: 40, rule: 'modular', k: 13, label: 'Ellipse K=13' },
+    { shape: 'square', N: 40, rule: 'modular', k: 10, label: 'Square K=10' },
+    { shape: 'triangle', N: 30, rule: 'modular', k: 7, label: 'Triangle K=7' },
+    { shape: 'hexagon', N: 48, rule: 'modular', k: 15, label: 'Hex K=15' },
+    { shape: 'circle', N: 50, rule: 'fibonacci', k: 1, label: 'Fibonacci' },
+    { shape: 'circle', N: 40, rule: 'power', k: 1, label: 'Power (i^2)' },
+    { shape: 'pentagon', N: 35, rule: 'modular', k: 12, label: 'Pent K=12' },
+    { shape: 'circle', N: 30, rule: 'modular', k: 13, label: 'Star K=13' },
+    { shape: 'ellipse', N: 50, rule: 'multiplication', k: 2, label: 'Ellipse Card' },
+    { shape: 'square', N: 48, rule: 'multiplication', k: 3, label: 'Square Neph' },
+    { shape: 'circle', N: 55, rule: 'multiplication', k: 5, label: 'Epicycloid 4' },
+    { shape: 'hexagon', N: 42, rule: 'multiplication', k: 2, label: 'Hex Card' },
+  ];
+
+  atlasCells = [];
+  for (let cfg of configs) {
+    let cx = 0, cy = 0, radius = 100; // will be scaled on draw
+    let result = generateStrings(cfg.N, cfg.shape, cfg.rule, 1, [cfg.k], cx, cy, radius);
+    atlasCells.push({
+      ...cfg,
+      pins: result.pins,
+      strings: result.strings
+    });
+  }
+}
+
+// ----- p5.js Sketch (instance mode) -----
+let sketch = function(p) {
+  let offscreenBuffer = null;
+  let needsRedraw = true;
+
+  p.setup = function() {
+    let container = document.getElementById('canvas-container');
+    let w = container.clientWidth;
+    let h = container.clientHeight;
+    let canvas = p.createCanvas(w, h);
+    canvas.parent('canvas-container');
+    offscreenBuffer = p.createGraphics(w, h);
+    offscreenBuffer.background(245, 243, 238);
+    rebuildStrings();
+    generateAtlasCells();
+  };
+
+  p.windowResized = function() {
+    let container = document.getElementById('canvas-container');
+    let w = container.clientWidth;
+    let h = container.clientHeight;
+    p.resizeCanvas(w, h);
+    offscreenBuffer = p.createGraphics(w, h);
+    offscreenBuffer.background(245, 243, 238);
+    needsRedraw = true;
+    if (mode === 'single') rebuildStrings();
+  };
+
+  p.draw = function() {
+    // FPS
+    frameCount_++;
+    let now = performance.now();
+    if (now - lastFpsTime > 500) {
+      currentFps = Math.round(frameCount_ * 1000 / (now - lastFpsTime));
+      frameCount_ = 0;
+      lastFpsTime = now;
+      document.getElementById('h-fps').textContent = currentFps;
+    }
+
+    if (mode === 'atlas') {
+      drawAtlas(p);
+    } else {
+      drawSingle(p);
+    }
+  };
+
+  function drawSingle(p) {
+    let ui = readUI();
+
+    // Animate: add strings
+    if (animating && drawnCount < allStrings.length) {
+      let toAdd = Math.min(ui.speed, allStrings.length - drawnCount);
+      for (let i = 0; i < toAdd; i++) {
+        let s = allStrings[drawnCount];
+        let fromPin = pins[s.from];
+        let toPin = pins[s.to];
+        let c = LAYER_COLORS[s.layerIdx % LAYER_COLORS.length];
+        offscreenBuffer.stroke(c.r, c.g, c.b, ui.alpha * 255);
+        offscreenBuffer.strokeWeight(ui.width);
+        offscreenBuffer.line(fromPin.x, fromPin.y, toPin.x, toPin.y);
+        drawnCount++;
+      }
+      document.getElementById('h-drawn').textContent = drawnCount + ' / ' + allStrings.length;
+      document.getElementById('progress-fill').style.width = allStrings.length > 0 ? ((drawnCount / allStrings.length) * 100) + '%' : '0%';
+    } else if (!animating && needsRedraw) {
+      // Draw all at once to offscreen buffer
+      offscreenBuffer.background(245, 243, 238);
+      for (let i = 0; i < allStrings.length; i++) {
+        let s = allStrings[i];
+        let fromPin = pins[s.from];
+        let toPin = pins[s.to];
+        let c = LAYER_COLORS[s.layerIdx % LAYER_COLORS.length];
+        offscreenBuffer.stroke(c.r, c.g, c.b, ui.alpha * 255);
+        offscreenBuffer.strokeWeight(ui.width);
+        offscreenBuffer.line(fromPin.x, fromPin.y, toPin.x, toPin.y);
+      }
+      drawnCount = allStrings.length;
+      document.getElementById('h-drawn').textContent = drawnCount + ' / ' + allStrings.length;
+      document.getElementById('progress-fill').style.width = '100%';
+      needsRedraw = false;
+    }
+
+    // Render buffer
+    p.image(offscreenBuffer, 0, 0);
+
+    // Boundary shape
+    if (ui.showBoundary) {
+      drawBoundary(p, ui);
+    }
+
+    // Pins
+    if (ui.showPins && pins.length > 0) {
+      for (let i = 0; i < pins.length; i++) {
+        let pin = pins[i];
+        let isHighlight = (i === highlightPin);
+        p.noStroke();
+        if (isHighlight) {
+          p.fill(200, 50, 50);
+          p.ellipse(pin.x, pin.y, 8, 8);
+        } else {
+          p.fill(100, 70, 50);
+          p.ellipse(pin.x, pin.y, 5, 5);
+        }
+      }
+    }
+
+    // Highlighted pin's strings
+    if (highlightPin >= 0) {
+      p.strokeWeight(2.5);
+      for (let s of allStrings) {
+        if (s.from === highlightPin || s.to === highlightPin) {
+          let c = LAYER_COLORS[s.layerIdx % LAYER_COLORS.length];
+          p.stroke(c.r, c.g, c.b, 220);
+          p.line(pins[s.from].x, pins[s.from].y, pins[s.to].x, pins[s.to].y);
+        }
+      }
+    }
+
+    // Intersections
+    if (ui.showIntersections && drawnCount >= allStrings.length) {
+      if (intersectionsDirty) {
+        intersectionPts = computeIntersections(pins, allStrings, 80);
+        intersectionsDirty = false;
+        document.getElementById('h-xcount').textContent = '~' + intersectionPts.length;
+      }
+      p.noStroke();
+      p.fill(220, 50, 50, 100);
+      for (let pt of intersectionPts) {
+        p.ellipse(pt.x, pt.y, 3, 3);
+      }
+    }
+
+    // Envelope
+    if (ui.showEnvelope && drawnCount >= allStrings.length) {
+      let container = document.getElementById('canvas-container');
+      let w = container.clientWidth;
+      let h = container.clientHeight;
+      let cx = w / 2;
+      let cy = h / 2;
+      let radius = Math.min(w, h) * 0.38;
+      let envPts = computeEnvelopeCurve(pins, allStrings, cx, cy, radius);
+      if (envPts.length > 2) {
+        p.stroke(178, 34, 34, 180);
+        p.strokeWeight(2.5);
+        p.noFill();
+        p.beginShape();
+        for (let pt of envPts) {
+          p.curveVertex(pt.x, pt.y);
+        }
+        p.endShape();
+      }
+    }
+
+    // Density info on hover
+    if (hoveredRegion) {
+      let count = 0;
+      let hr = 40;
+      for (let s of allStrings.slice(0, drawnCount)) {
+        let mx = (pins[s.from].x + pins[s.to].x) / 2;
+        let my = (pins[s.from].y + pins[s.to].y) / 2;
+        let dx = mx - hoveredRegion.x, dy = my - hoveredRegion.y;
+        if (dx * dx + dy * dy < hr * hr) count++;
+      }
+      document.getElementById('h-density').textContent = count + ' strings';
+    }
+  }
+
+  function drawBoundary(p, ui) {
+    let container = document.getElementById('canvas-container');
+    let w = container.clientWidth;
+    let h = container.clientHeight;
+    let cx = w / 2;
+    let cy = h / 2;
+    let radius = Math.min(w, h) * 0.38;
+
+    p.noFill();
+    p.stroke(180, 170, 150, 100);
+    p.strokeWeight(1);
+    p.drawingContext.setLineDash([5, 5]);
+
+    switch (ui.shape) {
+      case 'circle':
+        p.ellipse(cx, cy, radius * 2, radius * 2);
+        break;
+      case 'ellipse':
+        p.ellipse(cx, cy, radius * 2, radius * 1.2);
+        break;
+      case 'square':
+        p.rect(cx - radius, cy - radius, radius * 2, radius * 2);
+        break;
+      default: {
+        let sides = { triangle: 3, pentagon: 5, hexagon: 6 }[ui.shape] || 6;
+        p.beginShape();
+        for (let i = 0; i <= sides; i++) {
+          let a = (i / sides) * Math.PI * 2 - Math.PI / 2;
+          p.vertex(cx + radius * Math.cos(a), cy + radius * Math.sin(a));
+        }
+        p.endShape(p.CLOSE);
+      }
+    }
+    p.drawingContext.setLineDash([]);
+  }
+
+  function drawAtlas(p) {
+    p.background(245, 243, 238);
+
+    let w = p.width;
+    let h = p.height;
+    let cellW = w / ATLAS_COLS;
+    let cellH = h / ATLAS_ROWS;
+    let margin = 8;
+
+    for (let row = 0; row < ATLAS_ROWS; row++) {
+      for (let col = 0; col < ATLAS_COLS; col++) {
+        let idx = row * ATLAS_COLS + col;
+        if (idx >= atlasCells.length) continue;
+
+        let cell = atlasCells[idx];
+        let cx = col * cellW + cellW / 2;
+        let cy = row * cellH + cellH / 2;
+        let radius = (Math.min(cellW, cellH) - margin * 2) / 2 * 0.75;
+
+        // Cell border
+        p.noFill();
+        p.stroke(200, 195, 185);
+        p.strokeWeight(0.5);
+        p.rect(col * cellW, row * cellH, cellW, cellH);
+
+        // Regenerate pins for this cell center/radius
+        let cellPins = [];
+        for (let i = 0; i < cell.N; i++) {
+          cellPins.push(getPinPosition(i, cell.N, cell.shape, cx, cy, radius));
+        }
+
+        // Draw all strings
+        let c = LAYER_COLORS[0];
+        p.stroke(c.r, c.g, c.b, 70);
+        p.strokeWeight(0.6);
+        for (let s of cell.strings) {
+          let from = cellPins[s.from];
+          let to = cellPins[s.to];
+          if (from && to) {
+            p.line(from.x, from.y, to.x, to.y);
+          }
+        }
+
+        // Pins
+        p.noStroke();
+        p.fill(100, 70, 50, 180);
+        for (let pin of cellPins) {
+          p.ellipse(pin.x, pin.y, 2.5, 2.5);
+        }
+
+        // Label
+        p.fill(80);
+        p.noStroke();
+        p.textSize(9);
+        p.textAlign(p.CENTER, p.BOTTOM);
+        p.text(cell.label, cx, row * cellH + cellH - 4);
+        p.textSize(8);
+        p.fill(140);
+        p.text('N=' + cell.N + ' ' + cell.shape, cx, row * cellH + cellH - 14);
+      }
+    }
+
+    // Check hover/click
+    let mx = p.mouseX, my = p.mouseY;
+    if (mx > 0 && my > 0 && mx < w && my < h) {
+      let col = Math.floor(mx / cellW);
+      let row = Math.floor(my / cellH);
+      let idx = row * ATLAS_COLS + col;
+      if (idx < atlasCells.length) {
+        // Hover highlight
+        p.noFill();
+        p.stroke(139, 69, 19, 150);
+        p.strokeWeight(2);
+        p.rect(col * cellW + 1, row * cellH + 1, cellW - 2, cellH - 2);
+      }
+    }
+  }
+
+  p.mousePressed = function() {
+    if (mode === 'atlas') {
+      let w = p.width;
+      let h = p.height;
+      let cellW = w / ATLAS_COLS;
+      let cellH = h / ATLAS_ROWS;
+      let mx = p.mouseX, my = p.mouseY;
+      if (mx > 0 && my > 0 && mx < w && my < h) {
+        let col = Math.floor(mx / cellW);
+        let row = Math.floor(my / cellH);
+        let idx = row * ATLAS_COLS + col;
+        if (idx < atlasCells.length) {
+          let cell = atlasCells[idx];
+          // Switch to single with this config
+          document.getElementById('sel-shape').value = cell.shape;
+          document.getElementById('sl-pins').value = cell.N;
+          document.getElementById('v-pins').textContent = cell.N;
+          document.getElementById('sel-rule').value = cell.rule;
+          document.getElementById('sl-k1').value = cell.k;
+          document.getElementById('v-k1').textContent = cell.k;
+          document.getElementById('sl-layer-count').value = 1;
+          document.getElementById('v-layer-count').textContent = 1;
+          updateKSliderMax();
+          updateLayerVisibility();
+          setMode('single');
+        }
+      }
+    } else {
+      // Single mode: find nearest pin
+      let minD = 20;
+      let bestIdx = -1;
+      for (let i = 0; i < pins.length; i++) {
+        let dx = pins[i].x - p.mouseX;
+        let dy = pins[i].y - p.mouseY;
+        let d = Math.sqrt(dx * dx + dy * dy);
+        if (d < minD) { minD = d; bestIdx = i; }
+      }
+      highlightPin = (bestIdx === highlightPin) ? -1 : bestIdx;
+    }
+  };
+
+  p.mouseMoved = function() {
+    if (mode === 'single') {
+      hoveredRegion = { x: p.mouseX, y: p.mouseY };
+    }
+  };
+
+  // Public access for rebuild triggers
+  p.triggerRebuild = function() {
+    offscreenBuffer.background(245, 243, 238);
+    needsRedraw = true;
+    rebuildStrings();
+  };
+};
+
+// ----- Mode switching -----
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-atlas').classList.toggle('active', m === 'atlas');
+  document.getElementById('btn-single').classList.toggle('active', m === 'single');
+
+  if (m === 'single') {
+    rebuildStrings();
+    if (p5inst) p5inst.triggerRebuild();
+  } else {
+    generateAtlasCells();
+  }
+}
+
+// ----- Slider wiring -----
+function wireSlider(id, valId, callback) {
+  let sl = document.getElementById(id);
+  let vl = document.getElementById(valId);
+  sl.addEventListener('input', function() {
+    vl.textContent = sl.value;
+    if (callback) callback();
+  });
+}
+
+function wireSliderFloat(id, valId, callback) {
+  let sl = document.getElementById(id);
+  let vl = document.getElementById(valId);
+  sl.addEventListener('input', function() {
+    vl.textContent = parseFloat(sl.value).toFixed(2);
+    if (callback) callback();
+  });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  // Sliders
+  wireSlider('sl-pins', 'v-pins', function() {
+    updateKSliderMax();
+    if (p5inst) p5inst.triggerRebuild();
+  });
+  wireSlider('sl-k1', 'v-k1', function() { if (p5inst) p5inst.triggerRebuild(); });
+  wireSlider('sl-k2', 'v-k2', function() { if (p5inst) p5inst.triggerRebuild(); });
+  wireSlider('sl-k3', 'v-k3', function() { if (p5inst) p5inst.triggerRebuild(); });
+  wireSlider('sl-k4', 'v-k4', function() { if (p5inst) p5inst.triggerRebuild(); });
+  wireSlider('sl-layer-count', 'v-layer-count', function() {
+    updateLayerVisibility();
+    if (p5inst) p5inst.triggerRebuild();
+  });
+  wireSliderFloat('sl-alpha', 'v-alpha', function() { if (p5inst) p5inst.triggerRebuild(); });
+  wireSliderFloat('sl-width', 'v-width', function() { if (p5inst) p5inst.triggerRebuild(); });
+  wireSlider('sl-speed', 'v-speed', null);
+
+  // Dropdowns
+  document.getElementById('sel-shape').addEventListener('change', function() {
+    if (p5inst) p5inst.triggerRebuild();
+  });
+  document.getElementById('sel-rule').addEventListener('change', function() {
+    updateCustomSeqVisibility();
+    if (p5inst) p5inst.triggerRebuild();
+  });
+  document.getElementById('custom-seq').addEventListener('input', function() {
+    if (p5inst) p5inst.triggerRebuild();
+  });
+
+  // Checkboxes
+  ['cb-envelope', 'cb-intersections', 'cb-boundary', 'cb-pins'].forEach(function(id) {
+    document.getElementById(id).addEventListener('change', function() {});
+  });
+  document.getElementById('cb-animate').addEventListener('change', function() {
+    if (!this.checked) {
+      // Draw all immediately
+      drawnCount = allStrings.length;
+      if (p5inst) p5inst.triggerRebuild();
+    }
+  });
+
+  // Buttons
+  document.getElementById('btn-atlas').addEventListener('click', function() { setMode('atlas'); });
+  document.getElementById('btn-single').addEventListener('click', function() { setMode('single'); });
+
+  // Initialize
+  updateLayerVisibility();
+  updateCustomSeqVisibility();
+  updateKSliderMax();
+
+  // Create p5 instance
+  p5inst = new p5(sketch, 'canvas-container');
+});
+</script>
+</body>
+</html>

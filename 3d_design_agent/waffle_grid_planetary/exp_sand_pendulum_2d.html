@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Sand Pendulum Harmonograph &mdash; Damped Lissajous with Accumulating Sand</title>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f5f3ee; overflow: hidden; font-family: 'Georgia', serif; display: flex; height: 100vh; }
+
+  #sidebar {
+    width: 280px; min-width: 280px; background: #f0ede6;
+    border-right: 1px solid #c8c0b0; overflow-y: auto; padding: 12px 14px;
+    font-size: 12px; color: #444;
+  }
+  #sidebar h1 { font-size: 14px; letter-spacing: 1.5px; color: #333; margin-bottom: 2px; font-weight: normal; }
+  #sidebar .subtitle { font-size: 10px; color: #888; margin-bottom: 12px; font-style: italic; }
+
+  .section-title {
+    font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: #8b7355;
+    margin-top: 14px; margin-bottom: 6px; border-bottom: 1px solid #d8d0c0; padding-bottom: 3px;
+  }
+  .ctrl-row { display: flex; align-items: center; margin-bottom: 5px; }
+  .ctrl-row label { flex: 0 0 95px; font-size: 11px; color: #666; }
+  .ctrl-row input[type="range"] { flex: 1; height: 3px; accent-color: #8b4513; }
+  .ctrl-row .val { flex: 0 0 40px; text-align: right; font-size: 10px; color: #555; font-family: 'Consolas', monospace; }
+
+  select {
+    width: 100%; padding: 4px 8px; font-size: 11px; font-family: 'Georgia', serif;
+    background: #faf8f3; color: #555; border: 1px solid #c8c0b0; border-radius: 3px; margin-bottom: 4px;
+  }
+
+  .btn-row { display: flex; gap: 5px; margin: 8px 0; flex-wrap: wrap; }
+  .btn {
+    padding: 5px 10px; font-size: 10px; font-family: 'Georgia', serif;
+    background: #555; color: #f5f3ee; border: none; cursor: pointer;
+    letter-spacing: 0.5px; border-radius: 2px; transition: background 0.15s;
+  }
+  .btn:hover { background: #333; }
+  .btn.active { background: #8b4513; }
+  .btn.accent { background: #2a6848; }
+  .btn.accent:hover { background: #1a4830; }
+  .btn.danger { background: #8b2020; }
+  .btn:disabled { background: #aaa; cursor: not-allowed; }
+
+  #canvas-container { flex: 1; position: relative; }
+  #canvas-container canvas { display: block; }
+
+  #info-bar {
+    position: fixed; bottom: 0; left: 280px; right: 0; z-index: 100;
+    background: rgba(245,243,238,0.92); border-top: 1px solid #bbb;
+    padding: 4px 16px; font-size: 10px; color: #777; font-style: italic;
+  }
+
+  #hud {
+    position: absolute; top: 8px; right: 12px; background: rgba(245,243,238,0.9);
+    border: 1px solid #c8c0b0; border-radius: 4px; padding: 8px 12px;
+    font-size: 10px; line-height: 1.7; color: #666; min-width: 180px; pointer-events: none;
+  }
+  #hud .hv { color: #444; font-family: 'Consolas', monospace; float: right; }
+
+  .progress-bar { width: 100%; height: 3px; background: #ddd; border-radius: 2px; margin: 4px 0; }
+  .progress-bar-fill { height: 100%; background: #8b4513; border-radius: 2px; transition: width 0.1s; }
+
+  .param-list { max-height: 120px; overflow-y: auto; font-size: 9px; line-height: 1.5; margin-top: 4px; }
+  .param-item { padding: 1px 0; color: #666; font-family: 'Consolas', monospace; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #c8c0b0; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h1>SAND PENDULUM</h1>
+  <div class="subtitle">Damped Lissajous Harmonograph &mdash; Accumulating Sand Deposits</div>
+
+  <div class="section-title">Pendulum Lengths</div>
+  <div class="ctrl-row">
+    <label>L1 (m)</label>
+    <input type="range" id="sl-L1" min="0.05" max="1.0" step="0.01" value="0.25">
+    <span class="val" id="v-L1">0.25</span>
+  </div>
+  <div class="ctrl-row">
+    <label>L2 (m)</label>
+    <input type="range" id="sl-L2" min="0.05" max="1.0" step="0.01" value="0.25">
+    <span class="val" id="v-L2">0.25</span>
+  </div>
+
+  <div class="section-title">Amplitudes</div>
+  <div class="ctrl-row">
+    <label>A1 (px)</label>
+    <input type="range" id="sl-A1" min="50" max="200" step="5" value="120">
+    <span class="val" id="v-A1">120</span>
+  </div>
+  <div class="ctrl-row">
+    <label>A2 (px)</label>
+    <input type="range" id="sl-A2" min="50" max="200" step="5" value="120">
+    <span class="val" id="v-A2">120</span>
+  </div>
+
+  <div class="section-title">Dynamics</div>
+  <div class="ctrl-row">
+    <label>Damping &gamma;</label>
+    <input type="range" id="sl-gamma" min="0.001" max="0.05" step="0.001" value="0.008">
+    <span class="val" id="v-gamma">0.008</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Phase &phi;2</label>
+    <input type="range" id="sl-phi2" min="0" max="6.283" step="0.01" value="1.571">
+    <span class="val" id="v-phi2">1.571</span>
+  </div>
+
+  <div class="section-title">Mode &amp; Rendering</div>
+  <select id="sel-pendulum-mode">
+    <option value="cartesian" selected>Cartesian (X+Y independent)</option>
+    <option value="rotary">Rotary (elliptical orbit)</option>
+    <option value="lateral-rotary">Lateral + Rotary (swing + table)</option>
+  </select>
+  <select id="sel-render-mode">
+    <option value="particles" selected>Particle Sand</option>
+    <option value="heatmap">Density Heatmap</option>
+  </select>
+
+  <div class="section-title">Simulation</div>
+  <div class="ctrl-row">
+    <label>Speed</label>
+    <input type="range" id="sl-speed" min="1" max="10" step="1" value="3">
+    <span class="val" id="v-speed">3</span>
+  </div>
+
+  <div class="section-title">Presets</div>
+  <select id="sel-preset">
+    <option value="custom">-- Custom --</option>
+    <option value="circle">Circle (equal L, phase &pi;/2)</option>
+    <option value="figure8">Figure 8 (L ratio 1:2)</option>
+    <option value="lissajous32">Lissajous 3:2</option>
+    <option value="star">Star (ratio 5:2)</option>
+    <option value="spiral">Spiral Decay (high damping)</option>
+    <option value="random">Random</option>
+  </select>
+
+  <div class="section-title">Actions</div>
+  <div class="btn-row">
+    <button class="btn active" id="btn-atlas" onclick="setMode('atlas')">Atlas 4&times;4</button>
+    <button class="btn" id="btn-single" onclick="setMode('single')">Single</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn" id="btn-pause" onclick="togglePause()">Pause</button>
+    <button class="btn" onclick="clearSand()">Clear Sand</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn accent" onclick="randomizeAll()">Randomize</button>
+    <button class="btn" onclick="mutateAll()">Mutate</button>
+    <button class="btn danger" id="btn-beautiful" onclick="findBeautiful()">Find Beautiful</button>
+  </div>
+  <div id="progress-container" style="display:none;">
+    <div class="progress-bar"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
+    <span style="font-size:9px;color:#888;" id="progress-text">Searching...</span>
+  </div>
+
+  <div class="section-title">Parameters</div>
+  <div class="param-list" id="param-list">
+    <div class="param-item" style="color:#999;">Click a cell to see parameters</div>
+  </div>
+</div>
+
+<div id="canvas-container">
+  <div id="hud">
+    <div>FPS <span class="hv" id="hud-fps">--</span></div>
+    <div>Mode <span class="hv" id="hud-mode">atlas</span></div>
+    <div>&omega;1/&omega;2 <span class="hv" id="hud-ratio">--</span></div>
+    <div>Amplitude <span class="hv" id="hud-amp">--</span></div>
+    <div>Grains <span class="hv" id="hud-grains">--</span></div>
+    <div>Energy <span class="hv" id="hud-energy">--</span></div>
+    <div>Decay <span class="hv" id="hud-decay">--</span></div>
+  </div>
+</div>
+
+<div id="info-bar">
+  Plate XIV. &mdash; Sand pendulum harmonograph. Damped compound pendulum deposits grains at its tip; density gradients emerge from velocity variations. Click any cell to inspect.
+</div>
+
+<script>
+// ========================================================
+// SAND PENDULUM HARMONOGRAPH — Damped Lissajous with
+// Accumulating Sand Deposits
+// ========================================================
+// ANALYTICAL CHECK: L1 = L2 = 0.25m, g = 9.81
+// omega = sqrt(9.81/0.25) = 6.264 rad/s
+// Period T = 2*PI/omega = 1.003s
+// Ratio omega1/omega2 = 1.000 -> circle/ellipse depending on phase
+
+const G = 9.81;
+const COLS = 4, ROWS = 4;
+const MAX_GRAINS = 20000;
+const FIND_BEAUTIFUL_TOTAL = 200;
+const FIND_BEAUTIFUL_CHUNK = 25;
+const SIM_FRAMES_PER_SCORE = 500;
+const HEATMAP_RES = 2; // pixel size for heatmap cells
+
+// ===== STATE =====
+let mode = 'atlas';
+let cells = [];
+let selectedIdx = -1;
+let hoverCell = -1;
+let cw, ch;
+let paused = false;
+let findBeautifulRunning = false;
+
+// ===== PHYSICS CORE =====
+function pendulumPosition(t, L, A0, gamma, phi) {
+  let omega = Math.sqrt(G / L);
+  let amplitude = A0 * Math.exp(-gamma * t);
+  return amplitude * Math.sin(omega * t + phi);
+}
+
+function pendulumVelocity(t, L, A0, gamma, phi) {
+  let omega = Math.sqrt(G / L);
+  let amp = A0 * Math.exp(-gamma * t);
+  // d/dt [A*e^(-gt)*sin(wt+p)] = A*e^(-gt)*[w*cos(wt+p) - g*sin(wt+p)]
+  let sinV = Math.sin(omega * t + phi);
+  let cosV = Math.cos(omega * t + phi);
+  return amp * (omega * cosV - gamma * sinV);
+}
+
+function getPosition(t, config) {
+  let x, y;
+  let pMode = config.pendulumMode || 'cartesian';
+
+  if (pMode === 'cartesian') {
+    x = pendulumPosition(t, config.L1, config.A1, config.gamma, 0);
+    y = pendulumPosition(t, config.L2, config.A2, config.gamma, config.phi2);
+  } else if (pMode === 'rotary') {
+    // Elliptical orbit: same frequency, phase offset creates rotation
+    x = pendulumPosition(t, config.L1, config.A1, config.gamma, 0);
+    y = pendulumPosition(t, config.L1, config.A2, config.gamma, Math.PI / 2);
+  } else {
+    // lateral-rotary: pendulum swings X, table rotates Y
+    let omega2 = Math.sqrt(G / config.L2);
+    x = pendulumPosition(t, config.L1, config.A1, config.gamma, 0);
+    y = config.A2 * Math.exp(-config.gamma * t * 0.3) * Math.sin(omega2 * t + config.phi2);
+  }
+  return { x, y };
+}
+
+function getSpeed(t, config) {
+  let pMode = config.pendulumMode || 'cartesian';
+  let vx, vy;
+
+  if (pMode === 'cartesian') {
+    vx = pendulumVelocity(t, config.L1, config.A1, config.gamma, 0);
+    vy = pendulumVelocity(t, config.L2, config.A2, config.gamma, config.phi2);
+  } else if (pMode === 'rotary') {
+    vx = pendulumVelocity(t, config.L1, config.A1, config.gamma, 0);
+    vy = pendulumVelocity(t, config.L1, config.A2, config.gamma, Math.PI / 2);
+  } else {
+    vx = pendulumVelocity(t, config.L1, config.A1, config.gamma, 0);
+    let omega2 = Math.sqrt(G / config.L2);
+    let amp = config.A2 * Math.exp(-config.gamma * t * 0.3);
+    vy = amp * (omega2 * Math.cos(omega2 * t + config.phi2) - config.gamma * 0.3 * Math.sin(omega2 * t + config.phi2));
+  }
+  return Math.sqrt(vx * vx + vy * vy);
+}
+
+function currentAmplitude(t, A0, gamma) {
+  return A0 * Math.exp(-gamma * t);
+}
+
+function energy(t, config) {
+  let omega1 = Math.sqrt(G / config.L1);
+  let omega2 = Math.sqrt(G / config.L2);
+  let a1 = currentAmplitude(t, config.A1, config.gamma);
+  let a2 = currentAmplitude(t, config.A2, config.gamma);
+  return 0.5 * (a1 * a1 * omega1 * omega1 + a2 * a2 * omega2 * omega2);
+}
+
+function frequencyRatio(config) {
+  let omega1 = Math.sqrt(G / config.L1);
+  let omega2 = Math.sqrt(G / config.L2);
+  return omega1 / omega2;
+}
+
+function ratioLabel(ratio) {
+  // Check for common rational ratios
+  let rationals = [
+    [1, 1], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3],
+    [1, 3], [3, 1], [5, 2], [2, 5], [5, 3], [3, 5], [4, 5], [5, 4]
+  ];
+  for (let [a, b] of rationals) {
+    if (Math.abs(ratio - a / b) < 0.02) {
+      return a + ':' + b + ' (closed)';
+    }
+  }
+  // Check for common irrationals
+  if (Math.abs(ratio - Math.sqrt(2)) < 0.02) return '\u221a2 (irrational)';
+  if (Math.abs(ratio - Math.sqrt(3)) < 0.02) return '\u221a3 (irrational)';
+  if (Math.abs(ratio - Math.PI / 2) < 0.02) return '\u03c0/2 (irrational)';
+  if (Math.abs(ratio - (1 + Math.sqrt(5)) / 2) < 0.02) return '\u03c6 golden (irrational)';
+  return ratio.toFixed(3) + ' (open)';
+}
+
+// ===== CONFIG GENERATOR =====
+function makeConfig(L1, L2, A1, A2, gamma, phi2, pendulumMode) {
+  return { L1, L2, A1, A2, gamma, phi2, pendulumMode: pendulumMode || 'cartesian' };
+}
+
+function configFromUI() {
+  return makeConfig(
+    parseFloat(document.getElementById('sl-L1').value),
+    parseFloat(document.getElementById('sl-L2').value),
+    parseFloat(document.getElementById('sl-A1').value),
+    parseFloat(document.getElementById('sl-A2').value),
+    parseFloat(document.getElementById('sl-gamma').value),
+    parseFloat(document.getElementById('sl-phi2').value),
+    document.getElementById('sel-pendulum-mode').value
+  );
+}
+
+function randomConfig() {
+  let L1 = 0.05 + Math.random() * 0.95;
+  let L2 = 0.05 + Math.random() * 0.95;
+  let A1 = 60 + Math.random() * 140;
+  let A2 = 60 + Math.random() * 140;
+  let gamma = 0.002 + Math.random() * 0.04;
+  let phi2 = Math.random() * Math.PI * 2;
+  let modes = ['cartesian', 'cartesian', 'cartesian', 'rotary', 'lateral-rotary'];
+  let pMode = modes[Math.floor(Math.random() * modes.length)];
+  return makeConfig(L1, L2, A1, A2, gamma, phi2, pMode);
+}
+
+function mutateConfig(config) {
+  let c = Object.assign({}, config);
+  c.L1 = Math.max(0.05, Math.min(1.0, c.L1 * (1 + (Math.random() - 0.5) * 0.3)));
+  c.L2 = Math.max(0.05, Math.min(1.0, c.L2 * (1 + (Math.random() - 0.5) * 0.3)));
+  c.A1 = Math.max(50, Math.min(200, c.A1 + (Math.random() - 0.5) * 40));
+  c.A2 = Math.max(50, Math.min(200, c.A2 + (Math.random() - 0.5) * 40));
+  c.gamma = Math.max(0.001, Math.min(0.05, c.gamma * (1 + (Math.random() - 0.5) * 0.4)));
+  c.phi2 = (c.phi2 + (Math.random() - 0.5) * 1.0 + Math.PI * 2) % (Math.PI * 2);
+  if (Math.random() < 0.15) {
+    let modes = ['cartesian', 'rotary', 'lateral-rotary'];
+    c.pendulumMode = modes[Math.floor(Math.random() * modes.length)];
+  }
+  return c;
+}
+
+function presetConfig(name) {
+  switch (name) {
+    case 'circle':
+      return makeConfig(0.25, 0.25, 120, 120, 0.005, Math.PI / 2, 'cartesian');
+    case 'figure8':
+      return makeConfig(0.25, 1.0, 120, 120, 0.006, 0, 'cartesian');
+    case 'lissajous32':
+      // omega1/omega2 = 3/2 -> L2/L1 = (3/2)^2 = 9/4 -> L1=0.2, L2=0.45
+      return makeConfig(0.20, 0.45, 120, 120, 0.005, 0.3, 'cartesian');
+    case 'star':
+      // omega1/omega2 = 5/2 -> L2/L1 = 25/4 -> L1=0.04*5=0.16, L2=1.0
+      return makeConfig(0.16, 1.0, 120, 100, 0.004, 0.2, 'cartesian');
+    case 'spiral':
+      return makeConfig(0.25, 0.25, 150, 150, 0.035, Math.PI / 2, 'cartesian');
+    case 'random':
+      return randomConfig();
+    default:
+      return configFromUI();
+  }
+}
+
+// ===== CELL MANAGEMENT =====
+function makeCell(config, areaScale) {
+  areaScale = areaScale || 1.0;
+  return {
+    config: config,
+    simTime: 0,
+    grains: [],       // particle mode: [{x, y, speed}]
+    heatmap: null,     // heatmap mode: density grid
+    heatW: 0, heatH: 0,
+    maxDensity: 1,
+    score: 0,
+    areaScale: areaScale
+  };
+}
+
+function initHeatmap(cell, w, h) {
+  let gw = Math.ceil(w / HEATMAP_RES);
+  let gh = Math.ceil(h / HEATMAP_RES);
+  cell.heatmap = new Uint16Array(gw * gh);
+  cell.heatW = gw;
+  cell.heatH = gh;
+  cell.maxDensity = 1;
+}
+
+function depositGrain(cell, cx, cy, scaleX, scaleY) {
+  let pos = getPosition(cell.simTime, cell.config);
+  let spd = getSpeed(cell.simTime, cell.config);
+  let px = cx + pos.x * scaleX;
+  let py = cy + pos.y * scaleY;
+
+  // Random jitter for sand effect
+  px += (Math.random() - 0.5) * 2;
+  py += (Math.random() - 0.5) * 2;
+
+  if (cell.grains.length < MAX_GRAINS) {
+    cell.grains.push({ x: px, y: py, speed: spd, t: cell.simTime });
+  }
+
+  // Also update heatmap
+  if (cell.heatmap) {
+    let gx = Math.floor((px - (cx - scaleX * cell.config.A1)) / HEATMAP_RES);
+    let gy = Math.floor((py - (cy - scaleY * cell.config.A2)) / HEATMAP_RES);
+    if (gx >= 0 && gx < cell.heatW && gy >= 0 && gy < cell.heatH) {
+      let idx = gy * cell.heatW + gx;
+      cell.heatmap[idx]++;
+      if (cell.heatmap[idx] > cell.maxDensity) {
+        cell.maxDensity = cell.heatmap[idx];
+      }
+    }
+  }
+}
+
+function resetCell(cell) {
+  cell.simTime = 0;
+  cell.grains = [];
+  if (cell.heatmap) cell.heatmap.fill(0);
+  cell.maxDensity = 1;
+}
+
+// ===== ATLAS CELLS =====
+function randomizeAll() {
+  cells = [];
+  for (let i = 0; i < COLS * ROWS; i++) {
+    cells.push(makeCell(randomConfig()));
+  }
+}
+
+function mutateAll() {
+  for (let i = 0; i < cells.length; i++) {
+    cells[i].config = mutateConfig(cells[i].config);
+    resetCell(cells[i]);
+  }
+}
+
+// ===== SCORING =====
+function scoreConfig(config, frames) {
+  let cell = makeCell(config);
+  let dt = 0.016;
+  let gridRes = 4;
+  let gridW = Math.ceil(400 / gridRes);
+  let gridH = Math.ceil(400 / gridRes);
+  let grid = new Uint8Array(gridW * gridH);
+  let totalGrains = 0;
+
+  for (let f = 0; f < frames; f++) {
+    cell.simTime += dt;
+    let pos = getPosition(cell.simTime, config);
+    let px = 200 + pos.x;
+    let py = 200 + pos.y;
+    let gx = Math.floor(px / gridRes);
+    let gy = Math.floor(py / gridRes);
+    if (gx >= 0 && gx < gridW && gy >= 0 && gy < gridH) {
+      grid[gy * gridW + gx]++;
+      totalGrains++;
+    }
+  }
+
+  // Complexity: unique cells occupied vs total grains
+  let occupied = 0;
+  let densityValues = [];
+  for (let i = 0; i < grid.length; i++) {
+    if (grid[i] > 0) {
+      occupied++;
+      densityValues.push(grid[i]);
+    }
+  }
+  if (totalGrains === 0 || occupied === 0) return 0;
+
+  let complexity = occupied / (totalGrains * 0.01);
+
+  // Density variation (high stddev = interesting)
+  let meanDensity = totalGrains / occupied;
+  let variance = 0;
+  for (let d of densityValues) {
+    variance += (d - meanDensity) * (d - meanDensity);
+  }
+  variance /= densityValues.length;
+  let densityVar = Math.sqrt(variance) / (meanDensity + 0.001);
+
+  // Symmetry: compare quadrants
+  let q = [0, 0, 0, 0];
+  let midX = gridW >> 1, midY = gridH >> 1;
+  for (let y = 0; y < gridH; y++) {
+    for (let x = 0; x < gridW; x++) {
+      let v = grid[y * gridW + x];
+      if (v > 0) {
+        if (x < midX && y < midY) q[0] += v;
+        else if (x >= midX && y < midY) q[1] += v;
+        else if (x < midX && y >= midY) q[2] += v;
+        else q[3] += v;
+      }
+    }
+  }
+  let qMax = Math.max(...q);
+  let qMin = Math.min(...q);
+  let symmetry = qMax > 0 ? qMin / qMax : 0;
+
+  // Closure bonus for rational ratios
+  let ratio = frequencyRatio(config);
+  let closureBonus = 0;
+  let rationals = [[1,1],[1,2],[2,1],[2,3],[3,2],[3,4],[4,3],[5,2],[2,5],[5,3],[3,5]];
+  for (let [a, b] of rationals) {
+    if (Math.abs(ratio - a / b) < 0.03) { closureBonus = 2.0; break; }
+  }
+
+  return complexity * 2 + densityVar * 5 + symmetry * 3 + closureBonus;
+}
+
+// ===== FIND BEAUTIFUL =====
+function findBeautiful() {
+  if (findBeautifulRunning) return;
+  findBeautifulRunning = true;
+  document.getElementById('btn-beautiful').disabled = true;
+  document.getElementById('progress-container').style.display = 'block';
+
+  let candidates = [];
+  let processed = 0;
+
+  function processChunk() {
+    let chunkEnd = Math.min(processed + FIND_BEAUTIFUL_CHUNK, FIND_BEAUTIFUL_TOTAL);
+    for (let i = processed; i < chunkEnd; i++) {
+      let config = randomConfig();
+      let score = scoreConfig(config, SIM_FRAMES_PER_SCORE);
+      candidates.push({ config, score });
+    }
+    processed = chunkEnd;
+    let pct = Math.round((processed / FIND_BEAUTIFUL_TOTAL) * 100);
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('progress-text').textContent = 'Scoring ' + processed + '/' + FIND_BEAUTIFUL_TOTAL + '...';
+
+    if (processed < FIND_BEAUTIFUL_TOTAL) {
+      setTimeout(processChunk, 0);
+    } else {
+      candidates.sort((a, b) => b.score - a.score);
+      cells = candidates.slice(0, COLS * ROWS).map(c => {
+        let cell = makeCell(c.config);
+        cell.score = c.score;
+        return cell;
+      });
+      findBeautifulRunning = false;
+      document.getElementById('btn-beautiful').disabled = false;
+      document.getElementById('progress-container').style.display = 'none';
+    }
+  }
+  processChunk();
+}
+
+// ===== MODE & UI =====
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-atlas').classList.toggle('active', m === 'atlas');
+  document.getElementById('btn-single').classList.toggle('active', m === 'single');
+  document.getElementById('hud-mode').textContent = m;
+  if (m === 'atlas') {
+    selectedIdx = -1;
+    document.getElementById('info-bar').textContent =
+      'Plate XIV. \u2014 Sand pendulum harmonograph. Damped compound pendulum deposits grains at its tip; density gradients emerge from velocity variations. Click any cell to inspect.';
+  }
+}
+
+function togglePause() {
+  paused = !paused;
+  document.getElementById('btn-pause').textContent = paused ? 'Resume' : 'Pause';
+  document.getElementById('btn-pause').classList.toggle('active', paused);
+}
+
+function clearSand() {
+  if (mode === 'single' && selectedIdx >= 0 && selectedIdx < cells.length) {
+    resetCell(cells[selectedIdx]);
+  } else {
+    for (let c of cells) resetCell(c);
+  }
+}
+
+function applyPreset() {
+  let name = document.getElementById('sel-preset').value;
+  if (name === 'custom') return;
+  let config = presetConfig(name);
+  // Update sliders
+  document.getElementById('sl-L1').value = config.L1;
+  document.getElementById('v-L1').textContent = config.L1.toFixed(2);
+  document.getElementById('sl-L2').value = config.L2;
+  document.getElementById('v-L2').textContent = config.L2.toFixed(2);
+  document.getElementById('sl-A1').value = config.A1;
+  document.getElementById('v-A1').textContent = Math.round(config.A1);
+  document.getElementById('sl-A2').value = config.A2;
+  document.getElementById('v-A2').textContent = Math.round(config.A2);
+  document.getElementById('sl-gamma').value = config.gamma;
+  document.getElementById('v-gamma').textContent = config.gamma.toFixed(3);
+  document.getElementById('sl-phi2').value = config.phi2;
+  document.getElementById('v-phi2').textContent = config.phi2.toFixed(3);
+  document.getElementById('sel-pendulum-mode').value = config.pendulumMode;
+
+  if (mode === 'single' && selectedIdx >= 0) {
+    cells[selectedIdx].config = config;
+    resetCell(cells[selectedIdx]);
+  }
+}
+
+// ===== SLIDER WIRING =====
+function wireSlider(id, valId, fmt) {
+  let sl = document.getElementById(id);
+  let vl = document.getElementById(valId);
+  sl.addEventListener('input', () => {
+    let v = parseFloat(sl.value);
+    if (fmt === 'int') vl.textContent = Math.round(v);
+    else if (fmt === '3') vl.textContent = v.toFixed(3);
+    else vl.textContent = v.toFixed(2);
+  });
+}
+wireSlider('sl-L1', 'v-L1');
+wireSlider('sl-L2', 'v-L2');
+wireSlider('sl-A1', 'v-A1', 'int');
+wireSlider('sl-A2', 'v-A2', 'int');
+wireSlider('sl-gamma', 'v-gamma', '3');
+wireSlider('sl-phi2', 'v-phi2', '3');
+wireSlider('sl-speed', 'v-speed', 'int');
+
+document.getElementById('sel-preset').addEventListener('change', applyPreset);
+
+// ===== SAND COLOR HELPERS =====
+function sandColorBySpeed(p5, spd, maxSpd) {
+  // Slow (dense piles) = dark rich brown, fast (sparse) = light tan
+  let t = Math.min(1, spd / (maxSpd + 0.001));
+  let r = Math.round(139 * (1 - t * 0.5) + 210 * t * 0.5);
+  let g = Math.round(90 * (1 - t * 0.6) + 180 * t * 0.4);
+  let b = Math.round(43 * (1 - t * 0.5) + 130 * t * 0.3);
+  return p5.color(r, g, b, 180);
+}
+
+function heatmapColor(p5, density, maxDensity) {
+  if (density === 0) return null;
+  let t = density / maxDensity;
+  // Light sand -> dark brown
+  let r = Math.round(245 - t * 165);
+  let g = Math.round(235 - t * 185);
+  let b = Math.round(210 - t * 180);
+  return p5.color(r, g, b);
+}
+
+// ===== UPDATE PARAMS DISPLAY =====
+function updateParamList(config) {
+  let el = document.getElementById('param-list');
+  let ratio = frequencyRatio(config);
+  let omega1 = Math.sqrt(G / config.L1);
+  let omega2 = Math.sqrt(G / config.L2);
+  el.innerHTML =
+    '<div class="param-item">L1 = ' + config.L1.toFixed(3) + ' m</div>' +
+    '<div class="param-item">L2 = ' + config.L2.toFixed(3) + ' m</div>' +
+    '<div class="param-item">&omega;1 = ' + omega1.toFixed(2) + ' rad/s</div>' +
+    '<div class="param-item">&omega;2 = ' + omega2.toFixed(2) + ' rad/s</div>' +
+    '<div class="param-item">&omega;1/&omega;2 = ' + ratioLabel(ratio) + '</div>' +
+    '<div class="param-item">A1 = ' + Math.round(config.A1) + ' px</div>' +
+    '<div class="param-item">A2 = ' + Math.round(config.A2) + ' px</div>' +
+    '<div class="param-item">&gamma; = ' + config.gamma.toFixed(4) + '</div>' +
+    '<div class="param-item">&phi;2 = ' + config.phi2.toFixed(3) + '</div>' +
+    '<div class="param-item">mode = ' + config.pendulumMode + '</div>';
+}
+
+// ===== P5.JS SKETCH =====
+const sketch = (p) => {
+  p.setup = () => {
+    let container = document.getElementById('canvas-container');
+    cw = container.clientWidth;
+    ch = container.clientHeight;
+    p.createCanvas(cw, ch).parent(container);
+    p.textFont('Georgia');
+    randomizeAll();
+  };
+
+  p.windowResized = () => {
+    let container = document.getElementById('canvas-container');
+    cw = container.clientWidth;
+    ch = container.clientHeight;
+    p.resizeCanvas(cw, ch);
+  };
+
+  p.draw = () => {
+    p.background(245, 243, 238);
+    if (paused) {
+      if (mode === 'atlas') drawAtlas(p);
+      else drawSingle(p);
+      document.getElementById('hud-fps').textContent = Math.round(p.frameRate());
+      return;
+    }
+
+    let speed = parseInt(document.getElementById('sl-speed').value);
+    let dt = 0.016;
+    let renderMode = document.getElementById('sel-render-mode').value;
+
+    if (mode === 'atlas') {
+      let cellW = cw / COLS;
+      let cellH = ch / ROWS;
+      for (let idx = 0; idx < cells.length; idx++) {
+        let cell = cells[idx];
+        let col = idx % COLS, row = Math.floor(idx / COLS);
+        let cx = col * cellW + cellW / 2;
+        let cy = row * cellH + cellH / 2;
+        let scale = Math.min(cellW, cellH) * 0.35 / Math.max(cell.config.A1, cell.config.A2);
+
+        if (!cell.heatmap) {
+          initHeatmap(cell, cellW, cellH);
+        }
+
+        for (let s = 0; s < speed; s++) {
+          cell.simTime += dt;
+          if (cell.grains.length < MAX_GRAINS) {
+            depositGrainAtlas(cell, cx, cy, scale);
+          }
+        }
+      }
+      drawAtlas(p);
+    } else {
+      let cell = selectedIdx >= 0 && selectedIdx < cells.length ? cells[selectedIdx] : null;
+      if (cell) {
+        let maxA = Math.max(cell.config.A1, cell.config.A2);
+        let fitScale = Math.min(cw, ch) * 0.4 / maxA;
+        let cx = cw / 2;
+        let cy = ch / 2;
+
+        if (!cell.heatmap) {
+          initHeatmap(cell, cw, ch);
+        }
+
+        for (let s = 0; s < speed; s++) {
+          cell.simTime += dt;
+          if (cell.grains.length < MAX_GRAINS) {
+            depositGrainSingle(cell, cx, cy, fitScale);
+          }
+        }
+
+        // Update HUD
+        let ratio = frequencyRatio(cell.config);
+        let amp = currentAmplitude(cell.simTime, Math.max(cell.config.A1, cell.config.A2), cell.config.gamma);
+        let maxAmp = Math.max(cell.config.A1, cell.config.A2);
+        let e = energy(cell.simTime, cell.config);
+        let e0 = energy(0, cell.config);
+        let decay = maxAmp > 0 ? (amp / maxAmp * 100) : 0;
+
+        document.getElementById('hud-ratio').textContent = ratioLabel(ratio);
+        document.getElementById('hud-amp').textContent = amp.toFixed(1) + 'px';
+        document.getElementById('hud-grains').textContent = cell.grains.length + '/' + MAX_GRAINS;
+        document.getElementById('hud-energy').textContent = (e0 > 0 ? (e / e0 * 100).toFixed(1) : '0') + '%';
+        document.getElementById('hud-decay').textContent = decay.toFixed(1) + '%';
+      }
+      drawSingle(p);
+    }
+
+    document.getElementById('hud-fps').textContent = Math.round(p.frameRate());
+  };
+
+  p.mousePressed = () => {
+    if (p.mouseX < 0 || p.mouseX > cw || p.mouseY < 0 || p.mouseY > ch) return;
+    if (mode === 'atlas') {
+      let cellW = cw / COLS, cellH = ch / ROWS;
+      let col = Math.floor(p.mouseX / cellW);
+      let row = Math.floor(p.mouseY / cellH);
+      if (col >= 0 && col < COLS && row >= 0 && row < ROWS) {
+        selectedIdx = row * COLS + col;
+        if (selectedIdx < cells.length) {
+          setMode('single');
+          // Reset this cell for fresh single-mode animation with full canvas
+          let cell = cells[selectedIdx];
+          resetCell(cell);
+          updateParamList(cell.config);
+          // Sync sliders
+          let c = cell.config;
+          document.getElementById('sl-L1').value = c.L1;
+          document.getElementById('v-L1').textContent = c.L1.toFixed(2);
+          document.getElementById('sl-L2').value = c.L2;
+          document.getElementById('v-L2').textContent = c.L2.toFixed(2);
+          document.getElementById('sl-A1').value = c.A1;
+          document.getElementById('v-A1').textContent = Math.round(c.A1);
+          document.getElementById('sl-A2').value = c.A2;
+          document.getElementById('v-A2').textContent = Math.round(c.A2);
+          document.getElementById('sl-gamma').value = c.gamma;
+          document.getElementById('v-gamma').textContent = c.gamma.toFixed(3);
+          document.getElementById('sl-phi2').value = c.phi2;
+          document.getElementById('v-phi2').textContent = c.phi2.toFixed(3);
+          document.getElementById('sel-pendulum-mode').value = c.pendulumMode;
+          document.getElementById('sel-preset').value = 'custom';
+        }
+      }
+    }
+  };
+
+  p.mouseMoved = () => {
+    if (mode === 'atlas') {
+      let cellW = cw / COLS, cellH = ch / ROWS;
+      let col = Math.floor(p.mouseX / cellW);
+      let row = Math.floor(p.mouseY / cellH);
+      hoverCell = (col >= 0 && col < COLS && row >= 0 && row < ROWS) ? row * COLS + col : -1;
+    }
+  };
+};
+
+// ===== GRAIN DEPOSIT HELPERS =====
+function depositGrainAtlas(cell, cx, cy, scale) {
+  let pos = getPosition(cell.simTime, cell.config);
+  let spd = getSpeed(cell.simTime, cell.config);
+  let px = cx + pos.x * scale;
+  let py = cy + pos.y * scale;
+  px += (Math.random() - 0.5) * 2;
+  py += (Math.random() - 0.5) * 2;
+
+  if (cell.grains.length < MAX_GRAINS) {
+    cell.grains.push({ x: px, y: py, speed: spd, t: cell.simTime });
+  }
+}
+
+function depositGrainSingle(cell, cx, cy, scale) {
+  let pos = getPosition(cell.simTime, cell.config);
+  let spd = getSpeed(cell.simTime, cell.config);
+  let px = cx + pos.x * scale;
+  let py = cy + pos.y * scale;
+  px += (Math.random() - 0.5) * 2;
+  py += (Math.random() - 0.5) * 2;
+
+  if (cell.grains.length < MAX_GRAINS) {
+    cell.grains.push({ x: px, y: py, speed: spd, t: cell.simTime });
+  }
+}
+
+// ===== ATLAS RENDERER =====
+function drawAtlas(p) {
+  let cellW = cw / COLS, cellH = ch / ROWS;
+  let renderMode = document.getElementById('sel-render-mode').value;
+
+  for (let idx = 0; idx < cells.length; idx++) {
+    let col = idx % COLS, row = Math.floor(idx / COLS);
+    let cx = col * cellW, cy = row * cellH;
+    let centerX = cx + cellW / 2, centerY = cy + cellH / 2;
+    let cell = cells[idx];
+
+    // Cell background — cream paper
+    p.fill(252, 250, 244);
+    p.noStroke();
+    p.rect(cx + 1, cy + 1, cellW - 2, cellH - 2);
+
+    // Cell border
+    p.noFill();
+    p.stroke(200, 190, 175);
+    p.strokeWeight(0.5);
+    p.rect(cx, cy, cellW, cellH);
+
+    if (idx === hoverCell) {
+      p.fill(255, 255, 255, 40);
+      p.noStroke();
+      p.rect(cx, cy, cellW, cellH);
+    }
+
+    // Draw sand grains
+    let scale = Math.min(cellW, cellH) * 0.35 / Math.max(cell.config.A1, cell.config.A2, 1);
+    let maxSpd = 0;
+    for (let g of cell.grains) {
+      if (g.speed > maxSpd) maxSpd = g.speed;
+    }
+
+    if (renderMode === 'particles') {
+      p.noStroke();
+      for (let g of cell.grains) {
+        let t = Math.min(1, g.speed / (maxSpd + 0.001));
+        // Slow = dark brown, fast = light tan
+        let r = Math.round(100 + t * 110);
+        let gv = Math.round(60 + t * 90);
+        let b = Math.round(25 + t * 80);
+        let alpha = Math.round(200 - t * 120);
+        p.fill(r, gv, b, alpha);
+        let sz = 2.5 - t * 1.2;
+        p.ellipse(g.x, g.y, sz, sz);
+      }
+    } else {
+      // Heatmap: build local density
+      drawHeatmapAtlas(p, cell, cx, cy, cellW, cellH, centerX, centerY, scale);
+    }
+
+    // Label
+    let ratio = frequencyRatio(cell.config);
+    p.fill(80);
+    p.noStroke();
+    p.textAlign(p.LEFT, p.BOTTOM);
+    p.textSize(8);
+    p.text(ratioLabel(ratio), cx + 4, cy + cellH - 14);
+    p.fill(120);
+    p.textSize(7);
+    p.text('\u03b3=' + cell.config.gamma.toFixed(3) + '  n=' + cell.grains.length, cx + 4, cy + cellH - 4);
+
+    // Score if available
+    if (cell.score > 0) {
+      p.fill(139, 69, 19, 120);
+      p.textAlign(p.RIGHT, p.TOP);
+      p.textSize(7);
+      p.text('S:' + cell.score.toFixed(1), cx + cellW - 4, cy + 4);
+    }
+  }
+}
+
+function drawHeatmapAtlas(p, cell, cx, cy, cellW, cellH, centerX, centerY, scale) {
+  // Build density grid from grain positions
+  let gridRes = 3;
+  let gw = Math.ceil(cellW / gridRes);
+  let gh = Math.ceil(cellH / gridRes);
+  let grid = new Uint16Array(gw * gh);
+  let maxD = 1;
+
+  for (let g of cell.grains) {
+    let gx = Math.floor((g.x - cx) / gridRes);
+    let gy = Math.floor((g.y - cy) / gridRes);
+    if (gx >= 0 && gx < gw && gy >= 0 && gy < gh) {
+      grid[gy * gw + gx]++;
+      if (grid[gy * gw + gx] > maxD) maxD = grid[gy * gw + gx];
+    }
+  }
+
+  p.noStroke();
+  for (let gy = 0; gy < gh; gy++) {
+    for (let gx = 0; gx < gw; gx++) {
+      let d = grid[gy * gw + gx];
+      if (d > 0) {
+        let t = d / maxD;
+        let r = Math.round(245 - t * 165);
+        let gv = Math.round(235 - t * 185);
+        let b = Math.round(210 - t * 180);
+        p.fill(r, gv, b);
+        p.rect(cx + gx * gridRes, cy + gy * gridRes, gridRes, gridRes);
+      }
+    }
+  }
+}
+
+// ===== SINGLE RENDERER =====
+function drawSingle(p) {
+  let cell = selectedIdx >= 0 && selectedIdx < cells.length ? cells[selectedIdx] : null;
+  if (!cell) {
+    p.fill(120);
+    p.textAlign(p.CENTER, p.CENTER);
+    p.textSize(14);
+    p.text('Click a cell in Atlas mode to inspect', cw / 2, ch / 2);
+    return;
+  }
+
+  let config = cell.config;
+  let maxA = Math.max(config.A1, config.A2, 1);
+  let fitScale = Math.min(cw, ch) * 0.38 / maxA;
+  let cx = cw / 2;
+  let cy = ch / 2;
+  let renderMode = document.getElementById('sel-render-mode').value;
+
+  // Paper background
+  p.fill(252, 250, 244);
+  p.noStroke();
+  p.rect(20, 20, cw - 40, ch - 60);
+  p.noFill();
+  p.stroke(200, 190, 175);
+  p.strokeWeight(0.5);
+  p.rect(20, 20, cw - 40, ch - 60);
+
+  // Draw bounding ellipse (amplitude envelope)
+  let envA1 = currentAmplitude(cell.simTime, config.A1, config.gamma) * fitScale;
+  let envA2 = currentAmplitude(cell.simTime, config.A2, config.gamma) * fitScale;
+  p.noFill();
+  p.stroke(200, 190, 175, 80);
+  p.strokeWeight(0.5);
+  p.ellipse(cx, cy, envA1 * 2, envA2 * 2);
+
+  // Cross-hairs at center
+  p.stroke(210, 200, 185, 60);
+  p.strokeWeight(0.3);
+  p.line(cx - envA1, cy, cx + envA1, cy);
+  p.line(cx, cy - envA2, cx, cy + envA2);
+
+  // Draw grains
+  let maxSpd = 0;
+  for (let g of cell.grains) {
+    if (g.speed > maxSpd) maxSpd = g.speed;
+  }
+
+  if (renderMode === 'particles') {
+    p.noStroke();
+    for (let g of cell.grains) {
+      let t = Math.min(1, g.speed / (maxSpd + 0.001));
+      // Slow (piled) = dark rich brown, fast (sparse) = light tan
+      let r = Math.round(80 + t * 130);
+      let gv = Math.round(45 + t * 110);
+      let b = Math.round(15 + t * 100);
+      let alpha = Math.round(220 - t * 140);
+      p.fill(r, gv, b, alpha);
+      let sz = 3.0 - t * 1.5;
+      p.ellipse(g.x, g.y, sz, sz);
+    }
+  } else {
+    // Heatmap rendering
+    let gridRes = 2;
+    let gw = Math.ceil(cw / gridRes);
+    let gh = Math.ceil(ch / gridRes);
+    let grid = new Uint16Array(gw * gh);
+    let maxD = 1;
+
+    for (let g of cell.grains) {
+      let gx = Math.floor(g.x / gridRes);
+      let gy = Math.floor(g.y / gridRes);
+      if (gx >= 0 && gx < gw && gy >= 0 && gy < gh) {
+        grid[gy * gw + gx]++;
+        if (grid[gy * gw + gx] > maxD) maxD = grid[gy * gw + gx];
+      }
+    }
+
+    p.noStroke();
+    for (let gy = 0; gy < gh; gy++) {
+      for (let gx = 0; gx < gw; gx++) {
+        let d = grid[gy * gw + gx];
+        if (d > 0) {
+          let t = d / maxD;
+          // Multi-stop gradient: transparent tan -> warm brown -> dark umber
+          let r, gv, b;
+          if (t < 0.3) {
+            let s = t / 0.3;
+            r = Math.round(240 - s * 50);
+            gv = Math.round(230 - s * 60);
+            b = Math.round(200 - s * 80);
+          } else if (t < 0.7) {
+            let s = (t - 0.3) / 0.4;
+            r = Math.round(190 - s * 70);
+            gv = Math.round(170 - s * 90);
+            b = Math.round(120 - s * 70);
+          } else {
+            let s = (t - 0.7) / 0.3;
+            r = Math.round(120 - s * 60);
+            gv = Math.round(80 - s * 50);
+            b = Math.round(50 - s * 30);
+          }
+          p.fill(r, gv, b);
+          p.rect(gx * gridRes, gy * gridRes, gridRes, gridRes);
+        }
+      }
+    }
+  }
+
+  // Draw recent trail (last 60 positions)
+  let trailLen = 60;
+  let trailStart = Math.max(0, cell.grains.length - trailLen);
+  if (cell.grains.length > 1) {
+    p.noFill();
+    p.strokeWeight(1);
+    for (let i = trailStart; i < cell.grains.length - 1; i++) {
+      let alpha = Math.round(((i - trailStart) / trailLen) * 150);
+      p.stroke(180, 60, 30, alpha);
+      p.line(cell.grains[i].x, cell.grains[i].y, cell.grains[i + 1].x, cell.grains[i + 1].y);
+    }
+  }
+
+  // Draw pendulum arm from center to current tip
+  let pos = getPosition(cell.simTime, config);
+  let tipX = cx + pos.x * fitScale;
+  let tipY = cy + pos.y * fitScale;
+
+  p.stroke(100, 80, 60, 120);
+  p.strokeWeight(1);
+  p.line(cx, cy, tipX, tipY);
+
+  // Pivot point
+  p.fill(80, 60, 40);
+  p.noStroke();
+  p.ellipse(cx, cy, 5, 5);
+
+  // Tip marker
+  p.fill(200, 50, 30);
+  p.noStroke();
+  p.ellipse(tipX, tipY, 7, 7);
+
+  // Grain count bar
+  let barW = 120;
+  let barH = 4;
+  let barX = cw - barW - 30;
+  let barY = ch - 35;
+  let fill = cell.grains.length / MAX_GRAINS;
+  p.fill(220, 215, 205);
+  p.noStroke();
+  p.rect(barX, barY, barW, barH, 2);
+  p.fill(139, 69, 19, 180);
+  p.rect(barX, barY, barW * fill, barH, 2);
+  p.fill(130);
+  p.textAlign(p.RIGHT, p.BOTTOM);
+  p.textSize(8);
+  p.text(cell.grains.length + ' / ' + MAX_GRAINS + ' grains', barX + barW, barY - 2);
+
+  // Decay envelope mini-graph
+  drawDecayEnvelope(p, cell, 30, ch - 90, 100, 40);
+}
+
+function drawDecayEnvelope(p, cell, x, y, w, h) {
+  p.fill(248, 246, 240);
+  p.stroke(200, 190, 175);
+  p.strokeWeight(0.5);
+  p.rect(x, y, w, h);
+
+  let config = cell.config;
+  let maxA = Math.max(config.A1, config.A2);
+  let tMax = cell.simTime > 0.1 ? cell.simTime * 1.2 : 10;
+
+  // Envelope curve
+  p.noFill();
+  p.stroke(139, 69, 19, 150);
+  p.strokeWeight(1);
+  p.beginShape();
+  for (let i = 0; i <= 40; i++) {
+    let t = (i / 40) * tMax;
+    let amp = Math.exp(-config.gamma * t);
+    let px = x + (i / 40) * w;
+    let py = y + h - amp * h;
+    p.vertex(px, py);
+  }
+  p.endShape();
+
+  // Current time marker
+  let tFrac = Math.min(1, cell.simTime / tMax);
+  let curAmp = Math.exp(-config.gamma * cell.simTime);
+  p.fill(200, 50, 30);
+  p.noStroke();
+  p.ellipse(x + tFrac * w, y + h - curAmp * h, 4, 4);
+
+  // Label
+  p.fill(130);
+  p.noStroke();
+  p.textAlign(p.LEFT, p.TOP);
+  p.textSize(7);
+  p.text('decay envelope', x, y - 10);
+  p.text((curAmp * 100).toFixed(1) + '% remaining', x, y + h + 3);
+}
+
+// ===== INIT =====
+new p5(sketch, 'canvas-container');
+</script>
+</body>
+</html>
