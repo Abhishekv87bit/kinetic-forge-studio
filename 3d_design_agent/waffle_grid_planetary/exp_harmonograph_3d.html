@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>3D Harmonograph &mdash; Damped Lissajous Sculptures in Space</title>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f5f3ee; overflow: hidden; font-family: 'Georgia', serif; display: flex; height: 100vh; }
+
+  #sidebar {
+    width: 280px; min-width: 280px; background: #f0ede6;
+    border-right: 1px solid #c8c0b0; overflow-y: auto; padding: 12px 14px;
+    font-size: 12px; color: #444;
+  }
+  #sidebar h1 { font-size: 14px; letter-spacing: 1.5px; color: #333; margin-bottom: 2px; font-weight: normal; }
+  #sidebar .subtitle { font-size: 10px; color: #888; margin-bottom: 12px; font-style: italic; }
+
+  .section-title {
+    font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: #8b7355;
+    margin-top: 14px; margin-bottom: 6px; border-bottom: 1px solid #d8d0c0; padding-bottom: 3px;
+  }
+  .ctrl-row { display: flex; align-items: center; margin-bottom: 5px; }
+  .ctrl-row label { flex: 0 0 95px; font-size: 11px; color: #666; }
+  .ctrl-row input[type="range"] { flex: 1; height: 3px; accent-color: #8b4513; }
+  .ctrl-row .val { flex: 0 0 40px; text-align: right; font-size: 10px; color: #555; font-family: 'Consolas', monospace; }
+
+  select {
+    width: 100%; padding: 4px 8px; font-size: 11px; font-family: 'Georgia', serif;
+    background: #faf8f3; color: #555; border: 1px solid #c8c0b0; border-radius: 3px; margin-bottom: 4px;
+  }
+
+  .btn-row { display: flex; gap: 5px; margin: 8px 0; flex-wrap: wrap; }
+  .btn {
+    padding: 5px 10px; font-size: 10px; font-family: 'Georgia', serif;
+    background: #555; color: #f5f3ee; border: none; cursor: pointer;
+    letter-spacing: 0.5px; border-radius: 2px; transition: background 0.15s;
+  }
+  .btn:hover { background: #333; }
+  .btn.active { background: #8b4513; }
+  .btn.accent { background: #2a6848; }
+  .btn.accent:hover { background: #1a4830; }
+  .btn.danger { background: #8b2020; }
+  .btn:disabled { background: #aaa; cursor: not-allowed; }
+
+  #canvas-container { flex: 1; position: relative; }
+  #canvas-container canvas { display: block; }
+
+  #info-bar {
+    position: fixed; bottom: 0; left: 280px; right: 0; z-index: 100;
+    background: rgba(245,243,238,0.92); border-top: 1px solid #bbb;
+    padding: 4px 16px; font-size: 10px; color: #777; font-style: italic;
+  }
+
+  #hud {
+    position: absolute; top: 8px; right: 12px; background: rgba(245,243,238,0.9);
+    border: 1px solid #c8c0b0; border-radius: 4px; padding: 8px 12px;
+    font-size: 10px; line-height: 1.7; color: #666; min-width: 180px; pointer-events: none;
+  }
+  #hud .hv { color: #444; font-family: 'Consolas', monospace; float: right; }
+
+  .progress-bar { width: 100%; height: 3px; background: #ddd; border-radius: 2px; margin: 4px 0; }
+  .progress-bar-fill { height: 100%; background: #8b4513; border-radius: 2px; transition: width 0.1s; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #c8c0b0; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h1>3D HARMONOGRAPH</h1>
+  <div class="subtitle">Three damped pendulums &mdash; Lissajous sculptures in 3D space</div>
+
+  <div class="section-title">Pendulum Lengths</div>
+  <div class="ctrl-row">
+    <label>L1 &rarr; X (m)</label>
+    <input type="range" id="sl-L1" min="0.05" max="1.0" step="0.01" value="0.25">
+    <span class="val" id="v-L1">0.25</span>
+  </div>
+  <div class="ctrl-row">
+    <label>L2 &rarr; Y (m)</label>
+    <input type="range" id="sl-L2" min="0.05" max="1.0" step="0.01" value="0.25">
+    <span class="val" id="v-L2">0.25</span>
+  </div>
+  <div class="ctrl-row">
+    <label>L3 &rarr; Z (m)</label>
+    <input type="range" id="sl-L3" min="0.05" max="1.0" step="0.01" value="0.50">
+    <span class="val" id="v-L3">0.50</span>
+  </div>
+
+  <div class="section-title">Amplitudes</div>
+  <div class="ctrl-row">
+    <label>A1 (X)</label>
+    <input type="range" id="sl-A1" min="20" max="200" step="5" value="120">
+    <span class="val" id="v-A1">120</span>
+  </div>
+  <div class="ctrl-row">
+    <label>A2 (Y)</label>
+    <input type="range" id="sl-A2" min="20" max="200" step="5" value="120">
+    <span class="val" id="v-A2">120</span>
+  </div>
+  <div class="ctrl-row">
+    <label>A3 (Z)</label>
+    <input type="range" id="sl-A3" min="20" max="200" step="5" value="100">
+    <span class="val" id="v-A3">100</span>
+  </div>
+
+  <div class="section-title">Phases &amp; Damping</div>
+  <div class="ctrl-row">
+    <label>Phase &phi;2</label>
+    <input type="range" id="sl-phi2" min="0" max="6.283" step="0.01" value="1.571">
+    <span class="val" id="v-phi2">&pi;/2</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Phase &phi;3</label>
+    <input type="range" id="sl-phi3" min="0" max="6.283" step="0.01" value="0.0">
+    <span class="val" id="v-phi3">0.00</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Damping &gamma;</label>
+    <input type="range" id="sl-gamma" min="0.000" max="0.05" step="0.001" value="0.005">
+    <span class="val" id="v-gamma">0.005</span>
+  </div>
+
+  <div class="section-title">Rendering</div>
+  <select id="sel-render">
+    <option value="ribbon" selected>Ribbon</option>
+    <option value="tube">Tube</option>
+    <option value="line">Thin Line</option>
+    <option value="dots">Point Cloud</option>
+  </select>
+  <div class="ctrl-row">
+    <label>Trail Length</label>
+    <input type="range" id="sl-trail" min="500" max="8000" step="100" value="4000">
+    <span class="val" id="v-trail">4000</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Thickness</label>
+    <input type="range" id="sl-thick" min="1" max="8" step="0.5" value="3">
+    <span class="val" id="v-thick">3.0</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Auto Rotate</label>
+    <input type="range" id="sl-autorot" min="0" max="1.0" step="0.05" value="0.3">
+    <span class="val" id="v-autorot">0.30</span>
+  </div>
+
+  <div class="section-title">Presets</div>
+  <select id="sel-preset">
+    <option value="custom">-- Custom --</option>
+    <option value="circle3d">3D Circle (1:1:1)</option>
+    <option value="figure8">Figure 8 (2:1:1)</option>
+    <option value="trefoil">Trefoil Knot (2:3:1)</option>
+    <option value="lissajous32">Lissajous 3:2:1</option>
+    <option value="birdwing">Bird Wing Tip (2:1:3)</option>
+    <option value="fishswim">Fish Undulation (1:1:2, phase)</option>
+    <option value="star3d">Star (5:3:2)</option>
+    <option value="spiral">Spiral Decay (1:1:1, high &gamma;)</option>
+    <option value="random">Random</option>
+  </select>
+
+  <div class="section-title">Simulation</div>
+  <div class="ctrl-row">
+    <label>Speed</label>
+    <input type="range" id="sl-speed" min="1" max="10" step="1" value="3">
+    <span class="val" id="v-speed">3</span>
+  </div>
+
+  <div class="section-title">Actions</div>
+  <div class="btn-row">
+    <button class="btn active" id="btn-atlas" onclick="setMode('atlas')">Atlas 4&times;4</button>
+    <button class="btn" id="btn-single" onclick="setMode('single')">Single</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn" id="btn-pause" onclick="togglePause()">Pause</button>
+    <button class="btn" onclick="clearTrail()">Clear Trail</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn accent" onclick="randomizeAll()">Randomize</button>
+    <button class="btn" onclick="mutateAll()">Mutate</button>
+    <button class="btn danger" id="btn-beautiful" onclick="findBeautiful()">Find Beautiful</button>
+  </div>
+  <div id="progress-container" style="display:none;">
+    <div class="progress-bar"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
+  </div>
+
+  <div class="section-title">Ratios</div>
+  <div id="ratio-display" style="font-size:10px; color:#555; font-family:'Consolas',monospace; line-height:1.6;">
+    &omega;1:&omega;2:&omega;3 = ...
+  </div>
+</div>
+
+<div id="canvas-container">
+  <div id="hud">
+    <div>Mode: <span class="hv" id="h-mode">atlas</span></div>
+    <div>Ratio: <span class="hv" id="h-ratio">1:1:1</span></div>
+    <div>Points: <span class="hv" id="h-points">0</span></div>
+    <div>Amplitude: <span class="hv" id="h-amp">—</span></div>
+    <div>Energy: <span class="hv" id="h-energy">100%</span></div>
+    <div>FPS: <span class="hv" id="h-fps">60</span></div>
+  </div>
+</div>
+
+<div id="info-bar">
+  3D Harmonograph &mdash; drag to orbit, scroll to zoom &mdash; three damped pendulums create sculptural Lissajous curves
+</div>
+
+<script>
+// ANALYTICAL CHECK: 3D Harmonograph
+// Three damped pendulums: x(t) = A1*e^(-γt)*sin(ω1*t), y(t) = A2*e^(-γt)*sin(ω2*t+φ2), z(t) = A3*e^(-γt)*sin(ω3*t+φ3)
+// where ωi = √(g/Li), g = 9.81 m/s²
+// Frequency ratio ω1:ω2 = √(L2/L1)
+// L1=L2=0.25m → ω = √(9.81/0.25) = 6.264 rad/s, T = 1.003s ← agrees with T=2π√(L/g)
+// L1=0.25, L2=1.0 → ω1/ω2 = √(1.0/0.25) = 2.0 → figure-8
+// Energy decays as e^(-2γt); at t=1/γ, energy = e^(-2) ≈ 13.5% of initial
+
+const G = 9.81;
+const MAX_TRAIL = 8000;
+
+let mode = 'atlas';
+let paused = false;
+let cells = [];
+let selectedCell = 0;
+let searching = false;
+
+function getParams() {
+  return {
+    L1: parseFloat(document.getElementById('sl-L1').value),
+    L2: parseFloat(document.getElementById('sl-L2').value),
+    L3: parseFloat(document.getElementById('sl-L3').value),
+    A1: parseFloat(document.getElementById('sl-A1').value),
+    A2: parseFloat(document.getElementById('sl-A2').value),
+    A3: parseFloat(document.getElementById('sl-A3').value),
+    phi2: parseFloat(document.getElementById('sl-phi2').value),
+    phi3: parseFloat(document.getElementById('sl-phi3').value),
+    gamma: parseFloat(document.getElementById('sl-gamma').value),
+    speed: parseFloat(document.getElementById('sl-speed').value),
+    trailLen: parseInt(document.getElementById('sl-trail').value),
+    thickness: parseFloat(document.getElementById('sl-thick').value),
+    autoRot: parseFloat(document.getElementById('sl-autorot').value),
+    renderMode: document.getElementById('sel-render').value
+  };
+}
+
+function omega(L) { return Math.sqrt(G / L); }
+
+function ratioLabel(w1, w2) {
+  let r = w1 / w2;
+  for (let d = 1; d <= 12; d++) {
+    let n = Math.round(r * d);
+    if (Math.abs(n / d - r) < 0.02) return n + ':' + d;
+  }
+  return r.toFixed(2);
+}
+
+function ratioLabel3(w1, w2, w3) {
+  // Normalize to smallest
+  let mn = Math.min(w1, w2, w3);
+  let r1 = w1 / mn, r2 = w2 / mn, r3 = w3 / mn;
+  // Try integer ratios
+  for (let d = 1; d <= 12; d++) {
+    let n1 = Math.round(r1 * d), n2 = Math.round(r2 * d), n3 = Math.round(r3 * d);
+    if (Math.abs(n1/d - r1) < 0.03 && Math.abs(n2/d - r2) < 0.03 && Math.abs(n3/d - r3) < 0.03) {
+      let g = gcd3(n1, n2, n3);
+      return (n1/g) + ':' + (n2/g) + ':' + (n3/g);
+    }
+  }
+  return r1.toFixed(1) + ':' + r2.toFixed(1) + ':' + r3.toFixed(1);
+}
+
+function gcd(a, b) { return b === 0 ? a : gcd(b, a % b); }
+function gcd3(a, b, c) { return gcd(gcd(a, b), c); }
+
+function makeConfig(p) {
+  if (!p) {
+    p = {
+      L1: 0.1 + Math.random() * 0.9,
+      L2: 0.1 + Math.random() * 0.9,
+      L3: 0.1 + Math.random() * 0.9,
+      A1: 60 + Math.random() * 100,
+      A2: 60 + Math.random() * 100,
+      A3: 60 + Math.random() * 100,
+      phi2: Math.random() * Math.PI * 2,
+      phi3: Math.random() * Math.PI * 2,
+      gamma: 0.002 + Math.random() * 0.02
+    };
+  }
+  let w1 = omega(p.L1), w2 = omega(p.L2), w3 = omega(p.L3);
+  return {
+    L1: p.L1, L2: p.L2, L3: p.L3,
+    A1: p.A1, A2: p.A2, A3: p.A3,
+    phi2: p.phi2, phi3: p.phi3,
+    gamma: p.gamma,
+    w1: w1, w2: w2, w3: w3,
+    trail: [],
+    t: 0,
+    ratio: ratioLabel3(w1, w2, w3),
+    score: 0,
+    rotX: -0.4,
+    rotY: 0
+  };
+}
+
+function pendulumPos(t, A, w, phi, gamma) {
+  let amp = A * Math.exp(-gamma * t);
+  return amp * Math.sin(w * t + phi);
+}
+
+function stepConfig(cfg, dt, trailLen) {
+  let steps = 4;
+  let subdt = dt / steps;
+  for (let s = 0; s < steps; s++) {
+    cfg.t += subdt;
+    let x = pendulumPos(cfg.t, cfg.A1, cfg.w1, 0, cfg.gamma);
+    let y = pendulumPos(cfg.t, cfg.A2, cfg.w2, cfg.phi2, cfg.gamma);
+    let z = pendulumPos(cfg.t, cfg.A3, cfg.w3, cfg.phi3, cfg.gamma);
+    // Speed for coloring
+    let vx = cfg.A1 * cfg.w1 * Math.exp(-cfg.gamma * cfg.t) * Math.cos(cfg.w1 * cfg.t);
+    let vy = cfg.A2 * cfg.w2 * Math.exp(-cfg.gamma * cfg.t) * Math.cos(cfg.w2 * cfg.t + cfg.phi2);
+    let vz = cfg.A3 * cfg.w3 * Math.exp(-cfg.gamma * cfg.t) * Math.cos(cfg.w3 * cfg.t + cfg.phi3);
+    let speed = Math.sqrt(vx*vx + vy*vy + vz*vz);
+    cfg.trail.push({ x, y, z, speed, t: cfg.t });
+  }
+  while (cfg.trail.length > trailLen) cfg.trail.shift();
+}
+
+function scoreConfig(cfg) {
+  if (cfg.trail.length < 100) return 0;
+  // Spatial complexity: bounding box volume vs trail spread
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  let totalSpeed = 0;
+  let gridRes = 12;
+  let grid = new Set();
+  for (let pt of cfg.trail) {
+    if (pt.x < minX) minX = pt.x; if (pt.x > maxX) maxX = pt.x;
+    if (pt.y < minY) minY = pt.y; if (pt.y > maxY) maxY = pt.y;
+    if (pt.z < minZ) minZ = pt.z; if (pt.z > maxZ) maxZ = pt.z;
+    totalSpeed += pt.speed;
+  }
+  let rangeX = maxX - minX || 1, rangeY = maxY - minY || 1, rangeZ = maxZ - minZ || 1;
+  for (let pt of cfg.trail) {
+    let gx = Math.floor((pt.x - minX) / rangeX * gridRes);
+    let gy = Math.floor((pt.y - minY) / rangeY * gridRes);
+    let gz = Math.floor((pt.z - minZ) / rangeZ * gridRes);
+    grid.add(gx + ',' + gy + ',' + gz);
+  }
+  let fillFraction = grid.size / (gridRes * gridRes * gridRes);
+  let volume = rangeX * rangeY * rangeZ;
+  let aspectBalance = 1 - Math.abs(rangeX - rangeY) / (rangeX + rangeY)
+                        - Math.abs(rangeY - rangeZ) / (rangeY + rangeZ) * 0.5;
+  // Ratio complexity: non-integer ratios score higher
+  let r12 = cfg.w1 / cfg.w2, r13 = cfg.w1 / cfg.w3;
+  let ratioComplexity = 1;
+  if (Math.abs(r12 - Math.round(r12)) > 0.05) ratioComplexity += 0.5;
+  if (Math.abs(r13 - Math.round(r13)) > 0.05) ratioComplexity += 0.5;
+
+  return fillFraction * 3 + aspectBalance * 2 + ratioComplexity;
+}
+
+function setPreset(name) {
+  const presets = {
+    'circle3d':    { L1: 0.25, L2: 0.25, L3: 0.25, A1: 120, A2: 120, A3: 100, phi2: 1.571, phi3: 0.785, gamma: 0.005 },
+    'figure8':     { L1: 0.25, L2: 1.00, L3: 0.25, A1: 120, A2: 120, A3: 80,  phi2: 0,     phi3: 1.571, gamma: 0.004 },
+    'trefoil':     { L1: 0.25, L2: 0.11, L3: 0.25, A1: 120, A2: 120, A3: 100, phi2: 1.571, phi3: 0,     gamma: 0.003 },
+    'lissajous32': { L1: 0.11, L2: 0.25, L3: 1.00, A1: 120, A2: 120, A3: 100, phi2: 0.5,   phi3: 1.0,   gamma: 0.005 },
+    'birdwing':    { L1: 0.25, L2: 1.00, L3: 0.11, A1: 100, A2: 140, A3: 60,  phi2: 0,     phi3: 1.571, gamma: 0.003 },
+    'fishswim':    { L1: 0.25, L2: 0.25, L3: 0.0625, A1: 130, A2: 130, A3: 50, phi2: 1.571, phi3: 0,    gamma: 0.006 },
+    'star3d':      { L1: 0.04, L2: 0.11, L3: 0.25, A1: 100, A2: 100, A3: 100, phi2: 0.3,   phi3: 1.2,   gamma: 0.004 },
+    'spiral':      { L1: 0.25, L2: 0.25, L3: 0.25, A1: 150, A2: 150, A3: 150, phi2: 1.571, phi3: 0.785, gamma: 0.035 }
+  };
+  if (presets[name]) {
+    let p = presets[name];
+    document.getElementById('sl-L1').value = p.L1;  document.getElementById('v-L1').textContent = p.L1.toFixed(2);
+    document.getElementById('sl-L2').value = p.L2;  document.getElementById('v-L2').textContent = p.L2.toFixed(2);
+    document.getElementById('sl-L3').value = p.L3;  document.getElementById('v-L3').textContent = p.L3.toFixed(2);
+    document.getElementById('sl-A1').value = p.A1;  document.getElementById('v-A1').textContent = p.A1;
+    document.getElementById('sl-A2').value = p.A2;  document.getElementById('v-A2').textContent = p.A2;
+    document.getElementById('sl-A3').value = p.A3;  document.getElementById('v-A3').textContent = p.A3;
+    document.getElementById('sl-phi2').value = p.phi2; document.getElementById('v-phi2').textContent = p.phi2.toFixed(2);
+    document.getElementById('sl-phi3').value = p.phi3; document.getElementById('v-phi3').textContent = p.phi3.toFixed(2);
+    document.getElementById('sl-gamma').value = p.gamma; document.getElementById('v-gamma').textContent = p.gamma.toFixed(3);
+    if (mode === 'single') {
+      cells[selectedCell] = makeConfig(p);
+    }
+  } else if (name === 'random') {
+    randomizeAll();
+  }
+}
+
+function initCells() {
+  cells = [];
+  for (let i = 0; i < 16; i++) {
+    cells.push(makeConfig());
+  }
+}
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-atlas').classList.toggle('active', m === 'atlas');
+  document.getElementById('btn-single').classList.toggle('active', m === 'single');
+  if (m === 'single') {
+    let p = getParams();
+    cells[selectedCell] = makeConfig(p);
+  }
+}
+
+function togglePause() {
+  paused = !paused;
+  document.getElementById('btn-pause').textContent = paused ? 'Resume' : 'Pause';
+}
+
+function clearTrail() {
+  for (let c of cells) { c.trail = []; c.t = 0; }
+}
+
+function randomizeAll() {
+  if (mode === 'atlas') {
+    initCells();
+  } else {
+    let p = {
+      L1: 0.05 + Math.random() * 0.95,
+      L2: 0.05 + Math.random() * 0.95,
+      L3: 0.05 + Math.random() * 0.95,
+      A1: 60 + Math.random() * 120,
+      A2: 60 + Math.random() * 120,
+      A3: 60 + Math.random() * 120,
+      phi2: Math.random() * Math.PI * 2,
+      phi3: Math.random() * Math.PI * 2,
+      gamma: 0.002 + Math.random() * 0.025
+    };
+    cells[selectedCell] = makeConfig(p);
+    // Update sliders
+    document.getElementById('sl-L1').value = p.L1; document.getElementById('v-L1').textContent = p.L1.toFixed(2);
+    document.getElementById('sl-L2').value = p.L2; document.getElementById('v-L2').textContent = p.L2.toFixed(2);
+    document.getElementById('sl-L3').value = p.L3; document.getElementById('v-L3').textContent = p.L3.toFixed(2);
+    document.getElementById('sl-A1').value = p.A1; document.getElementById('v-A1').textContent = Math.round(p.A1);
+    document.getElementById('sl-A2').value = p.A2; document.getElementById('v-A2').textContent = Math.round(p.A2);
+    document.getElementById('sl-A3').value = p.A3; document.getElementById('v-A3').textContent = Math.round(p.A3);
+    document.getElementById('sl-phi2').value = p.phi2; document.getElementById('v-phi2').textContent = p.phi2.toFixed(2);
+    document.getElementById('sl-phi3').value = p.phi3; document.getElementById('v-phi3').textContent = p.phi3.toFixed(2);
+    document.getElementById('sl-gamma').value = p.gamma; document.getElementById('v-gamma').textContent = p.gamma.toFixed(3);
+    document.getElementById('sel-preset').value = 'custom';
+  }
+}
+
+function mutateAll() {
+  function mutVal(v, range, lo, hi) {
+    return Math.max(lo, Math.min(hi, v + (Math.random() - 0.5) * range));
+  }
+  if (mode === 'atlas') {
+    for (let c of cells) {
+      c.L1 = mutVal(c.L1, 0.15, 0.05, 1.0);
+      c.L2 = mutVal(c.L2, 0.15, 0.05, 1.0);
+      c.L3 = mutVal(c.L3, 0.15, 0.05, 1.0);
+      c.phi2 = mutVal(c.phi2, 0.5, 0, 6.283);
+      c.phi3 = mutVal(c.phi3, 0.5, 0, 6.283);
+      c.gamma = mutVal(c.gamma, 0.005, 0.001, 0.05);
+      c.w1 = omega(c.L1); c.w2 = omega(c.L2); c.w3 = omega(c.L3);
+      c.ratio = ratioLabel3(c.w1, c.w2, c.w3);
+      c.trail = []; c.t = 0;
+    }
+  } else {
+    let c = cells[selectedCell];
+    c.L1 = mutVal(c.L1, 0.1, 0.05, 1.0);
+    c.L2 = mutVal(c.L2, 0.1, 0.05, 1.0);
+    c.L3 = mutVal(c.L3, 0.1, 0.05, 1.0);
+    c.phi2 = mutVal(c.phi2, 0.3, 0, 6.283);
+    c.phi3 = mutVal(c.phi3, 0.3, 0, 6.283);
+    c.w1 = omega(c.L1); c.w2 = omega(c.L2); c.w3 = omega(c.L3);
+    c.ratio = ratioLabel3(c.w1, c.w2, c.w3);
+    c.trail = []; c.t = 0;
+    // Update sliders
+    document.getElementById('sl-L1').value = c.L1; document.getElementById('v-L1').textContent = c.L1.toFixed(2);
+    document.getElementById('sl-L2').value = c.L2; document.getElementById('v-L2').textContent = c.L2.toFixed(2);
+    document.getElementById('sl-L3').value = c.L3; document.getElementById('v-L3').textContent = c.L3.toFixed(2);
+    document.getElementById('sel-preset').value = 'custom';
+  }
+}
+
+function findBeautiful() {
+  if (searching) return;
+  searching = true;
+  document.getElementById('btn-beautiful').disabled = true;
+  document.getElementById('progress-container').style.display = 'block';
+  let best = []; // top 16
+  let total = 200, done = 0, batch = 20;
+
+  function runBatch() {
+    for (let i = 0; i < batch && done < total; i++, done++) {
+      let cfg = makeConfig();
+      // Simulate for scoring
+      for (let f = 0; f < 300; f++) stepConfig(cfg, 0.02, 2000);
+      cfg.score = scoreConfig(cfg);
+      best.push(cfg);
+    }
+    document.getElementById('progress-fill').style.width = (done/total*100) + '%';
+    if (done < total) {
+      setTimeout(runBatch, 0);
+    } else {
+      best.sort((a, b) => b.score - a.score);
+      cells = best.slice(0, 16);
+      // Reset trails for clean rendering
+      for (let c of cells) { c.trail = []; c.t = 0; }
+      searching = false;
+      document.getElementById('btn-beautiful').disabled = false;
+      document.getElementById('progress-container').style.display = 'none';
+      setMode('atlas');
+    }
+  }
+  runBatch();
+}
+
+// Wire sliders
+document.querySelectorAll('#sidebar input[type="range"]').forEach(sl => {
+  sl.addEventListener('input', () => {
+    let id = sl.id.replace('sl-', 'v-');
+    let v = parseFloat(sl.value);
+    let el = document.getElementById(id);
+    if (id === 'v-phi2' || id === 'v-phi3') {
+      el.textContent = v.toFixed(2);
+    } else if (id === 'v-gamma') {
+      el.textContent = v.toFixed(3);
+    } else if (id === 'v-thick' || id === 'v-autorot') {
+      el.textContent = v.toFixed(1 + (id === 'v-autorot' ? 1 : 0));
+    } else {
+      el.textContent = (v % 1 === 0) ? v : v.toFixed(2);
+    }
+    if (mode === 'single') {
+      let p = getParams();
+      cells[selectedCell] = makeConfig(p);
+      document.getElementById('sel-preset').value = 'custom';
+    }
+  });
+});
+
+document.getElementById('sel-preset').addEventListener('change', function() {
+  if (this.value !== 'custom') setPreset(this.value);
+});
+
+// p5.js sketch
+const sketch = (p) => {
+  let cw, ch;
+
+  p.setup = function() {
+    let cont = document.getElementById('canvas-container');
+    cw = cont.clientWidth;
+    ch = cont.clientHeight;
+    let c = p.createCanvas(cw, ch, p.WEBGL);
+    c.parent('canvas-container');
+    p.textFont('Georgia');
+    initCells();
+  };
+
+  p.windowResized = function() {
+    let cont = document.getElementById('canvas-container');
+    cw = cont.clientWidth;
+    ch = cont.clientHeight;
+    p.resizeCanvas(cw, ch);
+  };
+
+  // Color from speed: slow=warm brown, fast=cool blue
+  function trailColor(speed, maxSpeed, alpha) {
+    let t = Math.min(1, speed / (maxSpeed || 1));
+    let r = p.lerp(139, 70, t);
+    let g = p.lerp(90, 130, t);
+    let b = p.lerp(50, 180, t);
+    return p.color(r, g, b, alpha);
+  }
+
+  function drawTrail3D(cfg, scale, params) {
+    let trail = cfg.trail;
+    if (trail.length < 2) return;
+    let maxSpd = 0;
+    for (let pt of trail) if (pt.speed > maxSpd) maxSpd = pt.speed;
+    let renderMode = params ? params.renderMode : 'ribbon';
+    let thick = params ? params.thickness : 2;
+
+    if (renderMode === 'dots') {
+      for (let i = 0; i < trail.length; i += 2) {
+        let pt = trail[i];
+        let alpha = 50 + 200 * (i / trail.length);
+        let c = trailColor(pt.speed, maxSpd, alpha);
+        p.push();
+        p.translate(pt.x * scale, pt.y * scale, pt.z * scale);
+        p.noStroke();
+        p.fill(c);
+        p.sphere(thick * 0.5);
+        p.pop();
+      }
+    } else if (renderMode === 'line') {
+      p.noFill();
+      p.strokeWeight(thick);
+      p.beginShape();
+      for (let i = 0; i < trail.length; i++) {
+        let pt = trail[i];
+        let alpha = 30 + 220 * (i / trail.length);
+        p.stroke(trailColor(pt.speed, maxSpd, alpha));
+        p.vertex(pt.x * scale, pt.y * scale, pt.z * scale);
+      }
+      p.endShape();
+    } else {
+      // Ribbon or tube: draw as sequence of quads
+      p.noStroke();
+      for (let i = 1; i < trail.length; i++) {
+        let p0 = trail[i-1], p1 = trail[i];
+        let alpha = 40 + 210 * (i / trail.length);
+        let c = trailColor(p1.speed, maxSpd, alpha);
+        p.fill(c);
+        // Direction vector
+        let dx = p1.x - p0.x, dy = p1.y - p0.y, dz = p1.z - p0.z;
+        let len = Math.sqrt(dx*dx + dy*dy + dz*dz);
+        if (len < 0.001) continue;
+        // Draw a small box segment for ribbon effect
+        p.push();
+        p.translate((p0.x + p1.x) * 0.5 * scale, (p0.y + p1.y) * 0.5 * scale, (p0.z + p1.z) * 0.5 * scale);
+        // Align to direction
+        let nx = dx/len, ny = dy/len, nz = dz/len;
+        // Use atan2 for rotation
+        let yaw = Math.atan2(nx, nz);
+        let pitch = -Math.asin(ny);
+        p.rotateY(yaw);
+        p.rotateX(pitch);
+        if (renderMode === 'tube') {
+          // Small cylinder segment
+          p.cylinder(thick * 0.5, len * scale, 4);
+        } else {
+          // Ribbon: flat box
+          p.box(thick * 2, thick * 0.3, len * scale);
+        }
+        p.pop();
+      }
+    }
+
+    // Draw current position as glowing sphere
+    if (trail.length > 0) {
+      let last = trail[trail.length - 1];
+      p.push();
+      p.translate(last.x * scale, last.y * scale, last.z * scale);
+      p.noStroke();
+      p.fill(200, 80, 40, 220);
+      p.sphere(thick * 2 + 2);
+      // Glow
+      p.fill(255, 120, 60, 80);
+      p.sphere(thick * 3 + 4);
+      p.pop();
+    }
+  }
+
+  function drawAxes(size) {
+    p.strokeWeight(1);
+    // X = red
+    p.stroke(180, 80, 80, 100); p.line(0, 0, 0, size, 0, 0);
+    // Y = green
+    p.stroke(80, 150, 80, 100); p.line(0, 0, 0, 0, size, 0);
+    // Z = blue
+    p.stroke(80, 80, 180, 100); p.line(0, 0, 0, 0, 0, size);
+  }
+
+  function drawGroundGrid(size) {
+    p.stroke(180, 170, 155, 40);
+    p.strokeWeight(0.5);
+    let step = size / 5;
+    for (let i = -5; i <= 5; i++) {
+      p.line(i * step, size, -size, i * step, size, size);
+      p.line(-size, size, i * step, size, size, i * step);
+    }
+  }
+
+  p.draw = function() {
+    p.background(245, 243, 238);
+    let params = getParams();
+    let dt = 0.016 * params.speed;
+
+    if (!paused) {
+      if (mode === 'atlas') {
+        for (let c of cells) stepConfig(c, dt, 1500);
+      } else {
+        stepConfig(cells[selectedCell], dt, params.trailLen);
+      }
+    }
+
+    if (mode === 'atlas') {
+      drawAtlas(params);
+    } else {
+      drawSingle(params);
+    }
+
+    // Update HUD
+    let cfg = cells[selectedCell];
+    document.getElementById('h-mode').textContent = mode;
+    document.getElementById('h-ratio').textContent = cfg.ratio;
+    document.getElementById('h-points').textContent = cfg.trail.length;
+    let currentAmp = cfg.A1 * Math.exp(-cfg.gamma * cfg.t);
+    document.getElementById('h-amp').textContent = currentAmp.toFixed(1);
+    let energyPct = Math.exp(-2 * cfg.gamma * cfg.t) * 100;
+    document.getElementById('h-energy').textContent = energyPct.toFixed(1) + '%';
+    document.getElementById('h-fps').textContent = Math.round(p.frameRate());
+
+    // Update ratio display
+    let w1 = omega(parseFloat(document.getElementById('sl-L1').value));
+    let w2 = omega(parseFloat(document.getElementById('sl-L2').value));
+    let w3 = omega(parseFloat(document.getElementById('sl-L3').value));
+    document.getElementById('ratio-display').innerHTML =
+      '&omega;1:&omega;2:&omega;3 = ' + ratioLabel3(w1, w2, w3) +
+      '<br>&omega;1=' + w1.toFixed(2) + ' &omega;2=' + w2.toFixed(2) + ' &omega;3=' + w3.toFixed(2);
+  };
+
+  function drawAtlas(params) {
+    let cols = 4, rows = 4;
+    let cellW = cw / cols, cellH = ch / rows;
+    let scale = Math.min(cellW, cellH) * 0.003;
+
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        let idx = row * cols + col;
+        if (idx >= cells.length) continue;
+        let cfg = cells[idx];
+
+        let cx = -cw/2 + col * cellW + cellW/2;
+        let cy = -ch/2 + row * cellH + cellH/2;
+
+        p.push();
+        p.translate(cx, cy, 0);
+
+        // Cell background
+        p.noStroke();
+        p.fill(idx === selectedCell ? 240 : 250, idx === selectedCell ? 235 : 248, idx === selectedCell ? 228 : 243);
+        p.plane(cellW - 4, cellH - 4);
+
+        // Cell border
+        p.stroke(idx === selectedCell ? 139 : 200, idx === selectedCell ? 69 : 192, idx === selectedCell ? 19 : 176);
+        p.strokeWeight(idx === selectedCell ? 2 : 0.5);
+        p.noFill();
+        p.plane(cellW - 4, cellH - 4);
+
+        // 3D content with rotation
+        p.push();
+        cfg.rotY += params.autoRot * 0.01;
+        p.rotateX(cfg.rotX);
+        p.rotateY(cfg.rotY);
+
+        drawAxes(cellW * 0.15);
+        drawTrail3D(cfg, scale, { renderMode: 'line', thickness: 1.5 });
+        p.pop();
+
+        // Labels (use 2D overlay approach)
+        p.push();
+        p.translate(0, 0, 1);
+        p.fill(100);
+        p.noStroke();
+        p.textSize(9);
+        p.textAlign(p.CENTER, p.BOTTOM);
+        p.text(cfg.ratio, 0, cellH/2 - 8);
+        p.textSize(7);
+        p.fill(150);
+        p.text('score: ' + cfg.score.toFixed(1), 0, cellH/2 - 20);
+        p.pop();
+
+        p.pop();
+      }
+    }
+  }
+
+  function drawSingle(params) {
+    let cfg = cells[selectedCell];
+    let scale = Math.min(cw, ch) * 0.0025;
+
+    // Camera orbit
+    cfg.rotY += params.autoRot * 0.005;
+    p.rotateX(cfg.rotX);
+    p.rotateY(cfg.rotY);
+
+    // Lighting
+    p.ambientLight(120);
+    p.directionalLight(200, 190, 170, 0.5, 1, -0.5);
+    p.directionalLight(100, 110, 140, -0.5, -0.5, 0.5);
+
+    // Ground grid
+    let gridSize = Math.max(params.A1, params.A2, params.A3) * scale;
+    drawGroundGrid(gridSize);
+    drawAxes(gridSize * 0.5);
+
+    // The harmonograph trail
+    drawTrail3D(cfg, scale, params);
+
+    // Pendulum arms (thin lines from origin to current position)
+    if (cfg.trail.length > 0) {
+      let last = cfg.trail[cfg.trail.length - 1];
+      p.strokeWeight(1);
+      p.stroke(180, 80, 40, 100);
+      p.line(0, 0, 0, last.x * scale, 0, 0);
+      p.line(last.x * scale, 0, 0, last.x * scale, last.y * scale, 0);
+      p.line(last.x * scale, last.y * scale, 0, last.x * scale, last.y * scale, last.z * scale);
+    }
+  }
+
+  // Mouse drag for orbit in single mode
+  p.mouseDragged = function() {
+    if (mode !== 'single') return;
+    if (p.mouseX < 0 || p.mouseX > cw) return;
+    let cfg = cells[selectedCell];
+    cfg.rotY += (p.mouseX - p.pmouseX) * 0.01;
+    cfg.rotX += (p.mouseY - p.pmouseY) * 0.01;
+    cfg.rotX = p.constrain(cfg.rotX, -p.HALF_PI, p.HALF_PI);
+  };
+
+  // Click in atlas to select
+  p.mousePressed = function() {
+    if (mode !== 'atlas') return;
+    if (p.mouseX < 0 || p.mouseX > cw || p.mouseY < 0 || p.mouseY > ch) return;
+    let col = Math.floor(p.mouseX / (cw / 4));
+    let row = Math.floor(p.mouseY / (ch / 4));
+    let idx = row * 4 + col;
+    if (idx >= 0 && idx < cells.length) {
+      selectedCell = idx;
+    }
+  };
+
+  p.doubleClicked = function() {
+    if (mode === 'atlas') {
+      if (p.mouseX < 0 || p.mouseX > cw) return;
+      let col = Math.floor(p.mouseX / (cw / 4));
+      let row = Math.floor(p.mouseY / (ch / 4));
+      let idx = row * 4 + col;
+      if (idx >= 0 && idx < cells.length) {
+        selectedCell = idx;
+        // Copy params to sliders
+        let c = cells[idx];
+        document.getElementById('sl-L1').value = c.L1; document.getElementById('v-L1').textContent = c.L1.toFixed(2);
+        document.getElementById('sl-L2').value = c.L2; document.getElementById('v-L2').textContent = c.L2.toFixed(2);
+        document.getElementById('sl-L3').value = c.L3; document.getElementById('v-L3').textContent = c.L3.toFixed(2);
+        document.getElementById('sl-A1').value = c.A1; document.getElementById('v-A1').textContent = Math.round(c.A1);
+        document.getElementById('sl-A2').value = c.A2; document.getElementById('v-A2').textContent = Math.round(c.A2);
+        document.getElementById('sl-A3').value = c.A3; document.getElementById('v-A3').textContent = Math.round(c.A3);
+        document.getElementById('sl-phi2').value = c.phi2; document.getElementById('v-phi2').textContent = c.phi2.toFixed(2);
+        document.getElementById('sl-phi3').value = c.phi3; document.getElementById('v-phi3').textContent = c.phi3.toFixed(2);
+        document.getElementById('sl-gamma').value = c.gamma; document.getElementById('v-gamma').textContent = c.gamma.toFixed(3);
+        setMode('single');
+      }
+    }
+  };
+
+  // Scroll to zoom in single mode
+  p.mouseWheel = function(event) {
+    if (mode !== 'single') return;
+    let cfg = cells[selectedCell];
+    let zoomFactor = event.delta > 0 ? 1.05 : 0.95;
+    cfg.A1 *= zoomFactor;
+    cfg.A2 *= zoomFactor;
+    cfg.A3 *= zoomFactor;
+    return false;
+  };
+};
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space') { e.preventDefault(); togglePause(); }
+  if (e.code === 'KeyR') randomizeAll();
+  if (e.code === 'KeyM') mutateAll();
+  if (e.code === 'Escape' && mode === 'single') setMode('atlas');
+});
+
+new p5(sketch, 'canvas-container');
+</script>
+
+</body>
+</html>
