@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Boids → Barrel Cam — Murmuration Encoder</title>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #12122a; overflow: hidden; font-family: 'Georgia', serif; display: flex; height: 100vh; }
+
+  #sidebar {
+    width: 260px; min-width: 260px; background: #1a1a35;
+    border-right: 1px solid #333; overflow-y: auto; padding: 12px 14px;
+    font-size: 12px; color: #b0a890;
+  }
+  #sidebar h1 { font-size: 13px; letter-spacing: 1.5px; color: #d0c8b0; margin-bottom: 2px; font-weight: normal; }
+  .subtitle { font-size: 9px; color: #777; margin-bottom: 10px; font-style: italic; }
+
+  .section-title {
+    font-size: 8px; text-transform: uppercase; letter-spacing: 2px; color: #8b7355;
+    margin-top: 12px; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 3px;
+  }
+  .ctrl-row { display: flex; align-items: center; margin-bottom: 4px; }
+  .ctrl-row label { flex: 0 0 90px; font-size: 10px; color: #888; }
+  .ctrl-row input[type="range"] { flex: 1; height: 3px; accent-color: #8b4513; }
+  .ctrl-row .val { flex: 0 0 36px; text-align: right; font-size: 9px; color: #999; font-family: 'Consolas', monospace; }
+
+  .btn-row { display: flex; gap: 4px; margin: 8px 0; flex-wrap: wrap; }
+  .btn {
+    padding: 5px 10px; font-size: 9px; font-family: 'Georgia', serif;
+    background: #444; color: #ddd; border: none; cursor: pointer;
+    letter-spacing: 0.5px; border-radius: 2px; transition: background 0.15s;
+  }
+  .btn:hover { background: #555; }
+  .btn.active { background: #8b4513; color: #fff; }
+  .btn.accent { background: #2a6848; }
+  .btn.accent:hover { background: #1a5838; }
+  .btn.danger { background: #8b2020; }
+
+  .status-box {
+    margin-top: 8px; padding: 6px 8px; background: #222; border: 1px solid #444;
+    border-radius: 3px; font-size: 9px; font-family: 'Consolas', monospace;
+    color: #aaa; line-height: 1.6;
+  }
+  .status-box .hl { color: #e0c080; }
+
+  #canvas-container { flex: 1; position: relative; }
+
+  #hud {
+    position: absolute; top: 8px; right: 10px; background: rgba(26,26,53,0.9);
+    border: 1px solid #444; border-radius: 3px; padding: 6px 10px;
+    font-size: 9px; color: #888; pointer-events: none; min-width: 140px; line-height: 1.7;
+  }
+  #hud .hv { color: #d0c8b0; font-family: 'Consolas', monospace; float: right; }
+
+  #phase-label {
+    position: absolute; top: 8px; left: 10px; background: rgba(26,26,53,0.9);
+    border: 1px solid #444; border-radius: 3px; padding: 6px 12px;
+    font-size: 12px; color: #e0c080; pointer-events: none; letter-spacing: 1px;
+  }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h1>BOIDS → BARREL CAM</h1>
+  <div class="subtitle">Record murmuration — encode as barrel cam grooves</div>
+
+  <div class="section-title">Flock</div>
+  <div class="ctrl-row">
+    <label>Birds</label>
+    <input type="range" id="sl-birds" min="16" max="81" step="1" value="64">
+    <span class="val" id="v-birds">64</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Separation</label>
+    <input type="range" id="sl-sep" min="10" max="40" step="1" value="22">
+    <span class="val" id="v-sep">22</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Alignment</label>
+    <input type="range" id="sl-ali" min="20" max="70" step="1" value="48">
+    <span class="val" id="v-ali">48</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Cohesion</label>
+    <input type="range" id="sl-coh" min="30" max="80" step="1" value="60">
+    <span class="val" id="v-coh">60</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Max Speed</label>
+    <input type="range" id="sl-speed" min="1.0" max="4.0" step="0.1" value="2.8">
+    <span class="val" id="v-speed">2.8</span>
+  </div>
+
+  <div class="section-title">Recording</div>
+  <div class="ctrl-row">
+    <label>Duration (s)</label>
+    <input type="range" id="sl-dur" min="10" max="60" step="5" value="30">
+    <span class="val" id="v-dur">30</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Sample Rate</label>
+    <input type="range" id="sl-fps" min="10" max="60" step="5" value="30">
+    <span class="val" id="v-fps">30</span>
+  </div>
+
+  <div class="section-title">Barrel Cam</div>
+  <div class="ctrl-row">
+    <label>Cam Diameter</label>
+    <input type="range" id="sl-cam-dia" min="40" max="100" step="5" value="60">
+    <span class="val" id="v-cam-dia">60mm</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Cam Length</label>
+    <input type="range" id="sl-cam-len" min="60" max="200" step="5" value="100">
+    <span class="val" id="v-cam-len">100mm</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Groove Depth</label>
+    <input type="range" id="sl-groove" min="2" max="10" step="0.5" value="5">
+    <span class="val" id="v-groove">5mm</span>
+  </div>
+
+  <div class="section-title">Actions</div>
+  <div class="btn-row">
+    <button class="btn active" id="btn-live" onclick="setPhase('live')">Live Boids</button>
+    <button class="btn" id="btn-record" onclick="startRecording()">Record</button>
+    <button class="btn" id="btn-replay" onclick="setPhase('replay')" disabled>Replay</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn accent" id="btn-cam" onclick="setPhase('cam')" disabled>Show Cam</button>
+    <button class="btn" id="btn-export" onclick="exportCamSTL()" disabled>Export STL</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn" onclick="resetBoids()">Reset Flock</button>
+    <button class="btn danger" onclick="clearRecording()">Clear Recording</button>
+  </div>
+
+  <div class="status-box" id="status">
+    <div>Phase: <span class="hl" id="st-phase">LIVE</span></div>
+    <div>Frames: <span class="hl" id="st-frames">0</span> / <span id="st-total">900</span></div>
+    <div>Cam X grooves: <span class="hl" id="st-gx">-</span></div>
+    <div>Cam Y grooves: <span class="hl" id="st-gy">-</span></div>
+    <div>Max travel: <span class="hl" id="st-travel">-</span></div>
+  </div>
+</div>
+
+<div id="canvas-container">
+  <div id="phase-label">LIVE BOIDS</div>
+  <div id="hud">
+    <div>FPS <span class="hv" id="hud-fps">--</span></div>
+    <div>Mode <span class="hv" id="hud-mode">live</span></div>
+    <div>Birds <span class="hv" id="hud-birds">64</span></div>
+    <div>View <span class="hv" id="hud-view">flock</span></div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// BOIDS → BARREL CAM MURMURATION ENCODER
+// Phase 1: Live Boids sim with tunable params
+// Phase 2: Record trajectories (X,Y per bird per frame)
+// Phase 3: Replay recorded trajectories
+// Phase 4: Show barrel cam visualization with groove profiles
+// ============================================================
+
+// ===== STATE =====
+let phase = 'live'; // 'live', 'recording', 'replay', 'cam'
+let cw, ch;
+
+// Boids
+let boids = [];
+let NUM_BIRDS = 64;
+const BOUNDARY = 180;
+
+// Recording buffer: recording[frame][bird] = {x, y}
+let recording = [];
+let recFrame = 0;
+let replayFrame = 0;
+
+// View mode for cam phase
+let camView = 'both'; // 'both', 'camX', 'camY', 'overlay'
+let camRotAngle = 0;
+
+// ===== SLIDER WIRING =====
+function wireSlider(id, valId, suffix) {
+  let sl = document.getElementById(id);
+  let vl = document.getElementById(valId);
+  sl.addEventListener('input', () => {
+    vl.textContent = sl.value + (suffix || '');
+  });
+}
+wireSlider('sl-birds', 'v-birds');
+wireSlider('sl-sep', 'v-sep');
+wireSlider('sl-ali', 'v-ali');
+wireSlider('sl-coh', 'v-coh');
+wireSlider('sl-speed', 'v-speed');
+wireSlider('sl-dur', 'v-dur');
+wireSlider('sl-fps', 'v-fps');
+wireSlider('sl-cam-dia', 'v-cam-dia', 'mm');
+wireSlider('sl-cam-len', 'v-cam-len', 'mm');
+wireSlider('sl-groove', 'v-groove', 'mm');
+
+// Update total frames display
+function updateTotalFrames() {
+  let dur = parseInt(document.getElementById('sl-dur').value);
+  let fps = parseInt(document.getElementById('sl-fps').value);
+  document.getElementById('st-total').textContent = dur * fps;
+}
+document.getElementById('sl-dur').addEventListener('input', updateTotalFrames);
+document.getElementById('sl-fps').addEventListener('input', updateTotalFrames);
+updateTotalFrames();
+
+// ===== BOIDS SIMULATION =====
+function initBoids(n) {
+  boids = [];
+  NUM_BIRDS = n;
+  for (let i = 0; i < n; i++) {
+    boids.push({
+      x: (Math.random() - 0.5) * BOUNDARY * 0.5,
+      y: (Math.random() - 0.5) * BOUNDARY * 0.5,
+      vx: (Math.random() - 0.5) * 2,
+      vy: (Math.random() - 0.5) * 2
+    });
+  }
+}
+
+function updateBoids() {
+  let SEP = parseInt(document.getElementById('sl-sep').value);
+  let ALI = parseInt(document.getElementById('sl-ali').value);
+  let COH = parseInt(document.getElementById('sl-coh').value);
+  let SPD = parseFloat(document.getElementById('sl-speed').value);
+  let FORCE = 0.09;
+  let MIN_SPD = 0.5;
+
+  for (let i = 0; i < boids.length; i++) {
+    let b = boids[i];
+    let sx = 0, sy = 0, sc = 0;
+    let ax = 0, ay = 0, ac = 0;
+    let cx = 0, cy = 0, cc = 0;
+
+    for (let j = 0; j < boids.length; j++) {
+      if (i === j) continue;
+      let dx = boids[j].x - b.x, dy = boids[j].y - b.y;
+      let d = Math.sqrt(dx * dx + dy * dy);
+      if (d < 1) d = 1;
+
+      if (d < SEP) { sx -= dx / d; sy -= dy / d; sc++; }
+      if (d < ALI) { ax += boids[j].vx; ay += boids[j].vy; ac++; }
+      if (d < COH) { cx += boids[j].x; cy += boids[j].y; cc++; }
+    }
+
+    let fx = 0, fy = 0;
+    if (sc > 0) { fx += sx / sc * 1.6; fy += sy / sc * 1.6; }
+    if (ac > 0) { fx += (ax / ac - b.vx) * 0.12; fy += (ay / ac - b.vy) * 0.12; }
+    if (cc > 0) { fx += (cx / cc - b.x) * 0.007; fy += (cy / cc - b.y) * 0.007; }
+
+    // Soft boundary
+    let bf = 0.02;
+    if (b.x < -BOUNDARY) fx += bf * (-BOUNDARY - b.x);
+    if (b.x > BOUNDARY) fx -= bf * (b.x - BOUNDARY);
+    if (b.y < -BOUNDARY) fy += bf * (-BOUNDARY - b.y);
+    if (b.y > BOUNDARY) fy -= bf * (b.y - BOUNDARY);
+
+    let fMag = Math.sqrt(fx * fx + fy * fy);
+    if (fMag > FORCE) { fx *= FORCE / fMag; fy *= FORCE / fMag; }
+
+    b.vx += fx; b.vy += fy;
+    let spd = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
+    if (spd > SPD) { b.vx *= SPD / spd; b.vy *= SPD / spd; }
+    if (spd < MIN_SPD) { b.vx *= 1.05; b.vy *= 1.05; }
+    b.x += b.vx; b.y += b.vy;
+  }
+}
+
+function resetBoids() {
+  let n = parseInt(document.getElementById('sl-birds').value);
+  initBoids(n);
+}
+
+// ===== RECORDING =====
+function startRecording() {
+  if (phase === 'recording') return;
+  let n = parseInt(document.getElementById('sl-birds').value);
+  if (boids.length !== n) initBoids(n);
+  recording = [];
+  recFrame = 0;
+  setPhase('recording');
+}
+
+function recordFrame() {
+  let snap = [];
+  for (let i = 0; i < boids.length; i++) {
+    snap.push({ x: boids[i].x, y: boids[i].y });
+  }
+  recording.push(snap);
+  recFrame++;
+  document.getElementById('st-frames').textContent = recFrame;
+
+  let dur = parseInt(document.getElementById('sl-dur').value);
+  let fps = parseInt(document.getElementById('sl-fps').value);
+  let total = dur * fps;
+
+  if (recFrame >= total) {
+    // Recording complete
+    setPhase('replay');
+    document.getElementById('btn-replay').disabled = false;
+    document.getElementById('btn-cam').disabled = false;
+    document.getElementById('btn-export').disabled = false;
+    computeCamStats();
+  }
+}
+
+function clearRecording() {
+  recording = [];
+  recFrame = 0;
+  replayFrame = 0;
+  document.getElementById('st-frames').textContent = '0';
+  document.getElementById('st-gx').textContent = '-';
+  document.getElementById('st-gy').textContent = '-';
+  document.getElementById('st-travel').textContent = '-';
+  document.getElementById('btn-replay').disabled = true;
+  document.getElementById('btn-cam').disabled = true;
+  document.getElementById('btn-export').disabled = true;
+  setPhase('live');
+}
+
+function computeCamStats() {
+  if (recording.length === 0) return;
+  let n = recording[0].length;
+  let maxTravel = 0;
+  for (let i = 0; i < n; i++) {
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (let f = 0; f < recording.length; f++) {
+      let p = recording[f][i];
+      if (p.x < minX) minX = p.x;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.y > maxY) maxY = p.y;
+    }
+    let travel = Math.max(maxX - minX, maxY - minY);
+    if (travel > maxTravel) maxTravel = travel;
+  }
+  document.getElementById('st-gx').textContent = n;
+  document.getElementById('st-gy').textContent = n;
+  let grooveDepth = parseFloat(document.getElementById('sl-groove').value);
+  document.getElementById('st-travel').textContent = maxTravel.toFixed(1) + 'u → ' + grooveDepth + 'mm';
+}
+
+// ===== PHASE MANAGEMENT =====
+function setPhase(p) {
+  phase = p;
+  replayFrame = 0;
+
+  document.getElementById('btn-live').classList.toggle('active', p === 'live');
+  document.getElementById('btn-record').classList.toggle('active', p === 'recording');
+  document.getElementById('btn-replay').classList.toggle('active', p === 'replay');
+  document.getElementById('btn-cam').classList.toggle('active', p === 'cam');
+
+  let labels = { live: 'LIVE BOIDS', recording: 'RECORDING...', replay: 'REPLAY', cam: 'BARREL CAM VIEW' };
+  document.getElementById('phase-label').textContent = labels[p] || p;
+  document.getElementById('st-phase').textContent = p.toUpperCase();
+  document.getElementById('hud-mode').textContent = p;
+}
+
+// ===== EXPORT STL (barrel cam as downloadable file) =====
+function exportCamSTL() {
+  if (recording.length === 0) { alert('No recording to export'); return; }
+
+  let n = recording[0].length;
+  let camDia = parseFloat(document.getElementById('sl-cam-dia').value);
+  let camLen = parseFloat(document.getElementById('sl-cam-len').value);
+  let grooveD = parseFloat(document.getElementById('sl-groove').value);
+  let baseR = camDia / 2;
+
+  // Find global min/max for normalization
+  let allMin = Infinity, allMax = -Infinity;
+  for (let f = 0; f < recording.length; f++) {
+    for (let i = 0; i < n; i++) {
+      let v = recording[f][i].x; // X cam
+      if (v < allMin) allMin = v;
+      if (v > allMax) allMax = v;
+    }
+  }
+  let range = allMax - allMin;
+  if (range < 0.01) range = 1;
+
+  // Generate binary STL for Cam X
+  // Each groove is a strip around the cylinder at a unique Z position
+  let thetaSteps = recording.length; // one step per frame
+  let triangles = [];
+
+  for (let gi = 0; gi < n; gi++) {
+    let zPos = (gi / (n - 1)) * camLen; // axial position of this groove
+    let grooveW = camLen / n * 0.8; // groove width (80% of slot)
+
+    for (let ti = 0; ti < thetaSteps; ti++) {
+      let t0 = (ti / thetaSteps) * Math.PI * 2;
+      let t1 = ((ti + 1) / thetaSteps) * Math.PI * 2;
+
+      // Groove depth at this angle
+      let d0 = ((recording[ti][gi].x - allMin) / range) * grooveD;
+      let d1 = ((recording[(ti + 1) % thetaSteps][gi].x - allMin) / range) * grooveD;
+
+      let r0 = baseR - d0;
+      let r1 = baseR - d1;
+
+      // Two triangles for the groove bottom strip
+      let z0 = zPos - grooveW / 2;
+      let z1 = zPos + grooveW / 2;
+
+      // Vertices
+      let v00 = [r0 * Math.cos(t0), r0 * Math.sin(t0), z0];
+      let v01 = [r0 * Math.cos(t0), r0 * Math.sin(t0), z1];
+      let v10 = [r1 * Math.cos(t1), r1 * Math.sin(t1), z0];
+      let v11 = [r1 * Math.cos(t1), r1 * Math.sin(t1), z1];
+
+      triangles.push([v00, v10, v01]);
+      triangles.push([v01, v10, v11]);
+    }
+  }
+
+  // Build binary STL
+  let numTri = triangles.length;
+  let bufSize = 80 + 4 + numTri * 50;
+  let buf = new ArrayBuffer(bufSize);
+  let view = new DataView(buf);
+
+  // Header (80 bytes)
+  let header = 'Murmuration Cam X - Boids encoded barrel cam';
+  for (let i = 0; i < 80; i++) {
+    view.setUint8(i, i < header.length ? header.charCodeAt(i) : 0);
+  }
+  view.setUint32(80, numTri, true);
+
+  let offset = 84;
+  for (let t = 0; t < numTri; t++) {
+    let tri = triangles[t];
+    // Normal (simplified — just cross product)
+    let e1 = [tri[1][0] - tri[0][0], tri[1][1] - tri[0][1], tri[1][2] - tri[0][2]];
+    let e2 = [tri[2][0] - tri[0][0], tri[2][1] - tri[0][1], tri[2][2] - tri[0][2]];
+    let nx = e1[1] * e2[2] - e1[2] * e2[1];
+    let ny = e1[2] * e2[0] - e1[0] * e2[2];
+    let nz = e1[0] * e2[1] - e1[1] * e2[0];
+    let nl = Math.sqrt(nx * nx + ny * ny + nz * nz);
+    if (nl > 0) { nx /= nl; ny /= nl; nz /= nl; }
+
+    view.setFloat32(offset, nx, true); offset += 4;
+    view.setFloat32(offset, ny, true); offset += 4;
+    view.setFloat32(offset, nz, true); offset += 4;
+
+    for (let v = 0; v < 3; v++) {
+      view.setFloat32(offset, tri[v][0], true); offset += 4;
+      view.setFloat32(offset, tri[v][1], true); offset += 4;
+      view.setFloat32(offset, tri[v][2], true); offset += 4;
+    }
+    view.setUint16(offset, 0, true); offset += 2;
+  }
+
+  // Download
+  let blob = new Blob([buf], { type: 'application/octet-stream' });
+  let url = URL.createObjectURL(blob);
+  let a = document.createElement('a');
+  a.href = url;
+  a.download = 'murmuration_cam_x.stl';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ===== P5 SKETCH =====
+initBoids(NUM_BIRDS);
+
+const sketch = (p) => {
+  p.setup = () => {
+    let c = document.getElementById('canvas-container');
+    cw = c.clientWidth; ch = c.clientHeight;
+    p.createCanvas(cw, ch, p.WEBGL).parent(c);
+  };
+
+  p.windowResized = () => {
+    let c = document.getElementById('canvas-container');
+    cw = c.clientWidth; ch = c.clientHeight;
+    p.resizeCanvas(cw, ch);
+  };
+
+  p.keyPressed = () => {
+    if (p.key === '1') setPhase('live');
+    if (p.key === '2' && recording.length === 0) startRecording();
+    if (p.key === '3' && recording.length > 0) setPhase('replay');
+    if (p.key === '4' && recording.length > 0) setPhase('cam');
+    if (p.key === 'r' || p.key === 'R') resetBoids();
+    if (p.key === 'v' || p.key === 'V') {
+      let views = ['both', 'camX', 'camY', 'overlay'];
+      let idx = views.indexOf(camView);
+      camView = views[(idx + 1) % views.length];
+    }
+  };
+
+  p.draw = () => {
+    p.background(18, 18, 42);
+
+    if (phase === 'live') {
+      updateBoids();
+      drawFlock(p, boids);
+    } else if (phase === 'recording') {
+      // Run Boids at recording sample rate
+      // Multiple sim steps per draw frame if needed
+      let fps = parseInt(document.getElementById('sl-fps').value);
+      let simStepsPerFrame = Math.max(1, Math.round(fps / 60));
+      for (let s = 0; s < simStepsPerFrame; s++) {
+        updateBoids();
+        recordFrame();
+        let dur = parseInt(document.getElementById('sl-dur').value);
+        if (recFrame >= dur * fps) break;
+      }
+      drawFlock(p, boids);
+      // Recording indicator
+      drawRecordingOverlay(p);
+    } else if (phase === 'replay') {
+      if (recording.length > 0) {
+        let frame = recording[replayFrame % recording.length];
+        drawFlockFromRecording(p, frame);
+        replayFrame++;
+      }
+    } else if (phase === 'cam') {
+      camRotAngle += 0.005;
+      drawBarrelCams(p);
+    }
+
+    // HUD
+    document.getElementById('hud-fps').textContent = Math.round(p.frameRate());
+    document.getElementById('hud-birds').textContent = boids.length;
+    document.getElementById('hud-view').textContent = phase === 'cam' ? camView : 'flock';
+  };
+
+  // ===== DRAW FLOCK (live) =====
+  function drawFlock(p, birds) {
+    p.camera(0, 0, (ch / 2) / Math.tan(Math.PI / 6), 0, 0, 0, 0, 1, 0);
+    p.noLights();
+
+    let scale = Math.min(cw, ch) * 0.4 / BOUNDARY;
+
+    // Boundary circle (faint)
+    p.noFill();
+    p.stroke(60, 55, 80);
+    p.strokeWeight(0.5);
+    p.ellipse(0, 0, BOUNDARY * 2 * scale, BOUNDARY * 2 * scale);
+
+    for (let i = 0; i < birds.length; i++) {
+      let b = birds[i];
+      let bx = b.x * scale, by = b.y * scale;
+      let speed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
+      let t = Math.min(speed / parseFloat(document.getElementById('sl-speed').value), 1);
+
+      let cr = p.lerp(170, 255, t);
+      let cg = p.lerp(170, 240, t);
+      let cb = p.lerp(210, 190, t);
+
+      let heading = Math.atan2(b.vy, b.vx);
+      let sz = 5;
+
+      p.push();
+      p.translate(bx, by);
+      p.rotate(heading);
+      p.noStroke();
+      p.fill(cr, cg, cb);
+      p.triangle(sz, 0, -sz * 0.6, sz * 0.4, -sz * 0.6, -sz * 0.4);
+      p.pop();
+    }
+  }
+
+  // ===== DRAW FLOCK FROM RECORDING =====
+  function drawFlockFromRecording(p, frame) {
+    p.camera(0, 0, (ch / 2) / Math.tan(Math.PI / 6), 0, 0, 0, 0, 1, 0);
+    p.noLights();
+
+    let scale = Math.min(cw, ch) * 0.4 / BOUNDARY;
+    let prevFrame = recording[(replayFrame - 1 + recording.length) % recording.length];
+
+    // Boundary
+    p.noFill();
+    p.stroke(60, 55, 80);
+    p.strokeWeight(0.5);
+    p.ellipse(0, 0, BOUNDARY * 2 * scale, BOUNDARY * 2 * scale);
+
+    // Progress bar
+    let prog = (replayFrame % recording.length) / recording.length;
+    p.stroke(139, 69, 19, 150);
+    p.strokeWeight(2);
+    p.line(-cw / 2 + 10, ch / 2 - 10, -cw / 2 + 10 + (cw - 20) * prog, ch / 2 - 10);
+
+    for (let i = 0; i < frame.length; i++) {
+      let bx = frame[i].x * scale, by = frame[i].y * scale;
+
+      // Velocity from frame difference
+      let vx = frame[i].x - prevFrame[i].x;
+      let vy = frame[i].y - prevFrame[i].y;
+      let speed = Math.sqrt(vx * vx + vy * vy);
+      let t = Math.min(speed / 3, 1);
+
+      let cr = p.lerp(170, 255, t);
+      let cg = p.lerp(170, 240, t);
+      let cb = p.lerp(210, 190, t);
+
+      let heading = Math.atan2(vy, vx);
+      let sz = 5;
+
+      p.push();
+      p.translate(bx, by);
+      p.rotate(heading);
+      p.noStroke();
+      p.fill(cr, cg, cb);
+      p.triangle(sz, 0, -sz * 0.6, sz * 0.4, -sz * 0.6, -sz * 0.4);
+      p.pop();
+    }
+
+    // Frame counter
+    p.fill(100);
+    p.textSize(9);
+    p.textAlign(p.RIGHT, p.BOTTOM);
+    p.text('Frame ' + (replayFrame % recording.length) + ' / ' + recording.length, cw / 2 - 10, ch / 2 - 15);
+  }
+
+  // ===== RECORDING OVERLAY =====
+  function drawRecordingOverlay(p) {
+    p.camera(0, 0, (ch / 2) / Math.tan(Math.PI / 6), 0, 0, 0, 0, 1, 0);
+    p.noLights();
+
+    // Pulsing red dot
+    let pulse = (Math.sin(Date.now() * 0.005) + 1) * 0.5;
+    p.fill(200, 40, 40, 100 + pulse * 155);
+    p.noStroke();
+    p.ellipse(-cw / 2 + 25, -ch / 2 + 25, 12, 12);
+
+    // Progress
+    let dur = parseInt(document.getElementById('sl-dur').value);
+    let fps = parseInt(document.getElementById('sl-fps').value);
+    let total = dur * fps;
+    let prog = recFrame / total;
+    p.stroke(200, 40, 40, 150);
+    p.strokeWeight(3);
+    p.line(-cw / 2 + 10, ch / 2 - 10, -cw / 2 + 10 + (cw - 20) * prog, ch / 2 - 10);
+
+    p.fill(200, 40, 40);
+    p.textSize(10);
+    p.textAlign(p.LEFT, p.TOP);
+    p.text('REC ' + recFrame + '/' + total, -cw / 2 + 38, -ch / 2 + 19);
+  }
+
+  // ===== BARREL CAM 3D VIEW =====
+  function drawBarrelCams(p) {
+    if (recording.length === 0) return;
+
+    let n = recording[0].length;
+    let camDia = parseFloat(document.getElementById('sl-cam-dia').value);
+    let camLen = parseFloat(document.getElementById('sl-cam-len').value);
+    let grooveD = parseFloat(document.getElementById('sl-groove').value);
+    let baseR = camDia / 2;
+
+    // Find min/max for normalization
+    let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
+    for (let f = 0; f < recording.length; f++) {
+      for (let i = 0; i < n; i++) {
+        let pt = recording[f][i];
+        if (pt.x < xMin) xMin = pt.x;
+        if (pt.x > xMax) xMax = pt.x;
+        if (pt.y < yMin) yMin = pt.y;
+        if (pt.y > yMax) yMax = pt.y;
+      }
+    }
+    let xRange = xMax - xMin; if (xRange < 0.01) xRange = 1;
+    let yRange = yMax - yMin; if (yRange < 0.01) yRange = 1;
+
+    // Camera
+    let dist = camLen * 2.5;
+    let eyeX = dist * Math.sin(camRotAngle) * 0.8;
+    let eyeZ = dist * Math.cos(camRotAngle) * 0.8;
+    let eyeY = dist * -0.3;
+    p.camera(eyeX, eyeY, eyeZ, 0, 0, 0, 0, -1, 0);
+
+    p.ambientLight(80);
+    p.directionalLight(180, 175, 165, -0.5, 1, -0.3);
+    p.directionalLight(60, 60, 80, 0.5, -0.5, 0.5);
+
+    let thetaSteps = Math.min(recording.length, 180); // cap for performance
+    let frameStep = Math.max(1, Math.floor(recording.length / thetaSteps));
+
+    // Draw Cam X (left) and Cam Y (right)
+    let camSpacing = camLen * 0.8;
+    let cams = [];
+    if (camView === 'both' || camView === 'camX') cams.push({ offset: -camSpacing, axis: 'x', color: [180, 100, 80] });
+    if (camView === 'both' || camView === 'camY') cams.push({ offset: camSpacing, axis: 'y', color: [80, 120, 180] });
+    if (camView === 'overlay') {
+      cams.push({ offset: 0, axis: 'x', color: [180, 100, 80] });
+      cams.push({ offset: 0, axis: 'y', color: [80, 120, 180] });
+    }
+
+    for (let cam of cams) {
+      p.push();
+      p.translate(cam.offset, 0, 0);
+
+      // Draw cam surface as triangle strips
+      for (let gi = 0; gi < n - 1; gi++) {
+        let z0 = (gi / (n - 1)) * camLen - camLen / 2;
+        let z1 = ((gi + 1) / (n - 1)) * camLen - camLen / 2;
+
+        p.beginShape(p.TRIANGLE_STRIP);
+        p.noStroke();
+
+        for (let ti = 0; ti <= thetaSteps; ti++) {
+          let theta = (ti / thetaSteps) * Math.PI * 2;
+          let fi = (ti % thetaSteps) * frameStep;
+          if (fi >= recording.length) fi = recording.length - 1;
+
+          let val0, val1;
+          if (cam.axis === 'x') {
+            val0 = (recording[fi][gi].x - xMin) / xRange;
+            val1 = (recording[fi][gi + 1].x - xMin) / xRange;
+          } else {
+            val0 = (recording[fi][gi].y - yMin) / yRange;
+            val1 = (recording[fi][gi + 1].y - yMin) / yRange;
+          }
+
+          let r0 = baseR - val0 * grooveD;
+          let r1 = baseR - val1 * grooveD;
+
+          let x0 = r0 * Math.cos(theta);
+          let y0 = r0 * Math.sin(theta);
+          let x1 = r1 * Math.cos(theta);
+          let y1 = r1 * Math.sin(theta);
+
+          // Color by groove depth
+          let t0 = val0, t1 = val1;
+          p.fill(
+            p.lerp(cam.color[0] * 0.5, cam.color[0], t0),
+            p.lerp(cam.color[1] * 0.5, cam.color[1], t0),
+            p.lerp(cam.color[2] * 0.5, cam.color[2], t0)
+          );
+          p.vertex(x0, z0, y0);
+          p.fill(
+            p.lerp(cam.color[0] * 0.5, cam.color[0], t1),
+            p.lerp(cam.color[1] * 0.5, cam.color[1], t1),
+            p.lerp(cam.color[2] * 0.5, cam.color[2], t1)
+          );
+          p.vertex(x1, z1, y1);
+        }
+        p.endShape();
+      }
+
+      // Center axis
+      p.stroke(100, 100, 100, 80);
+      p.strokeWeight(1);
+      p.line(0, -camLen / 2 - 10, 0, 0, camLen / 2 + 10, 0);
+
+      // Label
+      p.pop();
+    }
+
+    // 2D overlay labels
+    p.camera(0, 0, (ch / 2) / Math.tan(Math.PI / 6), 0, 0, 0, 0, 1, 0);
+    p.noLights();
+
+    if (camView === 'both') {
+      p.fill(180, 100, 80);
+      p.noStroke();
+      p.textSize(12);
+      p.textAlign(p.CENTER, p.TOP);
+      p.text('CAM X (horizontal motion)', -cw / 4, -ch / 2 + 10);
+      p.fill(80, 120, 180);
+      p.text('CAM Y (vertical motion)', cw / 4, -ch / 2 + 10);
+    }
+
+    p.fill(100);
+    p.textSize(8);
+    p.textAlign(p.CENTER, p.BOTTOM);
+    p.text(n + ' grooves per cam · ' + recording.length + ' frames encoded · V: cycle views', 0, ch / 2 - 5);
+  }
+};
+
+new p5(sketch, 'canvas-container');
+</script>
+</body>
+</html>

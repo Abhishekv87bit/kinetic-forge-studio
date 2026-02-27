@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Murmuration — 3 Mechanical Options Compared</title>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #12122a; overflow: hidden; font-family: 'Georgia', serif; }
+  #canvas-container { width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<div id="canvas-container"></div>
+<script>
+// ============================================================
+// MURMURATION — 3 MECHANICAL OPTIONS COMPARED
+// Same Boids sim drives all three panels.
+// View from below (XY plane = ceiling, size = depth/closeness)
+// ============================================================
+
+const NUM_BIRDS = 49;
+const BOUNDARY = 140;
+const MAX_SPEED = 2.8;
+const MIN_SPEED = 0.6;
+const MAX_FORCE = 0.09;
+const MAX_TRAIL = 30;
+
+// ===== BOIDS STATE =====
+let boids = [];
+let prevVy = []; // previous frame vy for acceleration
+
+function initBoids() {
+  boids = [];
+  prevVy = [];
+  for (let i = 0; i < NUM_BIRDS; i++) {
+    boids.push({
+      x: (Math.random() - 0.5) * BOUNDARY * 0.5,
+      y: (Math.random() - 0.5) * BOUNDARY * 0.5,
+      vx: (Math.random() - 0.5) * 2,
+      vy: (Math.random() - 0.5) * 2
+    });
+    prevVy.push(0);
+  }
+}
+
+function updateBoids() {
+  for (let i = 0; i < NUM_BIRDS; i++) prevVy[i] = boids[i].vy;
+
+  for (let i = 0; i < boids.length; i++) {
+    let b = boids[i];
+    let sx = 0, sy = 0, sc = 0;
+    let ax = 0, ay = 0, ac = 0;
+    let cx = 0, cy = 0, cc = 0;
+
+    for (let j = 0; j < boids.length; j++) {
+      if (i === j) continue;
+      let dx = boids[j].x - b.x, dy = boids[j].y - b.y;
+      let d = Math.sqrt(dx * dx + dy * dy);
+      if (d < 1) d = 1;
+
+      if (d < 22) { sx -= dx / d; sy -= dy / d; sc++; }
+      if (d < 48) { ax += boids[j].vx; ay += boids[j].vy; ac++; }
+      if (d < 60) { cx += boids[j].x; cy += boids[j].y; cc++; }
+    }
+
+    let fx = 0, fy = 0;
+    if (sc > 0) { fx += sx / sc * 1.6; fy += sy / sc * 1.6; }
+    if (ac > 0) { fx += (ax / ac - b.vx) * 0.12; fy += (ay / ac - b.vy) * 0.12; }
+    if (cc > 0) { fx += (cx / cc - b.x) * 0.007; fy += (cy / cc - b.y) * 0.007; }
+
+    // Soft boundary
+    let bf = 0.02;
+    if (b.x < -BOUNDARY) fx += bf * (-BOUNDARY - b.x);
+    if (b.x > BOUNDARY) fx -= bf * (b.x - BOUNDARY);
+    if (b.y < -BOUNDARY) fy += bf * (-BOUNDARY - b.y);
+    if (b.y > BOUNDARY) fy -= bf * (b.y - BOUNDARY);
+
+    let fMag = Math.sqrt(fx * fx + fy * fy);
+    if (fMag > MAX_FORCE) { fx *= MAX_FORCE / fMag; fy *= MAX_FORCE / fMag; }
+
+    b.vx += fx; b.vy += fy;
+    let spd = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
+    if (spd > MAX_SPEED) { b.vx *= MAX_SPEED / spd; b.vy *= MAX_SPEED / spd; }
+    if (spd < MIN_SPEED) { b.vx *= 1.05; b.vy *= 1.05; }
+
+    b.x += b.vx; b.y += b.vy;
+  }
+}
+
+// ===== HOME POSITIONS (Fibonacci sunflower for organic cloud) =====
+let homePos = [];
+function initHomes() {
+  homePos = [];
+  let golden = (1 + Math.sqrt(5)) / 2;
+  for (let i = 0; i < NUM_BIRDS; i++) {
+    let r = BOUNDARY * 0.55 * Math.sqrt(i / NUM_BIRDS);
+    let theta = 2 * Math.PI * i / (golden * golden);
+    homePos.push({ x: r * Math.cos(theta), y: r * Math.sin(theta) });
+  }
+}
+
+// ===== OPTION B: PENDULUM STATE =====
+// Parametric pendulum: effective gravity varies with cam vertical position
+let pendX = [], pendVX = [], pendY = [], pendVY = [];
+
+function initPendulums() {
+  pendX = []; pendVX = []; pendY = []; pendVY = [];
+  for (let i = 0; i < NUM_BIRDS; i++) {
+    pendX.push((Math.random() - 0.5) * 8);
+    pendVX.push((Math.random() - 0.5) * 0.2);
+    pendY.push((Math.random() - 0.5) * 8);
+    pendVY.push((Math.random() - 0.5) * 0.2);
+  }
+}
+
+function updatePendulums() {
+  for (let i = 0; i < NUM_BIRDS; i++) {
+    // Cam gives vertical position from Boids Y
+    let camNorm = (boids[i].y + BOUNDARY) / (2 * BOUNDARY); // 0..1
+    // Effective pendulum length varies: shorter when pulled down (closer to viewer)
+    let effL = 0.4 + camNorm * 0.8;
+    let g = 0.025;
+    let omega0sq = g / effL;
+    let damping = 0.004;
+
+    // Vertical acceleration = drive for parametric resonance
+    let vertAccel = boids[i].vy - prevVy[i];
+
+    // X pendulum
+    pendVX[i] += -omega0sq * pendX[i] - damping * pendVX[i]
+                 + vertAccel * 0.6 * (pendX[i] * 0.05 + 0.02);
+    pendVX[i] += (Math.random() - 0.5) * 0.003;
+    pendX[i] += pendVX[i];
+    pendX[i] = Math.max(-20, Math.min(20, pendX[i]));
+
+    // Y pendulum (different phase)
+    pendVY[i] += -omega0sq * pendY[i] - damping * pendVY[i]
+                 + vertAccel * 0.5 * (pendY[i] * 0.05 - 0.015);
+    pendVY[i] += (Math.random() - 0.5) * 0.003;
+    pendY[i] += pendVY[i];
+    pendY[i] = Math.max(-20, Math.min(20, pendY[i]));
+  }
+}
+
+// ===== OPTION C: CABLE ANGLES =====
+let cableAngle = [];
+function initCables() {
+  cableAngle = [];
+  for (let i = 0; i < NUM_BIRDS; i++) {
+    cableAngle.push(Math.random() * Math.PI * 2);
+  }
+}
+
+// ===== TRAILS =====
+let trails = [[], [], []]; // per panel
+function initTrails() {
+  trails = [[], [], []];
+  for (let p = 0; p < 3; p++) {
+    for (let i = 0; i < NUM_BIRDS; i++) trails[p].push([]);
+  }
+}
+let showTrails = true;
+
+// ===== INIT =====
+initBoids();
+initHomes();
+initPendulums();
+initCables();
+initTrails();
+
+// ===== P5 SKETCH =====
+const sketch = (p) => {
+  let cw, ch;
+  let paused = false;
+
+  p.setup = () => {
+    let c = document.getElementById('canvas-container');
+    cw = c.clientWidth;
+    ch = c.clientHeight;
+    p.createCanvas(cw, ch).parent(c);
+  };
+
+  p.windowResized = () => {
+    let c = document.getElementById('canvas-container');
+    cw = c.clientWidth; ch = c.clientHeight;
+    p.resizeCanvas(cw, ch);
+  };
+
+  p.keyPressed = () => {
+    if (p.key === ' ') paused = !paused;
+    if (p.key === 't' || p.key === 'T') showTrails = !showTrails;
+    if (p.key === 'r' || p.key === 'R') {
+      initBoids(); initPendulums(); initTrails();
+    }
+  };
+
+  p.draw = () => {
+    p.background(18, 18, 42);
+
+    if (!paused) {
+      updateBoids();
+      updatePendulums();
+    }
+
+    let panelW = cw / 3;
+    let topY = 90;
+    let botY = ch - 50;
+    let viewH = botY - topY;
+
+    // === DRAW 3 PANELS ===
+    for (let pi = 0; pi < 3; pi++) {
+      let px = pi * panelW;
+      let centerX = px + panelW / 2;
+      let centerY = topY + viewH / 2;
+      let scale = Math.min(panelW, viewH) * 0.38 / BOUNDARY;
+
+      // Panel divider
+      if (pi > 0) {
+        p.stroke(50, 50, 80);
+        p.strokeWeight(1);
+        p.line(px, 0, px, ch);
+      }
+
+      // --- HEADER ---
+      let letter = ['A', 'B', 'C'][pi];
+      let title = ['Two Barrel Cams', 'Single Cam + Pendulum', 'Angled Cable Routing'][pi];
+      let sub = [
+        'Full 2D control — X & Y from cam shafts',
+        'Vertical from cam — lateral from physics',
+        'Vertical from cam — diagonal via pulley angle'
+      ][pi];
+
+      p.noStroke();
+      p.fill(140, 135, 120);
+      p.textAlign(p.CENTER, p.TOP);
+      p.textSize(10);
+      p.text('Option ' + letter, centerX, 6);
+
+      p.fill(220, 215, 200);
+      p.textSize(15);
+      p.textFont('Georgia');
+      p.text(title, centerX, 22);
+
+      p.fill(120, 115, 100);
+      p.textSize(9);
+      p.text(sub, centerX, 42);
+
+      // --- MECHANISM SCHEMATIC (small) ---
+      drawMechanism(p, centerX, 68, panelW * 0.6, pi);
+
+      // --- BIRD CLOUD ---
+      for (let i = 0; i < NUM_BIRDS; i++) {
+        let bx, by, depth;
+        let speed = Math.sqrt(boids[i].vx * boids[i].vx + boids[i].vy * boids[i].vy);
+
+        if (pi === 0) {
+          // OPTION A: Pure Boids XY — perfect murmuration replay
+          bx = boids[i].x * scale;
+          by = boids[i].y * scale;
+          depth = 0.6; // uniform depth
+        } else if (pi === 1) {
+          // OPTION B: Home position + pendulum sway + depth from cam
+          bx = homePos[i].x * scale + pendX[i] * scale * 0.7;
+          by = homePos[i].y * scale + pendY[i] * scale * 0.7;
+          // Depth from cam = Boids Y normalized
+          depth = (boids[i].y + BOUNDARY) / (2 * BOUNDARY); // 0=far, 1=close
+        } else {
+          // OPTION C: Home position + fixed diagonal displacement
+          let camNorm = boids[i].y / BOUNDARY; // -1 to 1
+          let tilt = 0.35; // sin(cable tilt ~20°)
+          let ca = cableAngle[i];
+          bx = homePos[i].x * scale + camNorm * BOUNDARY * scale * tilt * Math.cos(ca);
+          by = homePos[i].y * scale + camNorm * BOUNDARY * scale * tilt * Math.sin(ca);
+          depth = 0.5 + camNorm * 0.3;
+        }
+
+        // Convert to screen coordinates relative to panel center
+        let sx = centerX + bx;
+        let sy = centerY + by;
+
+        // Trail
+        if (!paused) {
+          trails[pi][i].push({ x: sx, y: sy });
+          if (trails[pi][i].length > MAX_TRAIL) trails[pi][i].shift();
+        }
+
+        if (showTrails && trails[pi][i].length > 1) {
+          for (let t = 1; t < trails[pi][i].length; t++) {
+            let a = (t / trails[pi][i].length) * 35;
+            p.stroke(180, 175, 160, a);
+            p.strokeWeight(0.5);
+            let t0 = trails[pi][i][t - 1], t1 = trails[pi][i][t];
+            p.line(t0.x, t0.y, t1.x, t1.y);
+          }
+        }
+
+        // Bird size from depth (bigger = closer to viewer below)
+        let birdSize = p.lerp(2.5, 7, depth);
+
+        // Color: speed-based warm gradient
+        let st = Math.min(speed / MAX_SPEED, 1);
+        let cr = p.lerp(170, 255, st);
+        let cg = p.lerp(170, 240, st);
+        let cb = p.lerp(210, 190, st);
+        let alpha = p.lerp(120, 255, depth);
+
+        // Heading
+        let heading;
+        if (pi === 0) {
+          heading = Math.atan2(boids[i].vy, boids[i].vx);
+        } else if (pi === 1) {
+          // Blend Boids heading with pendulum velocity
+          heading = Math.atan2(
+            boids[i].vy * 0.3 + pendVY[i] * 3,
+            boids[i].vx * 0.3 + pendVX[i] * 3
+          );
+        } else {
+          // Heading along cable angle (dominant) + Boids (subtle)
+          let camVel = boids[i].vy - prevVy[i];
+          heading = cableAngle[i] + Math.sign(camVel) * 0.3;
+        }
+
+        // Draw bird triangle
+        p.push();
+        p.translate(sx, sy);
+        p.rotate(heading);
+        p.noStroke();
+        p.fill(cr, cg, cb, alpha);
+        p.triangle(
+          birdSize, 0,
+          -birdSize * 0.6, birdSize * 0.4,
+          -birdSize * 0.6, -birdSize * 0.4
+        );
+        p.pop();
+      }
+
+      // --- STATS BAR ---
+      let stats, starColor;
+      if (pi === 0) {
+        stats = [
+          'Fidelity: ★★★★★   100% Boids replay',
+          '2 shafts · 128 grooves · 128 cables',
+          'Serpentine, split, reform — all possible'
+        ];
+        starColor = [100, 210, 130];
+      } else if (pi === 1) {
+        stats = [
+          'Fidelity: ★★★☆☆   Emergent lateral sway',
+          '1 shaft · 64 grooves · 64 cables',
+          'Organic wobble — no directional control'
+        ];
+        starColor = [210, 190, 100];
+      } else {
+        stats = [
+          'Fidelity: ★★☆☆☆   Fixed-direction pulsing',
+          '1 shaft · 64 grooves · 64 pulleys',
+          'Each bird locked to one diagonal — repetitive'
+        ];
+        starColor = [210, 120, 90];
+      }
+
+      p.noStroke();
+      p.fill(starColor[0], starColor[1], starColor[2]);
+      p.textSize(8);
+      p.textAlign(p.CENTER);
+      p.text(stats[0], centerX, botY + 8);
+      p.fill(100, 95, 85);
+      p.text(stats[1], centerX, botY + 20);
+      p.fill(90, 85, 75);
+      p.textSize(7);
+      p.text(stats[2], centerX, botY + 32);
+    }
+
+    // --- GLOBAL FOOTER ---
+    p.fill(70, 65, 55);
+    p.textSize(8);
+    p.textAlign(p.LEFT, p.BOTTOM);
+    p.text('Same Boids simulation (49 birds) drives all three — only the mechanical translation differs', 10, ch - 4);
+    p.textAlign(p.RIGHT, p.BOTTOM);
+    p.text('Space: pause   T: trails (' + (showTrails ? 'ON' : 'OFF') + ')   R: reset   ' + Math.round(p.frameRate()) + ' fps', cw - 10, ch - 4);
+  };
+
+  // --- MECHANISM SCHEMATIC ---
+  function drawMechanism(p, cx, cy, w, panel) {
+    p.push();
+    p.translate(cx, cy);
+    let hw = w / 2;
+
+    if (panel === 0) {
+      // Two shafts, two cables per bird
+      // Ceiling
+      p.stroke(90, 85, 75);
+      p.strokeWeight(1);
+      p.line(-hw, -8, hw, -8);
+
+      // Bird
+      p.fill(200, 190, 170);
+      p.noStroke();
+      p.ellipse(0, -4, 4, 3);
+
+      // Two cables down to two cam shafts
+      p.stroke(180, 160, 120, 140);
+      p.strokeWeight(0.7);
+      p.line(0, -4, -hw * 0.35, 8); // cable to Cam X
+      p.line(0, -4, hw * 0.35, 8);  // cable to Cam Y
+
+      // Cam shafts
+      p.fill(140, 100, 60);
+      p.noStroke();
+      p.ellipse(-hw * 0.35, 10, 10, 6);
+      p.ellipse(hw * 0.35, 10, 10, 6);
+      p.fill(80, 75, 65);
+      p.textSize(6);
+      p.textAlign(p.CENTER);
+      p.text('Cam X', -hw * 0.35, 20);
+      p.text('Cam Y', hw * 0.35, 20);
+
+      // Arrows showing 2D motion
+      p.stroke(100, 210, 130, 150);
+      p.strokeWeight(1);
+      drawArrow(p, hw * 0.6, -2, hw * 0.6 + 10, -2); // right
+      drawArrow(p, hw * 0.6, -2, hw * 0.6, -12);      // up
+      p.fill(100, 210, 130, 150);
+      p.noStroke();
+      p.textSize(5);
+      p.text('2D', hw * 0.6 + 6, -14);
+
+    } else if (panel === 1) {
+      // One shaft, pendulum swing
+      p.stroke(90, 85, 75);
+      p.strokeWeight(1);
+      p.line(-hw, -8, hw, -8);
+
+      // Cable + pendulum swing (animated)
+      let swt = Date.now() * 0.004;
+      let swing = Math.sin(swt) * 12;
+
+      p.stroke(180, 160, 120, 140);
+      p.strokeWeight(0.7);
+      p.line(0, -8, swing, 0); // cable at angle
+
+      // Bird (swinging)
+      p.fill(200, 190, 170);
+      p.noStroke();
+      p.ellipse(swing, 2, 4, 3);
+
+      // Swing arc
+      p.noFill();
+      p.stroke(210, 190, 100, 60);
+      p.strokeWeight(0.5);
+      p.arc(0, -8, 28, 22, 0.3, Math.PI - 0.3);
+
+      // Cam shaft
+      p.fill(140, 100, 60);
+      p.noStroke();
+      p.ellipse(0, 12, 10, 6);
+      p.fill(80, 75, 65);
+      p.textSize(6);
+      p.textAlign(p.CENTER);
+      p.text('Cam Z', 0, 22);
+
+      // Arrow showing gravity / emergent
+      p.fill(210, 190, 100, 150);
+      p.noStroke();
+      p.textSize(5);
+      p.text('↕ cam + ↔ physics', 0, -15);
+
+    } else {
+      // Angled cable through pulley
+      p.stroke(90, 85, 75);
+      p.strokeWeight(1);
+      p.line(-hw, -8, hw, -8);
+
+      // Pulley on ceiling
+      p.fill(160, 140, 100);
+      p.noStroke();
+      p.ellipse(8, -8, 4, 4);
+
+      // Cable from cam up to pulley, then out at angle
+      p.stroke(180, 160, 120, 140);
+      p.strokeWeight(0.7);
+      p.line(0, 12, 8, -8);  // cable up to pulley
+      p.line(8, -8, 20, 0);  // cable out at angle to bird
+
+      // Bird
+      p.fill(200, 190, 170);
+      p.noStroke();
+      p.ellipse(20, 2, 4, 3);
+
+      // Cam shaft
+      p.fill(140, 100, 60);
+      p.noStroke();
+      p.ellipse(0, 14, 10, 6);
+      p.fill(80, 75, 65);
+      p.textSize(6);
+      p.textAlign(p.CENTER);
+      p.text('Cam Z', 0, 24);
+
+      // Arrow showing fixed direction
+      p.stroke(210, 120, 90, 150);
+      p.strokeWeight(1);
+      drawArrow(p, 22, 2, 30, -2);
+      p.fill(210, 120, 90, 150);
+      p.noStroke();
+      p.textSize(5);
+      p.text('fixed ↗', hw * 0.55, -14);
+    }
+
+    p.pop();
+  }
+
+  function drawArrow(p, x1, y1, x2, y2) {
+    p.line(x1, y1, x2, y2);
+    let ang = Math.atan2(y2 - y1, x2 - x1);
+    let hl = 4;
+    p.line(x2, y2, x2 - hl * Math.cos(ang - 0.4), y2 - hl * Math.sin(ang - 0.4));
+    p.line(x2, y2, x2 - hl * Math.cos(ang + 0.4), y2 - hl * Math.sin(ang + 0.4));
+  }
+};
+
+new p5(sketch, 'canvas-container');
+</script>
+</body>
+</html>

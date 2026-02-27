@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Murmuration — Boids vs Lissajous Grid</title>
+<style>
+  body { margin: 0; background: #0a0812; overflow: hidden; font-family: monospace; }
+  canvas { display: block; }
+  #hud {
+    position: fixed; top: 10px; left: 10px; z-index: 10;
+    background: rgba(10,8,18,0.9); padding: 12px 16px; border-radius: 8px;
+    color: #aaa; font-size: 11px; line-height: 1.7; pointer-events: none;
+  }
+  #hud .mode { color: #f0c860; font-size: 14px; font-weight: bold; letter-spacing: 1px; }
+  #hud .val { color: #eee; }
+  #hud .dim { color: #555; }
+  #panel {
+    position: fixed; top: 10px; right: 10px; z-index: 10; width: 250px;
+    background: rgba(10,8,18,0.92); padding: 14px; border-radius: 8px;
+    color: #ccc; font-size: 11px; line-height: 1.6;
+  }
+  #panel h3 { margin: 0 0 8px 0; color: #f0c860; font-size: 12px; letter-spacing: 1px; }
+  #panel label { display: block; margin: 4px 0 1px; color: #888; font-size: 10px; }
+  #panel input[type=range] { width: 100%; accent-color: #d4a44a; }
+  #panel .sv { float: right; color: #f0c860; font-size: 10px; }
+  #panel hr { border: none; border-top: 1px solid #333; margin: 8px 0; }
+  .btn {
+    display: inline-block; padding: 5px 12px; margin: 2px;
+    background: #1a1628; border: 1px solid #444; border-radius: 4px;
+    color: #aaa; cursor: pointer; font-size: 11px; font-family: monospace;
+  }
+  .btn.active { background: #2a1a10; border-color: #d4a44a; color: #f0c860; }
+  .btn:hover { background: #2a2438; }
+  #explainer {
+    position: fixed; bottom: 10px; left: 10px; right: 10px; z-index: 10;
+    background: rgba(10,8,18,0.92); padding: 10px 16px; border-radius: 8px;
+    color: #666; font-size: 10px; text-align: center; line-height: 1.5;
+  }
+  #explainer b { color: #bbb; }
+  #explainer .k { color: #f0c860; }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script>
+// ==================================================================
+// MURMURATION COMPARE: True Boids vs Lissajous Grid
+//
+// Mode A — BOIDS (Craig Reynolds 1987):
+//   Each bird: v += separation + alignment + cohesion
+//   Emergent flock behavior from 3 local rules
+//   O(n²) neighbor search, 200 agents
+//
+// Mode B — LISSAJOUS GRID:
+//   Each bird: pos = center + Σ Ai·sin(ωi·t + φi(index))
+//   Phase gradients across the flock create traveling waves
+//   Predetermined, periodic, single-motor driveable
+//
+// PURPOSE: Show user the visual difference to inform
+//          mechanical sculpture design decision
+// ==================================================================
+
+const N = 200;
+const BOUND = 280;       // spherical boundary radius
+const MARGIN = 40;       // soft boundary margin
+
+// --- Boids params (tunable) ---
+let visualRange = 75;
+let protectedRange = 20;
+let centeringFactor = 0.003;
+let avoidFactor = 0.05;
+let matchingFactor = 0.03;
+let maxSpeed = 4.5;
+let minSpeed = 2.0;
+let turnFactor = 0.3;
+
+// --- Lissajous params ---
+let lissNumHarmonics = 5;
+let lissBaseFreq = 0.15;
+let lissAmplitude = 180;
+let lissCenterSpeed = 0.02;
+let lissCenterRadius = 80;
+let lissPhaseSpread = 1.2;
+
+// --- Display ---
+let mode = 'boids'; // 'boids' or 'lissajous'
+let showTrails = false;
+let trailLen = 30;
+let birdScale = 1.0;
+let colorMode = 'speed'; // 'speed', 'density', 'uniform'
+
+// --- Camera ---
+let camDist = 700;
+let camRX = -0.3, camRY = 0.0;
+let dragging = false, lastMX, lastMY;
+let autoRotate = true;
+
+// --- Birds ---
+let birds = [];
+let lissBirds = [];
+let paused = false;
+let simTime = 0;
+
+// =========================
+// BOIDS
+// =========================
+function initBoids() {
+  birds = [];
+  for (let i = 0; i < N; i++) {
+    // Start in a loose cluster
+    let theta = Math.random() * TWO_PI;
+    let phi = Math.acos(2 * Math.random() - 1);
+    let r = 60 + Math.random() * 80;
+    birds.push({
+      x: r * Math.sin(phi) * Math.cos(theta),
+      y: r * Math.sin(phi) * Math.sin(theta),
+      z: r * Math.cos(phi),
+      vx: (Math.random() - 0.5) * 3,
+      vy: (Math.random() - 0.5) * 3,
+      vz: (Math.random() - 0.5) * 3,
+      trail: []
+    });
+  }
+}
+
+function updateBoids() {
+  for (let i = 0; i < N; i++) {
+    let b = birds[i];
+    let close_dx = 0, close_dy = 0, close_dz = 0;
+    let avg_vx = 0, avg_vy = 0, avg_vz = 0;
+    let avg_x = 0, avg_y = 0, avg_z = 0;
+    let neighbors = 0;
+
+    for (let j = 0; j < N; j++) {
+      if (i === j) continue;
+      let o = birds[j];
+      let dx = b.x - o.x, dy = b.y - o.y, dz = b.z - o.z;
+      let d2 = dx * dx + dy * dy + dz * dz;
+
+      if (d2 < protectedRange * protectedRange) {
+        // Separation
+        close_dx += dx;
+        close_dy += dy;
+        close_dz += dz;
+      } else if (d2 < visualRange * visualRange) {
+        // Alignment + Cohesion
+        avg_vx += o.vx;
+        avg_vy += o.vy;
+        avg_vz += o.vz;
+        avg_x += o.x;
+        avg_y += o.y;
+        avg_z += o.z;
+        neighbors++;
+      }
+    }
+
+    if (neighbors > 0) {
+      avg_vx /= neighbors; avg_vy /= neighbors; avg_vz /= neighbors;
+      avg_x /= neighbors; avg_y /= neighbors; avg_z /= neighbors;
+
+      // Alignment
+      b.vx += (avg_vx - b.vx) * matchingFactor;
+      b.vy += (avg_vy - b.vy) * matchingFactor;
+      b.vz += (avg_vz - b.vz) * matchingFactor;
+
+      // Cohesion
+      b.vx += (avg_x - b.x) * centeringFactor;
+      b.vy += (avg_y - b.y) * centeringFactor;
+      b.vz += (avg_z - b.z) * centeringFactor;
+    }
+
+    // Separation
+    b.vx += close_dx * avoidFactor;
+    b.vy += close_dy * avoidFactor;
+    b.vz += close_dz * avoidFactor;
+
+    // Spherical boundary (soft turn)
+    let dist = Math.sqrt(b.x * b.x + b.y * b.y + b.z * b.z);
+    if (dist > BOUND - MARGIN) {
+      let pushback = (dist - (BOUND - MARGIN)) / MARGIN * turnFactor;
+      b.vx -= (b.x / dist) * pushback;
+      b.vy -= (b.y / dist) * pushback;
+      b.vz -= (b.z / dist) * pushback;
+    }
+
+    // Speed limits
+    let speed = Math.sqrt(b.vx * b.vx + b.vy * b.vy + b.vz * b.vz);
+    if (speed > maxSpeed) {
+      b.vx = (b.vx / speed) * maxSpeed;
+      b.vy = (b.vy / speed) * maxSpeed;
+      b.vz = (b.vz / speed) * maxSpeed;
+    } else if (speed < minSpeed && speed > 0.01) {
+      b.vx = (b.vx / speed) * minSpeed;
+      b.vy = (b.vy / speed) * minSpeed;
+      b.vz = (b.vz / speed) * minSpeed;
+    }
+
+    // Update position
+    b.x += b.vx;
+    b.y += b.vy;
+    b.z += b.vz;
+
+    // Trail
+    if (showTrails) {
+      b.trail.push({ x: b.x, y: b.y, z: b.z });
+      if (b.trail.length > trailLen) b.trail.shift();
+    }
+  }
+}
+
+// =========================
+// LISSAJOUS GRID
+// =========================
+// Irrational frequency ratios — never exactly repeats
+const FREQ_RATIOS = [1.0, Math.sqrt(2), Math.PI / 2, Math.sqrt(3), (1 + Math.sqrt(5)) / 2];
+const PHASE_SEEDS = [];
+
+function initLissajous() {
+  lissBirds = [];
+  PHASE_SEEDS.length = 0;
+  for (let i = 0; i < N; i++) {
+    // Distribute starting positions on a sphere (Fibonacci spiral)
+    let golden = (1 + Math.sqrt(5)) / 2;
+    let theta = 2 * Math.PI * i / golden;
+    let phi = Math.acos(1 - 2 * (i + 0.5) / N);
+
+    // Phase seeds based on spherical position (creates spatial phase gradients)
+    let px = Math.sin(phi) * Math.cos(theta);
+    let py = Math.sin(phi) * Math.sin(theta);
+    let pz = Math.cos(phi);
+
+    PHASE_SEEDS.push({
+      px: px, py: py, pz: pz,
+      // Each harmonic gets a different phase gradient direction
+      phases: FREQ_RATIOS.map((_, h) => {
+        let angle = h * TWO_PI / FREQ_RATIOS.length;
+        return (px * Math.cos(angle) + py * Math.sin(angle) + pz * 0.5) * lissPhaseSpread * (h + 1);
+      })
+    });
+
+    lissBirds.push({
+      x: 0, y: 0, z: 0,
+      vx: 0, vy: 0, vz: 0,
+      trail: []
+    });
+  }
+}
+
+function updateLissajous() {
+  simTime += 0.016; // ~60fps timestep
+  let t = simTime;
+
+  // Flock center moves on a slow 3D Lissajous path
+  let cx = lissCenterRadius * Math.sin(lissCenterSpeed * t * 0.7);
+  let cy = lissCenterRadius * Math.sin(lissCenterSpeed * t * 1.1 + 1.2);
+  let cz = lissCenterRadius * Math.sin(lissCenterSpeed * t * 0.5 + 2.4) * 0.6;
+
+  for (let i = 0; i < N; i++) {
+    let s = PHASE_SEEDS[i];
+    let b = lissBirds[i];
+
+    let prevX = b.x, prevY = b.y, prevZ = b.z;
+
+    // Sum harmonics with irrational frequency ratios
+    let ox = 0, oy = 0, oz = 0;
+    for (let h = 0; h < lissNumHarmonics; h++) {
+      let freq = lissBaseFreq * FREQ_RATIOS[h];
+      let amp = lissAmplitude / (1 + h * 0.8); // amplitude falls with harmonic number
+      let phase = s.phases[h];
+
+      // Each axis gets a different combination of harmonics
+      // This creates the 3D looping paths
+      ox += amp * Math.sin(freq * t + phase);
+      oy += amp * Math.sin(freq * t * 1.13 + phase + h * 0.7);
+      oz += amp * Math.sin(freq * t * 0.87 + phase + h * 1.4) * 0.7;
+    }
+
+    b.x = cx + ox;
+    b.y = cy + oy;
+    b.z = cz + oz;
+
+    // Compute velocity from position delta (for rendering direction)
+    b.vx = b.x - prevX;
+    b.vy = b.y - prevY;
+    b.vz = b.z - prevZ;
+
+    // Trail
+    if (showTrails) {
+      b.trail.push({ x: b.x, y: b.y, z: b.z });
+      if (b.trail.length > trailLen) b.trail.shift();
+    }
+  }
+}
+
+// =========================
+// RENDERING
+// =========================
+function setup() {
+  createCanvas(windowWidth, windowHeight, WEBGL);
+  initBoids();
+  initLissajous();
+  buildUI();
+}
+
+function draw() {
+  background(10, 8, 18);
+
+  // Camera
+  if (autoRotate && !dragging) camRY += 0.002;
+  let ex = camDist * Math.cos(camRX) * Math.sin(camRY);
+  let ey = camDist * Math.sin(camRX);
+  let ez = camDist * Math.cos(camRX) * Math.cos(camRY);
+  camera(ex, ey, ez, 0, 0, 0, 0, -1, 0);
+
+  // Lighting — bright enough to see birds clearly
+  ambientLight(80);
+  directionalLight(200, 190, 160, 0.3, 0.8, -0.5);
+  directionalLight(60, 70, 100, -0.5, -0.3, 0.6);
+
+  // Update
+  if (!paused) {
+    if (mode === 'boids') updateBoids();
+    else updateLissajous();
+  }
+
+  let activeBirds = mode === 'boids' ? birds : lissBirds;
+
+  // Compute flock stats
+  let avgSpeed = 0, maxSpd = 0;
+  for (let b of activeBirds) {
+    let spd = Math.sqrt(b.vx * b.vx + b.vy * b.vy + b.vz * b.vz);
+    avgSpeed += spd;
+    if (spd > maxSpd) maxSpd = spd;
+  }
+  avgSpeed /= N;
+
+  // Draw boundary sphere (faint)
+  push();
+  noFill();
+  stroke(40, 35, 50);
+  strokeWeight(0.5);
+  sphere(BOUND);
+  pop();
+
+  // Draw birds
+  for (let i = 0; i < N; i++) {
+    let b = activeBirds[i];
+    let spd = Math.sqrt(b.vx * b.vx + b.vy * b.vy + b.vz * b.vz);
+
+    // Color by speed
+    let r, g, bl;
+    if (colorMode === 'speed') {
+      let t = constrain(spd / (maxSpd + 0.01), 0, 1);
+      // Warm gold (slow) → bright white-gold (fast)
+      r = lerp(200, 255, t);
+      g = lerp(150, 240, t);
+      bl = lerp(80, 200, t);
+    } else if (colorMode === 'density') {
+      // Count local neighbors
+      let localCount = 0;
+      for (let j = 0; j < N; j++) {
+        if (i === j) continue;
+        let o = activeBirds[j];
+        let dx = b.x - o.x, dy = b.y - o.y, dz = b.z - o.z;
+        if (dx * dx + dy * dy + dz * dz < 60 * 60) localCount++;
+      }
+      let t = constrain(localCount / 15, 0, 1);
+      r = lerp(80, 255, t);
+      g = lerp(120, 180, t);
+      bl = lerp(180, 80, t);
+    } else {
+      r = 200; g = 170; bl = 120;
+    }
+
+    // Trail
+    if (showTrails && b.trail.length > 1) {
+      push();
+      noFill();
+      strokeWeight(0.5);
+      beginShape();
+      for (let k = 0; k < b.trail.length; k++) {
+        let a = (k / b.trail.length) * 80;
+        stroke(r, g, bl, a);
+        vertex(b.trail[k].x, b.trail[k].y, b.trail[k].z);
+      }
+      endShape();
+      pop();
+    }
+
+    // Bird body — oriented triangle
+    push();
+    translate(b.x, b.y, b.z);
+
+    // Orient along velocity
+    if (spd > 0.1) {
+      let dir = createVector(b.vx, b.vy, b.vz).normalize();
+      // Align local X with velocity direction
+      let up = createVector(0, 1, 0);
+      let right = p5.Vector.cross(dir, up).normalize();
+      if (right.mag() < 0.001) {
+        up = createVector(1, 0, 0);
+        right = p5.Vector.cross(dir, up).normalize();
+      }
+      let realUp = p5.Vector.cross(right, dir).normalize();
+
+      // Apply rotation matrix
+      let m = [
+        dir.x, dir.y, dir.z, 0,
+        realUp.x, realUp.y, realUp.z, 0,
+        right.x, right.y, right.z, 0,
+        0, 0, 0, 1
+      ];
+      applyMatrix(...m);
+    }
+
+    // Draw bird as elongated wedge
+    let sz = 5 * birdScale;
+    fill(r, g, bl, 220);
+    noStroke();
+    beginShape(TRIANGLES);
+    // Nose
+    vertex(sz * 2.5, 0, 0);
+    vertex(-sz, sz * 0.6, 0);
+    vertex(-sz, -sz * 0.6, 0);
+    // Wing top
+    vertex(sz * 2.5, 0, 0);
+    vertex(-sz, 0, sz * 0.8);
+    vertex(-sz, sz * 0.6, 0);
+    // Wing bottom
+    vertex(sz * 2.5, 0, 0);
+    vertex(-sz, -sz * 0.6, 0);
+    vertex(-sz, 0, sz * 0.8);
+    // Back
+    vertex(-sz, sz * 0.6, 0);
+    vertex(-sz, -sz * 0.6, 0);
+    vertex(-sz, 0, sz * 0.8);
+    endShape();
+
+    pop();
+  }
+
+  // HUD
+  updateHUD(avgSpeed, maxSpd);
+}
+
+// =========================
+// HUD
+// =========================
+function updateHUD(avgSpeed, maxSpd) {
+  let h = document.getElementById('hud');
+  let modeLabel = mode === 'boids'
+    ? 'TRUE BOIDS — Emergent'
+    : 'LISSAJOUS GRID — Pre-computed';
+  let modeDesc = mode === 'boids'
+    ? 'Each bird follows 3 local rules.<br>Motion is emergent, never repeats.'
+    : 'Each bird follows harmonic equations.<br>Motion is predetermined, cam-driveable.';
+
+  h.innerHTML = `
+    <div class="mode">${modeLabel}</div>
+    <div style="color:#666;margin:4px 0 8px">${modeDesc}</div>
+    <div>Birds: <span class="val">${N}</span></div>
+    <div>Avg speed: <span class="val">${avgSpeed.toFixed(1)}</span>
+         <span class="dim">max ${maxSpd.toFixed(1)}</span></div>
+    <div>FPS: <span class="val">${Math.round(frameRate())}</span></div>
+    <div style="margin-top:6px;color:#555">
+      ${mode === 'boids'
+        ? `Visual: ${visualRange} | Protected: ${protectedRange}`
+        : `Harmonics: ${lissNumHarmonics} | Freq: ${lissBaseFreq.toFixed(2)}`
+      }
+    </div>
+  `;
+}
+
+// =========================
+// UI PANEL
+// =========================
+function buildUI() {
+  let p = document.getElementById('panel');
+
+  // Mode buttons
+  let modeDiv = document.createElement('div');
+  modeDiv.style.marginBottom = '10px';
+  modeDiv.innerHTML = `
+    <button class="btn ${mode === 'boids' ? 'active' : ''}" id="btn-boids"
+      onclick="switchMode('boids')">BOIDS (Emergent)</button>
+    <button class="btn ${mode === 'lissajous' ? 'active' : ''}" id="btn-liss"
+      onclick="switchMode('lissajous')">LISSAJOUS (Mechanical)</button>
+  `;
+  p.appendChild(modeDiv);
+
+  // --- Boids params ---
+  let boidsDiv = document.createElement('div');
+  boidsDiv.id = 'boids-params';
+  boidsDiv.innerHTML = `
+    <h3>Boids Parameters</h3>
+    <label>Visual Range <span class="sv" id="sv-vis">${visualRange}</span></label>
+    <input type="range" min="30" max="150" value="${visualRange}" step="5"
+      oninput="visualRange=+this.value;document.getElementById('sv-vis').textContent=this.value">
+    <label>Protected Range <span class="sv" id="sv-prot">${protectedRange}</span></label>
+    <input type="range" min="5" max="50" value="${protectedRange}" step="1"
+      oninput="protectedRange=+this.value;document.getElementById('sv-prot').textContent=this.value">
+    <label>Cohesion <span class="sv" id="sv-coh">${(centeringFactor*1000).toFixed(1)}</span></label>
+    <input type="range" min="0" max="20" value="${centeringFactor*1000}" step="0.5"
+      oninput="centeringFactor=this.value/1000;document.getElementById('sv-coh').textContent=(this.value*1).toFixed(1)">
+    <label>Separation <span class="sv" id="sv-sep">${(avoidFactor*100).toFixed(0)}</span></label>
+    <input type="range" min="1" max="20" value="${avoidFactor*100}" step="1"
+      oninput="avoidFactor=this.value/100;document.getElementById('sv-sep').textContent=(this.value*1).toFixed(0)">
+    <label>Alignment <span class="sv" id="sv-ali">${(matchingFactor*100).toFixed(0)}</span></label>
+    <input type="range" min="1" max="15" value="${matchingFactor*100}" step="1"
+      oninput="matchingFactor=this.value/100;document.getElementById('sv-ali').textContent=(this.value*1).toFixed(0)">
+    <label>Max Speed <span class="sv" id="sv-maxs">${maxSpeed}</span></label>
+    <input type="range" min="1" max="10" value="${maxSpeed}" step="0.5"
+      oninput="maxSpeed=+this.value;document.getElementById('sv-maxs').textContent=this.value">
+  `;
+  p.appendChild(boidsDiv);
+
+  // --- Lissajous params ---
+  let lissDiv = document.createElement('div');
+  lissDiv.id = 'liss-params';
+  lissDiv.style.display = 'none';
+  lissDiv.innerHTML = `
+    <h3>Lissajous Parameters</h3>
+    <label>Harmonics <span class="sv" id="sv-harm">${lissNumHarmonics}</span></label>
+    <input type="range" min="1" max="5" value="${lissNumHarmonics}" step="1"
+      oninput="lissNumHarmonics=+this.value;document.getElementById('sv-harm').textContent=this.value">
+    <label>Base Frequency <span class="sv" id="sv-freq">${lissBaseFreq.toFixed(2)}</span></label>
+    <input type="range" min="5" max="50" value="${lissBaseFreq*100}" step="1"
+      oninput="lissBaseFreq=this.value/100;document.getElementById('sv-freq').textContent=(this.value/100).toFixed(2)">
+    <label>Amplitude <span class="sv" id="sv-amp">${lissAmplitude}</span></label>
+    <input type="range" min="50" max="250" value="${lissAmplitude}" step="10"
+      oninput="lissAmplitude=+this.value;document.getElementById('sv-amp').textContent=this.value">
+    <label>Phase Spread <span class="sv" id="sv-spr">${lissPhaseSpread.toFixed(1)}</span></label>
+    <input type="range" min="2" max="30" value="${lissPhaseSpread*10}" step="1"
+      oninput="lissPhaseSpread=this.value/10;document.getElementById('sv-spr').textContent=(this.value/10).toFixed(1);initLissajous()">
+    <label>Flock Drift Speed <span class="sv" id="sv-drft">${lissCenterSpeed.toFixed(2)}</span></label>
+    <input type="range" min="0" max="10" value="${lissCenterSpeed*100}" step="1"
+      oninput="lissCenterSpeed=this.value/100;document.getElementById('sv-drft').textContent=(this.value/100).toFixed(2)">
+    <label>Drift Radius <span class="sv" id="sv-drr">${lissCenterRadius}</span></label>
+    <input type="range" min="0" max="200" value="${lissCenterRadius}" step="10"
+      oninput="lissCenterRadius=+this.value;document.getElementById('sv-drr').textContent=this.value">
+  `;
+  p.appendChild(lissDiv);
+
+  // --- Common controls ---
+  let commonDiv = document.createElement('div');
+  commonDiv.innerHTML = `
+    <hr>
+    <label>Display</label>
+    <button class="btn ${showTrails ? 'active' : ''}" id="btn-trail"
+      onclick="showTrails=!showTrails;this.classList.toggle('active');for(let b of birds)b.trail=[];for(let b of lissBirds)b.trail=[];">Trails</button>
+    <button class="btn" onclick="colorMode=colorMode==='speed'?'density':colorMode==='density'?'uniform':'speed';this.textContent='Color: '+colorMode">Color: ${colorMode}</button>
+    <label>Bird Size <span class="sv" id="sv-bs">${birdScale.toFixed(1)}</span></label>
+    <input type="range" min="3" max="25" value="${birdScale*10}" step="1"
+      oninput="birdScale=this.value/10;document.getElementById('sv-bs').textContent=(this.value/10).toFixed(1)">
+    <hr>
+    <button class="btn" onclick="autoRotate=!autoRotate;this.classList.toggle('active')"
+      class="btn active">Auto-rotate</button>
+    <button class="btn" onclick="initBoids();initLissajous()">Reset</button>
+  `;
+  p.appendChild(commonDiv);
+}
+
+function switchMode(m) {
+  mode = m;
+  document.getElementById('btn-boids').className = 'btn' + (m === 'boids' ? ' active' : '');
+  document.getElementById('btn-liss').className = 'btn' + (m === 'lissajous' ? ' active' : '');
+  document.getElementById('boids-params').style.display = m === 'boids' ? 'block' : 'none';
+  document.getElementById('liss-params').style.display = m === 'lissajous' ? 'block' : 'none';
+  // Clear trails on switch
+  for (let b of birds) b.trail = [];
+  for (let b of lissBirds) b.trail = [];
+}
+
+// =========================
+// CAMERA CONTROLS
+// =========================
+function mousePressed() {
+  if (mouseX > width - 270 && mouseY < 500) return; // Don't drag over panel
+  if (mouseX < 270 && mouseY < 200) return; // Don't drag over HUD
+  dragging = true;
+  lastMX = mouseX;
+  lastMY = mouseY;
+}
+function mouseReleased() { dragging = false; }
+function mouseDragged() {
+  if (!dragging) return;
+  camRY += (mouseX - lastMX) * 0.005;
+  camRX += (mouseY - lastMY) * 0.005;
+  camRX = constrain(camRX, -HALF_PI + 0.1, HALF_PI - 0.1);
+  lastMX = mouseX;
+  lastMY = mouseY;
+}
+function mouseWheel(e) {
+  camDist += e.delta * 0.5;
+  camDist = constrain(camDist, 200, 1500);
+  return false;
+}
+function windowResized() { resizeCanvas(windowWidth, windowHeight); }
+
+function keyPressed() {
+  if (key === 'Tab' || key === 'tab') {
+    switchMode(mode === 'boids' ? 'lissajous' : 'boids');
+    return false;
+  }
+  if (key === ' ') { paused = !paused; return false; }
+  if (key === 't' || key === 'T') {
+    showTrails = !showTrails;
+    let btn = document.getElementById('btn-trail');
+    if (btn) btn.classList.toggle('active');
+    for (let b of birds) b.trail = [];
+    for (let b of lissBirds) b.trail = [];
+  }
+  if (key === 'r' || key === 'R') {
+    initBoids(); initLissajous();
+  }
+}
+</script>
+</head>
+<body>
+<div id="hud"></div>
+<div id="panel"></div>
+<div id="explainer">
+  <b>MURMURATION COMPARE</b> — <span class="k">Tab</span> toggle mode &middot;
+  <span class="k">Space</span> pause &middot;
+  <span class="k">T</span> trails &middot;
+  <span class="k">R</span> reset &middot;
+  Drag to orbit &middot; Scroll to zoom
+  <br>
+  <b>BOIDS</b>: 3 local rules &rarr; emergent flock (never repeats) &nbsp;|&nbsp;
+  <b>LISSAJOUS</b>: harmonic equations &rarr; predetermined wave (single-motor driveable)
+</div>
+</body>
+</html>

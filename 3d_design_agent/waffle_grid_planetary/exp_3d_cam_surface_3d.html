@@ -700,7 +700,7 @@ function drawSingle(p) {
   p.line(0, -halfLen, 0, 0, halfLen, 0);
   p.pop();
 
-  // Draw follower sphere on cam surface
+  // Draw follower oriented to cam surface normal
   let fR = config.baseR + disp;
   if (fR < 2) fR = 2;
   let fX = fR * Math.cos(folTheta);
@@ -708,18 +708,127 @@ function drawSingle(p) {
   // Y position: map folZ to -camLength/2 .. +camLength/2
   let fY = -config.camLength / 2 + (folZ / config.camLength) * config.camLength;
 
+  // --- Compute surface normal via numerical partial derivatives ---
+  let eps_t = 0.01; // small step in theta
+  let eps_z = 0.5;  // small step in z
+  let h_t1 = surfaceHeight(folTheta + eps_t, folZ, config);
+  let h_t0 = surfaceHeight(folTheta - eps_t, folZ, config);
+  let h_z1 = surfaceHeight(folTheta, folZ + eps_z, config);
+  let h_z0 = surfaceHeight(folTheta, folZ - eps_z, config);
+  let dh_dt = (h_t1 - h_t0) / (2 * eps_t); // dh/dtheta
+  let dh_dz = (h_z1 - h_z0) / (2 * eps_z); // dh/dz
+
+  // Surface parameterization: P(theta, z) = [(baseR+h)*cos(theta), yMap(z), (baseR+h)*sin(theta)]
+  // Tangent in theta direction: dP/dtheta
+  let r_val = config.baseR + disp;
+  let tThetaX = dh_dt * Math.cos(folTheta) - r_val * Math.sin(folTheta);
+  let tThetaY = 0;
+  let tThetaZ = dh_dt * Math.sin(folTheta) + r_val * Math.cos(folTheta);
+  // Tangent in z direction: dP/dz
+  let tZX = dh_dz * Math.cos(folTheta);
+  let tZY = 1; // dy/dz = 1 (linear mapping)
+  let tZZ = dh_dz * Math.sin(folTheta);
+
+  // Normal = cross product of tangent_theta x tangent_z
+  let nX = tThetaY * tZZ - tThetaZ * tZY;
+  let nY = tThetaZ * tZX - tThetaX * tZZ;
+  let nZ = tThetaX * tZY - tThetaY * tZX;
+  let nLen = Math.sqrt(nX * nX + nY * nY + nZ * nZ);
+  if (nLen < 0.001) nLen = 1;
+  nX /= nLen; nY /= nLen; nZ /= nLen;
+
+  // Ensure normal points outward (away from axis)
+  let radX = Math.cos(folTheta);
+  let radZ = Math.sin(folTheta);
+  let dot = nX * radX + nZ * radZ;
+  if (dot < 0) { nX = -nX; nY = -nY; nZ = -nZ; }
+
+  // --- Draw follower arm along the normal direction ---
+  let armLen = config.baseR * 0.6;
+
+  // Follower roller at surface contact point
   p.push();
   p.translate(fX, fY, fZcoord);
+
+  // Orient roller perpendicular to surface normal
+  // Roller axis = tangent_z direction (along cam length)
+  let rzLen = Math.sqrt(tZX * tZX + tZY * tZY + tZZ * tZZ);
+  let rzX = tZX / rzLen, rzY = tZY / rzLen, rzZ = tZZ / rzLen;
+
+  // Draw roller as a torus/cylinder aligned to tangent_z
+  // Use rotation from default Y-axis to tangent_z direction
+  p.push();
   p.noStroke();
   p.fill(200, 60, 60);
-  p.sphere(3);
+  // Roller sphere (contact point)
+  p.sphere(2.5);
   p.pop();
 
-  // Draw follower line from axis to follower
+  // Draw roller disc oriented perpendicular to the surface
+  // Disc lies in the plane of the surface tangent, so its normal = surface normal
   p.push();
-  p.stroke(200, 60, 60, 180);
-  p.strokeWeight(1.5);
+  p.noStroke();
+  p.fill(200, 60, 60, 160);
+  // Build rotation matrix to align Y-axis with surface normal
+  // Using the normal and tangent to build a local frame
+  let upX = nX, upY = nY, upZ = nZ; // disc normal = surface normal
+  let fwdX = rzX, fwdY = rzY, fwdZ = rzZ; // disc forward = tangent_z
+  // Right = up x fwd
+  let rtX = upY * fwdZ - upZ * fwdY;
+  let rtY = upZ * fwdX - upX * fwdZ;
+  let rtZ = upX * fwdY - upY * fwdX;
+  let rtLen = Math.sqrt(rtX * rtX + rtY * rtY + rtZ * rtZ);
+  if (rtLen > 0.001) { rtX /= rtLen; rtY /= rtLen; rtZ /= rtLen; }
+  // Recompute fwd = rt x up for orthogonal frame
+  fwdX = rtY * upZ - rtZ * upY;
+  fwdY = rtZ * upX - rtX * upZ;
+  fwdZ = rtX * upY - rtY * upX;
+
+  // Apply rotation matrix [rt, up, fwd] to transform from local to world
+  // p5.js applyMatrix: row-major 4x4
+  p.applyMatrix(
+    rtX,  upX,  fwdX, 0,
+    rtY,  upY,  fwdY, 0,
+    rtZ,  upZ,  fwdZ, 0,
+    0,    0,    0,    1
+  );
+  // Draw roller disc (torus approximation: flat cylinder)
+  p.cylinder(5, 2, 8, 1); // radius 5, height 2, 8 segments
+  p.pop();
+
+  p.pop();
+
+  // Follower arm: line from surface point outward along normal
+  let armEndX = fX + nX * armLen;
+  let armEndY = fY + nY * armLen;
+  let armEndZ = fZcoord + nZ * armLen;
+  p.push();
+  p.stroke(200, 60, 60, 200);
+  p.strokeWeight(2);
+  p.line(fX, fY, fZcoord, armEndX, armEndY, armEndZ);
+  p.pop();
+
+  // Pivot ball at arm end
+  p.push();
+  p.translate(armEndX, armEndY, armEndZ);
+  p.noStroke();
+  p.fill(180, 50, 50);
+  p.sphere(2);
+  p.pop();
+
+  // Radial guide line from axis to follower (thin, subtle)
+  p.push();
+  p.stroke(200, 60, 60, 80);
+  p.strokeWeight(0.8);
   p.line(0, fY, 0, fX, fY, fZcoord);
+  p.pop();
+
+  // Surface normal indicator (short green line from contact point)
+  p.push();
+  p.stroke(60, 180, 80, 200);
+  p.strokeWeight(1.2);
+  let nVizLen = 12;
+  p.line(fX, fY, fZcoord, fX + nX * nVizLen, fY + nY * nVizLen, fZcoord + nZ * nVizLen);
   p.pop();
 
   p.pop();
