@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Murmuration — Serpentine Path</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #000; overflow: hidden; font-family: 'Georgia', serif; display: flex; height: 100vh; }
+  #sidebar {
+    width: 260px; min-width: 260px; background: #1a1a35;
+    border-right: 1px solid #333; overflow-y: auto; padding: 12px 14px;
+    font-size: 12px; color: #b0a890;
+  }
+  #sidebar h1 { font-size: 13px; letter-spacing: 1.5px; color: #d0c8b0; margin-bottom: 2px; font-weight: normal; }
+  .subtitle { font-size: 9px; color: #777; margin-bottom: 10px; font-style: italic; }
+  .section-title {
+    font-size: 8px; text-transform: uppercase; letter-spacing: 2px; color: #8b7355;
+    margin-top: 12px; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 3px;
+  }
+  .ctrl-row { display: flex; align-items: center; margin-bottom: 4px; }
+  .ctrl-row label { flex: 0 0 105px; font-size: 10px; color: #888; }
+  .ctrl-row input[type="range"] { flex: 1; height: 3px; accent-color: #8b4513; }
+  .ctrl-row .val { flex: 0 0 42px; text-align: right; font-size: 9px; color: #999; font-family: 'Consolas', monospace; }
+  .btn-row { display: flex; gap: 4px; margin: 8px 0; flex-wrap: wrap; }
+  .btn {
+    padding: 5px 10px; font-size: 9px; font-family: 'Georgia', serif;
+    background: #444; color: #ddd; border: none; cursor: pointer;
+    letter-spacing: 0.5px; border-radius: 2px;
+  }
+  .btn:hover { background: #555; }
+  .btn.active { background: #8b4513; color: #fff; }
+  .info-box {
+    margin-top: 8px; padding: 6px 8px; background: #222; border: 1px solid #444;
+    border-radius: 3px; font-size: 9px; font-family: 'Consolas', monospace;
+    color: #aaa; line-height: 1.8;
+  }
+  .info-box .hl { color: #e0c080; }
+  .info-box .safe { color: #5b5; }
+  .info-box .warn { color: #c55; }
+  #canvas-wrap { flex: 1; position: relative; }
+  canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+  #hud {
+    position: absolute; top: 8px; right: 10px; background: rgba(26,26,53,0.85);
+    border: 1px solid #444; border-radius: 3px; padding: 6px 10px;
+    font-size: 9px; color: #888; pointer-events: none; min-width: 170px; line-height: 1.7;
+  }
+  #hud .hv { color: #d0c8b0; font-family: 'Consolas', monospace; float: right; }
+  #mech-label {
+    position: absolute; bottom: 8px; left: 10px; right: 10px;
+    background: rgba(26,26,53,0.85);
+    border: 1px solid #555; border-radius: 3px; padding: 5px 10px;
+    font-size: 9px; color: #8b7355; pointer-events: none; text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h1>SERPENTINE PATH</h1>
+  <div class="subtitle">S(t) = &int; v&middot;e^(i&theta;(t)) dt &mdash; multi-frequency steering</div>
+
+  <div class="section-title">Grid</div>
+  <div class="ctrl-row">
+    <label>Block Spacing</label>
+    <input type="range" id="sl-bsp" min="2" max="20" step="1" value="3">
+    <span class="val" id="v-bsp">3</span>
+  </div>
+
+  <div class="section-title">Snake</div>
+  <div class="ctrl-row">
+    <label>Speed</label>
+    <input type="range" id="sl-speed" min="0.2" max="3.0" step="0.1" value="1.0">
+    <span class="val" id="v-speed">1.0</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Body Length</label>
+    <input type="range" id="sl-slen" min="50" max="600" step="10" value="400">
+    <span class="val" id="v-slen">400</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Body Width</label>
+    <input type="range" id="sl-swid" min="3" max="30" step="1" value="8">
+    <span class="val" id="v-swid">8</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Turn Agility</label>
+    <input type="range" id="sl-turn" min="0.5" max="5.0" step="0.1" value="2.0">
+    <span class="val" id="v-turn">2.0</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Thread Drop</label>
+    <input type="range" id="sl-tdrop" min="0" max="200" step="5" value="0">
+    <span class="val" id="v-tdrop">0</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Deploy Depth</label>
+    <input type="range" id="sl-depth" min="10" max="120" step="1" value="50">
+    <span class="val" id="v-depth">50</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Body Wave</label>
+    <input type="range" id="sl-bwave" min="0" max="1.0" step="0.05" value="0.5">
+    <span class="val" id="v-bwave">0.5</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Hum</label>
+    <input type="range" id="sl-hum" min="0" max="1.0" step="0.05" value="0.4">
+    <span class="val" id="v-hum">0.4</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Shimmer</label>
+    <input type="range" id="sl-shim" min="0" max="8" step="0.5" value="1">
+    <span class="val" id="v-shim">1</span>
+  </div>
+
+  <div class="section-title">Camera</div>
+  <div class="ctrl-row">
+    <label>Distance</label>
+    <input type="range" id="sl-cdist" min="80" max="1200" step="5" value="300">
+    <span class="val" id="v-cdist">300</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Elevation</label>
+    <input type="range" id="sl-celev" min="-80" max="80" step="1" value="25">
+    <span class="val" id="v-celev">25&deg;</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Block Fill %</label>
+    <input type="range" id="sl-bsz" min="10" max="100" step="5" value="95">
+    <span class="val" id="v-bsz">95%</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Show Cables</label>
+    <input type="range" id="sl-cables" min="0" max="1" step="1" value="0">
+    <span class="val" id="v-cables">off</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Show Frame</label>
+    <input type="range" id="sl-frame" min="0" max="1" step="1" value="1">
+    <span class="val" id="v-frame">on</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Snake Colors</label>
+    <input type="range" id="sl-scolor" min="0" max="1" step="1" value="0">
+    <span class="val" id="v-scolor">off</span>
+  </div>
+
+  <div class="section-title">Behaviour Presets</div>
+  <div class="btn-row">
+    <button class="btn" id="ch-wander" onclick="setPreset('wander')">Wander</button>
+    <button class="btn" id="ch-sprint" onclick="setPreset('sprint')">Sprint</button>
+    <button class="btn" id="ch-coil" onclick="setPreset('coil')">Coil</button>
+    <button class="btn" id="ch-sidewinder" onclick="setPreset('sidewinder')">Sidewinder</button>
+  </div>
+
+  <div class="section-title">Playback Speed</div>
+  <div class="btn-row">
+    <button class="btn" onclick="setPlaySpeed(0.25)">0.25&times;</button>
+    <button class="btn" onclick="setPlaySpeed(0.5)">0.5&times;</button>
+    <button class="btn active" onclick="setPlaySpeed(1)">1&times;</button>
+    <button class="btn" onclick="setPlaySpeed(2)">2&times;</button>
+    <button class="btn" onclick="setPlaySpeed(3)">3&times;</button>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn" id="btn-pause" onclick="togglePause()">Pause</button>
+    <button class="btn" onclick="resetSnake()">Reset</button>
+  </div>
+
+  <div class="info-box">
+    <div>Total blocks: <span class="hl" id="st-total">--</span></div>
+    <div>Active: <span class="hl" id="st-active">--</span></div>
+    <div>Snake heading: <span class="hl" id="st-heading">--</span></div>
+    <div>Cables: <span class="safe">&check; vertical only</span></div>
+  </div>
+</div>
+
+<div id="canvas-wrap">
+  <canvas id="c"></canvas>
+  <div id="hud">
+    <div>FPS <span class="hv" id="hud-fps">--</span></div>
+    <div>Active <span class="hv" id="hud-vis">--</span></div>
+    <div>Heading <span class="hv" id="hud-heading">--</span></div>
+    <div>Time <span class="hv" id="hud-time">0:00</span></div>
+  </div>
+  <div id="mech-label">Guide plate &middot; cable-driven blocks &middot; Snake path = cam groove sequence &middot; Blocks deploy at head, retract behind tail</div>
+</div>
+
+<script>
+// ============================================================
+// MURMURATION &mdash; SERPENTINE PATH MODEL
+//
+// MECHANISM:
+// - Hex circle guide plate (~2200 holes), blocks hang on cables
+// - A "snake" path wanders across the grid autonomously
+// - Blocks near the snake body deploy (descend from ceiling)
+// - Blocks outside the snake body retract (ascend back)
+// - Cross-section is dome-shaped (deeper at center, shallow at edges)
+// - Head deploys deeper than tail (tapered 3D form)
+// - Multi-frequency noise steering creates organic wandering
+// - Physically: snake path maps to barrel cam groove sequence
+//
+// JUST THE SNAKE. No extra blocks. Clean serpentine silhouette.
+// ============================================================
+
+const canvas = document.getElementById('c');
+const gl = canvas.getContext('webgl', { antialias: true, alpha: false });
+
+// --- Slider wiring ---
+function wire(id, vid, suf) {
+  const s = document.getElementById(id);
+  const v = document.getElementById(vid);
+  s.addEventListener('input', () => { v.textContent = s.value + (suf || ''); });
+}
+wire('sl-bsp','v-bsp'); wire('sl-speed','v-speed'); wire('sl-slen','v-slen');
+wire('sl-swid','v-swid'); wire('sl-turn','v-turn');
+wire('sl-tdrop','v-tdrop'); wire('sl-depth','v-depth'); wire('sl-bwave','v-bwave'); wire('sl-hum','v-hum'); wire('sl-shim','v-shim');
+wire('sl-cdist','v-cdist'); wire('sl-celev','v-celev','\u00B0');
+wire('sl-bsz','v-bsz','%');
+document.getElementById('sl-cables').addEventListener('input', (e) => {
+  document.getElementById('v-cables').textContent = e.target.value === '1' ? 'on' : 'off';
+});
+document.getElementById('sl-frame').addEventListener('input', (e) => {
+  document.getElementById('v-frame').textContent = e.target.value === '1' ? 'on' : 'off';
+});
+document.getElementById('sl-scolor').addEventListener('input', (e) => {
+  document.getElementById('v-scolor').textContent = e.target.value === '1' ? 'on' : 'off';
+});
+document.getElementById('sl-bsp').addEventListener('change', () => { buildGrid(); });
+
+let time = 0, paused = false, playSpeed = 1;
+let camAngle = 0.5, camElevDrag = 0;
+let fpsFrames = 0, fpsLast = performance.now(), fpsVal = 60;
+
+function setPlaySpeed(s) {
+  playSpeed = s;
+  document.querySelectorAll('.btn-row .btn').forEach(b => {
+    if (b.textContent.includes('\u00D7') && !b.id.startsWith('ch-')) b.classList.remove('active');
+  });
+  document.querySelectorAll('.btn-row .btn').forEach(b => {
+    if (b.textContent === s + '\u00D7') b.classList.add('active');
+  });
+}
+
+function togglePause() {
+  paused = !paused;
+  document.getElementById('btn-pause').textContent = paused ? 'Play' : 'Pause';
+  document.getElementById('btn-pause').classList.toggle('active', paused);
+}
+
+// Mouse drag
+let isDrag = false, dsx = 0, dsy = 0, dsa = 0, dse = 0;
+canvas.addEventListener('mousedown', (e) => {
+  isDrag = true; dsx = e.clientX; dsy = e.clientY; dsa = camAngle; dse = camElevDrag;
+  canvas.style.cursor = 'grabbing';
+});
+window.addEventListener('mousemove', (e) => {
+  if (!isDrag) return;
+  camAngle = dsa + (e.clientX - dsx) * 0.005;
+  camElevDrag = Math.max(-70, Math.min(70, dse + (e.clientY - dsy) * 0.3));
+});
+window.addEventListener('mouseup', () => { isDrag = false; canvas.style.cursor = 'grab'; });
+canvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const sl = document.getElementById('sl-cdist');
+  sl.value = Math.max(80, Math.min(1200, parseFloat(sl.value) + e.deltaY * 0.5));
+  document.getElementById('v-cdist').textContent = Math.round(sl.value);
+}, { passive: false });
+
+// ============================================================
+// BEHAVIOUR PRESETS
+// ============================================================
+const PRESETS = {
+  wander: {
+    label: 'Wander \u2014 lazy meander, organic and dreamlike',
+    speed: 1.0, slen: 400, swid: 8, turn: 2.0, tdrop: 0, depth: 50, bwave: 0.5, hum: 0.4, shim: 1,
+    bsz: 95, cdist: 300, celev: 25,
+  },
+  sprint: {
+    label: 'Sprint \u2014 quick and agile, tight turns, narrow body',
+    speed: 2.5, slen: 180, swid: 5, turn: 4.0, tdrop: 0, depth: 35, bwave: 0.3, hum: 0.2, shim: 0.5,
+    bsz: 90, cdist: 280, celev: 30,
+  },
+  coil: {
+    label: 'Coil \u2014 slow and massive, fills the grid like a python',
+    speed: 0.5, slen: 600, swid: 10, turn: 1.0, tdrop: 0, depth: 60, bwave: 0.6, hum: 0.6, shim: 2,
+    bsz: 95, cdist: 350, celev: 20,
+  },
+  sidewinder: {
+    label: 'Sidewinder \u2014 dramatic S-curves, visible vertical undulation',
+    speed: 1.5, slen: 350, swid: 6, turn: 3.5, tdrop: 0, depth: 55, bwave: 0.85, hum: 0.5, shim: 1,
+    bsz: 95, cdist: 300, celev: 25,
+  },
+};
+
+function setPreset(name) {
+  const p = PRESETS[name];
+  if (!p) return;
+  const mapping = {
+    speed: 'sl-speed', slen: 'sl-slen', swid: 'sl-swid', turn: 'sl-turn',
+    tdrop: 'sl-tdrop', depth: 'sl-depth', bwave: 'sl-bwave', hum: 'sl-hum', shim: 'sl-shim', bsz: 'sl-bsz',
+    cdist: 'sl-cdist', celev: 'sl-celev',
+  };
+  for (const [key, slId] of Object.entries(mapping)) {
+    const el = document.getElementById(slId);
+    if (el && p[key] !== undefined) {
+      el.value = p[key];
+      const vId = 'v-' + slId.replace('sl-', '');
+      const vEl = document.getElementById(vId);
+      if (vEl) {
+        let suf = '';
+        if (slId === 'sl-celev') suf = '\u00B0';
+        vEl.textContent = p[key] + suf;
+      }
+    }
+  }
+  document.querySelectorAll('[id^="ch-"]').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('ch-' + name);
+  if (btn) btn.classList.add('active');
+  document.getElementById('mech-label').textContent = p.label;
+}
+
+// ============================================================
+// FRACTAL NOISE ENGINE — replaces periodic sine waves
+// ============================================================
+// GPU-style hash: integer → pseudo-random [0,1]
+function ihash(n) {
+  let x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+// 1D value noise with smoothstep interpolation
+function noise1D(x) {
+  const i = Math.floor(x);
+  const f = x - i;
+  const t = f * f * (3 - 2 * f);
+  return ihash(i) * (1 - t) + ihash(i + 1) * t;
+}
+
+// Fractal Brownian Motion — layers noise at multiple scales
+// Low octaves = broad sweeping motion, high octaves = jitter
+function fbm(x, oct) {
+  let v = 0, a = 1, s = 0;
+  for (let i = 0; i < oct; i++) {
+    v += a * noise1D(x);
+    s += a;
+    a *= 0.5;
+    x *= 2.03; // slightly off 2x to avoid alignment artifacts
+  }
+  return v / s; // normalized 0–1
+}
+
+// Convenience: fbm centered at 0 (range -1 to +1)
+function fbmC(x, oct) { return (fbm(x, oct) - 0.5) * 2; }
+
+// ============================================================
+// SNAKE STATE
+// ============================================================
+let snakeHeadX = 0, snakeHeadZ = 0;
+let snakeDir = Math.random() * Math.PI * 2;
+let snakeTurnVel = 0; // angular velocity (momentum)
+let snakeTrail = [];  // [{x, z, df}] — head at index 0, df = depth factor
+let wanderPhase = Math.random() * 1000;
+
+function updateSnake(dt) {
+  const speed = parseFloat(document.getElementById('sl-speed').value);
+  const turnAgility = parseFloat(document.getElementById('sl-turn').value);
+
+  wanderPhase += dt * 0.7;
+
+  // FBM noise for heading — non-repeating, organic, chaotic
+  // Channel 0: broad sweeping turns (4 octaves, slow evolution)
+  // Channel 1: sudden direction impulses (2 octaves, faster)
+  const broadSteer = fbmC(wanderPhase * 0.35, 4) * 1.2;
+  const sharpSteer = fbmC(wanderPhase * 1.2 + 50, 2) * 0.5;
+  const noiseSteer = (broadSteer + sharpSteer) * turnAgility;
+
+  // FBM noise for speed — variable velocity (40% to 160% of base)
+  const speedNoise = fbm(wanderPhase * 0.25 + 100, 3);
+  const moveSpeed = speed * 15 * (0.4 + speedNoise * 1.2);
+
+  // FBM noise for depth — dramatic vertical serpentine (body dives and climbs)
+  // Range widens when thread drop is high (more vertical room to undulate)
+  const depthNoise = fbm(wanderPhase * 0.15 + 200, 4);
+  const depthFactor = 0.1 + depthNoise * 1.4; // range 0.1 → 1.5 (dramatic)
+
+  // Wall avoidance — soft repulsion only near edge (75% threshold)
+  const distFromCenter = Math.sqrt(snakeHeadX * snakeHeadX + snakeHeadZ * snakeHeadZ);
+  const safeRadius = gridRadius * 0.90;
+  let wallSteer = 0;
+  if (distFromCenter > safeRadius * 0.75) {
+    const urgency = Math.max(0, (distFromCenter - safeRadius * 0.75) / (safeRadius * 0.25));
+    const toCenterAngle = Math.atan2(-snakeHeadZ, -snakeHeadX);
+    let diff = toCenterAngle - snakeDir;
+    diff = ((diff + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+    wallSteer = diff * urgency * urgency * 3.0;
+  }
+
+  // Smooth angular momentum — responsive enough for sweeping traversals
+  const targetTurnVel = noiseSteer + wallSteer;
+  snakeTurnVel += (targetTurnVel - snakeTurnVel) * 0.14;
+  snakeDir += snakeTurnVel * dt;
+
+  // Move head
+  snakeHeadX += Math.cos(snakeDir) * moveSpeed * dt;
+  snakeHeadZ += Math.sin(snakeDir) * moveSpeed * dt;
+
+  // Hard clamp to grid boundary
+  const r = Math.sqrt(snakeHeadX * snakeHeadX + snakeHeadZ * snakeHeadZ);
+  if (r > gridRadius * 0.95) {
+    const scale = gridRadius * 0.95 / r;
+    snakeHeadX *= scale;
+    snakeHeadZ *= scale;
+  }
+
+  // 3D trail: store position + depth factor
+  snakeTrail.unshift({ x: snakeHeadX, z: snakeHeadZ, df: depthFactor });
+
+  const MAX_TRAIL = 2000;
+  if (snakeTrail.length > MAX_TRAIL) snakeTrail.length = MAX_TRAIL;
+}
+
+function initSnake() {
+  snakeHeadX = 0;
+  snakeHeadZ = 0;
+  snakeDir = Math.random() * Math.PI * 2;
+  snakeTurnVel = 0;
+  wanderPhase = Math.random() * 1000;
+  snakeTrail = [];
+  const df0 = fbm(wanderPhase * 0.2 + 200, 3);
+  for (let i = 0; i < 80; i++) {
+    snakeTrail.push({
+      x: snakeHeadX - Math.cos(snakeDir) * i * 0.25,
+      z: snakeHeadZ - Math.sin(snakeDir) * i * 0.25,
+      df: 0.3 + df0 * 0.7,
+    });
+  }
+}
+
+function resetSnake() {
+  time = 0;
+  initSnake();
+  // Reset all block deploy values
+  for (const b of birdData) { b.deploy = 0; b.y = 0; b.snakeT = 1; b.offsetX = 0; b.offsetZ = 0; }
+}
+
+// ============================================================
+// GRID — HEX CIRCLE ONLY
+// ============================================================
+const GRID_N = 68;
+let birdData = [];
+let gridRadius = 0;
+
+function buildGrid() {
+  const spacing = parseFloat(document.getElementById('sl-bsp').value);
+  birdData = [];
+
+  const rowSpacing = spacing * 0.866;
+  gridRadius = (GRID_N / 2) * spacing;
+
+  const nRows = Math.ceil(gridRadius * 2 / rowSpacing);
+  let idx = 0;
+  for (let ri = 0; ri < nRows; ri++) {
+    const gz = (ri - (nRows - 1) / 2) * rowSpacing;
+    const xOffset = (ri % 2) * spacing * 0.5;
+    const maxX = Math.sqrt(Math.max(0, gridRadius * gridRadius - gz * gz));
+    const nCols = Math.floor(maxX * 2 / spacing) + 1;
+    for (let ci = 0; ci < nCols; ci++) {
+      const gx = (ci - (nCols - 1) / 2) * spacing + xOffset;
+      if (gx * gx + gz * gz > gridRadius * gridRadius) continue;
+
+      // Hash for shimmer variation
+      let h = (idx + 1) * 2654435761;
+      h = ((h >>> 16) ^ h) * 0x45d9f3b;
+      h = ((h >>> 16) ^ h) * 0x45d9f3b;
+      h = (h >>> 16) ^ h;
+
+      // Permanent cam color: based on angular position + radius (like cam channels)
+      const angle = (Math.atan2(gz, gx) / (Math.PI * 2) + 1) % 1; // 0→1 around circle
+      const radius = Math.sqrt(gx * gx + gz * gz) / gridRadius;  // 0→1 center to edge
+      // Mix angle and radius for more color variety across the grid
+      const camT = (angle * 0.7 + radius * 0.3) % 1;
+      const camCol = gradientColor(camT);
+
+      birdData.push({
+        gx, gz,
+        shimPhase: (h & 0xFFFF) / 0xFFFF * Math.PI * 2,
+        shimAmp: 0.4 + ((h >>> 8) & 0xFF) / 255 * 0.7,
+        deploy: 0,
+        y: 0,
+        snakeT: 1, // 0=head, 1=tail (for gradient coloring)
+        camColor: camCol, // permanent color from cam position
+        offsetX: 0, offsetZ: 0, // lateral wave offset
+      });
+      idx++;
+    }
+  }
+
+  document.getElementById('st-total').textContent = birdData.length + ' (hex circle)';
+  initSnake();
+}
+
+// ============================================================
+// COLOR GRADIENT — 5-stop spectrum by cam position
+// (Must be defined BEFORE buildGrid which assigns camColor)
+// ============================================================
+const COLOR_STOPS = [
+  [0.00, 0.95, 0.78, 0.15],  // bright gold
+  [0.25, 0.88, 0.38, 0.22],  // warm coral
+  [0.50, 0.65, 0.22, 0.55],  // rich magenta
+  [0.75, 0.18, 0.52, 0.62],  // deep teal
+  [1.00, 0.28, 0.38, 0.78],  // cool steel blue
+];
+
+function gradientColor(t) {
+  t = Math.max(0, Math.min(1, t));
+  let i = 0;
+  for (; i < COLOR_STOPS.length - 2; i++) {
+    if (t < COLOR_STOPS[i + 1][0]) break;
+  }
+  const s0 = COLOR_STOPS[i], s1 = COLOR_STOPS[i + 1];
+  const f = (t - s0[0]) / (s1[0] - s0[0]);
+  return [
+    s0[1] + (s1[1] - s0[1]) * f,
+    s0[2] + (s1[2] - s0[2]) * f,
+    s0[3] + (s1[3] - s0[3]) * f,
+  ];
+}
+
+buildGrid();
+
+// ============================================================
+// COMPUTE FRAME — PHYSICALLY CORRECT (VERTICAL ONLY)
+//
+// Blocks hang from cables through guide plate holes.
+// They can ONLY move UP and DOWN. No lateral sway.
+// Serpentine shape comes from:
+//   XZ: noise-driven path selects different blocks over time
+//   Y:  depth varies along body (trail df + body wave noise)
+// ============================================================
+function computeFrame(t) {
+  const snakeLength = parseInt(document.getElementById('sl-slen').value);
+  const snakeWidth = parseFloat(document.getElementById('sl-swid').value);
+  const threadDrop = parseFloat(document.getElementById('sl-tdrop').value);
+  const deployDepth = parseFloat(document.getElementById('sl-depth').value);
+  const shimAmp = parseFloat(document.getElementById('sl-shim').value);
+  const snakeWidthSq = snakeWidth * snakeWidth;
+  const bodyWave = parseFloat(document.getElementById('sl-bwave').value);
+  const humAmp = parseFloat(document.getElementById('sl-hum').value);
+
+  const activeLen = Math.min(snakeLength, snakeTrail.length);
+  let visCount = 0;
+
+  for (const bird of birdData) {
+    let minDistSq = Infinity;
+    let closestIdx = activeLen;
+
+    // Find closest trail point (check every 2nd for performance)
+    for (let i = 0; i < activeLen; i += 2) {
+      const dx = bird.gx - snakeTrail[i].x;
+      const dz = bird.gz - snakeTrail[i].z;
+      const dSq = dx * dx + dz * dz;
+      if (dSq < minDistSq) {
+        minDistSq = dSq;
+        closestIdx = i;
+      }
+    }
+
+    // Compute target deployment
+    let targetDeploy = 0;
+    if (minDistSq < snakeWidthSq) {
+      const dist = Math.sqrt(minDistSq);
+      const widthFrac = dist / snakeWidth;
+
+      // Cross-section falloff: dome shape (cosine curve)
+      const widthFalloff = Math.cos(widthFrac * Math.PI * 0.5);
+
+      // Tail taper: solid body for 80%, quick taper only at tail tip
+      const bodyT = activeLen > 1 ? closestIdx / (activeLen - 1) : 0;
+      const taperStart = 0.80;
+      const tailFalloff = bodyT < taperStart
+        ? 1.0
+        : 1.0 - ((bodyT - taperStart) / (1.0 - taperStart)) * 0.85;
+
+      targetDeploy = Math.max(0, widthFalloff * tailFalloff);
+      bird.snakeT = bodyT;
+    }
+
+    // Smooth interpolation — fast deploy, crisp retract (no lingering strays)
+    const rate = (targetDeploy > bird.deploy) ? 0.20 : 0.22;
+    bird.deploy += (targetDeploy - bird.deploy) * rate;
+    if (bird.deploy < 0.04) bird.deploy = 0;
+
+    // Shimmer
+    const shim = shimAmp * bird.shimAmp * Math.sin(bird.shimPhase + t * 1.8) * 0.3;
+
+    // Y DEPTH — serpentine in the vertical axis
+    // 1. Trail depth factor (df): noise-driven, varies per trail point (0.3→1.0)
+    //    → snake body rises and falls as it travels
+    const trailDf = (closestIdx < snakeTrail.length) ? snakeTrail[closestIdx].df : 1.0;
+
+    // 2. Body wave: additional Y undulation from noise (NOT sine)
+    //    → organic pulsing/breathing along the body length
+    const bodyNoise = fbmC(bird.snakeT * 4 + wanderPhase * 0.5 + 500, 3);
+    const waveY = bodyWave * 0.35 * bodyNoise;
+
+    // 3. Hum: VERTICAL cross-body rocking — blocks on opposite sides of
+    //    snake center line deploy to DIFFERENT DEPTHS, alternating over time.
+    //    Physically correct: each cable is independent, all motion is Y-only.
+    let humMod = 0;
+    if (humAmp > 0 && closestIdx > 0 && closestIdx < activeLen - 2) {
+      const tA = snakeTrail[Math.max(0, closestIdx - 3)];
+      const tB = snakeTrail[Math.min(snakeTrail.length - 1, closestIdx + 3)];
+      const tdx = tA.x - tB.x;
+      const tdz = tA.z - tB.z;
+      const tlen = Math.sqrt(tdx * tdx + tdz * tdz);
+      if (tlen > 0.5) {
+        // Perpendicular direction (only to measure signed distance from center line)
+        const perpX = -tdz / tlen;
+        const perpZ = tdx / tlen;
+        const dx = bird.gx - snakeTrail[closestIdx].x;
+        const dz = bird.gz - snakeTrail[closestIdx].z;
+        const signedDist = dx * perpX + dz * perpZ;
+        const normalizedDist = Math.max(-1, Math.min(1, signedDist / snakeWidth));
+        // Left side deeper / right side shallower, then swap — travels along body
+        humMod = humAmp * 0.45 * normalizedDist * Math.sin(t * 3.5 + bird.snakeT * Math.PI * 4);
+      }
+    }
+
+    // Zero lateral offset — cables through guide plate = vertical only
+    bird.offsetX *= 0.9;
+    bird.offsetZ *= 0.9;
+
+    // Combined depth modulation (clamped to sane range)
+    const depthMod = Math.max(0.15, Math.min(1.3, trailDf + waveY + humMod));
+
+    // Final Y: thread drop provides the vertical serpentine SPACE
+    // depthMod (0.15→1.3) modulates WHERE in that space the block sits
+    // More threadDrop = more dramatic vertical undulation
+    const deployedMask = Math.min(1.0, bird.deploy * 5.0);
+    const serpentineY = threadDrop > 0
+      ? threadDrop * depthMod * deployedMask  // serpentine within thread drop range
+      : 0;
+    bird.y = serpentineY + deployDepth * bird.deploy + shim * bird.deploy;
+
+    if (bird.deploy > 0.02) visCount++;
+  }
+
+  return { visCount };
+}
+
+// ============================================================
+// WEBGL SHADERS
+// ============================================================
+const birdVS = `
+  attribute vec3 aPos;
+  attribute float aAlpha;
+  attribute vec3 aColor;
+  uniform mat4 uMVP;
+  uniform float uPtSize;
+  varying float vAlpha;
+  varying vec3 vColor;
+  void main() {
+    gl_Position = uMVP * vec4(aPos, 1.0);
+    gl_PointSize = uPtSize / gl_Position.w;
+    vAlpha = aAlpha;
+    vColor = aColor;
+  }
+`;
+const birdFS = `
+  precision mediump float;
+  varying float vAlpha;
+  varying vec3 vColor;
+  void main() {
+    vec2 c = gl_PointCoord - 0.5;
+    float r = length(c);
+    if (r > 0.42) discard;
+    float edge = smoothstep(0.42, 0.38, r);
+    gl_FragColor = vec4(vColor, vAlpha * edge);
+  }
+`;
+const lineVS = `
+  attribute vec3 aPos;
+  uniform mat4 uMVP;
+  void main() { gl_Position = uMVP * vec4(aPos, 1.0); }
+`;
+const lineFS = `
+  precision mediump float;
+  uniform vec4 uCol;
+  void main() { gl_FragColor = uCol; }
+`;
+const skyVS = `
+  attribute vec2 aP;
+  varying vec2 vUV;
+  void main() { gl_Position = vec4(aP, 0.999, 1.0); vUV = aP * 0.5 + 0.5; }
+`;
+const skyFS = `
+  precision mediump float;
+  varying vec2 vUV;
+  void main() {
+    vec3 top = vec3(0.10, 0.06, 0.24);
+    vec3 mid = vec3(0.75, 0.38, 0.12);
+    vec3 low = vec3(0.55, 0.25, 0.08);
+    vec3 bot = vec3(0.12, 0.08, 0.06);
+    vec3 col;
+    float y = vUV.y;
+    if (y > 0.65) col = mix(mid, top, (y - 0.65) / 0.35);
+    else if (y > 0.35) col = mix(low, mid, (y - 0.35) / 0.3);
+    else col = mix(bot, low, y / 0.35);
+    gl_FragColor = vec4(col, 1.0);
+  }
+`;
+
+function mkS(t, s) {
+  const sh = gl.createShader(t); gl.shaderSource(sh, s); gl.compileShader(sh);
+  if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) console.error(gl.getShaderInfoLog(sh));
+  return sh;
+}
+function mkP(vs, fs) {
+  const p = gl.createProgram();
+  gl.attachShader(p, mkS(gl.VERTEX_SHADER, vs));
+  gl.attachShader(p, mkS(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(p);
+  return p;
+}
+
+const bP = mkP(birdVS, birdFS), lP = mkP(lineVS, lineFS), sP = mkP(skyVS, skyFS);
+const bL = {
+  aPos: gl.getAttribLocation(bP, 'aPos'),
+  aAlpha: gl.getAttribLocation(bP, 'aAlpha'),
+  aColor: gl.getAttribLocation(bP, 'aColor'),
+  uMVP: gl.getUniformLocation(bP, 'uMVP'),
+  uPtSize: gl.getUniformLocation(bP, 'uPtSize'),
+};
+const lL = {
+  aPos: gl.getAttribLocation(lP, 'aPos'),
+  uMVP: gl.getUniformLocation(lP, 'uMVP'),
+  uCol: gl.getUniformLocation(lP, 'uCol'),
+};
+const sLoc = { aP: gl.getAttribLocation(sP, 'aP') };
+
+const bPosBuf = gl.createBuffer(), bAlphaBuf = gl.createBuffer(), bColorBuf = gl.createBuffer();
+const linePosBuf = gl.createBuffer(), skyBuf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, skyBuf);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+
+// Matrix math
+function perspective(fov, asp, near, far) {
+  const f = 1 / Math.tan(fov / 2), nf = 1 / (near - far);
+  return [f / asp, 0, 0, 0, 0, f, 0, 0, 0, 0, (far + near) * nf, -1, 0, 0, 2 * far * near * nf, 0];
+}
+function lookAt(ex, ey, ez, cx, cy, cz, ux, uy, uz) {
+  let fx = cx - ex, fy = cy - ey, fz = cz - ez;
+  let fl = Math.sqrt(fx * fx + fy * fy + fz * fz); fx /= fl; fy /= fl; fz /= fl;
+  let sx = fy * uz - fz * uy, sy = fz * ux - fx * uz, sz = fx * uy - fy * ux;
+  let sl = Math.sqrt(sx * sx + sy * sy + sz * sz); sx /= sl; sy /= sl; sz /= sl;
+  let uux = sy * fz - sz * fy, uuy = sz * fx - sx * fz, uuz = sx * fy - sy * fx;
+  return [sx, uux, -fx, 0, sy, uuy, -fy, 0, sz, uuz, -fz, 0,
+    -(sx * ex + sy * ey + sz * ez), -(uux * ex + uuy * ey + uuz * ez),
+    fx * ex + fy * ey + fz * ez, 1];
+}
+function mulM(a, b) {
+  const r = new Array(16).fill(0);
+  for (let i = 0; i < 4; i++)
+    for (let j = 0; j < 4; j++)
+      for (let k = 0; k < 4; k++)
+        r[j * 4 + i] += a[k * 4 + i] * b[j * 4 + k];
+  return r;
+}
+
+function resize() {
+  const w = document.getElementById('canvas-wrap');
+  canvas.width = w.clientWidth * devicePixelRatio;
+  canvas.height = w.clientHeight * devicePixelRatio;
+  canvas.style.width = w.clientWidth + 'px';
+  canvas.style.height = w.clientHeight + 'px';
+  gl.viewport(0, 0, canvas.width, canvas.height);
+}
+window.addEventListener('resize', resize); resize();
+
+// ============================================================
+// RENDER LOOP
+// ============================================================
+function frame() {
+  requestAnimationFrame(frame);
+
+  // FPS counter
+  fpsFrames++;
+  const now = performance.now();
+  if (now - fpsLast > 500) {
+    fpsVal = Math.round(fpsFrames / ((now - fpsLast) / 1000));
+    fpsFrames = 0; fpsLast = now;
+    document.getElementById('hud-fps').textContent = fpsVal;
+  }
+
+  const dt = (1 / 60) * playSpeed;
+  if (!paused) {
+    time += dt;
+    updateSnake(dt);
+  }
+
+  // Compute block deployments
+  const { visCount } = computeFrame(time);
+  const N = birdData.length;
+  const DEPLOY_THRESH = 0.02;
+  const showSnakeColors = document.getElementById('sl-scolor').value === '1';
+
+  // UI updates
+  const visPct = Math.round(visCount / N * 100);
+  document.getElementById('st-active').textContent = visCount + ' (' + visPct + '%)';
+  const headDeg = Math.round(((snakeDir * 180 / Math.PI) % 360 + 360) % 360);
+  document.getElementById('st-heading').textContent = headDeg + '\u00B0';
+  document.getElementById('hud-vis').textContent = visCount + '/' + N;
+  document.getElementById('hud-heading').textContent = headDeg + '\u00B0';
+  const mins = Math.floor(time / 60);
+  const secs = Math.floor(time % 60);
+  document.getElementById('hud-time').textContent = mins + ':' + (secs < 10 ? '0' : '') + secs;
+
+  // Camera — follows thread drop so snake stays centered in view
+  const threadDropCam = parseFloat(document.getElementById('sl-tdrop').value);
+  const deployDepthCam = parseFloat(document.getElementById('sl-depth').value);
+  const fixedCenterY = threadDropCam + deployDepthCam * 0.4;
+  const dcx = 0, dcy = fixedCenterY, dcz = 0;
+
+  const camDist = parseFloat(document.getElementById('sl-cdist').value);
+  const totalElev = (parseFloat(document.getElementById('sl-celev').value) + camElevDrag) * Math.PI / 180;
+  const eyeX = dcx + camDist * Math.cos(totalElev) * Math.sin(camAngle);
+  const eyeY = dcy - camDist * Math.sin(totalElev);
+  const eyeZ = dcz + camDist * Math.cos(totalElev) * Math.cos(camAngle);
+  const aspect = canvas.width / canvas.height;
+  const mvp = mulM(
+    perspective(Math.PI / 4, aspect, 1, 5000),
+    lookAt(eyeX, eyeY, eyeZ, dcx, dcy, dcz, 0, -1, 0)
+  );
+
+  // === DRAW SKY ===
+  gl.disable(gl.DEPTH_TEST); gl.disable(gl.BLEND);
+  gl.useProgram(sP);
+  gl.bindBuffer(gl.ARRAY_BUFFER, skyBuf);
+  gl.enableVertexAttribArray(sLoc.aP);
+  gl.vertexAttribPointer(sLoc.aP, 2, gl.FLOAT, false, 0, 0);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  gl.disableVertexAttribArray(sLoc.aP);
+
+  gl.enable(gl.DEPTH_TEST); gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+  // === DRAW FRAME (hex circle) ===
+  if (document.getElementById('sl-frame').value === '1') {
+    gl.useProgram(lP);
+    gl.uniformMatrix4fv(lL.uMVP, false, mvp);
+    gl.uniform4f(lL.uCol, 0.35, 0.3, 0.25, 0.4);
+    const cr = gridRadius + 8;
+    const segs = 64;
+    const cv = new Float32Array(segs * 6);
+    for (let i = 0; i < segs; i++) {
+      const a1 = (i / segs) * Math.PI * 2;
+      const a2 = ((i + 1) / segs) * Math.PI * 2;
+      cv[i * 6] = cr * Math.cos(a1); cv[i * 6 + 1] = 0; cv[i * 6 + 2] = cr * Math.sin(a1);
+      cv[i * 6 + 3] = cr * Math.cos(a2); cv[i * 6 + 4] = 0; cv[i * 6 + 5] = cr * Math.sin(a2);
+    }
+    gl.bindBuffer(gl.ARRAY_BUFFER, linePosBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, cv, gl.DYNAMIC_DRAW);
+    gl.enableVertexAttribArray(lL.aPos);
+    gl.vertexAttribPointer(lL.aPos, 3, gl.FLOAT, false, 0, 0);
+    gl.drawArrays(gl.LINES, 0, segs * 2);
+    gl.disableVertexAttribArray(lL.aPos);
+  }
+
+  // === DRAW CABLES ===
+  if (document.getElementById('sl-cables').value === '1') {
+    gl.useProgram(lP); gl.uniformMatrix4fv(lL.uMVP, false, mvp);
+    gl.uniform4f(lL.uCol, 0.5, 0.5, 0.5, 0.12);
+    let nCab = 0;
+    for (const b of birdData) if (b.deploy > 0.05) nCab++;
+    if (nCab > 0) {
+      const cv = new Float32Array(nCab * 6);
+      let ci = 0;
+      for (const b of birdData) {
+        if (b.deploy > 0.05) {
+          cv[ci++] = b.gx; cv[ci++] = 0; cv[ci++] = b.gz;
+          cv[ci++] = b.gx + b.offsetX; cv[ci++] = b.y; cv[ci++] = b.gz + b.offsetZ;
+        }
+      }
+      gl.bindBuffer(gl.ARRAY_BUFFER, linePosBuf);
+      gl.bufferData(gl.ARRAY_BUFFER, cv.subarray(0, ci), gl.DYNAMIC_DRAW);
+      gl.enableVertexAttribArray(lL.aPos);
+      gl.vertexAttribPointer(lL.aPos, 3, gl.FLOAT, false, 0, 0);
+      gl.drawArrays(gl.LINES, 0, ci / 3);
+      gl.disableVertexAttribArray(lL.aPos);
+    }
+  }
+
+  // === DRAW BLOCKS ===
+  let nDraw = 0;
+  for (const b of birdData) if (b.deploy > DEPLOY_THRESH) nDraw++;
+
+  if (nDraw > 0) {
+    gl.depthMask(false); gl.useProgram(bP);
+    gl.uniformMatrix4fv(bL.uMVP, false, mvp);
+    // Block size: percentage of max-touching (adapts to spacing + viewport)
+    const bszPct = parseFloat(document.getElementById('sl-bsz').value) / 100;
+    const curSpacing = parseFloat(document.getElementById('sl-bsp').value);
+    const maxUPt = curSpacing * canvas.height / (2 * Math.tan(Math.PI / 8) * 0.84);
+    gl.uniform1f(bL.uPtSize, maxUPt * bszPct);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+    const posArr = new Float32Array(nDraw * 3);
+    const alphaArr = new Float32Array(nDraw);
+    const colorArr = new Float32Array(nDraw * 3);
+    let pi = 0;
+
+    for (const b of birdData) {
+      if (b.deploy <= DEPLOY_THRESH) continue;
+
+      posArr[pi * 3] = b.gx + b.offsetX;
+      posArr[pi * 3 + 1] = b.y;
+      posArr[pi * 3 + 2] = b.gz + b.offsetZ;
+
+      // Alpha: depth-based fog + deploy fade
+      const ddx = b.gx + b.offsetX - eyeX, ddy = b.y - eyeY, ddz = b.gz + b.offsetZ - eyeZ;
+      const dist = Math.sqrt(ddx * ddx + ddy * ddy + ddz * ddz);
+      const fog = Math.max(0.5, Math.exp(-dist * 0.0005));
+      alphaArr[pi] = fog * Math.min(1.0, b.deploy * 4.0) * 0.95;
+
+      // Color: cam-position gradient or monochrome
+      if (showSnakeColors) {
+        colorArr[pi * 3] = b.camColor[0];
+        colorArr[pi * 3 + 1] = b.camColor[1];
+        colorArr[pi * 3 + 2] = b.camColor[2];
+      } else {
+        colorArr[pi * 3] = 0.05;
+        colorArr[pi * 3 + 1] = 0.05;
+        colorArr[pi * 3 + 2] = 0.05;
+      }
+      pi++;
+    }
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, bPosBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, posArr, gl.DYNAMIC_DRAW);
+    gl.enableVertexAttribArray(bL.aPos);
+    gl.vertexAttribPointer(bL.aPos, 3, gl.FLOAT, false, 0, 0);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, bAlphaBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, alphaArr, gl.DYNAMIC_DRAW);
+    gl.enableVertexAttribArray(bL.aAlpha);
+    gl.vertexAttribPointer(bL.aAlpha, 1, gl.FLOAT, false, 0, 0);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, bColorBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, colorArr, gl.DYNAMIC_DRAW);
+    gl.enableVertexAttribArray(bL.aColor);
+    gl.vertexAttribPointer(bL.aColor, 3, gl.FLOAT, false, 0, 0);
+
+    gl.drawArrays(gl.POINTS, 0, pi);
+
+    gl.depthMask(true);
+    gl.disableVertexAttribArray(bL.aPos);
+    gl.disableVertexAttribArray(bL.aAlpha);
+    gl.disableVertexAttribArray(bL.aColor);
+  }
+}
+
+frame();
+</script>
+</body>
+</html>
