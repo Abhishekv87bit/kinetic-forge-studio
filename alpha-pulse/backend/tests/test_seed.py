@@ -28,3 +28,10 @@ async def test_seed_asset_classes_correct(db_session):
     cryptos = result2.scalars().all()
     assert len(equities) == 20
     assert len(cryptos) == 10
+
+
+async def test_seed_called_from_init_db(db_session):
+    """Verify seed function can run without error (integration check)."""
+    from app.ingestion.seed import seed_default_assets
+    count = await seed_default_assets(db_session)
+    assert count == 30
