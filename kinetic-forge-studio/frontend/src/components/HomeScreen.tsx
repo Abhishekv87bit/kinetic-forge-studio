@@ -5,7 +5,8 @@ export default function HomeScreen() {
     const { projects, loadProjects, createProject, openProject } = useProjectStore();
     const [newName, setNewName] = useState("");
 
-    useEffect(() => { loadProjects(); }, [loadProjects]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Zustand store functions are stable
+    useEffect(() => { loadProjects(); }, []);
 
     const handleCreate = () => {
         if (newName.trim()) {
