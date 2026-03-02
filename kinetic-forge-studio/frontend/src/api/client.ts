@@ -1,4 +1,4 @@
-const API_BASE = "http://localhost:8001/api";
+const API_BASE = "http://localhost:8100/api";
 
 async function api(path: string, options?: RequestInit) {
     const res = await fetch(`${API_BASE}${path}`, {
@@ -19,6 +19,11 @@ export const projectsApi = {
         api(`/projects/${id}/decisions/${decisionId}/lock`, { method: "POST" }),
     listComponents: (id: string) => api(`/projects/${id}/components`),
     getGateStatus: (id: string) => api(`/projects/${id}/gate-status`),
+    setScadDir: (id: string, scadDir: string) =>
+        api(`/projects/${id}/scad-dir`, {
+            method: "POST",
+            body: JSON.stringify({ scad_dir: scadDir }),
+        }),
 };
 
 export const chatApi = {
@@ -77,6 +82,32 @@ export const exportApi = {
 export const viewportApi = {
     geometryUrl: (projectId: string) => `${API_BASE}/projects/${projectId}/geometry`,
     geometryInfo: (projectId: string) => api(`/projects/${projectId}/geometry/info`),
+};
+
+export const viewerApi = {
+    listFiles: (projectId: string) =>
+        api(`/projects/${projectId}/viewer/files`),
+    openFile: (projectId: string, filePath?: string) =>
+        api(`/projects/${projectId}/viewer/open`, {
+            method: "POST",
+            body: JSON.stringify({ file_path: filePath ?? null }),
+        }),
+};
+
+export const profileApi = {
+    get: () => api("/profile"),
+    update: (data: Record<string, unknown>) =>
+        api("/profile", { method: "PUT", body: JSON.stringify(data) }),
+};
+
+export const gateApi = {
+    advanceGate: (projectId: string, targetGate?: string) =>
+        api(`/projects/${projectId}/advance-gate`, {
+            method: "POST",
+            body: JSON.stringify({ target_gate: targetGate ?? "" }),
+        }),
+    chatStatus: (projectId: string) =>
+        api(`/projects/${projectId}/chat/status`),
 };
 
 export async function fetchHealth() {

@@ -17,6 +17,7 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
+from app.config import settings
 from app.engines.geometry_engine import GeometryEngine
 from app.models.component import ComponentManager
 from app.models.decision import DecisionManager
@@ -150,6 +151,19 @@ async def export_project(project_id: str):
                 tmp_stl.unlink(missing_ok=True)
             except Exception:
                 pass  # Skip if export fails
+
+        # Add source .scad files from project directory
+        project_dir = settings.projects_dir / project_id
+        if project_dir.exists():
+            for scad_file in project_dir.glob("**/*.scad"):
+                rel = scad_file.relative_to(project_dir)
+                zf.write(scad_file, f"source/{rel}")
+
+        # Add render PNGs from project directory
+        renders_dir = project_dir / "renders"
+        if renders_dir.exists():
+            for png_file in renders_dir.glob("*.png"):
+                zf.write(png_file, f"renders/{png_file.name}")
 
     zip_buffer.seek(0)
     filename = f"{project.name.replace(' ', '_')}_{project_id}_export.zip"

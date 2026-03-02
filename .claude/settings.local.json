@@ -469,7 +469,29 @@
       "Bash(\"C:\\\\Program Files\\\\OpenSCAD\\\\openscad.com\" -o hex_frame_v5_top.png --imgsize=1200,1200 --camera=0,0,0,0,0,0,800 hex_frame_v5.scad)",
       "Bash(\"C:\\\\Program Files\\\\OpenSCAD\\\\openscad.com\" -o hex_frame_v5_top2.png --imgsize=1400,1400 --camera=0,0,0,0,0,0,1600 hex_frame_v5.scad)",
       "Bash(\"C:\\\\Program Files\\\\OpenSCAD\\\\openscad.com\" -o hex_frame_v5_iso.png --imgsize=1400,1000 --camera=0,0,-100,60,0,30,1400 hex_frame_v5.scad)",
-      "Bash(\"C:\\\\Program Files\\\\OpenSCAD\\\\openscad.com\" -o hex_frame_v5_corridor.png --imgsize=1400,1000 --camera=-339,0,0,60,0,180,400 hex_frame_v5.scad)"
+      "Bash(\"C:\\\\Program Files\\\\OpenSCAD\\\\openscad.com\" -o hex_frame_v5_corridor.png --imgsize=1400,1000 --camera=-339,0,0,60,0,180,400 hex_frame_v5.scad)",
+      "Bash(git stash pop)",
+      "Bash(git stash drop)",
+      "Bash(npm install @tanstack/react-query react-router-dom recharts tailwindcss @tailwindcss/vite)",
+      "Bash(npm install -D @types/react-router-dom)",
+      "Bash(powershell.exe -NoProfile -Command \"Get-Process python -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; ''Processes cleared''\")",
+      "Bash(powershell.exe -NoProfile -Command \"Get-Process python -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; ''Cleared''\")",
+      "Bash(cmd /c \"tasklist /FI \"\"IMAGENAME eq python.exe\"\" 2>nul\")",
+      "Bash(cmd /c \"taskkill /F /IM python.exe 2>nul\")",
+      "Bash(cmd /c \"taskkill /F /IM python3.exe 2>nul\")",
+      "Bash(cmd /c \"for /f \"\"tokens=5\"\" %a in \\(''netstat -aon ^| findstr :8000''\\) do taskkill /F /PID %a\")",
+      "Bash(PYTHONIOENCODING=utf-8 python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload)",
+      "Bash(cmd /c \"netstat -aon | findstr :8000 | findstr LISTEN\")",
+      "Bash(cmd /c \"taskkill /F /PID 38988\")",
+      "Bash(cmd /c \"taskkill /F /PID 163868\")",
+      "Bash(cmd /c \"taskkill /F /PID 84768\")",
+      "Bash(cmd /c \"taskkill /F /PID 163868 /T\")",
+      "Bash(cmd /c \"wmic process where processid=163868 get name,commandline\")",
+      "Bash(PYTHONIOENCODING=utf-8 python -m uvicorn app.main:app --host 0.0.0.0 --port 8001)",
+      "Bash(bc)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(npm run build)",
+      "Bash(py -3.12 -c \":*)"
     ]
   }
 }

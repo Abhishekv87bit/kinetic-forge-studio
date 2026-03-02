@@ -86,3 +86,15 @@ async def list_components(project_id: str):
     pm = await get_pm()
     cm = ComponentManager(pm.db)
     return await cm.list_all(project_id)
+
+
+class SetScadDirRequest(BaseModel):
+    scad_dir: str
+
+
+@router.post("/{project_id}/scad-dir")
+async def set_scad_dir(project_id: str, req: SetScadDirRequest):
+    """Link an OpenSCAD source directory to a project."""
+    pm = await get_pm()
+    project = await pm.set_scad_dir(project_id, req.scad_dir)
+    return {"id": project.id, "name": project.name, "scad_dir": project.scad_dir}

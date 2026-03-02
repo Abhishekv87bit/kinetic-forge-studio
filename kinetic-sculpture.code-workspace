@@ -1,0 +1,152 @@
+{
+  "folders": [
+    {
+      "name": "Designs",
+      "path": "3d_design_agent"
+    },
+    {
+      "name": "KFS App",
+      "path": "kinetic-forge-studio"
+    },
+    {
+      "name": "Docs & Plans",
+      "path": "docs"
+    },
+    {
+      "name": "Tools",
+      "path": "tools"
+    },
+    {
+      "name": "Root",
+      "path": "."
+    }
+  ],
+  "settings": {
+    "files.associations": {
+      "*.scad": "openscad"
+    },
+    "editor.fontSize": 14,
+    "editor.tabSize": 2,
+    "editor.wordWrap": "on",
+    "terminal.integrated.defaultProfile.windows": "Git Bash",
+    "files.exclude": {
+      "**/__pycache__": true,
+      "**/*.pyc": true,
+      "**/node_modules": true,
+      "**/.git": true
+    },
+    "search.exclude": {
+      "**/node_modules": true,
+      "**/__pycache__": true,
+      "**/check point": false
+    },
+    "python.defaultInterpreterPath": "C:\\Users\\abhis\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+    "typescript.preferences.quoteStyle": "double",
+    "editor.formatOnSave": true
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "KFS: Start Backend",
+        "type": "shell",
+        "command": "py",
+        "args": ["-3.12", "-m", "uvicorn", "app.main:app", "--reload", "--host", "0.0.0.0", "--port", "8100"],
+        "options": {
+          "cwd": "${workspaceFolder:KFS App}/backend"
+        },
+        "isBackground": true,
+        "problemMatcher": [],
+        "group": "build",
+        "presentation": {
+          "reveal": "always",
+          "panel": "dedicated",
+          "group": "kfs-servers"
+        }
+      },
+      {
+        "label": "KFS: Start Frontend",
+        "type": "shell",
+        "command": "npx",
+        "args": ["vite"],
+        "options": {
+          "cwd": "${workspaceFolder:KFS App}/frontend"
+        },
+        "isBackground": true,
+        "problemMatcher": [],
+        "group": "build",
+        "presentation": {
+          "reveal": "always",
+          "panel": "dedicated",
+          "group": "kfs-servers"
+        }
+      },
+      {
+        "label": "KFS: Start Both Servers",
+        "dependsOn": ["KFS: Start Backend", "KFS: Start Frontend"],
+        "dependsOrder": "parallel",
+        "problemMatcher": [],
+        "group": {
+          "kind": "build",
+          "isDefault": true
+        }
+      },
+      {
+        "label": "OpenSCAD: Compile",
+        "type": "shell",
+        "command": "OPENSCADPATH=\"C:/Users/abhis/Documents/OpenSCAD/libraries\" \"C:/Program Files/OpenSCAD (Nightly)/openscad.com\" --backend=manifold -o test.csg ${file}",
+        "problemMatcher": [],
+        "group": "test",
+        "presentation": {
+          "reveal": "always",
+          "panel": "shared"
+        }
+      },
+      {
+        "label": "OpenSCAD: Validate Geometry",
+        "type": "shell",
+        "command": "python",
+        "args": ["validate_geometry.py", "${file}"],
+        "options": {
+          "cwd": "${fileDirname}"
+        },
+        "problemMatcher": [],
+        "group": "test"
+      },
+      {
+        "label": "OpenSCAD: Compile + Validate",
+        "dependsOn": ["OpenSCAD: Compile", "OpenSCAD: Validate Geometry"],
+        "dependsOrder": "sequence",
+        "problemMatcher": [],
+        "group": "test"
+      }
+    ]
+  },
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "KFS Backend (Debug)",
+        "type": "debugpy",
+        "request": "launch",
+        "module": "uvicorn",
+        "args": ["app.main:app", "--reload", "--host", "0.0.0.0", "--port", "8100"],
+        "cwd": "${workspaceFolder:KFS App}/backend",
+        "jinja": true,
+        "justMyCode": true
+      }
+    ]
+  },
+  "extensions": {
+    "recommendations": [
+      "ms-python.python",
+      "ms-python.debugpy",
+      "dbaeumer.vscode-eslint",
+      "esbenp.prettier-vscode",
+      "antyos.openscad",
+      "bradlc.vscode-tailwindcss",
+      "eamodio.gitlens",
+      "ms-vscode.vscode-typescript-next"
+    ]
+  }
+}
