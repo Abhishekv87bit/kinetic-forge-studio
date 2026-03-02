@@ -11,8 +11,11 @@ Bundles project data into a downloadable ZIP containing:
 
 import io
 import json
+import logging
 import zipfile
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
@@ -133,24 +136,30 @@ async def export_project(project_id: str):
 
         for gr in geo_results:
             # STEP file
+            tmp_step = None
             try:
                 with tempfile.NamedTemporaryFile(suffix=".step", delete=False) as tmp:
                     tmp_step = Path(tmp.name)
                 _engine.export_step(gr, tmp_step)
                 zf.write(tmp_step, f"step/{gr.name}.step")
-                tmp_step.unlink(missing_ok=True)
-            except Exception:
-                pass  # Skip if export fails
+            except Exception as e:
+                logger.warning("STEP export failed for %s: %s", gr.name, e)
+            finally:
+                if tmp_step:
+                    tmp_step.unlink(missing_ok=True)
 
             # STL file
+            tmp_stl = None
             try:
                 with tempfile.NamedTemporaryFile(suffix=".stl", delete=False) as tmp:
                     tmp_stl = Path(tmp.name)
                 _engine.export_stl(gr, tmp_stl)
                 zf.write(tmp_stl, f"stl/{gr.name}.stl")
-                tmp_stl.unlink(missing_ok=True)
-            except Exception:
-                pass  # Skip if export fails
+            except Exception as e:
+                logger.warning("STL export failed for %s: %s", gr.name, e)
+            finally:
+                if tmp_stl:
+                    tmp_stl.unlink(missing_ok=True)
 
         # Add source .scad files from project directory
         project_dir = settings.projects_dir / project_id

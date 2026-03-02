@@ -118,11 +118,23 @@ async def open_in_native_app(project_id: str, req: OpenFileRequest):
 
     # Determine which file to open
     if req.file_path:
-        file_path = Path(req.file_path)
+        file_path = Path(req.file_path).resolve()
     elif project.scad_dir:
-        file_path = Path(project.scad_dir) / "assembly.scad"
+        file_path = (Path(project.scad_dir) / "assembly.scad").resolve()
     else:
         raise HTTPException(status_code=400, detail="No file specified and no scad_dir set")
+
+    # Path traversal guard: only allow files under scad_dir or project data_dir
+    allowed_roots = []
+    if project.scad_dir:
+        allowed_roots.append(Path(project.scad_dir).resolve())
+    allowed_roots.append(project.data_dir.resolve())
+
+    if not any(str(file_path).startswith(str(root)) for root in allowed_roots):
+        raise HTTPException(
+            status_code=403,
+            detail="File path must be within the project's scad_dir or data directory",
+        )
 
     if not file_path.exists():
         raise HTTPException(status_code=404, detail=f"File not found: {file_path}")

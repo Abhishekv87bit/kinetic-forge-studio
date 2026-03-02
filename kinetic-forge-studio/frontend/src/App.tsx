@@ -6,6 +6,7 @@ import HomeScreen from "./components/HomeScreen";
 import Viewport3D from "./components/Viewport3D";
 import ChatPanel from "./components/ChatPanel";
 import GateStatus from "./components/GateStatus";
+import ProjectFilesPanel from "./components/ProjectFilesPanel";
 
 function SelectedMeshInfo() {
     const selectedMesh = useViewportStore((s) => s.selectedMesh);
@@ -101,8 +102,13 @@ function Workspace() {
                 </div>
             </header>
             <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-                <div style={{ width: 280, borderRight: "1px solid #333", padding: 16, background: "#16213e", color: "#fff", display: "flex", flexDirection: "column" }}>
-                    <ChatPanel projectId={activeProject.id} />
+                <div style={{ width: 280, borderRight: "1px solid #333", background: "#16213e", color: "#fff", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+                    <div style={{ flex: 1, padding: 16, overflowY: "auto" }}>
+                        <ChatPanel projectId={activeProject.id} />
+                    </div>
+                    <div style={{ borderTop: "1px solid #333", maxHeight: "40%", overflowY: "auto" }}>
+                        <ProjectFilesPanel projectId={activeProject.id} />
+                    </div>
                 </div>
                 <div style={{ flex: 1, background: "#0a0a0a" }}>
                     <Viewport3D projectId={activeProject.id} />

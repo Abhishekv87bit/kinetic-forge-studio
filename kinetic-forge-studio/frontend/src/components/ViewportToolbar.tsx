@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+// React hooks imported as needed
 
 /** Preset camera view definitions */
 export interface PresetView {

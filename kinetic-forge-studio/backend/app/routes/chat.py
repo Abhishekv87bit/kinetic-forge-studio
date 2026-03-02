@@ -61,9 +61,15 @@ async def send_message(project_id: str, msg: ChatMessage):
     state = _get_state(project_id)
 
     if state.agent.is_available():
-        return await _send_via_agent(state, project_id, msg)
-    else:
-        return _send_via_pipeline(state, msg)
+        try:
+            result = await _send_via_agent(state, project_id, msg)
+            if result.get("response_type") != "error":
+                return result
+            # AI returned an error — fall back to Pipeline
+            logger.warning("ChatAgent returned error, falling back to Pipeline")
+        except Exception as e:
+            logger.warning("ChatAgent failed (%s), falling back to Pipeline", e)
+    return _send_via_pipeline(state, msg)
 
 
 async def _send_via_agent(

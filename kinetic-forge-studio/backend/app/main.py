@@ -15,7 +15,7 @@ app = FastAPI(title=settings.app_name, version=settings.version)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.cors_origins,
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -30,6 +30,13 @@ app.include_router(library_router)
 app.include_router(export_router)
 app.include_router(profile_router)
 app.include_router(viewer_router)
+
+@app.on_event("shutdown")
+async def shutdown():
+    from app.routes.projects import _pm
+    if _pm is not None:
+        await _pm.db.close()
+
 
 @app.get("/api/health")
 async def health():

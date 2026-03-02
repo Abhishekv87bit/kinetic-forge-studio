@@ -2,7 +2,7 @@ import uuid
 import json
 from pathlib import Path
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from app.db.database import Database
 
 @dataclass
@@ -36,7 +36,7 @@ class ProjectManager:
         (project_dir / "validation").mkdir(exist_ok=True)
         (project_dir / "sessions").mkdir(exist_ok=True)
 
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         await self.db.conn.execute(
             "INSERT INTO projects (id, name, gate, created_at, updated_at, data_dir) VALUES (?, ?, ?, ?, ?, ?)",
             (project_id, name, "design", now, now, str(project_dir))
@@ -81,6 +81,15 @@ class ProjectManager:
         )
         await self.db.conn.commit()
         return await self.open(project_id)
+
+    async def update_gate(self, project_id: str, gate: str) -> None:
+        """Advance a project to a new gate level."""
+        await self._ensure_db()
+        await self.db.conn.execute(
+            "UPDATE projects SET gate = ?, updated_at = datetime('now') WHERE id = ?",
+            (gate, project_id),
+        )
+        await self.db.conn.commit()
 
     async def _ensure_scad_dir_column(self):
         """Add scad_dir column if missing (backwards-compatible migration)."""

@@ -6,7 +6,7 @@ import * as THREE from "three";
 import { useViewportStore } from "../stores/viewportStore";
 import ViewportToolbar, { type ViewMode } from "./ViewportToolbar";
 
-const API_BASE = "http://localhost:8000/api";
+const API_BASE = "http://localhost:8100/api";
 
 /** Fallback cube shown while geometry is loading or on error */
 function FallbackCube() {

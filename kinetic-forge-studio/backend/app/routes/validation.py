@@ -162,11 +162,7 @@ async def advance_gate(project_id: str, req: AdvanceGateRequest):
 
     if gate_result.passed:
         # Advance the gate
-        await pm.db.execute(
-            "UPDATE projects SET gate = ?, updated_at = datetime('now') WHERE id = ?",
-            (target, project_id),
-        )
-        await pm.db.commit()
+        await pm.update_gate(project_id, target)
         return {
             "advanced": True,
             "previous_gate": current_gate,
