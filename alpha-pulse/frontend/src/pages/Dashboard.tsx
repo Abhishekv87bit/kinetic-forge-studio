@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
@@ -7,6 +8,8 @@ import {
   fetchDashboardSummary,
   triggerBulkIngest,
   runAnalysis,
+  validateTicker,
+  createAsset,
 } from "../api/client";
 import type { DashboardOpportunity } from "../api/types";
 import SignalBadge from "../components/SignalBadge";
@@ -34,6 +37,30 @@ export default function Dashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
       queryClient.invalidateQueries({ queryKey: ["assets"] });
+    },
+  });
+
+  // Asset search state
+  const [searchTicker, setSearchTicker] = useState("");
+  const [searchResult, setSearchResult] = useState<{valid: boolean; name?: string; asset_class?: string} | null>(null);
+  const [searchError, setSearchError] = useState("");
+
+  const searchMutation = useMutation({
+    mutationFn: (ticker: string) => validateTicker(ticker),
+    onSuccess: (data) => {
+      setSearchResult(data);
+      setSearchError(data.valid ? "" : "Ticker not found on Yahoo Finance");
+    },
+    onError: () => setSearchError("Search failed"),
+  });
+
+  const addAssetMutation = useMutation({
+    mutationFn: (data: { id: string; asset_class: string; name: string }) =>
+      createAsset({ id: data.id, asset_class: data.asset_class as any, name: data.name }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["assets"] });
+      setSearchTicker("");
+      setSearchResult(null);
     },
   });
 
@@ -152,6 +179,48 @@ export default function Dashboard() {
           value={portfolio.data ? String(portfolio.data.open_trades) : "—"}
           color="text-gray-300"
         />
+      </div>
+
+      {/* Add Asset */}
+      <div className="card">
+        <h2 className="mb-3 text-lg font-semibold text-white">Add Asset</h2>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={searchTicker}
+            onChange={(e) => setSearchTicker(e.target.value.toUpperCase())}
+            onKeyDown={(e) => e.key === "Enter" && searchTicker && searchMutation.mutate(searchTicker)}
+            placeholder="Search ticker (e.g. PLTR, SOL-USD)"
+            className="flex-1 rounded border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
+          />
+          <button
+            onClick={() => searchTicker && searchMutation.mutate(searchTicker)}
+            disabled={!searchTicker || searchMutation.isPending}
+            className="btn-secondary text-xs"
+          >
+            {searchMutation.isPending ? "..." : "Search"}
+          </button>
+        </div>
+        {searchError && <p className="mt-2 text-xs text-red-400">{searchError}</p>}
+        {searchResult?.valid && (
+          <div className="mt-3 flex items-center justify-between rounded border border-gray-700 bg-gray-800/50 px-3 py-2">
+            <div>
+              <span className="font-mono text-sm font-bold text-white">{searchTicker}</span>
+              <span className="ml-2 text-sm text-gray-400">{searchResult.name}</span>
+              <span className="ml-2 rounded bg-gray-700 px-2 py-0.5 text-xs text-gray-400">{searchResult.asset_class}</span>
+            </div>
+            <button
+              onClick={() => addAssetMutation.mutate({ id: searchTicker, asset_class: searchResult.asset_class!, name: searchResult.name! })}
+              disabled={addAssetMutation.isPending}
+              className="rounded bg-indigo-600 px-3 py-1 text-xs font-medium text-white hover:bg-indigo-500"
+            >
+              {addAssetMutation.isPending ? "Adding..." : "Add"}
+            </button>
+          </div>
+        )}
+        {addAssetMutation.isSuccess && (
+          <p className="mt-2 text-xs text-emerald-400">Asset added successfully</p>
+        )}
       </div>
 
       {/* Tracked Assets + Run Analysis */}

@@ -125,4 +125,37 @@ DEFAULT_RULES = [
         "asset_class": "equity",
         "weight": 0.6,
     },
+    {
+        "name": "Momentum Factor Alignment",
+        "description": "Weight signals that align with 12-month price momentum",
+        "rule_prompt": (
+            "If the asset shows strong positive residual momentum (12m return minus "
+            "1m return > 20%), favor buy signals. If momentum is strongly negative, "
+            "favor caution."
+        ),
+        "asset_class": "equity",
+        "weight": 0.7,
+    },
+    {
+        "name": "Multi-Factor Convergence",
+        "description": "Strongest signal when momentum, value, and quality all agree",
+        "rule_prompt": (
+            "When momentum, value, and quality factors all point in the same direction "
+            "(all positive or all negative), increase conviction. When they diverge, "
+            "reduce confidence and flag the conflict."
+        ),
+        "asset_class": None,
+        "weight": 0.9,
+    },
+    {
+        "name": "Regime Awareness",
+        "description": "Adjust signal strength based on macro regime",
+        "rule_prompt": (
+            "In goldilocks regime (rising growth, falling inflation), favor equity buy "
+            "signals. In stagflation (falling growth, rising inflation), increase risk "
+            "flags and reduce buy confidence. Always note the current regime in analysis."
+        ),
+        "asset_class": None,
+        "weight": 0.6,
+    },
 ]

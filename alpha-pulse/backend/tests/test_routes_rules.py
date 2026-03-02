@@ -2,7 +2,7 @@ async def test_seed_rules(client):
     resp = await client.post("/api/rules/seed")
     assert resp.status_code == 200
     data = resp.json()
-    assert data["seeded"] == 8
+    assert data["seeded"] == 11
 
 
 async def test_list_rules(client):
@@ -10,7 +10,7 @@ async def test_list_rules(client):
     resp = await client.get("/api/rules")
     assert resp.status_code == 200
     rules = resp.json()
-    assert len(rules) == 8
+    assert len(rules) == 11
 
 
 async def test_create_rule(client):
@@ -68,10 +68,10 @@ async def test_seed_idempotent(client):
     await client.post("/api/rules/seed")
     resp = await client.post("/api/rules/seed")
     assert resp.json()["seeded"] == 0
-    assert resp.json()["skipped"] == 8
+    assert resp.json()["skipped"] == 11
     # Total should still be 5
     list_resp = await client.get("/api/rules")
-    assert len(list_resp.json()) == 8
+    assert len(list_resp.json()) == 11
 
 
 async def test_update_rule_invalid_weight_rejected(client):

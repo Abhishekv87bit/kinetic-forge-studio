@@ -82,7 +82,7 @@ export interface RuleUpdate {
 
 export interface PaperTrade {
   id: number;
-  signal_id: number;
+  signal_id: number | null;
   asset_id: string;
   action: string;
   quantity: number;

@@ -96,7 +96,7 @@ class PaperTrade(Base):
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    signal_id = Column(Integer, ForeignKey("signals.id"), nullable=False)
+    signal_id = Column(Integer, ForeignKey("signals.id"), nullable=True)
     asset_id = Column(String, ForeignKey("assets.id", ondelete="CASCADE"), nullable=False)
     action = Column(String, nullable=False)
     quantity = Column(Float, nullable=False)

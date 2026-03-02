@@ -60,6 +60,11 @@ export const toggleTracked = (id: string, tracked: boolean) =>
     body: JSON.stringify({ tracked }),
   });
 
+export const validateTicker = (ticker: string) =>
+  request<{ valid: boolean; name?: string; asset_class?: string }>(
+    `/api/assets/validate/${ticker}`
+  );
+
 // ── Signals ──
 
 export const fetchSignals = (params?: { asset_id?: string; limit?: number }) => {
@@ -117,6 +122,17 @@ export const createTrade = (data: {
   quantity: number;
 }) =>
   request<PaperTrade>("/api/portfolio/trades", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+export const createManualTrade = (data: {
+  asset_id: string;
+  action: string;
+  quantity: number;
+  price: number;
+}) =>
+  request<PaperTrade>("/api/portfolio/trades/manual", {
     method: "POST",
     body: JSON.stringify(data),
   });

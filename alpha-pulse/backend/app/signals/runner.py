@@ -13,6 +13,12 @@ from app.signals.insider import compute_insider_score
 from app.signals.readability import compute_readability_score
 from app.signals.earnings_nlp import compute_earnings_nlp_score
 from app.signals.employee_sentiment import compute_employee_score
+from app.signals.momentum import compute_momentum_score
+from app.signals.value_factor import compute_value_score
+from app.signals.quality_factor import compute_quality_score
+from app.signals.earnings_drift import compute_drift_score
+from app.signals.regime import detect_regime, score_asset_for_regime
+from app.signals.hurst import compute_hurst_score
 
 logger = logging.getLogger(__name__)
 
@@ -129,6 +135,69 @@ async def compute_all_signals(db: AsyncSession, asset_id: str) -> dict:
         employee_result = compute_employee_score(current_rating=None)
         results["employee_sentiment"] = employee_result
         await _save_signal_score(db, asset_id, "employee_sentiment", employee_result)
+
+        # 6. Momentum -- from price snapshot
+        price_data = market_data or {}
+        momentum_prices = {
+            "price_now": price_data.get("currentPrice"),
+            "price_12m_ago": price_data.get("price_12m_ago"),
+            "price_1m_ago": price_data.get("price_1m_ago"),
+        }
+        if momentum_prices["price_now"]:
+            result = compute_momentum_score(momentum_prices)
+            await _save_signal_score(db, asset_id, "momentum", result)
+            results["momentum"] = result
+
+        # 7. Value -- from fundamentals
+        value_data = {
+            "pe_ratio": price_data.get("pe_ratio"),
+            "pb_ratio": price_data.get("pb_ratio"),
+            "dividend_yield": price_data.get("dividend_yield"),
+        }
+        if any(v is not None for v in value_data.values()):
+            result = compute_value_score(value_data)
+            await _save_signal_score(db, asset_id, "value", result)
+            results["value"] = result
+
+        # 8. Quality -- from fundamentals
+        quality_data = {
+            "roe": price_data.get("roe"),
+            "debt_to_equity": price_data.get("debt_to_equity"),
+            "earnings_growth_std": price_data.get("earnings_growth_std"),
+        }
+        if any(v is not None for v in quality_data.values()):
+            result = compute_quality_score(quality_data)
+            await _save_signal_score(db, asset_id, "quality", result)
+            results["quality"] = result
+
+        # 9. Post-Earnings Drift
+        drift_data = {
+            "actual_eps": price_data.get("actual_eps"),
+            "estimated_eps": price_data.get("estimated_eps"),
+            "days_since_earnings": price_data.get("days_since_earnings"),
+        }
+        if drift_data["actual_eps"] is not None:
+            result = compute_drift_score(drift_data)
+            await _save_signal_score(db, asset_id, "earnings_drift", result)
+            results["earnings_drift"] = result
+
+    # 10. Regime -- from macro snapshot (applies to all asset classes)
+    macro_snap = await _get_latest_snapshot(db, "_MACRO", "macro")
+    if macro_snap:
+        regime_result = detect_regime(macro_snap)
+        regime_score = score_asset_for_regime(asset.asset_class, regime_result["regime"])
+        combined = {"score": regime_score, "details": {**regime_result["details"], "regime": regime_result["regime"]}}
+        await _save_signal_score(db, asset_id, "regime", combined)
+        results["regime"] = combined
+
+    if is_equity:
+        # 11. Hurst exponent -- from price history (if available)
+        price_data = (await _get_latest_snapshot(db, asset_id, "price")) or {}
+        price_history = price_data.get("price_history", [])
+        if len(price_history) >= 50:
+            result = compute_hurst_score(price_history)
+            await _save_signal_score(db, asset_id, "hurst", result)
+            results["hurst"] = result
 
     await db.commit()
 
