@@ -215,6 +215,34 @@ async def _job_ingest_sec():
             logger.exception("SEC ingestion failed for %s", asset_id)
 
 
+async def _job_auto_scan():
+    """Run full AI analysis on all tracked assets."""
+    from app.db.database import async_session_factory
+    from app.db.models import Asset
+    from app.agents.orchestrator import run_analysis
+    from sqlalchemy import select
+
+    async with async_session_factory() as db:
+        result = await db.execute(
+            select(Asset.id).where(Asset.tracked.is_(True), Asset.id != "_MACRO")
+        )
+        asset_ids = result.scalars().all()
+
+    logger.info("Auto-scan starting for %d assets", len(asset_ids))
+
+    for i, asset_id in enumerate(asset_ids):
+        try:
+            if i > 0:
+                await asyncio.sleep(5)  # Groq rate limit: 30 req/min
+            async with async_session_factory() as db:
+                await run_analysis(db, asset_id)
+            logger.info("Auto-scan complete for %s (%d/%d)", asset_id, i + 1, len(asset_ids))
+        except Exception:
+            logger.exception("Auto-scan failed for %s", asset_id)
+
+    logger.info("Auto-scan finished for %d assets", len(asset_ids))
+
+
 # ── Scheduler factory ────────────────────────────────────────────
 
 
@@ -285,6 +313,15 @@ def create_scheduler() -> AsyncIOScheduler:
         CronTrigger(hour=7, minute=0, timezone=_ET),
         id="compute_signals",
         name="Quantitative Signals",
+        replace_existing=True,
+    )
+
+    # Auto-scan: daily at 8:00 AM ET (after signal computation at 7 AM)
+    scheduler.add_job(
+        _job_auto_scan,
+        CronTrigger(hour=8, minute=0, timezone=_ET),
+        id="auto_scan",
+        name="Auto-Scan (AI Analysis)",
         replace_existing=True,
     )
 

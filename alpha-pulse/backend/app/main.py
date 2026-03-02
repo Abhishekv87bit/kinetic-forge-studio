@@ -17,6 +17,7 @@ from app.routes.assets import router as assets_router
 from app.routes.portfolio import router as portfolio_router
 from app.routes.rules import router as rules_router
 from app.routes.backtest import router as backtest_router
+from app.routes.dashboard import router as dashboard_router
 from app.routes.ingest import router as ingest_router
 from app.routes.signals import router as signals_router
 
@@ -80,6 +81,7 @@ app.include_router(alerts_router)
 app.include_router(analysis_router)
 app.include_router(assets_router)
 app.include_router(backtest_router)
+app.include_router(dashboard_router)
 app.include_router(ingest_router)
 app.include_router(portfolio_router)
 app.include_router(rules_router)
