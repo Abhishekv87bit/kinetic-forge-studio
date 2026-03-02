@@ -5,7 +5,7 @@ export default function HomeScreen() {
     const { projects, loadProjects, createProject, openProject } = useProjectStore();
     const [newName, setNewName] = useState("");
 
-    useEffect(() => { loadProjects(); }, []);
+    useEffect(() => { loadProjects(); }, [loadProjects]);
 
     const handleCreate = () => {
         if (newName.trim()) {

@@ -13,7 +13,7 @@ import io
 import json
 import logging
 import zipfile
-from datetime import datetime
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -108,7 +108,7 @@ async def export_project(project_id: str):
         "project_id": project_id,
         "project_name": project.name,
         "gate": project.gate,
-        "exported_at": datetime.utcnow().isoformat(),
+        "exported_at": datetime.now(timezone.utc).isoformat(),
         "decisions": decisions,
         "components": components,
         "component_count": len(components),
@@ -193,7 +193,7 @@ def _build_readme(project, components: list[dict], decisions: list[dict]) -> str
         f"Project: {project.name}",
         f"ID: {project.id}",
         f"Gate: {project.gate}",
-        f"Exported: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}",
+        f"Exported: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
         f"",
         f"Components ({len(components)}):",
         f"{'-' * 30}",

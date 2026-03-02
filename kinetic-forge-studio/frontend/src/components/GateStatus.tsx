@@ -146,7 +146,7 @@ export default function GateStatus({ projectId, onGateChange }: GateStatusProps)
             ) : (
                 <div>
                     {status.validators.map((v, i) => (
-                        <div key={i}>
+                        <div key={`${v.validator}-${v.mesh_name ?? i}`}>
                             <div style={validatorRowStyle}>
                                 <span>{v.passed ? checkIcon : failIcon}</span>
                                 <span style={{ color: v.passed ? "#ccc" : "#ff6b6b" }}>
@@ -156,8 +156,8 @@ export default function GateStatus({ projectId, onGateChange }: GateStatusProps)
                                 </span>
                             </div>
                             {/* Show sub-checks for manufacturability */}
-                            {v.checks && v.checks.map((check, j) => (
-                                <div key={j} style={subCheckStyle}>
+                            {v.checks && v.checks.map((check) => (
+                                <div key={check.name} style={subCheckStyle}>
                                     {check.passed ? checkIcon : failIcon}{" "}
                                     {check.name}: {check.message}
                                 </div>
@@ -165,8 +165,8 @@ export default function GateStatus({ projectId, onGateChange }: GateStatusProps)
                             {/* Show collision details */}
                             {v.validator === "collision" && !v.passed && v.collisions && (
                                 <div style={subCheckStyle}>
-                                    {(v.collisions as Array<{mesh_a: string; mesh_b: string}>).map((c, j) => (
-                                        <div key={j}>
+                                    {Array.isArray(v.collisions) && (v.collisions as Array<{mesh_a: string; mesh_b: string}>).map((c) => (
+                                        <div key={`${c.mesh_a}-${c.mesh_b}`}>
                                             {failIcon} {c.mesh_a} overlaps {c.mesh_b}
                                         </div>
                                     ))}

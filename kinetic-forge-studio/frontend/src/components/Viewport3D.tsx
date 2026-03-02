@@ -264,6 +264,10 @@ export default function Viewport3D({ projectId }: Viewport3DProps) {
             })
             .catch((err) => {
                 if (err.name !== "AbortError") {
+                    setGeometryUrl((prev) => {
+                        if (prev) URL.revokeObjectURL(prev);
+                        return null;
+                    });
                     setError(err.message);
                     setLoading(false);
                 }

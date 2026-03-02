@@ -93,9 +93,12 @@ async def upload_file(project_id: str, file: UploadFile = File(...)):
             analysis = _analyze_photo(file_path)
         elif file_type == "video":
             analysis = _analyze_video(file_path)
-    except Exception as e:
-        logger.warning("Analyzer failed for %s: %s", file.filename, e)
+    except (FileNotFoundError, ValueError, RuntimeError) as e:
+        logger.warning("Analysis failed for %s: %s", file.filename, e)
         analysis_error = str(e)
+    except Exception as e:
+        logger.error("Unexpected error analyzing %s: %s", file.filename, e, exc_info=True)
+        analysis_error = f"Unexpected error: {e}"
 
     # Build response
     result = {

@@ -28,8 +28,9 @@ export default function ChatPanel({ projectId }: Props) {
         try {
             const data = await chatApi.send(projectId, text);
             setMessages((m) => [...m, { role: "assistant", content: data.message }]);
-        } catch {
-            setMessages((m) => [...m, { role: "assistant", content: "Error connecting to backend." }]);
+        } catch (err) {
+            const detail = err instanceof Error ? err.message : "Unknown error";
+            setMessages((m) => [...m, { role: "assistant", content: `Error: ${detail}` }]);
         }
         setLoading(false);
     };
@@ -42,14 +43,14 @@ export default function ChatPanel({ projectId }: Props) {
                     <p style={{ opacity: 0.4, fontSize: 13 }}>Describe what you want to design...</p>
                 )}
                 {messages.map((m, i) => (
-                    <div key={i} style={{
+                    <div key={`${m.role}-${i}`} style={{
                         padding: "8px 12px", borderRadius: 8, fontSize: 13,
                         background: m.role === "user" ? "#1a3a6e" : "#0d1b3e",
                         alignSelf: m.role === "user" ? "flex-end" : "flex-start",
                         maxWidth: "90%",
                     }}>
-                        {m.content.split("\n").map((line, j) => (
-                            <span key={j}>{line}{j < m.content.split("\n").length - 1 && <br />}</span>
+                        {m.content.split("\n").map((line, j, arr) => (
+                            <span key={`line-${j}`}>{line}{j < arr.length - 1 && <br />}</span>
                         ))}
                     </div>
                 ))}

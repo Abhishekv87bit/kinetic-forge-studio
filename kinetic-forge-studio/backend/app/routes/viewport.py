@@ -83,8 +83,12 @@ async def get_geometry(project_id: str):
         # Generate geometry from registered components
         results = []
         for comp in components:
+            if not isinstance(comp, dict):
+                continue
             ctype = comp.get("type", "")
             params = comp.get("parameters", {})
+            if not isinstance(params, dict):
+                params = {}
             name = comp.get("id", "part")
 
             if ctype == "gear":
