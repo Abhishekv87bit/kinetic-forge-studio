@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { chatApi } from "../api/client";
+import { useViewportStore } from "../stores/viewportStore";
 import FileUpload from "./FileUpload";
 
 interface Message {
@@ -16,6 +17,7 @@ export default function ChatPanel({ projectId }: Props) {
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(false);
     const bottomRef = useRef<HTMLDivElement>(null);
+    const { reloadGeometry } = useViewportStore();
 
     useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
@@ -28,6 +30,10 @@ export default function ChatPanel({ projectId }: Props) {
         try {
             const data = await chatApi.send(projectId, text);
             setMessages((m) => [...m, { role: "assistant", content: data.message }]);
+            // When spec is complete, backend registers components — reload viewport
+            if (data.geometry_ready) {
+                reloadGeometry();
+            }
         } catch (err) {
             const detail = err instanceof Error ? err.message : "Unknown error";
             setMessages((m) => [...m, { role: "assistant", content: `Error: ${detail}` }]);
