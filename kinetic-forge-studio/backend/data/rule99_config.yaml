@@ -1,0 +1,183 @@
+# Rule 99 — Machine-Readable Consultant Configuration
+# Deterministic consultant dispatcher: no AI calls, examines project state, fires right consultants.
+#
+# Trigger modes:
+#   "Rule 99"          — Full scan; all matching consultants fire
+#   "Rule 99 [topic]"  — Targeted (cam, frame, drive, tolerance, etc.)
+#   "Rule 99 design"   — Pre-design consultant assembly
+#   "design locked"    — Gate 1 consultants + gate transition
+#   "prototype validated" — Gate 2 consultants + gate transition
+#
+# Universal Validation Integration (validate_kinetic.py):
+#   Each consultant maps to one or more tiers from the universal validator.
+#   See docs/plans/2026-03-03-universal-validation-spec.md for full tier spec.
+#   validator_tiers field maps consultant → validator check IDs.
+#
+#   Consultant          → Validator Tiers
+#   mechanism           → T7: F1, F2, F3 (Grashof, transmission angle, coupler)
+#   physics             → T7: F4, F5, K5 (power budget, friction, driver tracing)
+#   kinematic_chain     → T4: K3, K4, K5 (engagement, dead points, drivers)
+#   vertical_budget     → T2: D1 (bounding box vs envelope)
+#   collision_enhanced  → T3: S1-S3, T4: K1-K2 (static + dynamic interference)
+#   iso286              → T5: C2 (rotating clearance)
+#   stackup             → T5: C1, C3 (sliding clearance, user-defined pairs)
+#   fdm_ground_truth    → T6: M1-M3 (wall thickness, print envelope, mass)
+#   freecad_export      → T8: E1-E4 (STEP solid count, topology, volume, completeness)
+
+gates:
+  design:
+    description: "Feasibility & geometry correctness"
+    consultants:
+      - name: mechanism
+        module: mechanism_consultant
+        triggers: [always]
+        validator_tiers: [F1, F2, F3]
+        checks:
+          - grashof_condition     # four-bar only: s+l <= p+q
+          - transmission_angle    # 40-140 deg range
+          - dead_point_detection  # positions where mechanism jams
+          - coupler_constancy     # length constant at 0/90/180/270 deg
+        component_types: [four_bar, linkage, slider_crank, scotch_yoke]
+
+      - name: physics
+        module: physics_consultant
+        triggers: [always]
+        validator_tiers: [F4, F5, K5]
+        checks:
+          - power_budget          # required < available/2
+          - driver_tracing        # every animation has physical driver
+          - torque_chain          # input torque propagates to output
+          - friction_cascade      # efficiency = 0.95^n for n stages
+
+      - name: kinematic_chain
+        module: kinematic_chain_consultant
+        triggers: [always]
+        validator_tiers: [K3, K4, K5]
+        checks:
+          - assembly_feasibility  # can parts be assembled in order
+          - degree_of_freedom     # mechanism DOF = expected DOF
+          - grounding_check       # at least one grounded link
+
+      - name: vertical_budget
+        module: vertical_budget_consultant
+        triggers: [always]
+        validator_tiers: [D1]
+        checks:
+          - z_stack_enumeration   # list all components with Z heights
+          - total_vs_envelope     # sum <= available
+          - radial_envelope       # max OD <= envelope
+          - clearance_margins     # minimum gap between stacked parts
+
+      - name: aesthetics
+        module: aesthetics_consultant
+        triggers: [always]
+        validator_tiers: []  # No direct validator mapping — advisory only
+        checks:
+          - element_count         # prime numbers preferred (37, 61, 271)
+          - proportion_ratios     # golden ratio, pleasing proportions
+          - motion_quality        # smooth vs jerky assessment
+          - visual_balance        # center of mass vs visual center
+
+  prototype:
+    description: "3D print readiness & tolerance verification"
+    consultants:
+      - name: iso286
+        module: iso286_consultant
+        triggers: [shaft, bearing, hole, gear, cylinder]
+        validator_tiers: [C2]
+        checks:
+          - fit_clearance         # H7/g6 sliding, H7/k6 transition, H7/p6 press
+          - fit_type_appropriate  # correct fit for application
+          - tolerance_band_width  # IT grade appropriate for process
+
+      - name: stackup
+        module: stackup_consultant
+        triggers: [shaft, bearing, assembly]
+        validator_tiers: [C1, C3]
+        checks:
+          - worst_case_stackup   # pessimistic tolerance chain
+          - rss_stackup          # 3-sigma statistical
+          - cpk_check            # process capability index
+
+      - name: fdm_ground_truth
+        module: fdm_ground_truth_consultant
+        triggers: [always]
+        validator_tiers: [M1, M2, M3]
+        checks:
+          - critical_fit_id      # identify fits needing test prints
+          - test_coupon_spec     # gear mesh, press-fit, snap-fit specs
+          - print_orientation    # best build direction per part
+          - support_assessment   # where supports are needed
+
+      - name: collision_enhanced
+        module: collision_consultant
+        triggers: [always]
+        validator_tiers: [S1, S2, S3, K1, K2]
+        checks:
+          - pairwise_clearance   # minimum gap between all moving pairs
+          - sweep_volume         # moving part swept envelope
+          - dynamic_interference # check at multiple animation positions
+
+  production:
+    description: "Manufacturing readiness for metal/wood/CNC"
+    consultants:
+      - name: dfm
+        module: dfm_consultant
+        triggers: [always]
+        validator_tiers: [M1]  # Wall thickness overlaps with Tier 6
+        checks:
+          - tool_access          # CNC tool can reach all features
+          - minimum_radius       # internal corners >= tool radius
+          - draft_angles         # for casting/molding
+          - wall_thickness_prod  # production material minimums
+          - bend_radius          # sheet metal K-factor
+          - hole_to_edge         # minimum distance
+
+      - name: materials
+        module: materials_consultant
+        triggers: [always]
+        validator_tiers: []  # No direct validator mapping — advisory only
+        checks:
+          - material_selection   # appropriate for loads and environment
+          - galvanic_corrosion   # dissimilar metal pairs
+          - thermal_expansion    # differential expansion check
+          - surface_finish       # Ra values for mating surfaces
+          - hardness_match       # shaft vs bearing hardness
+
+      - name: bom
+        module: bom_consultant
+        triggers: [always]
+        validator_tiers: []  # No direct validator mapping — BOM is data, not geometry
+        checks:
+          - completeness         # all parts accounted for
+          - fastener_spec        # bolt grade, torque spec
+          - bearing_spec         # type, size, preload, lubrication
+          - motor_spec           # type, voltage, torque, speed
+          - raw_stock            # material sizes and sources
+
+      - name: freecad_export
+        module: freecad_consultant
+        triggers: [always]
+        validator_tiers: [E1, E2, E3, E4]
+        checks:
+          - step_validity        # all solids valid, no open shells
+          - drawing_readiness    # dimensions, tolerances annotated
+          - assembly_constraints # mates defined for assembly
+          - fem_readiness        # loads and constraints defined
+
+# Topic mapping for "Rule 99 [topic]" targeted mode
+topics:
+  cam:       [mechanism, physics]
+  frame:     [vertical_budget, dfm]
+  drive:     [mechanism, physics, kinematic_chain]
+  tolerance: [iso286, stackup]
+  materials: [materials]
+  production: [dfm, materials, bom, freecad_export]
+  print:     [fdm_ground_truth, collision_enhanced]
+  reliability: [materials, stackup]
+  linkage:   [mechanism, kinematic_chain, physics]
+  fasteners: [bom, dfm]
+  cables:    [physics, vertical_budget]
+  vertical:  [vertical_budget]
+  aesthetic: [aesthetics]
+  validation: [collision_enhanced, fdm_ground_truth, freecad_export]  # runs all geometry validation tiers

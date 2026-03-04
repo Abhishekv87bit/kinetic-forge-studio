@@ -87,15 +87,21 @@ Key patterns:
 - **Render PNG and inspect** before delivering to user (use OpenSCAD MCP or CLI render)
 
 ## Validation Pipeline (MANDATORY)
-Every code change follows this sequence. No exceptions.
 
+### OpenSCAD (.scad files)
 1. **Compile** — `openscad.com -o test.csg file.scad` — zero errors
 2. **Validate** — `python validate_geometry.py file.scad` — zero FAILs
 3. **Render** — `python validate_geometry.py --render file.scad` — visually inspect PNG
 4. **Deliver** — only after steps 1-3 pass
 
+### CadQuery Production (.py files)
+Every CadQuery production script must implement the standard validation interface
+(`get_fixed_parts`, `get_moving_parts`, `get_mechanism_type` — see `docs/plans/2026-03-03-universal-validation-spec.md`).
+Run `python tools/validate_kinetic.py <module_name>` after every build. Zero FAILs required before delivery.
+
 Tools installed:
-- `validate_geometry.py` — constraint checker (bearings on shaft axis, Z alignment, clearances, parametric chain)
+- `validate_geometry.py` — OpenSCAD constraint checker (bearings, Z alignment, clearances, parametric chain)
+- `tools/validate_kinetic.py` — Universal CadQuery validator (8 tiers: topology, dimensional, static/dynamic interference, clearance, manufacturability, functional, export)
 - `openscad-mcp` — MCP server at `D:\Claude local\openscad-mcp\` for render-in-loop
 - `BOSL2` — OpenSCAD library at `Documents\OpenSCAD\libraries\BOSL2\` for attachment-based positioning
 
