@@ -66,8 +66,79 @@ def _aabb_overlap(
     )
 
 
+def _is_intentional_contact(name_a: str, name_b: str, component_types: dict[str, str]) -> str | None:
+    """
+    Check if two components have intentional physical contact.
+
+    Returns exemption type string if the pair should be exempted,
+    or None if it's a real collision.
+
+    Exempted pairs:
+      - gear + gear: teeth mesh (sun/planet, planet/ring, drive/driven)
+      - gear + rack: rack-and-pinion engagement
+      - gear + pawl: ratchet pawl engaging wheel teeth
+      - cylinder + gear: shaft through gear bore
+      - cylinder + cylinder: shaft through bearing / pulley on shaft
+      - belt + pulley: belt wrapping around pulley
+      - base/frame/mount + anything: mounting/support contact
+    """
+    type_a = component_types.get(name_a, "")
+    type_b = component_types.get(name_b, "")
+    types = frozenset([type_a, type_b])
+    na, nb = name_a.lower(), name_b.lower()
+
+    # Gear-to-gear mesh (planetary, gear trains, ratchet wheel)
+    if type_a == "gear" and type_b == "gear":
+        return "gear_mesh"
+
+    # Rack-to-gear mesh (rack and pinion)
+    if types == frozenset(["gear", "rack"]):
+        return "rack_gear_mesh"
+
+    # Shaft through gear bore (pinion_shaft + pinion, drive_shaft + gear)
+    shaft_words = ("shaft", "axle", "spindle", "pin")
+    if types == frozenset(["cylinder", "gear"]):
+        if any(s in na for s in shaft_words) or any(s in nb for s in shaft_words):
+            return "shaft_through_gear"
+
+    # Shaft through bearing / pulley-on-shaft / cam-on-shaft
+    if type_a == "cylinder" and type_b == "cylinder":
+        bearing_words = ("bearing", "pulley", "bushing", "ring", "cam", "disc")
+        a_shaft = any(s in na for s in shaft_words)
+        b_shaft = any(s in nb for s in shaft_words)
+        a_bearing = any(s in na for s in bearing_words)
+        b_bearing = any(s in nb for s in bearing_words)
+        if (a_shaft and b_bearing) or (b_shaft and a_bearing):
+            return "shaft_through_bearing"
+
+    # Eccentric disc inside bearing ring
+    if type_a == "cylinder" and type_b == "cylinder":
+        if ("eccentric" in na and "bearing" in nb) or ("eccentric" in nb and "bearing" in na):
+            return "eccentric_in_bearing"
+
+    # Pawl engaging ratchet wheel
+    if ("pawl" in na or "pawl" in nb):
+        other = nb if "pawl" in na else na
+        if "ratchet" in other or "wheel" in other or type_a == "gear" or type_b == "gear":
+            return "pawl_engagement"
+
+    # Belt touching pulley
+    if ("belt" in na and "pulley" in nb) or ("belt" in nb and "pulley" in na):
+        return "belt_on_pulley"
+
+    # Base plate / frame / mount contacts adjacent components (mounting)
+    mount_words = ("base", "frame", "mount", "bracket", "plate")
+    a_is_mount = any(s in na for s in mount_words)
+    b_is_mount = any(s in nb for s in mount_words)
+    if a_is_mount or b_is_mount:
+        return "mount_contact"
+
+    return None
+
+
 def check_collisions(
     meshes: list[tuple[str, trimesh.Trimesh, np.ndarray | None]],
+    component_types: dict[str, str] | None = None,
 ) -> CollisionResult:
     """
     Check for collisions among a list of named meshes.
@@ -75,6 +146,9 @@ def check_collisions(
     Args:
         meshes: List of (name, trimesh.Trimesh, optional 4x4 transform).
                 If transform is None, identity is used.
+        component_types: Optional dict mapping component name → type string.
+                         Used to exempt intentional contact pairs (gear mesh,
+                         rack-gear, shaft-through-gear, belt-on-pulley, etc.).
 
     Returns:
         CollisionResult with pass/fail and collision details.
@@ -87,6 +161,8 @@ def check_collisions(
             message="Need at least 2 meshes to check collisions.",
         )
 
+    component_types = component_types or {}
+
     # Normalize transforms
     entries: list[tuple[str, trimesh.Trimesh, np.ndarray]] = []
     for name, mesh, transform in meshes:
@@ -95,6 +171,7 @@ def check_collisions(
         entries.append((name, mesh, transform))
 
     collisions_found: list[dict] = []
+    exempted: list[dict] = []
 
     # Try trimesh.collision.CollisionManager first (uses FCL if available)
     try:
@@ -106,11 +183,15 @@ def check_collisions(
 
         if is_collision:
             for name_a, name_b in contact_names:
-                collisions_found.append({
-                    "mesh_a": name_a,
-                    "mesh_b": name_b,
-                    "type": "fcl",
-                })
+                exemption = _is_intentional_contact(name_a, name_b, component_types)
+                if exemption:
+                    exempted.append({"mesh_a": name_a, "mesh_b": name_b, "type": exemption})
+                else:
+                    collisions_found.append({
+                        "mesh_a": name_a,
+                        "mesh_b": name_b,
+                        "type": "fcl",
+                    })
     except Exception:
         # FCL not available or failed — fall back to AABB overlap
         for i in range(len(entries)):
@@ -118,24 +199,31 @@ def check_collisions(
                 name_a, mesh_a, tf_a = entries[i]
                 name_b, mesh_b, tf_b = entries[j]
                 if _aabb_overlap(mesh_a, tf_a, mesh_b, tf_b):
-                    collisions_found.append({
-                        "mesh_a": name_a,
-                        "mesh_b": name_b,
-                        "type": "aabb",
-                    })
+                    if _is_gear_mesh_pair(name_a, name_b, component_types):
+                        exempted.append({"mesh_a": name_a, "mesh_b": name_b, "type": "gear_mesh"})
+                    else:
+                        collisions_found.append({
+                            "mesh_a": name_a,
+                            "mesh_b": name_b,
+                            "type": "aabb",
+                        })
 
     n = len(entries)
     pairs = n * (n - 1) // 2
     passed = len(collisions_found) == 0
+
+    msg_parts = []
+    if passed:
+        msg_parts.append("No collisions detected.")
+    else:
+        msg_parts.append(f"Found {len(collisions_found)} collision(s).")
+    if exempted:
+        msg_parts.append(f"{len(exempted)} intentional contact(s) exempted.")
 
     return CollisionResult(
         passed=passed,
         collisions=collisions_found,
         mesh_count=n,
         pairs_checked=pairs,
-        message=(
-            "No collisions detected."
-            if passed
-            else f"Found {len(collisions_found)} collision(s)."
-        ),
+        message=" ".join(msg_parts),
     )

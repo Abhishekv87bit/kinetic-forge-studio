@@ -199,9 +199,9 @@ def _check_overhang(
     n_overhang = int(overhang_mask.sum())
     pct_overhang = (n_overhang / len(normals)) * 100.0
 
-    # We consider it a pass if less than 25% of faces need support
+    # We consider it a pass if at most 25% of faces need support
     overhang_limit_pct = 25.0
-    passed = pct_overhang < overhang_limit_pct
+    passed = pct_overhang <= overhang_limit_pct
 
     worst_angle = float(angles_from_up.max()) if len(angles_from_up) > 0 else 0.0
 

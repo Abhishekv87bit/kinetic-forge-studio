@@ -26,40 +26,12 @@ from app.models.component import ComponentManager
 from app.models.decision import DecisionManager
 from app.orchestrator.gate import GateEnforcer
 from app.routes.projects import get_pm
+from app.utils.geometry import component_to_geometry
 
 router = APIRouter(prefix="/api/projects/{project_id}", tags=["export"])
 
 _engine = GeometryEngine()
 _enforcer = GateEnforcer()
-
-
-def _generate_geometry_from_component(comp: dict):
-    """Generate a GeometryResult from a component dict."""
-    ctype = comp.get("type", "")
-    params = comp.get("parameters", {})
-    name = comp.get("id", "part")
-
-    if ctype == "gear":
-        return _engine.generate_gear(
-            module=float(params.get("module", 1.5)),
-            teeth=int(params.get("teeth", 20)),
-            height=float(params.get("height", 8)),
-            name=name,
-        )
-    elif ctype == "box":
-        return _engine.generate_box(
-            length=float(params.get("length", 10)),
-            width=float(params.get("width", 10)),
-            height=float(params.get("height", 10)),
-            name=name,
-        )
-    elif ctype == "cylinder":
-        return _engine.generate_cylinder(
-            radius=float(params.get("radius", 5)),
-            height=float(params.get("height", 10)),
-            name=name,
-        )
-    return None
 
 
 @router.get("/export")
@@ -89,7 +61,7 @@ async def export_project(project_id: str):
     # Generate geometry for all components
     geo_results = []
     for comp in components:
-        gr = _generate_geometry_from_component(comp)
+        gr = component_to_geometry(_engine, comp)
         if gr:
             geo_results.append(gr)
 
@@ -173,6 +145,48 @@ async def export_project(project_id: str):
         if renders_dir.exists():
             for png_file in renders_dir.glob("*.png"):
                 zf.write(png_file, f"renders/{png_file.name}")
+
+        # BOM (Bill of Materials) from component registry
+        bom = []
+        for comp in components:
+            bom.append({
+                "id": comp.get("id", ""),
+                "name": comp.get("display_name", comp.get("id", "")),
+                "type": comp.get("type", comp.get("component_type", "unknown")),
+                "parameters": comp.get("parameters", {}),
+                "material": comp.get("parameters", {}).get("material", "unspecified"),
+            })
+        if bom:
+            zf.writestr("bom.json", json.dumps(bom, indent=2, default=str))
+
+        # Rule 99 consultant findings
+        try:
+            from app.consultants.rule99_engine import Rule99Engine, ProjectState
+            rule99 = Rule99Engine()
+            project_state = ProjectState(
+                gate_level=project.gate,
+                component_types=[
+                    c.get("type", c.get("component_type", ""))
+                    for c in components
+                ],
+                components=components,
+            )
+            report = rule99.run_gate_consultants(project.gate, project_state)
+            consultant_data = {
+                "gate": project.gate,
+                "passed": report.passed,
+                "consultants": [
+                    {"name": c.name, "passed": c.passed, "findings": c.findings}
+                    for c in report.consultants_fired
+                ],
+                "recommendations": report.recommendations,
+            }
+            zf.writestr(
+                "reports/consultant_findings.json",
+                json.dumps(consultant_data, indent=2, default=str),
+            )
+        except Exception:
+            pass  # Skip if Rule 99 engine not available
 
     zip_buffer.seek(0)
     filename = f"{project.name.replace(' ', '_')}_{project_id}_export.zip"

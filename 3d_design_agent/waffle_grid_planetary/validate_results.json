@@ -1,0 +1,1176 @@
+{
+  "passes": 223,
+  "fails": 0,
+  "warns": 9,
+  "categories": {
+    "spatial": 30,
+    "axial": 15,
+    "gearmesh": 70,
+    "helical": 15,
+    "assembly": 45,
+    "ravigneaux": 30,
+    "reference": 10
+  },
+  "results": [
+    {
+      "status": "PASS",
+      "section": "V0-COMPILE",
+      "msg": "Zero errors, zero warnings"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-SPATIAL",
+      "msg": "Ss and SL gears in separate zones (no collision)"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-SPATIAL",
+      "msg": "carrier_1 clear of ss_gear in Z"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-SPATIAL",
+      "msg": "carrier_1 clear of sl_gear in Z"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-SPATIAL",
+      "msg": "carrier_2 clear of ss_gear in Z"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-SPATIAL",
+      "msg": "carrier_2 clear of sl_gear in Z"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-SPATIAL",
+      "msg": "Shaft nesting: anchor(3.0) < ss_id(3.5) < ss_od(4.5) < sl_id(5.0) < sl_od(6.0) < carrier(6.5)"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-AXIAL",
+      "msg": "Washer assembly has 9 washer placements (>= 8 minimum)"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-AXIAL",
+      "msg": "Cage correctly placed on Pi pins only"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-AXIAL",
+      "msg": "Pin span needed: 18.9mm (carrier_2 to carrier_1)"
+    },
+    {
+      "status": "WARN",
+      "section": "V0(A)-GEARMESH",
+      "msg": "Ss=16T < 18T -- needs profile shift X=0.111 to avoid undercut (acceptable for kinetic sculpture with low loads)"
+    },
+    {
+      "status": "WARN",
+      "section": "V0(A)-GEARMESH",
+      "msg": "Pi=12T < 18T -- needs profile shift X=0.333 to avoid undercut (acceptable for kinetic sculpture with low loads)"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-GEARMESH",
+      "msg": "SL=40T >= 18T minimum (no undercut)"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-GEARMESH",
+      "msg": "Po=20T >= 18T minimum (no undercut)"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-GEARMESH",
+      "msg": "Ring=80T >= 18T minimum (no undercut)"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-GEARMESH",
+      "msg": "Ss-Pi: contact ratio ~2.61 >= 1.2"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-GEARMESH",
+      "msg": "SL-Po: contact ratio ~2.79 >= 1.2"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-GEARMESH",
+      "msg": "Po-Ring: contact ratio ~2.65 >= 1.2"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-GEARMESH",
+      "msg": "Pi-Po: contact ratio ~2.64 >= 1.2"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-GEARMESH",
+      "msg": "Ss: tip thickness ~0.51mm >= 0.3mm"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-GEARMESH",
+      "msg": "Pi: tip thickness ~0.48mm >= 0.3mm"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-GEARMESH",
+      "msg": "Po: tip thickness ~0.54mm >= 0.3mm"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-GEARMESH",
+      "msg": "Ss root-to-tube gap=0.71mm > 0"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-GEARMESH",
+      "msg": "SL root-to-tube gap=8.48mm > 0"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-HELICAL",
+      "msg": "Helix hand rules: Ext<->Ext=opposite, Int<->Ext=same. Verify in SCAD: Ss-Pi (opposite), SL-Po (opposite), Po-Ring (same), Pi-Po (opposite)"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-HELICAL",
+      "msg": "Face width 6mm >= min 4.7mm for helical engagement"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-HELICAL",
+      "msg": "Axial thrust factor: tan(25)=0.466. Verify thrust washers sized for this load"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-ASSEMBLY",
+      "msg": "SL+2*Po=80=Ring(80)"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-ASSEMBLY",
+      "msg": "Ss+2*Pi=40=SL(40)"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-ASSEMBLY",
+      "msg": "Ss=16 matches variant table"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-ASSEMBLY",
+      "msg": "Pi=12 matches variant table"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-ASSEMBLY",
+      "msg": "Planet orbits: Po=23.2mm, Pi=10.8mm"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-ASSEMBLY",
+      "msg": "Ring OD=69.7mm <= 72mm envelope"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-ASSEMBLY",
+      "msg": "kA+kB=1.000 ~= 1.0"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-ASSEMBLY",
+      "msg": "kA=0.286 matches Ss/(Ss+SL)=0.286"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-ASSEMBLY",
+      "msg": "Po fits inside ring: tip@orbit=31.7mm < ring_root=31.9mm"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-RAVIGNEAUX",
+      "msg": "Two-zone axiom OK: Ss Z=[7.5, 13.5], SL Z=[0, 6], separation=1.5mm"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-RAVIGNEAUX",
+      "msg": "Po spans both zones: Po Z=[0.0,13.5] covers Ss Z=[7.5, 13.5] and SL Z=[0, 6]"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-RAVIGNEAUX",
+      "msg": "Pi confined to Ss zone: Pi Z=[7.5,13.5] within Ss Z=[7.5, 13.5]"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-RAVIGNEAUX",
+      "msg": "Radial nesting: max_sun_r=16.2 < po_orbit=23.2 < ring_inner=29.9"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-RAVIGNEAUX",
+      "msg": "Drive pinion geometry present"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-RAVIGNEAUX",
+      "msg": "Rope: 360deg wrap + vertical Z-drop detected"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-REFERENCE",
+      "msg": "Po/Pi height ratio = 2.2 (reference: 2.2)"
+    },
+    {
+      "status": "PASS",
+      "section": "V0(A)-REFERENCE",
+      "msg": "Reference: concentric suns with Z-overlap=48mm (shaft overlap, tooth zones separate)"
+    },
+    {
+      "status": "PASS",
+      "section": "V1-COMPILE",
+      "msg": "Zero errors, zero warnings"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-SPATIAL",
+      "msg": "Ss and SL gears in separate zones (no collision)"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-SPATIAL",
+      "msg": "carrier_1 clear of ss_gear in Z"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-SPATIAL",
+      "msg": "carrier_1 clear of sl_gear in Z"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-SPATIAL",
+      "msg": "carrier_2 clear of ss_gear in Z"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-SPATIAL",
+      "msg": "carrier_2 clear of sl_gear in Z"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-SPATIAL",
+      "msg": "Shaft nesting: anchor(3.0) < ss_id(3.5) < ss_od(4.5) < sl_id(5.0) < sl_od(6.0) < carrier(6.5)"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-AXIAL",
+      "msg": "Washer assembly has 9 washer placements (>= 8 minimum)"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-AXIAL",
+      "msg": "Cage correctly placed on Pi pins only"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-AXIAL",
+      "msg": "Pin span needed: 18.9mm (carrier_2 to carrier_1)"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-GEARMESH",
+      "msg": "Ss=20T >= 18T minimum (no undercut)"
+    },
+    {
+      "status": "WARN",
+      "section": "V1(B)-GEARMESH",
+      "msg": "Pi=10T < 18T -- needs profile shift X=0.444 to avoid undercut (acceptable for kinetic sculpture with low loads)"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-GEARMESH",
+      "msg": "SL=40T >= 18T minimum (no undercut)"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-GEARMESH",
+      "msg": "Po=20T >= 18T minimum (no undercut)"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-GEARMESH",
+      "msg": "Ring=80T >= 18T minimum (no undercut)"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-GEARMESH",
+      "msg": "Ss-Pi: contact ratio ~2.62 >= 1.2"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-GEARMESH",
+      "msg": "SL-Po: contact ratio ~2.79 >= 1.2"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-GEARMESH",
+      "msg": "Po-Ring: contact ratio ~2.65 >= 1.2"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-GEARMESH",
+      "msg": "Pi-Po: contact ratio ~2.62 >= 1.2"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-GEARMESH",
+      "msg": "Ss: tip thickness ~0.54mm >= 0.3mm"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-GEARMESH",
+      "msg": "Pi: tip thickness ~0.45mm >= 0.3mm"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-GEARMESH",
+      "msg": "Po: tip thickness ~0.54mm >= 0.3mm"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-GEARMESH",
+      "msg": "Ss root-to-tube gap=2.26mm > 0"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-GEARMESH",
+      "msg": "SL root-to-tube gap=8.48mm > 0"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-HELICAL",
+      "msg": "Helix hand rules: Ext<->Ext=opposite, Int<->Ext=same. Verify in SCAD: Ss-Pi (opposite), SL-Po (opposite), Po-Ring (same), Pi-Po (opposite)"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-HELICAL",
+      "msg": "Face width 6mm >= min 4.7mm for helical engagement"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-HELICAL",
+      "msg": "Axial thrust factor: tan(25)=0.466. Verify thrust washers sized for this load"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-ASSEMBLY",
+      "msg": "SL+2*Po=80=Ring(80)"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-ASSEMBLY",
+      "msg": "Ss+2*Pi=40=SL(40)"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-ASSEMBLY",
+      "msg": "Ss=20 matches variant table"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-ASSEMBLY",
+      "msg": "Pi=10 matches variant table"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-ASSEMBLY",
+      "msg": "Planet orbits: Po=23.2mm, Pi=11.6mm"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-ASSEMBLY",
+      "msg": "Ring OD=69.7mm <= 72mm envelope"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-ASSEMBLY",
+      "msg": "kA+kB=1.000 ~= 1.0"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-ASSEMBLY",
+      "msg": "kA=0.333 matches Ss/(Ss+SL)=0.333"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-ASSEMBLY",
+      "msg": "Po fits inside ring: tip@orbit=31.7mm < ring_root=31.9mm"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-RAVIGNEAUX",
+      "msg": "Two-zone axiom OK: Ss Z=[7.5, 13.5], SL Z=[0, 6], separation=1.5mm"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-RAVIGNEAUX",
+      "msg": "Po spans both zones: Po Z=[0.0,13.5] covers Ss Z=[7.5, 13.5] and SL Z=[0, 6]"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-RAVIGNEAUX",
+      "msg": "Pi confined to Ss zone: Pi Z=[7.5,13.5] within Ss Z=[7.5, 13.5]"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-RAVIGNEAUX",
+      "msg": "Radial nesting: max_sun_r=16.2 < po_orbit=23.2 < ring_inner=29.9"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-RAVIGNEAUX",
+      "msg": "Drive pinion geometry present"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-RAVIGNEAUX",
+      "msg": "Rope: 360deg wrap + vertical Z-drop detected"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-REFERENCE",
+      "msg": "Po/Pi height ratio = 2.2 (reference: 2.2)"
+    },
+    {
+      "status": "PASS",
+      "section": "V1(B)-REFERENCE",
+      "msg": "Reference: concentric suns with Z-overlap=48mm (shaft overlap, tooth zones separate)"
+    },
+    {
+      "status": "PASS",
+      "section": "V2-COMPILE",
+      "msg": "Zero errors, zero warnings"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-SPATIAL",
+      "msg": "Ss and SL gears in separate zones (no collision)"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-SPATIAL",
+      "msg": "carrier_1 clear of ss_gear in Z"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-SPATIAL",
+      "msg": "carrier_1 clear of sl_gear in Z"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-SPATIAL",
+      "msg": "carrier_2 clear of ss_gear in Z"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-SPATIAL",
+      "msg": "carrier_2 clear of sl_gear in Z"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-SPATIAL",
+      "msg": "Shaft nesting: anchor(3.0) < ss_id(3.5) < ss_od(4.5) < sl_id(5.0) < sl_od(6.0) < carrier(6.5)"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-AXIAL",
+      "msg": "Washer assembly has 9 washer placements (>= 8 minimum)"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-AXIAL",
+      "msg": "Cage correctly placed on Pi pins only"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-AXIAL",
+      "msg": "Pin span needed: 18.9mm (carrier_2 to carrier_1)"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-GEARMESH",
+      "msg": "Ss=24T >= 18T minimum (no undercut)"
+    },
+    {
+      "status": "WARN",
+      "section": "V2(C)-GEARMESH",
+      "msg": "Pi=8T < 18T -- needs profile shift X=0.556 to avoid undercut (acceptable for kinetic sculpture with low loads)"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-GEARMESH",
+      "msg": "SL=40T >= 18T minimum (no undercut)"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-GEARMESH",
+      "msg": "Po=20T >= 18T minimum (no undercut)"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-GEARMESH",
+      "msg": "Ring=80T >= 18T minimum (no undercut)"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-GEARMESH",
+      "msg": "Ss-Pi: contact ratio ~2.61 >= 1.2"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-GEARMESH",
+      "msg": "SL-Po: contact ratio ~2.79 >= 1.2"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-GEARMESH",
+      "msg": "Po-Ring: contact ratio ~2.65 >= 1.2"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-GEARMESH",
+      "msg": "Pi-Po: contact ratio ~2.58 >= 1.2"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-GEARMESH",
+      "msg": "Ss: tip thickness ~0.55mm >= 0.3mm"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-GEARMESH",
+      "msg": "Pi: tip thickness ~0.42mm >= 0.3mm"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-GEARMESH",
+      "msg": "Po: tip thickness ~0.54mm >= 0.3mm"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-GEARMESH",
+      "msg": "Ss root-to-tube gap=3.80mm > 0"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-GEARMESH",
+      "msg": "SL root-to-tube gap=8.48mm > 0"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-HELICAL",
+      "msg": "Helix hand rules: Ext<->Ext=opposite, Int<->Ext=same. Verify in SCAD: Ss-Pi (opposite), SL-Po (opposite), Po-Ring (same), Pi-Po (opposite)"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-HELICAL",
+      "msg": "Face width 6mm >= min 4.7mm for helical engagement"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-HELICAL",
+      "msg": "Axial thrust factor: tan(25)=0.466. Verify thrust washers sized for this load"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-ASSEMBLY",
+      "msg": "SL+2*Po=80=Ring(80)"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-ASSEMBLY",
+      "msg": "Ss+2*Pi=40=SL(40)"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-ASSEMBLY",
+      "msg": "Ss=24 matches variant table"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-ASSEMBLY",
+      "msg": "Pi=8 matches variant table"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-ASSEMBLY",
+      "msg": "Planet orbits: Po=23.2mm, Pi=12.4mm"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-ASSEMBLY",
+      "msg": "Ring OD=69.7mm <= 72mm envelope"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-ASSEMBLY",
+      "msg": "kA+kB=1.000 ~= 1.0"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-ASSEMBLY",
+      "msg": "kA=0.375 matches Ss/(Ss+SL)=0.375"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-ASSEMBLY",
+      "msg": "Po fits inside ring: tip@orbit=31.7mm < ring_root=31.9mm"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-RAVIGNEAUX",
+      "msg": "Two-zone axiom OK: Ss Z=[7.5, 13.5], SL Z=[0, 6], separation=1.5mm"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-RAVIGNEAUX",
+      "msg": "Po spans both zones: Po Z=[0.0,13.5] covers Ss Z=[7.5, 13.5] and SL Z=[0, 6]"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-RAVIGNEAUX",
+      "msg": "Pi confined to Ss zone: Pi Z=[7.5,13.5] within Ss Z=[7.5, 13.5]"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-RAVIGNEAUX",
+      "msg": "Radial nesting: max_sun_r=16.2 < po_orbit=23.2 < ring_inner=29.9"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-RAVIGNEAUX",
+      "msg": "Drive pinion geometry present"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-RAVIGNEAUX",
+      "msg": "Rope: 360deg wrap + vertical Z-drop detected"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-REFERENCE",
+      "msg": "Po/Pi height ratio = 2.2 (reference: 2.2)"
+    },
+    {
+      "status": "PASS",
+      "section": "V2(C)-REFERENCE",
+      "msg": "Reference: concentric suns with Z-overlap=48mm (shaft overlap, tooth zones separate)"
+    },
+    {
+      "status": "PASS",
+      "section": "V3-COMPILE",
+      "msg": "Zero errors, zero warnings"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-SPATIAL",
+      "msg": "Ss and SL gears in separate zones (no collision)"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-SPATIAL",
+      "msg": "carrier_1 clear of ss_gear in Z"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-SPATIAL",
+      "msg": "carrier_1 clear of sl_gear in Z"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-SPATIAL",
+      "msg": "carrier_2 clear of ss_gear in Z"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-SPATIAL",
+      "msg": "carrier_2 clear of sl_gear in Z"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-SPATIAL",
+      "msg": "Shaft nesting: anchor(3.0) < ss_id(3.5) < ss_od(4.5) < sl_id(5.0) < sl_od(6.0) < carrier(6.5)"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-AXIAL",
+      "msg": "Washer assembly has 9 washer placements (>= 8 minimum)"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-AXIAL",
+      "msg": "Cage correctly placed on Pi pins only"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-AXIAL",
+      "msg": "Pin span needed: 18.9mm (carrier_2 to carrier_1)"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-GEARMESH",
+      "msg": "Ss=26T >= 18T minimum (no undercut)"
+    },
+    {
+      "status": "WARN",
+      "section": "V3(D)-GEARMESH",
+      "msg": "Pi=7T < 18T -- needs profile shift X=0.611 to avoid undercut (acceptable for kinetic sculpture with low loads)"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-GEARMESH",
+      "msg": "SL=40T >= 18T minimum (no undercut)"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-GEARMESH",
+      "msg": "Po=20T >= 18T minimum (no undercut)"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-GEARMESH",
+      "msg": "Ring=80T >= 18T minimum (no undercut)"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-GEARMESH",
+      "msg": "Ss-Pi: contact ratio ~2.60 >= 1.2"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-GEARMESH",
+      "msg": "SL-Po: contact ratio ~2.79 >= 1.2"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-GEARMESH",
+      "msg": "Po-Ring: contact ratio ~2.65 >= 1.2"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-GEARMESH",
+      "msg": "Pi-Po: contact ratio ~2.57 >= 1.2"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-GEARMESH",
+      "msg": "Ss: tip thickness ~0.56mm >= 0.3mm"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-GEARMESH",
+      "msg": "Pi: tip thickness ~0.39mm >= 0.3mm"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-GEARMESH",
+      "msg": "Po: tip thickness ~0.54mm >= 0.3mm"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-GEARMESH",
+      "msg": "Ss root-to-tube gap=4.58mm > 0"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-GEARMESH",
+      "msg": "SL root-to-tube gap=8.48mm > 0"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-HELICAL",
+      "msg": "Helix hand rules: Ext<->Ext=opposite, Int<->Ext=same. Verify in SCAD: Ss-Pi (opposite), SL-Po (opposite), Po-Ring (same), Pi-Po (opposite)"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-HELICAL",
+      "msg": "Face width 6mm >= min 4.7mm for helical engagement"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-HELICAL",
+      "msg": "Axial thrust factor: tan(25)=0.466. Verify thrust washers sized for this load"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-ASSEMBLY",
+      "msg": "SL+2*Po=80=Ring(80)"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-ASSEMBLY",
+      "msg": "Ss+2*Pi=40=SL(40)"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-ASSEMBLY",
+      "msg": "Ss=26 matches variant table"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-ASSEMBLY",
+      "msg": "Pi=7 matches variant table"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-ASSEMBLY",
+      "msg": "Planet orbits: Po=23.2mm, Pi=12.7mm"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-ASSEMBLY",
+      "msg": "Ring OD=69.7mm <= 72mm envelope"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-ASSEMBLY",
+      "msg": "kA+kB=1.000 ~= 1.0"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-ASSEMBLY",
+      "msg": "kA=0.394 matches Ss/(Ss+SL)=0.394"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-ASSEMBLY",
+      "msg": "Po fits inside ring: tip@orbit=31.7mm < ring_root=31.9mm"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-RAVIGNEAUX",
+      "msg": "Two-zone axiom OK: Ss Z=[7.5, 13.5], SL Z=[0, 6], separation=1.5mm"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-RAVIGNEAUX",
+      "msg": "Po spans both zones: Po Z=[0.0,13.5] covers Ss Z=[7.5, 13.5] and SL Z=[0, 6]"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-RAVIGNEAUX",
+      "msg": "Pi confined to Ss zone: Pi Z=[7.5,13.5] within Ss Z=[7.5, 13.5]"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-RAVIGNEAUX",
+      "msg": "Radial nesting: max_sun_r=16.2 < po_orbit=23.2 < ring_inner=29.9"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-RAVIGNEAUX",
+      "msg": "Drive pinion geometry present"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-RAVIGNEAUX",
+      "msg": "Rope: 360deg wrap + vertical Z-drop detected"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-REFERENCE",
+      "msg": "Po/Pi height ratio = 2.2 (reference: 2.2)"
+    },
+    {
+      "status": "PASS",
+      "section": "V3(D)-REFERENCE",
+      "msg": "Reference: concentric suns with Z-overlap=48mm (shaft overlap, tooth zones separate)"
+    },
+    {
+      "status": "PASS",
+      "section": "V4-COMPILE",
+      "msg": "Zero errors, zero warnings"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-SPATIAL",
+      "msg": "Ss and SL gears in separate zones (no collision)"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-SPATIAL",
+      "msg": "carrier_1 clear of ss_gear in Z"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-SPATIAL",
+      "msg": "carrier_1 clear of sl_gear in Z"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-SPATIAL",
+      "msg": "carrier_2 clear of ss_gear in Z"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-SPATIAL",
+      "msg": "carrier_2 clear of sl_gear in Z"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-SPATIAL",
+      "msg": "Shaft nesting: anchor(3.0) < ss_id(3.5) < ss_od(4.5) < sl_id(5.0) < sl_od(6.0) < carrier(6.5)"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-AXIAL",
+      "msg": "Washer assembly has 9 washer placements (>= 8 minimum)"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-AXIAL",
+      "msg": "Cage correctly placed on Pi pins only"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-AXIAL",
+      "msg": "Pin span needed: 18.9mm (carrier_2 to carrier_1)"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-GEARMESH",
+      "msg": "Ss=28T >= 18T minimum (no undercut)"
+    },
+    {
+      "status": "WARN",
+      "section": "V4(E)-GEARMESH",
+      "msg": "Pi=6T < 18T -- needs profile shift X=0.667 to avoid undercut (acceptable for kinetic sculpture with low loads)"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-GEARMESH",
+      "msg": "SL=40T >= 18T minimum (no undercut)"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-GEARMESH",
+      "msg": "Po=20T >= 18T minimum (no undercut)"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-GEARMESH",
+      "msg": "Ring=80T >= 18T minimum (no undercut)"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-GEARMESH",
+      "msg": "Ss-Pi: contact ratio ~2.59 >= 1.2"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-GEARMESH",
+      "msg": "SL-Po: contact ratio ~2.79 >= 1.2"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-GEARMESH",
+      "msg": "Po-Ring: contact ratio ~2.65 >= 1.2"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-GEARMESH",
+      "msg": "Pi-Po: contact ratio ~2.55 >= 1.2"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-GEARMESH",
+      "msg": "Ss: tip thickness ~0.56mm >= 0.3mm"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-GEARMESH",
+      "msg": "Pi: tip thickness ~0.36mm >= 0.3mm"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-GEARMESH",
+      "msg": "Po: tip thickness ~0.54mm >= 0.3mm"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-GEARMESH",
+      "msg": "Ss root-to-tube gap=5.35mm > 0"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-GEARMESH",
+      "msg": "SL root-to-tube gap=8.48mm > 0"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-HELICAL",
+      "msg": "Helix hand rules: Ext<->Ext=opposite, Int<->Ext=same. Verify in SCAD: Ss-Pi (opposite), SL-Po (opposite), Po-Ring (same), Pi-Po (opposite)"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-HELICAL",
+      "msg": "Face width 6mm >= min 4.7mm for helical engagement"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-HELICAL",
+      "msg": "Axial thrust factor: tan(25)=0.466. Verify thrust washers sized for this load"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-ASSEMBLY",
+      "msg": "SL+2*Po=80=Ring(80)"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-ASSEMBLY",
+      "msg": "Ss+2*Pi=40=SL(40)"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-ASSEMBLY",
+      "msg": "Ss=28 matches variant table"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-ASSEMBLY",
+      "msg": "Pi=6 matches variant table"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-ASSEMBLY",
+      "msg": "Planet orbits: Po=23.2mm, Pi=13.1mm"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-ASSEMBLY",
+      "msg": "Ring OD=69.7mm <= 72mm envelope"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-ASSEMBLY",
+      "msg": "kA+kB=1.000 ~= 1.0"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-ASSEMBLY",
+      "msg": "kA=0.412 matches Ss/(Ss+SL)=0.412"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-ASSEMBLY",
+      "msg": "Po fits inside ring: tip@orbit=31.7mm < ring_root=31.9mm"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-RAVIGNEAUX",
+      "msg": "Two-zone axiom OK: Ss Z=[7.5, 13.5], SL Z=[0, 6], separation=1.5mm"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-RAVIGNEAUX",
+      "msg": "Po spans both zones: Po Z=[0.0,13.5] covers Ss Z=[7.5, 13.5] and SL Z=[0, 6]"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-RAVIGNEAUX",
+      "msg": "Pi confined to Ss zone: Pi Z=[7.5,13.5] within Ss Z=[7.5, 13.5]"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-RAVIGNEAUX",
+      "msg": "Radial nesting: max_sun_r=16.2 < po_orbit=23.2 < ring_inner=29.9"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-RAVIGNEAUX",
+      "msg": "Drive pinion geometry present"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-RAVIGNEAUX",
+      "msg": "Rope: 360deg wrap + vertical Z-drop detected"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-REFERENCE",
+      "msg": "Po/Pi height ratio = 2.2 (reference: 2.2)"
+    },
+    {
+      "status": "PASS",
+      "section": "V4(E)-REFERENCE",
+      "msg": "Reference: concentric suns with Z-overlap=48mm (shaft overlap, tooth zones separate)"
+    },
+    {
+      "status": "PASS",
+      "section": "SPREAD",
+      "msg": "kA range=0.126 (0.286 to 0.412) -- sufficient diversity"
+    },
+    {
+      "status": "PASS",
+      "section": "SPREAD",
+      "msg": "Ext pinion freq ratios: ['0.722', '0.833', '1.000', '1.167', '1.278']"
+    },
+    {
+      "status": "PASS",
+      "section": "SPREAD",
+      "msg": "GCD(13,15)=1 (coprime)"
+    },
+    {
+      "status": "PASS",
+      "section": "SPREAD",
+      "msg": "GCD(13,18)=1 (coprime)"
+    },
+    {
+      "status": "PASS",
+      "section": "SPREAD",
+      "msg": "GCD(13,21)=1 (coprime)"
+    },
+    {
+      "status": "PASS",
+      "section": "SPREAD",
+      "msg": "GCD(13,23)=1 (coprime)"
+    },
+    {
+      "status": "WARN",
+      "section": "SPREAD",
+      "msg": "GCD(15,18)=3 (not coprime)"
+    },
+    {
+      "status": "WARN",
+      "section": "SPREAD",
+      "msg": "GCD(15,21)=3 (not coprime)"
+    },
+    {
+      "status": "PASS",
+      "section": "SPREAD",
+      "msg": "GCD(15,23)=1 (coprime)"
+    },
+    {
+      "status": "WARN",
+      "section": "SPREAD",
+      "msg": "GCD(18,21)=3 (not coprime)"
+    },
+    {
+      "status": "PASS",
+      "section": "SPREAD",
+      "msg": "GCD(18,23)=1 (coprime)"
+    },
+    {
+      "status": "PASS",
+      "section": "SPREAD",
+      "msg": "GCD(21,23)=1 (coprime)"
+    }
+  ]
+}

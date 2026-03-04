@@ -44,7 +44,8 @@ class ComponentManager:
         rows = await cursor.fetchall()
         return [{"id": r["id"], "display_name": r["display_name"],
                  "type": r["component_type"],
-                 "parameters": json.loads(r["parameters"])}
+                 "parameters": json.loads(r["parameters"]),
+                 "position": json.loads(r["position"])}
                 for r in rows]
 
     async def update_params(self, project_id: str, component_id: str, params: dict):

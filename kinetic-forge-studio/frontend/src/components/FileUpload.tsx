@@ -33,11 +33,34 @@ export default function FileUpload({ projectId, onUpload }: Props) {
 
     return (
         <div>
-            <input ref={inputRef} type="file" onChange={handleUpload}
+            <input
+                ref={inputRef}
+                type="file"
+                onChange={handleUpload}
                 accept=".jpg,.jpeg,.png,.webp,.mp4,.mov,.step,.stp,.stl,.iges,.igs,.3mf"
-                style={{ display: "none" }} />
-            <button onClick={() => inputRef.current?.click()}
-                style={{ width: "100%", padding: "6px", borderRadius: 4, background: "#333", color: "#aaa", border: "1px dashed #555", cursor: "pointer", fontSize: 12 }}>
+                style={{ display: "none" }}
+            />
+            <button
+                onClick={() => inputRef.current?.click()}
+                style={{
+                    width: "100%",
+                    padding: "6px",
+                    borderRadius: "var(--radius-sm)",
+                    background: "transparent",
+                    color: "var(--text-muted)",
+                    border: "1px dashed var(--border-default)",
+                    fontSize: 11,
+                    transition: "all 0.15s ease",
+                }}
+                onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = "var(--accent-blue)";
+                    e.currentTarget.style.color = "var(--accent-blue)";
+                }}
+                onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = "var(--border-default)";
+                    e.currentTarget.style.color = "var(--text-muted)";
+                }}
+            >
                 Upload photo, video, or 3D file
             </button>
         </div>

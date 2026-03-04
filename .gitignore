@@ -51,6 +51,7 @@ env/
 # Node modules
 node_modules/
 dist/
+.vite/
 
 # Environment files (secrets)
 .env

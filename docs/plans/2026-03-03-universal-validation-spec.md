@@ -9,7 +9,7 @@
 One validation script. One interface. Every project. No excuses.
 
 Every CadQuery production script implements 3 standard functions.
-`validate_kinetic.py` imports the module, runs all applicable checks,
+VLAD (`tools/vlad.py`) imports the module, runs all applicable checks,
 reports PASS/FAIL. Claude cannot deliver code with any FAIL.
 
 ---
@@ -149,7 +149,7 @@ Not every tier fires for every mechanism. The validator auto-selects based on `g
 ## Validation (MANDATORY)
 Every CadQuery production script must implement the standard validation interface
 (get_fixed_parts, get_moving_parts, get_mechanism_type — see docs/plans/2026-03-03-universal-validation-spec.md).
-Run `python validate_kinetic.py <module_name>` after every build. Zero FAILs required before delivery.
+Run `python tools/vlad.py <module_name>` after every build. Zero FAILs required before delivery.
 ```
 
 ---

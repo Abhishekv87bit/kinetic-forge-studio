@@ -1,0 +1,3025 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Parameter Dependency Graph - Triple Helix V5.5</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', Consolas, monospace; background: #1a1a2e; color: #e0e0e0; }
+.header { background: #16213e; padding: 16px 24px; border-bottom: 2px solid #0f3460; }
+.header h1 { font-size: 18px; color: #e94560; }
+.header p { font-size: 12px; color: #888; margin-top: 4px; }
+.container { display: flex; height: calc(100vh - 80px); }
+.sidebar { width: 320px; background: #16213e; overflow-y: auto; border-right: 1px solid #0f3460; }
+.main { flex: 1; overflow-y: auto; padding: 20px; }
+.search { padding: 10px; }
+.search input { width: 100%; padding: 8px; background: #1a1a2e; border: 1px solid #0f3460;
+    color: #e0e0e0; font-family: inherit; font-size: 13px; border-radius: 4px; }
+.search input::placeholder { color: #555; }
+.category { padding: 6px 12px; font-size: 11px; color: #888; text-transform: uppercase;
+    letter-spacing: 1px; margin-top: 8px; }
+.param-item { padding: 6px 12px; cursor: pointer; font-size: 13px; border-left: 3px solid transparent; }
+.param-item:hover { background: #1a1a3e; }
+.param-item.selected { background: #1a1a3e; border-left-color: #e94560; }
+.param-item .name { font-weight: bold; }
+.param-item .cascade { font-size: 11px; color: #666; margin-left: 8px; }
+.param-item.root .name { color: #66bb6a; }
+.param-item.hub .name { color: #fdd835; }
+.param-item.leaf .name { color: #999; }
+.param-item.intermediate .name { color: #b0bec5; }
+.param-item.func .name { font-style: italic; }
+.detail { max-width: 900px; }
+.detail h2 { color: #e94560; font-size: 20px; margin-bottom: 4px; }
+.detail .expr { color: #81d4fa; font-size: 14px; margin: 8px 0; padding: 8px;
+    background: #0d1b2a; border-radius: 4px; font-family: Consolas, monospace; word-break: break-all; }
+.detail .value { color: #a5d6a7; font-size: 14px; margin-bottom: 12px; }
+.detail .badge { display: inline-block; padding: 2px 8px; border-radius: 10px;
+    font-size: 11px; font-weight: bold; margin-right: 6px; }
+.badge.root { background: #1b5e20; color: #a5d6a7; }
+.badge.hub { background: #f9a825; color: #333; }
+.badge.leaf { background: #424242; color: #bbb; }
+.badge.intermediate { background: #263238; color: #90a4ae; }
+.dep-section { margin-top: 16px; }
+.dep-section h3 { font-size: 14px; color: #90caf9; margin-bottom: 8px; }
+.dep-list { list-style: none; }
+.dep-list li { padding: 4px 0; font-size: 13px; cursor: pointer; }
+.dep-list li:hover { color: #e94560; }
+.dep-list li .level { color: #666; font-size: 11px; margin-left: 8px; }
+.dep-list li .val { color: #81c784; font-size: 12px; margin-left: 6px; }
+.no-selection { color: #555; font-size: 16px; margin-top: 40px; text-align: center; }
+.stats { padding: 10px 12px; font-size: 11px; color: #555; border-top: 1px solid #0f3460; }
+</style>
+</head>
+<body>
+<div class="header">
+    <h1>Parameter Dependency Graph</h1>
+    <p>Triple Helix MVP V5.5 -- click a parameter to see impact analysis</p>
+</div>
+<div class="container">
+    <div class="sidebar">
+        <div class="search">
+            <input type="text" id="searchBox" placeholder="Search parameters..." />
+        </div>
+        <div id="paramList"></div>
+        <div class="stats" id="stats"></div>
+    </div>
+    <div class="main">
+        <div class="detail" id="detail">
+            <div class="no-selection">Select a parameter from the sidebar</div>
+        </div>
+    </div>
+</div>
+
+<script>
+const nodes = [
+  {
+    "name": "ANCHOR_THICK",
+    "expr": "3.0",
+    "value": "3",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "ANCHOR_Z",
+    "expr": "TIER1_TOP",
+    "value": "19.50",
+    "category": "leaf",
+    "is_func": false,
+    "depends_on": [
+      "TIER1_TOP"
+    ],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 1
+  },
+  {
+    "name": "AXIAL_PITCH",
+    "expr": "8.0",
+    "value": "8",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [
+      "COLLAR_THICK",
+      "HELIX_LENGTH"
+    ],
+    "cascade_count": 4,
+    "depth_up": 0
+  },
+  {
+    "name": "BEARING_ZONE_H",
+    "expr": "CAM_BRG_W + 0.3",
+    "value": "4.30",
+    "category": "leaf",
+    "is_func": false,
+    "depends_on": [
+      "CAM_BRG_W"
+    ],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 1
+  },
+  {
+    "name": "CAM_BRG_ID",
+    "expr": "20.0",
+    "value": "20",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [
+      "DISC_OD",
+      "KEEPER_LIP_DIA"
+    ],
+    "cascade_count": 4,
+    "depth_up": 0
+  },
+  {
+    "name": "CAM_BRG_OD",
+    "expr": "27.0",
+    "value": "27",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [
+      "FOLLOWER_RING_ID",
+      "FOLLOWER_RING_OD"
+    ],
+    "cascade_count": 2,
+    "depth_up": 0
+  },
+  {
+    "name": "CAM_BRG_W",
+    "expr": "4.0",
+    "value": "4",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [
+      "BEARING_ZONE_H",
+      "DISC_THICK"
+    ],
+    "cascade_count": 3,
+    "depth_up": 0
+  },
+  {
+    "name": "CAM_ECC",
+    "expr": "DISC_OD/2 - SHAFT_BOSS_OD/2",
+    "value": "4.80",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "DISC_OD",
+      "SHAFT_BOSS_OD"
+    ],
+    "depended_by": [
+      "_boss_margin"
+    ],
+    "cascade_count": 1,
+    "depth_up": 2
+  },
+  {
+    "name": "CAM_STROKE",
+    "expr": "2 * ECCENTRICITY",
+    "value": "9.60",
+    "category": "leaf",
+    "is_func": false,
+    "depends_on": [
+      "ECCENTRICITY"
+    ],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 1
+  },
+  {
+    "name": "CARRIER_PLATE_T_CFG",
+    "expr": "10",
+    "value": "10",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [
+      "ECLIP_INBOARD_OFFSET",
+      "SHAFT_EXT_BEYOND_DRIVE",
+      "SHAFT_EXT_BEYOND_FREE"
+    ],
+    "cascade_count": 4,
+    "depth_up": 0
+  },
+  {
+    "name": "CH_GAP",
+    "expr": "STACK_OFFSET - WALL_THICKNESS",
+    "value": "6.50",
+    "category": "leaf",
+    "is_func": false,
+    "depends_on": [
+      "STACK_OFFSET",
+      "WALL_THICKNESS"
+    ],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 2
+  },
+  {
+    "name": "CH_LENS",
+    "expr": "[for (i = [0:NUM_CHANNELS-1]) ch_len(CH_OFFSETS[i])]",
+    "value": "?",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "CH_OFFSETS",
+      "NUM_CHANNELS",
+      "ch_len"
+    ],
+    "depended_by": [
+      "_shortest_ch",
+      "culled_col_count"
+    ],
+    "cascade_count": 3,
+    "depth_up": 3
+  },
+  {
+    "name": "CH_OFFSETS",
+    "expr": "[for (i = [0:NUM_CHANNELS-1]) (i - _CENTER_CH) * STACK_OFFSET]",
+    "value": "?",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "NUM_CHANNELS",
+      "STACK_OFFSET",
+      "_CENTER_CH"
+    ],
+    "depended_by": [
+      "CH_LENS",
+      "_shortest_half_w",
+      "culled_col_count"
+    ],
+    "cascade_count": 5,
+    "depth_up": 3
+  },
+  {
+    "name": "COLLAR_BUMP_COUNT",
+    "expr": "2",
+    "value": "2",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "COLLAR_BUMP_DIA",
+    "expr": "1.5",
+    "value": "1.50",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "COLLAR_BUMP_H",
+    "expr": "0.6",
+    "value": "0.60",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [
+      "COLLAR_DIMPLE_DEPTH"
+    ],
+    "cascade_count": 1,
+    "depth_up": 0
+  },
+  {
+    "name": "COLLAR_BUMP_R",
+    "expr": "SHAFT_BOSS_OD/2 - 1.2",
+    "value": "3.80",
+    "category": "leaf",
+    "is_func": false,
+    "depends_on": [
+      "SHAFT_BOSS_OD"
+    ],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 1
+  },
+  {
+    "name": "COLLAR_DIMPLE_DEPTH",
+    "expr": "COLLAR_BUMP_H + 0.1",
+    "value": "0.70",
+    "category": "leaf",
+    "is_func": false,
+    "depends_on": [
+      "COLLAR_BUMP_H"
+    ],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 1
+  },
+  {
+    "name": "COLLAR_THICK",
+    "expr": "AXIAL_PITCH - DISC_THICK",
+    "value": "3",
+    "category": "leaf",
+    "is_func": false,
+    "depends_on": [
+      "AXIAL_PITCH",
+      "DISC_THICK"
+    ],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 2
+  },
+  {
+    "name": "COL_COUNTS",
+    "expr": "[for (i = [0:NUM_CHANNELS-1]) culled_col_count(i)]",
+    "value": "?",
+    "category": "leaf",
+    "is_func": false,
+    "depends_on": [
+      "NUM_CHANNELS",
+      "culled_col_count"
+    ],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 2
+  },
+  {
+    "name": "COL_PITCH",
+    "expr": "6",
+    "value": "6",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [
+      "STAGGER_HALF_PITCH",
+      "_col_x_base",
+      "raw_col_count"
+    ],
+    "cascade_count": 7,
+    "depth_up": 0
+  },
+  {
+    "name": "C_ACRYLIC",
+    "expr": "[0.85, 0.92, 0.95, 0.3]",
+    "value": "[0.85, 0.92, 0.95, 0.30]",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "C_BEARING",
+    "expr": "[0.5, 0.5, 0.55, 0.7]",
+    "value": "[0.50, 0.50, 0.55, 0.70]",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "C_BELT",
+    "expr": "[0.5, 0.25, 0.1, 0.85]",
+    "value": "[0.50, 0.25, 0.10, 0.85]",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "C_BLOCK",
+    "expr": "[0.82, 0.71, 0.55, 1.0]",
+    "value": "[0.82, 0.71, 0.55, 1]",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "C_BOLT",
+    "expr": "[0.3, 0.3, 0.3, 1.0]",
+    "value": "[0.30, 0.30, 0.30, 1]",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "C_BRACKET",
+    "expr": "[0.5, 0.5, 0.55, 0.9]",
+    "value": "[0.50, 0.50, 0.55, 0.90]",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "C_DISC",
+    "expr": "[0.3, 0.6, 0.9, 0.9]",
+    "value": "[0.30, 0.60, 0.90, 0.90]",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "C_ENDPLT",
+    "expr": "[0.5, 0.5, 0.55, 0.9]",
+    "value": "[0.50, 0.50, 0.55, 0.90]",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "C_HEX_GHOST",
+    "expr": "[0.3, 0.8, 0.3, 0.1]",
+    "value": "[0.30, 0.80, 0.30, 0.10]",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "C_IDLER",
+    "expr": "[0.8, 0.2, 0.2, 0.9]",
+    "value": "[0.80, 0.20, 0.20, 0.90]",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "C_MOTOR",
+    "expr": "[0.2, 0.5, 0.9, 0.9]",
+    "value": "[0.20, 0.50, 0.90, 0.90]",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "C_NYLON",
+    "expr": "[0.95, 0.95, 0.92, 1.0]",
+    "value": "[0.95, 0.95, 0.92, 1]",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "C_PIN",
+    "expr": "[0.9, 0.85, 0.3, 1.0]",
+    "value": "[0.90, 0.85, 0.30, 1]",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "C_RIB",
+    "expr": "[0.8, 0.5, 0.2, 0.9]",
+    "value": "[0.80, 0.50, 0.20, 0.90]",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "C_SLIDER",
+    "expr": "[0.9, 0.4, 0.4, 1.0]",
+    "value": "[0.90, 0.40, 0.40, 1]",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "C_STEEL",
+    "expr": "[0.7, 0.7, 0.75, 1.0]",
+    "value": "[0.70, 0.70, 0.75, 1]",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "C_STRING",
+    "expr": "[0.1, 0.1, 0.1, 1.0]",
+    "value": "[0.10, 0.10, 0.10, 1]",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "C_WALL",
+    "expr": "[0.6, 0.6, 1.0, 0.8]",
+    "value": "[0.60, 0.60, 1, 0.80]",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "DAMPENER_BAR_H",
+    "expr": "7.0",
+    "value": "7",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "DAMPENER_BAR_W",
+    "expr": "5.0",
+    "value": "5",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "DAMPENER_HOLE_DIA",
+    "expr": "2.0",
+    "value": "2",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "DISC_OD",
+    "expr": "CAM_BRG_ID - 0.4",
+    "value": "19.60",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "CAM_BRG_ID"
+    ],
+    "depended_by": [
+      "CAM_ECC",
+      "_boss_margin"
+    ],
+    "cascade_count": 2,
+    "depth_up": 1
+  },
+  {
+    "name": "DISC_THICK",
+    "expr": "CAM_BRG_W + 1",
+    "value": "5",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "CAM_BRG_W"
+    ],
+    "depended_by": [
+      "COLLAR_THICK"
+    ],
+    "cascade_count": 1,
+    "depth_up": 1
+  },
+  {
+    "name": "DISC_WALL",
+    "expr": "2.0",
+    "value": "2",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "DRIVE_BELT_DIA",
+    "expr": "1.0",
+    "value": "1",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "DRIVE_BELT_W",
+    "expr": "GT2_BELT_W",
+    "value": "6",
+    "category": "leaf",
+    "is_func": false,
+    "depends_on": [
+      "GT2_BELT_W"
+    ],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 1
+  },
+  {
+    "name": "D_BORE_FLAT",
+    "expr": "SHAFT_DIA - 2 * D_FLAT_DEPTH",
+    "value": "3.20",
+    "category": "leaf",
+    "is_func": false,
+    "depends_on": [
+      "D_FLAT_DEPTH",
+      "SHAFT_DIA"
+    ],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 2
+  },
+  {
+    "name": "D_FLAT_DEPTH",
+    "expr": "0.4",
+    "value": "0.40",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [
+      "D_BORE_FLAT"
+    ],
+    "cascade_count": 1,
+    "depth_up": 0
+  },
+  {
+    "name": "ECCENTRICITY",
+    "expr": "4.8",
+    "value": "4.80",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [
+      "CAM_STROKE",
+      "MAX_BLOCK_TRAVEL",
+      "SLIDER_REST_OFFSET"
+    ],
+    "cascade_count": 3,
+    "depth_up": 0
+  },
+  {
+    "name": "ECLIP_GROOVE_DIA",
+    "expr": "SHAFT_DIA - 0.6",
+    "value": "3.40",
+    "category": "leaf",
+    "is_func": false,
+    "depends_on": [
+      "SHAFT_DIA"
+    ],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 1
+  },
+  {
+    "name": "ECLIP_GROOVE_W",
+    "expr": "0.6",
+    "value": "0.60",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "ECLIP_INBOARD_OFFSET",
+    "expr": "CARRIER_PLATE_T_CFG / 2 + 1",
+    "value": "6",
+    "category": "leaf",
+    "is_func": false,
+    "depends_on": [
+      "CARRIER_PLATE_T_CFG"
+    ],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 1
+  },
+  {
+    "name": "ECLIP_OD",
+    "expr": "8.0",
+    "value": "8",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "FLANGE_H",
+    "expr": "0.8",
+    "value": "0.80",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "FOLLOWER_ARM_LENGTH",
+    "expr": "6.0",
+    "value": "6",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "FOLLOWER_ARM_W",
+    "expr": "3.0",
+    "value": "3",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "FOLLOWER_EYELET_DIA",
+    "expr": "1.5",
+    "value": "1.50",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "FOLLOWER_RING_H",
+    "expr": "3.0",
+    "value": "3",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "FOLLOWER_RING_ID",
+    "expr": "CAM_BRG_OD + 0.3",
+    "value": "27.30",
+    "category": "leaf",
+    "is_func": false,
+    "depends_on": [
+      "CAM_BRG_OD"
+    ],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 1
+  },
+  {
+    "name": "FOLLOWER_RING_OD",
+    "expr": "CAM_BRG_OD + 4",
+    "value": "31",
+    "category": "leaf",
+    "is_func": false,
+    "depends_on": [
+      "CAM_BRG_OD"
+    ],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 1
+  },
+  {
+    "name": "FP_OD",
+    "expr": "3.0",
+    "value": "3",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [
+      "FP_ROW_Y",
+      "HOUSING_HEIGHT",
+      "col_inside_hex",
+      "raw_col_count"
+    ],
+    "cascade_count": 12,
+    "depth_up": 0
+  },
+  {
+    "name": "FP_ROW_Y",
+    "expr": "(FP_OD + SP_OD) / 2 + _MIN_ROPE_GAP",
+    "value": "4.50",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "FP_OD",
+      "SP_OD",
+      "_MIN_ROPE_GAP"
+    ],
+    "depended_by": [
+      "HOUSING_HEIGHT"
+    ],
+    "cascade_count": 7,
+    "depth_up": 3
+  },
+  {
+    "name": "FRAME_BRG_ID",
+    "expr": "4.0",
+    "value": "4",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "FRAME_BRG_OD",
+    "expr": "8.0",
+    "value": "8",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "FRAME_BRG_W",
+    "expr": "3.0",
+    "value": "3",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "FRAME_POST_ANGLES",
+    "expr": "[0, 120, 240]",
+    "value": "[0, 120, 240]",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "FRAME_POST_COUNT",
+    "expr": "3",
+    "value": "3",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "GT2_BELT_W",
+    "expr": "6",
+    "value": "6",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [
+      "DRIVE_BELT_W"
+    ],
+    "cascade_count": 1,
+    "depth_up": 0
+  },
+  {
+    "name": "GT2_BOSS_H",
+    "expr": "5",
+    "value": "5",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [
+      "IDLER_H"
+    ],
+    "cascade_count": 1,
+    "depth_up": 0
+  },
+  {
+    "name": "GT2_OD",
+    "expr": "GT2_PD + 1.5",
+    "value": "9.14",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "GT2_PD"
+    ],
+    "depended_by": [
+      "IDLER_FLANGE_OD",
+      "IDLER_OD"
+    ],
+    "cascade_count": 2,
+    "depth_up": 1
+  },
+  {
+    "name": "GT2_PD",
+    "expr": "GT2_TEETH * 2 / PI",
+    "value": "7.64",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "GT2_TEETH"
+    ],
+    "depended_by": [
+      "GT2_OD"
+    ],
+    "cascade_count": 3,
+    "depth_up": 1
+  },
+  {
+    "name": "GT2_TEETH",
+    "expr": "12",
+    "value": "12",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [
+      "GT2_PD"
+    ],
+    "cascade_count": 4,
+    "depth_up": 0
+  },
+  {
+    "name": "GUIDE_BOT",
+    "expr": "GUIDE_Z - GUIDE_THICK",
+    "value": "-24.50",
+    "category": "leaf",
+    "is_func": false,
+    "depends_on": [
+      "GUIDE_THICK",
+      "GUIDE_Z"
+    ],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 2
+  },
+  {
+    "name": "GUIDE_FUNNEL_DIA",
+    "expr": "3.0",
+    "value": "3",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "GUIDE_FUNNEL_TAPER",
+    "expr": "2.0",
+    "value": "2",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "GUIDE_MIN_BORE",
+    "expr": "1.5",
+    "value": "1.50",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "GUIDE_STACK_H",
+    "expr": "GUIDE_THICK",
+    "value": "5",
+    "category": "leaf",
+    "is_func": false,
+    "depends_on": [
+      "GUIDE_THICK"
+    ],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 1
+  },
+  {
+    "name": "GUIDE_THICK",
+    "expr": "5.0",
+    "value": "5",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [
+      "GUIDE_BOT",
+      "GUIDE_STACK_H"
+    ],
+    "cascade_count": 2,
+    "depth_up": 0
+  },
+  {
+    "name": "GUIDE_Z",
+    "expr": "TIER3_BOT",
+    "value": "-19.50",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "TIER3_BOT"
+    ],
+    "depended_by": [
+      "GUIDE_BOT"
+    ],
+    "cascade_count": 1,
+    "depth_up": 1
+  },
+  {
+    "name": "HELIX_ANGLES",
+    "expr": "[180, 300, 60]",
+    "value": "[180, 300, 60]",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "HELIX_LENGTH",
+    "expr": "NUM_CAMS * AXIAL_PITCH",
+    "value": "?",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "AXIAL_PITCH",
+      "NUM_CAMS"
+    ],
+    "depended_by": [
+      "SHAFT_EXT_TO_CARRIER",
+      "SHAFT_TOTAL_LENGTH"
+    ],
+    "cascade_count": 2,
+    "depth_up": 2
+  },
+  {
+    "name": "HEX_C2C",
+    "expr": "2 * HEX_R",
+    "value": "86",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "HEX_R"
+    ],
+    "depended_by": [
+      "HEX_LONGEST_DIA"
+    ],
+    "cascade_count": 1,
+    "depth_up": 1
+  },
+  {
+    "name": "HEX_FF",
+    "expr": "HEX_R * sqrt(3)",
+    "value": "74.48",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "HEX_R"
+    ],
+    "depended_by": [
+      "_half_count",
+      "hex_w"
+    ],
+    "cascade_count": 17,
+    "depth_up": 1
+  },
+  {
+    "name": "HEX_LONGEST_DIA",
+    "expr": "HEX_C2C",
+    "value": "86",
+    "category": "leaf",
+    "is_func": false,
+    "depends_on": [
+      "HEX_C2C"
+    ],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 1
+  },
+  {
+    "name": "HEX_R",
+    "expr": "43",
+    "value": "43",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [
+      "HEX_C2C",
+      "HEX_FF",
+      "PLATE_HEX_R",
+      "_CFG_STAR_TIP_R",
+      "_CFG_STUB_R_END",
+      "_RING_R_IN_CFG",
+      "hex_w"
+    ],
+    "cascade_count": 46,
+    "depth_up": 0
+  },
+  {
+    "name": "HOUSING_HEIGHT",
+    "expr": "2 * FP_ROW_Y + FP_OD + 1",
+    "value": "13",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "FP_OD",
+      "FP_ROW_Y"
+    ],
+    "depended_by": [
+      "TIER1_TOP",
+      "TIER3_BOT",
+      "TIER_PITCH"
+    ],
+    "cascade_count": 6,
+    "depth_up": 2
+  },
+  {
+    "name": "IDLER_BORE",
+    "expr": "3.0",
+    "value": "3",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "IDLER_FLANGE_OD",
+    "expr": "GT2_OD + 2",
+    "value": "11.14",
+    "category": "leaf",
+    "is_func": false,
+    "depends_on": [
+      "GT2_OD"
+    ],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 1
+  },
+  {
+    "name": "IDLER_H",
+    "expr": "GT2_BOSS_H",
+    "value": "5",
+    "category": "leaf",
+    "is_func": false,
+    "depends_on": [
+      "GT2_BOSS_H"
+    ],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 1
+  },
+  {
+    "name": "IDLER_OD",
+    "expr": "GT2_OD",
+    "value": "9.14",
+    "category": "leaf",
+    "is_func": false,
+    "depends_on": [
+      "GT2_OD"
+    ],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 1
+  },
+  {
+    "name": "IDLER_STACK_GAP",
+    "expr": "1",
+    "value": "1",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "INTER_TIER_GAP",
+    "expr": "0.0",
+    "value": "0",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [
+      "TIER_PITCH"
+    ],
+    "cascade_count": 6,
+    "depth_up": 0
+  },
+  {
+    "name": "JOURNAL_EXT",
+    "expr": "75.0",
+    "value": "75",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "JOURNAL_LENGTH",
+    "expr": "5.0",
+    "value": "5",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "KEEPER_LIP_DIA",
+    "expr": "CAM_BRG_ID + 1.5",
+    "value": "21.50",
+    "category": "leaf",
+    "is_func": false,
+    "depends_on": [
+      "CAM_BRG_ID"
+    ],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 1
+  },
+  {
+    "name": "KEEPER_LIP_H",
+    "expr": "0.6",
+    "value": "0.60",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "LEG_BOT_R_CFG",
+    "expr": "32",
+    "value": "32",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "LEG_CIRC_SEG",
+    "expr": "24",
+    "value": "24",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "LEG_FOOT_PAD_DIA",
+    "expr": "20",
+    "value": "20",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "LEG_FOOT_PAD_H",
+    "expr": "3",
+    "value": "3",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "LEG_HEIGHT_CFG",
+    "expr": "200",
+    "value": "200",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "LEG_OPEN_ANGLE",
+    "expr": "130",
+    "value": "130",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "LEG_ROUNDING",
+    "expr": "0.15",
+    "value": "0.15",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "LEG_SLICES",
+    "expr": "60",
+    "value": "60",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "LEG_TOP_R_CFG",
+    "expr": "9",
+    "value": "9",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "LEG_WAIST_FRAC_CFG",
+    "expr": "0.38",
+    "value": "0.38",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "LEG_WAIST_R_CFG",
+    "expr": "6",
+    "value": "6",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "LEG_WALL_T",
+    "expr": "2.5",
+    "value": "2.50",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "MANUAL_POSITION",
+    "expr": "-1",
+    "value": "-1",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [
+      "anim_t"
+    ],
+    "cascade_count": 1,
+    "depth_up": 0
+  },
+  {
+    "name": "MAX_BLOCK_TRAVEL",
+    "expr": "3 * ECCENTRICITY",
+    "value": "14.40",
+    "category": "leaf",
+    "is_func": false,
+    "depends_on": [
+      "ECCENTRICITY"
+    ],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 1
+  },
+  {
+    "name": "MOTOR_BODY_DIA",
+    "expr": "10",
+    "value": "10",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "MOTOR_BODY_LEN",
+    "expr": "15",
+    "value": "15",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "MOTOR_GAP",
+    "expr": "2",
+    "value": "2",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "MOTOR_HELIX_IDX",
+    "expr": "2",
+    "value": "2",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "MOTOR_SHAFT_DIA",
+    "expr": "2",
+    "value": "2",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "MOTOR_SHAFT_LEN",
+    "expr": "6",
+    "value": "6",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "NUM_CAMS",
+    "expr": "NUM_CHANNELS",
+    "value": "?",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "NUM_CHANNELS"
+    ],
+    "depended_by": [
+      "HELIX_LENGTH",
+      "TWIST_PER_CAM"
+    ],
+    "cascade_count": 4,
+    "depth_up": 1
+  },
+  {
+    "name": "NUM_CHANNELS",
+    "expr": "2 * _half_count() + 1",
+    "value": "?",
+    "category": "hub",
+    "is_func": false,
+    "depends_on": [
+      "_half_count"
+    ],
+    "depended_by": [
+      "CH_LENS",
+      "CH_OFFSETS",
+      "COL_COUNTS",
+      "NUM_CAMS",
+      "_CENTER_CH",
+      "_shortest_ch"
+    ],
+    "cascade_count": 12,
+    "depth_up": 1
+  },
+  {
+    "name": "NUM_TIERS",
+    "expr": "3",
+    "value": "3",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "PLATE_HEX_R",
+    "expr": "HEX_R - SLEEVE_CLEARANCE",
+    "value": "42.85",
+    "category": "leaf",
+    "is_func": false,
+    "depends_on": [
+      "HEX_R",
+      "SLEEVE_CLEARANCE"
+    ],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 2
+  },
+  {
+    "name": "POST_DIA",
+    "expr": "2.5",
+    "value": "2.50",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "POST_NOTCH_R",
+    "expr": "_RING_R_IN_CFG + _RING_W_CFG / 2",
+    "value": "47.50",
+    "category": "leaf",
+    "is_func": false,
+    "depends_on": [
+      "_RING_R_IN_CFG",
+      "_RING_W_CFG"
+    ],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 2
+  },
+  {
+    "name": "RETAINER_DEPTH",
+    "expr": "1.0",
+    "value": "1",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "RETAINER_DIA",
+    "expr": "3.0",
+    "value": "3",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "SET_SCREW_BORE",
+    "expr": "1.6",
+    "value": "1.60",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "SET_SCREW_DEPTH",
+    "expr": "3.0",
+    "value": "3",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "SET_SCREW_DIA",
+    "expr": "2.0",
+    "value": "2",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "SHAFT_BORE",
+    "expr": "SHAFT_DIA + 0.2",
+    "value": "4.20",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "SHAFT_DIA"
+    ],
+    "depended_by": [
+      "_boss_wall"
+    ],
+    "cascade_count": 1,
+    "depth_up": 1
+  },
+  {
+    "name": "SHAFT_BOSS_OD",
+    "expr": "SHAFT_DIA + 6",
+    "value": "10",
+    "category": "hub",
+    "is_func": false,
+    "depends_on": [
+      "SHAFT_DIA"
+    ],
+    "depended_by": [
+      "CAM_ECC",
+      "COLLAR_BUMP_R",
+      "_boss_margin",
+      "_boss_wall"
+    ],
+    "cascade_count": 4,
+    "depth_up": 1
+  },
+  {
+    "name": "SHAFT_DIA",
+    "expr": "4.0",
+    "value": "4",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [
+      "D_BORE_FLAT",
+      "ECLIP_GROOVE_DIA",
+      "SHAFT_BORE",
+      "SHAFT_BOSS_OD"
+    ],
+    "cascade_count": 8,
+    "depth_up": 0
+  },
+  {
+    "name": "SHAFT_EXT_BEYOND",
+    "expr": "SHAFT_EXT_BEYOND_DRIVE",
+    "value": "11",
+    "category": "leaf",
+    "is_func": false,
+    "depends_on": [
+      "SHAFT_EXT_BEYOND_DRIVE"
+    ],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 1
+  },
+  {
+    "name": "SHAFT_EXT_BEYOND_DRIVE",
+    "expr": "CARRIER_PLATE_T_CFG / 2 + _GT2_BOSS_H_REF + 1",
+    "value": "11",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "CARRIER_PLATE_T_CFG",
+      "_GT2_BOSS_H_REF"
+    ],
+    "depended_by": [
+      "SHAFT_EXT_BEYOND"
+    ],
+    "cascade_count": 1,
+    "depth_up": 2
+  },
+  {
+    "name": "SHAFT_EXT_BEYOND_FREE",
+    "expr": "CARRIER_PLATE_T_CFG / 2 + 2",
+    "value": "7",
+    "category": "leaf",
+    "is_func": false,
+    "depends_on": [
+      "CARRIER_PLATE_T_CFG"
+    ],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 1
+  },
+  {
+    "name": "SHAFT_EXT_TO_CARRIER",
+    "expr": "_SHAFT_TANGENT_DIST - HELIX_LENGTH / 2",
+    "value": "?",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "HELIX_LENGTH",
+      "_SHAFT_TANGENT_DIST"
+    ],
+    "depended_by": [
+      "SHAFT_TOTAL_LENGTH"
+    ],
+    "cascade_count": 1,
+    "depth_up": 2
+  },
+  {
+    "name": "SHAFT_TOTAL_LENGTH",
+    "expr": "HELIX_LENGTH + SHAFT_EXT_TO_CARRIER * 2",
+    "value": "?",
+    "category": "leaf",
+    "is_func": false,
+    "depends_on": [
+      "HELIX_LENGTH",
+      "SHAFT_EXT_TO_CARRIER"
+    ],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 2
+  },
+  {
+    "name": "SLEEVE_CLEARANCE",
+    "expr": "0.15",
+    "value": "0.15",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [
+      "PLATE_HEX_R"
+    ],
+    "cascade_count": 1,
+    "depth_up": 0
+  },
+  {
+    "name": "SLIDER_BIAS",
+    "expr": "0.80",
+    "value": "0.80",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [
+      "SLIDER_REST_OFFSET"
+    ],
+    "cascade_count": 1,
+    "depth_up": 0
+  },
+  {
+    "name": "SLIDER_REST_OFFSET",
+    "expr": "ECCENTRICITY * SLIDER_BIAS",
+    "value": "3.84",
+    "category": "leaf",
+    "is_func": false,
+    "depends_on": [
+      "ECCENTRICITY",
+      "SLIDER_BIAS"
+    ],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 2
+  },
+  {
+    "name": "SP_OD",
+    "expr": "3.0",
+    "value": "3",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [
+      "FP_ROW_Y",
+      "col_inside_hex",
+      "raw_col_count"
+    ],
+    "cascade_count": 12,
+    "depth_up": 0
+  },
+  {
+    "name": "STACK_OFFSET",
+    "expr": "8.0",
+    "value": "8",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [
+      "CH_GAP",
+      "CH_OFFSETS",
+      "_half_count"
+    ],
+    "cascade_count": 15,
+    "depth_up": 0
+  },
+  {
+    "name": "STAGGER_HALF_PITCH",
+    "expr": "COL_PITCH / 2",
+    "value": "3",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "COL_PITCH"
+    ],
+    "depended_by": [
+      "_ch_stagger"
+    ],
+    "cascade_count": 4,
+    "depth_up": 1
+  },
+  {
+    "name": "STRING_DIA",
+    "expr": "0.5",
+    "value": "0.50",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "STRING_HOLE_DIA",
+    "expr": "1.5",
+    "value": "1.50",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "TIER1_TOP",
+    "expr": "TIER_PITCH + HOUSING_HEIGHT / 2",
+    "value": "19.50",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "HOUSING_HEIGHT",
+      "TIER_PITCH"
+    ],
+    "depended_by": [
+      "ANCHOR_Z"
+    ],
+    "cascade_count": 1,
+    "depth_up": 2
+  },
+  {
+    "name": "TIER3_BOT",
+    "expr": "-TIER_PITCH - HOUSING_HEIGHT / 2",
+    "value": "-19.50",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "HOUSING_HEIGHT",
+      "TIER_PITCH"
+    ],
+    "depended_by": [
+      "GUIDE_Z"
+    ],
+    "cascade_count": 2,
+    "depth_up": 2
+  },
+  {
+    "name": "TIER_ANGLES",
+    "expr": "[180, 300, 60]",
+    "value": "[180, 300, 60]",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "TIER_PITCH",
+    "expr": "HOUSING_HEIGHT + INTER_TIER_GAP",
+    "value": "13",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "HOUSING_HEIGHT",
+      "INTER_TIER_GAP"
+    ],
+    "depended_by": [
+      "TIER1_TOP",
+      "TIER3_BOT"
+    ],
+    "cascade_count": 5,
+    "depth_up": 2
+  },
+  {
+    "name": "TWIST_PER_CAM",
+    "expr": "360.0 / NUM_CAMS",
+    "value": "?",
+    "category": "leaf",
+    "is_func": false,
+    "depends_on": [
+      "NUM_CAMS"
+    ],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 1
+  },
+  {
+    "name": "WALL_MARGIN",
+    "expr": "4",
+    "value": "4",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [
+      "ch_len"
+    ],
+    "cascade_count": 5,
+    "depth_up": 0
+  },
+  {
+    "name": "WALL_THICKNESS",
+    "expr": "1.5",
+    "value": "1.50",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [
+      "CH_GAP"
+    ],
+    "cascade_count": 1,
+    "depth_up": 0
+  },
+  {
+    "name": "_BLOCK_DROP",
+    "expr": "36",
+    "value": "36",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "_BLOCK_GAP",
+    "expr": "0.8",
+    "value": "0.80",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "_BLOCK_HEIGHT_CFG",
+    "expr": "7",
+    "value": "7",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "_CENTER_CH",
+    "expr": "(NUM_CHANNELS - 1) / 2",
+    "value": "?",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "NUM_CHANNELS"
+    ],
+    "depended_by": [
+      "CH_OFFSETS"
+    ],
+    "cascade_count": 6,
+    "depth_up": 1
+  },
+  {
+    "name": "_CFG_ADX",
+    "expr": "_CFG_TX - _CFG_JX",
+    "value": "?",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "_CFG_JX",
+      "_CFG_TX"
+    ],
+    "depended_by": [
+      "_CFG_ALEN",
+      "_CFG_CROSS",
+      "_CFG_CX"
+    ],
+    "cascade_count": 8,
+    "depth_up": 2
+  },
+  {
+    "name": "_CFG_ADY",
+    "expr": "_CFG_TY - _CFG_JY",
+    "value": "?",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "_CFG_JY",
+      "_CFG_TY"
+    ],
+    "depended_by": [
+      "_CFG_ALEN",
+      "_CFG_CROSS",
+      "_CFG_CY"
+    ],
+    "cascade_count": 8,
+    "depth_up": 2
+  },
+  {
+    "name": "_CFG_ALEN",
+    "expr": "sqrt(_CFG_ADX*_CFG_ADX + _CFG_ADY*_CFG_ADY)",
+    "value": "?",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "_CFG_ADX",
+      "_CFG_ADY"
+    ],
+    "depended_by": [
+      "_CFG_CROSS",
+      "_CFG_CX",
+      "_CFG_CY"
+    ],
+    "cascade_count": 7,
+    "depth_up": 2
+  },
+  {
+    "name": "_CFG_CROSS",
+    "expr": "(_CFG_ADX/_CFG_ALEN) * _CFG_SDY - (_CFG_ADY/_CFG_ALEN) * _CFG_SDX",
+    "value": "?",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "_CFG_ADX",
+      "_CFG_ADY",
+      "_CFG_ALEN",
+      "_CFG_SDX",
+      "_CFG_SDY"
+    ],
+    "depended_by": [
+      "_CFG_T_MM"
+    ],
+    "cascade_count": 6,
+    "depth_up": 5
+  },
+  {
+    "name": "_CFG_CX",
+    "expr": "_CFG_JX + (_CFG_ADX/_CFG_ALEN) * _CFG_T_MM",
+    "value": "?",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "_CFG_ADX",
+      "_CFG_ALEN",
+      "_CFG_JX",
+      "_CFG_T_MM"
+    ],
+    "depended_by": [
+      "_SHAFT_TANGENT_DIST"
+    ],
+    "cascade_count": 3,
+    "depth_up": 4
+  },
+  {
+    "name": "_CFG_CY",
+    "expr": "_CFG_JY + (_CFG_ADY/_CFG_ALEN) * _CFG_T_MM",
+    "value": "?",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "_CFG_ADY",
+      "_CFG_ALEN",
+      "_CFG_JY",
+      "_CFG_T_MM"
+    ],
+    "depended_by": [
+      "_SHAFT_TANGENT_DIST"
+    ],
+    "cascade_count": 3,
+    "depth_up": 4
+  },
+  {
+    "name": "_CFG_DJX",
+    "expr": "_CFG_HCX - _CFG_JX",
+    "value": "-116.32",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "_CFG_HCX",
+      "_CFG_JX"
+    ],
+    "depended_by": [
+      "_CFG_T_MM"
+    ],
+    "cascade_count": 6,
+    "depth_up": 2
+  },
+  {
+    "name": "_CFG_DJY",
+    "expr": "_CFG_HCY - _CFG_JY",
+    "value": "-60.62",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "_CFG_HCY",
+      "_CFG_JY"
+    ],
+    "depended_by": [
+      "_CFG_T_MM"
+    ],
+    "cascade_count": 6,
+    "depth_up": 2
+  },
+  {
+    "name": "_CFG_HCX",
+    "expr": "_CFG_HELIX_R * cos(180)",
+    "value": "-151.32",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "_CFG_HELIX_R"
+    ],
+    "depended_by": [
+      "_CFG_DJX",
+      "_SHAFT_TANGENT_DIST"
+    ],
+    "cascade_count": 7,
+    "depth_up": 1
+  },
+  {
+    "name": "_CFG_HCY",
+    "expr": "_CFG_HELIX_R * sin(180)",
+    "value": "0.00",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "_CFG_HELIX_R"
+    ],
+    "depended_by": [
+      "_CFG_DJY",
+      "_SHAFT_TANGENT_DIST"
+    ],
+    "cascade_count": 7,
+    "depth_up": 1
+  },
+  {
+    "name": "_CFG_HELIX_R",
+    "expr": "_CFG_HEXAGRAM_INNER + _CFG_V_PUSH",
+    "value": "151.32",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "_CFG_HEXAGRAM_INNER",
+      "_CFG_V_PUSH"
+    ],
+    "depended_by": [
+      "_CFG_HCX",
+      "_CFG_HCY"
+    ],
+    "cascade_count": 10,
+    "depth_up": 2
+  },
+  {
+    "name": "_CFG_HEXAGRAM_INNER",
+    "expr": "_CFG_STAR_TIP_R / sqrt(3)",
+    "value": "124.13",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "_CFG_STAR_TIP_R"
+    ],
+    "depended_by": [
+      "_CFG_HELIX_R"
+    ],
+    "cascade_count": 11,
+    "depth_up": 1
+  },
+  {
+    "name": "_CFG_JUNCTION_R",
+    "expr": "_CFG_STUB_R_END + _CFG_STUB_W / 2",
+    "value": "70",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "_CFG_STUB_R_END",
+      "_CFG_STUB_W"
+    ],
+    "depended_by": [
+      "_CFG_JX",
+      "_CFG_JY",
+      "_CFG_V_ANGLE"
+    ],
+    "cascade_count": 18,
+    "depth_up": 2
+  },
+  {
+    "name": "_CFG_JX",
+    "expr": "_CFG_JUNCTION_R * cos(_CFG_STUB_A)",
+    "value": "-35.00",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "_CFG_JUNCTION_R",
+      "_CFG_STUB_A"
+    ],
+    "depended_by": [
+      "_CFG_ADX",
+      "_CFG_CX",
+      "_CFG_DJX"
+    ],
+    "cascade_count": 10,
+    "depth_up": 2
+  },
+  {
+    "name": "_CFG_JY",
+    "expr": "_CFG_JUNCTION_R * sin(_CFG_STUB_A)",
+    "value": "60.62",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "_CFG_JUNCTION_R",
+      "_CFG_STUB_A"
+    ],
+    "depended_by": [
+      "_CFG_ADY",
+      "_CFG_CY",
+      "_CFG_DJY"
+    ],
+    "cascade_count": 10,
+    "depth_up": 2
+  },
+  {
+    "name": "_CFG_SDX",
+    "expr": "-sin(180)",
+    "value": "-0.00",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [
+      "_CFG_CROSS",
+      "_CFG_T_MM",
+      "_SHAFT_TANGENT_DIST"
+    ],
+    "cascade_count": 7,
+    "depth_up": 0
+  },
+  {
+    "name": "_CFG_SDY",
+    "expr": "cos(180)",
+    "value": "-1",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [
+      "_CFG_CROSS",
+      "_CFG_T_MM",
+      "_SHAFT_TANGENT_DIST"
+    ],
+    "cascade_count": 7,
+    "depth_up": 0
+  },
+  {
+    "name": "_CFG_STAR_TIP_R",
+    "expr": "_STAR_RATIO * 2 * HEX_R",
+    "value": "215",
+    "category": "hub",
+    "is_func": false,
+    "depends_on": [
+      "HEX_R",
+      "_STAR_RATIO"
+    ],
+    "depended_by": [
+      "_CFG_HEXAGRAM_INNER",
+      "_CFG_TX",
+      "_CFG_TY",
+      "_CFG_V_ANGLE"
+    ],
+    "cascade_count": 20,
+    "depth_up": 2
+  },
+  {
+    "name": "_CFG_STUB_A",
+    "expr": "120",
+    "value": "120",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [
+      "_CFG_JX",
+      "_CFG_JY",
+      "_CFG_TIP_A"
+    ],
+    "cascade_count": 17,
+    "depth_up": 0
+  },
+  {
+    "name": "_CFG_STUB_LEN",
+    "expr": "15",
+    "value": "15",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [
+      "_CFG_STUB_R_END"
+    ],
+    "cascade_count": 20,
+    "depth_up": 0
+  },
+  {
+    "name": "_CFG_STUB_R_END",
+    "expr": "(HEX_R + 2 + _RING_W_CFG) + _CFG_STUB_LEN",
+    "value": "65",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "HEX_R",
+      "_CFG_STUB_LEN",
+      "_RING_W_CFG"
+    ],
+    "depended_by": [
+      "_CFG_JUNCTION_R"
+    ],
+    "cascade_count": 19,
+    "depth_up": 3
+  },
+  {
+    "name": "_CFG_STUB_W",
+    "expr": "10",
+    "value": "10",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [
+      "_CFG_JUNCTION_R"
+    ],
+    "cascade_count": 19,
+    "depth_up": 0
+  },
+  {
+    "name": "_CFG_TIP_A",
+    "expr": "_CFG_STUB_A + _CFG_V_ANGLE / 2",
+    "value": "?",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "_CFG_STUB_A",
+      "_CFG_V_ANGLE"
+    ],
+    "depended_by": [
+      "_CFG_TX",
+      "_CFG_TY"
+    ],
+    "cascade_count": 12,
+    "depth_up": 2
+  },
+  {
+    "name": "_CFG_TX",
+    "expr": "_CFG_STAR_TIP_R * cos(_CFG_TIP_A)",
+    "value": "?",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "_CFG_STAR_TIP_R",
+      "_CFG_TIP_A"
+    ],
+    "depended_by": [
+      "_CFG_ADX"
+    ],
+    "cascade_count": 9,
+    "depth_up": 2
+  },
+  {
+    "name": "_CFG_TY",
+    "expr": "_CFG_STAR_TIP_R * sin(_CFG_TIP_A)",
+    "value": "?",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "_CFG_STAR_TIP_R",
+      "_CFG_TIP_A"
+    ],
+    "depended_by": [
+      "_CFG_ADY"
+    ],
+    "cascade_count": 9,
+    "depth_up": 2
+  },
+  {
+    "name": "_CFG_T_MM",
+    "expr": "(_CFG_DJX * _CFG_SDY - _CFG_DJY * _CFG_SDX) / _CFG_CROSS",
+    "value": "?",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "_CFG_CROSS",
+      "_CFG_DJX",
+      "_CFG_DJY",
+      "_CFG_SDX",
+      "_CFG_SDY"
+    ],
+    "depended_by": [
+      "_CFG_CX",
+      "_CFG_CY"
+    ],
+    "cascade_count": 5,
+    "depth_up": 5
+  },
+  {
+    "name": "_CFG_V_ANGLE",
+    "expr": "_cfg_find_V(_CFG_STAR_TIP_R, _CFG_JUNCTION_R)",
+    "value": "?",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "_CFG_JUNCTION_R",
+      "_CFG_STAR_TIP_R",
+      "_cfg_find_V"
+    ],
+    "depended_by": [
+      "_CFG_TIP_A"
+    ],
+    "cascade_count": 13,
+    "depth_up": 3
+  },
+  {
+    "name": "_CFG_V_PUSH",
+    "expr": "_CORRIDOR_GAP_CFG / (2 * tan(30))",
+    "value": "27.19",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "_CORRIDOR_GAP_CFG"
+    ],
+    "depended_by": [
+      "_CFG_HELIX_R"
+    ],
+    "cascade_count": 11,
+    "depth_up": 1
+  },
+  {
+    "name": "_CORRIDOR_GAP_CFG",
+    "expr": "31.4",
+    "value": "31.40",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [
+      "_CFG_V_PUSH"
+    ],
+    "cascade_count": 12,
+    "depth_up": 0
+  },
+  {
+    "name": "_GT2_BOSS_H_REF",
+    "expr": "5",
+    "value": "5",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [
+      "SHAFT_EXT_BEYOND_DRIVE"
+    ],
+    "cascade_count": 2,
+    "depth_up": 0
+  },
+  {
+    "name": "_MIN_ROPE_GAP",
+    "expr": "1.5",
+    "value": "1.50",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [
+      "FP_ROW_Y"
+    ],
+    "cascade_count": 8,
+    "depth_up": 0
+  },
+  {
+    "name": "_RING_R_IN_CFG",
+    "expr": "HEX_R + 2",
+    "value": "45",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "HEX_R"
+    ],
+    "depended_by": [
+      "POST_NOTCH_R"
+    ],
+    "cascade_count": 1,
+    "depth_up": 1
+  },
+  {
+    "name": "_RING_W_CFG",
+    "expr": "5",
+    "value": "5",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [
+      "POST_NOTCH_R",
+      "_CFG_STUB_R_END"
+    ],
+    "cascade_count": 21,
+    "depth_up": 0
+  },
+  {
+    "name": "_SCALE",
+    "expr": "0.4831",
+    "value": "0.48",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 0
+  },
+  {
+    "name": "_SHAFT_TANGENT_DIST",
+    "expr": "abs((_CFG_CX - _CFG_HCX) * _CFG_SDX + (_CFG_CY - _CFG_HCY) * _CFG_SDY)",
+    "value": "?",
+    "category": "intermediate",
+    "is_func": false,
+    "depends_on": [
+      "_CFG_CX",
+      "_CFG_CY",
+      "_CFG_HCX",
+      "_CFG_HCY",
+      "_CFG_SDX",
+      "_CFG_SDY"
+    ],
+    "depended_by": [
+      "SHAFT_EXT_TO_CARRIER"
+    ],
+    "cascade_count": 2,
+    "depth_up": 6
+  },
+  {
+    "name": "_STAR_RATIO",
+    "expr": "2.5",
+    "value": "2.50",
+    "category": "root",
+    "is_func": false,
+    "depends_on": [],
+    "depended_by": [
+      "_CFG_STAR_TIP_R"
+    ],
+    "cascade_count": 21,
+    "depth_up": 0
+  },
+  {
+    "name": "_boss_margin",
+    "expr": "DISC_OD/2 - CAM_ECC - SHAFT_BOSS_OD/2",
+    "value": "0",
+    "category": "leaf",
+    "is_func": false,
+    "depends_on": [
+      "CAM_ECC",
+      "DISC_OD",
+      "SHAFT_BOSS_OD"
+    ],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 3
+  },
+  {
+    "name": "_boss_wall",
+    "expr": "(SHAFT_BOSS_OD - SHAFT_BORE) / 2",
+    "value": "2.90",
+    "category": "leaf",
+    "is_func": false,
+    "depends_on": [
+      "SHAFT_BORE",
+      "SHAFT_BOSS_OD"
+    ],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 2
+  },
+  {
+    "name": "_cfg_find_V",
+    "expr": "d > 50 ? (lo+hi)/2 : let(mid=(lo+hi)/2, r=_cfg_par_res(mid,T,J)) abs(r) < 0.0...",
+    "value": "?",
+    "category": "intermediate",
+    "is_func": true,
+    "depends_on": [
+      "_cfg_par_res"
+    ],
+    "depended_by": [
+      "_CFG_V_ANGLE"
+    ],
+    "cascade_count": 14,
+    "depth_up": 1
+  },
+  {
+    "name": "_cfg_par_res",
+    "expr": "T*T*sin(120-V) - 2*J*T*sin(120-V/2) + J*J*sin(120)",
+    "value": "?",
+    "category": "root",
+    "is_func": true,
+    "depends_on": [],
+    "depended_by": [
+      "_cfg_find_V"
+    ],
+    "cascade_count": 15,
+    "depth_up": 0
+  },
+  {
+    "name": "_ch_stagger",
+    "expr": "(ch_idx % 2) * STAGGER_HALF_PITCH",
+    "value": "?",
+    "category": "intermediate",
+    "is_func": true,
+    "depends_on": [
+      "STAGGER_HALF_PITCH"
+    ],
+    "depended_by": [
+      "col_x"
+    ],
+    "cascade_count": 3,
+    "depth_up": 1
+  },
+  {
+    "name": "_col_x_base",
+    "expr": "-((count - 1) / 2) * COL_PITCH + idx * COL_PITCH",
+    "value": "?",
+    "category": "intermediate",
+    "is_func": true,
+    "depends_on": [
+      "COL_PITCH"
+    ],
+    "depended_by": [
+      "col_x"
+    ],
+    "cascade_count": 3,
+    "depth_up": 1
+  },
+  {
+    "name": "_half_count",
+    "expr": "floor((HEX_FF/2 - STACK_OFFSET/2) / STACK_OFFSET)",
+    "value": "?",
+    "category": "intermediate",
+    "is_func": true,
+    "depends_on": [
+      "HEX_FF",
+      "STACK_OFFSET"
+    ],
+    "depended_by": [
+      "NUM_CHANNELS"
+    ],
+    "cascade_count": 13,
+    "depth_up": 2
+  },
+  {
+    "name": "_shortest_ch",
+    "expr": "min([for (i=[0:NUM_CHANNELS-1]) CH_LENS[i]])",
+    "value": "?",
+    "category": "leaf",
+    "is_func": false,
+    "depends_on": [
+      "CH_LENS",
+      "NUM_CHANNELS"
+    ],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 2
+  },
+  {
+    "name": "_shortest_half_w",
+    "expr": "hex_w(CH_OFFSETS[0]) / 2",
+    "value": "?",
+    "category": "leaf",
+    "is_func": false,
+    "depends_on": [
+      "CH_OFFSETS",
+      "hex_w"
+    ],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 2
+  },
+  {
+    "name": "anim_t",
+    "expr": "(MANUAL_POSITION >= 0) ? MANUAL_POSITION : $t",
+    "value": "?",
+    "category": "leaf",
+    "is_func": true,
+    "depends_on": [
+      "MANUAL_POSITION"
+    ],
+    "depended_by": [],
+    "cascade_count": 0,
+    "depth_up": 1
+  },
+  {
+    "name": "ch_len",
+    "expr": "max(0, hex_w(d) - 2 * WALL_MARGIN)",
+    "value": "?",
+    "category": "intermediate",
+    "is_func": true,
+    "depends_on": [
+      "WALL_MARGIN",
+      "hex_w"
+    ],
+    "depended_by": [
+      "CH_LENS"
+    ],
+    "cascade_count": 4,
+    "depth_up": 2
+  },
+  {
+    "name": "col_inside_hex",
+    "expr": "let(max_od = max(FP_OD, SP_OD)) (abs(px) + max_od/2 + 1) < (hex_w(d) / 2)",
+    "value": "?",
+    "category": "intermediate",
+    "is_func": true,
+    "depends_on": [
+      "FP_OD",
+      "SP_OD",
+      "hex_w"
+    ],
+    "depended_by": [
+      "culled_col_count"
+    ],
+    "cascade_count": 2,
+    "depth_up": 3
+  },
+  {
+    "name": "col_x",
+    "expr": "_col_x_base(count, idx) + _ch_stagger(ch_idx)",
+    "value": "?",
+    "category": "intermediate",
+    "is_func": true,
+    "depends_on": [
+      "_ch_stagger",
+      "_col_x_base"
+    ],
+    "depended_by": [
+      "culled_col_count"
+    ],
+    "cascade_count": 2,
+    "depth_up": 2
+  },
+  {
+    "name": "culled_col_count",
+    "expr": "let(d = CH_OFFSETS[ch_idx], len = CH_LENS[ch_idx], raw = raw_col_count(len)) ...",
+    "value": "?",
+    "category": "intermediate",
+    "is_func": true,
+    "depends_on": [
+      "CH_LENS",
+      "CH_OFFSETS",
+      "col_inside_hex",
+      "col_x",
+      "raw_col_count"
+    ],
+    "depended_by": [
+      "COL_COUNTS"
+    ],
+    "cascade_count": 1,
+    "depth_up": 5
+  },
+  {
+    "name": "hex_w",
+    "expr": "let(max_d = HEX_FF / 2) (abs(d) > max_d) ? 0 : 2 * (HEX_R - abs(d) / sqrt(3))",
+    "value": "?",
+    "category": "intermediate",
+    "is_func": true,
+    "depends_on": [
+      "HEX_FF",
+      "HEX_R"
+    ],
+    "depended_by": [
+      "_shortest_half_w",
+      "ch_len",
+      "col_inside_hex"
+    ],
+    "cascade_count": 7,
+    "depth_up": 2
+  },
+  {
+    "name": "raw_col_count",
+    "expr": "(len < COL_PITCH) ? ((len > max(FP_OD, SP_OD)) ? 1 : 0) : floor(len / COL_PIT...",
+    "value": "?",
+    "category": "intermediate",
+    "is_func": true,
+    "depends_on": [
+      "COL_PITCH",
+      "FP_OD",
+      "SP_OD"
+    ],
+    "depended_by": [
+      "culled_col_count"
+    ],
+    "cascade_count": 2,
+    "depth_up": 3
+  }
+];
+
+const nodeMap = {};
+nodes.forEach(n => nodeMap[n.name] = n);
+
+function getTransitiveDeps(name, direction) {
+    const visited = {};
+    const queue = [];
+    const start = nodeMap[name];
+    if (!start) return visited;
+
+    const neighbors = direction === 'down' ? start.depended_by : start.depends_on;
+    neighbors.forEach(n => {
+        if (!(n in visited) && n in nodeMap) {
+            visited[n] = 1;
+            queue.push([n, 1]);
+        }
+    });
+
+    while (queue.length > 0) {
+        const [node, depth] = queue.shift();
+        const info = nodeMap[node];
+        if (!info) continue;
+        const next = direction === 'down' ? info.depended_by : info.depends_on;
+        next.forEach(n => {
+            if (!(n in visited) && n in nodeMap) {
+                visited[n] = depth + 1;
+                queue.push([n, depth + 1]);
+            }
+        });
+    }
+
+    return visited;
+}
+
+function renderList(filter) {
+    const list = document.getElementById('paramList');
+    list.innerHTML = '';
+
+    const categories = ['root', 'hub', 'intermediate', 'leaf'];
+    const labels = { root: 'Root Parameters', hub: 'Hub Parameters',
+                     intermediate: 'Intermediate', leaf: 'Leaf Parameters' };
+
+    categories.forEach(cat => {
+        const items = nodes.filter(n => n.category === cat &&
+            (!filter || n.name.toLowerCase().includes(filter.toLowerCase())));
+        if (items.length === 0) return;
+
+        const heading = document.createElement('div');
+        heading.className = 'category';
+        heading.textContent = labels[cat] + ' (' + items.length + ')';
+        list.appendChild(heading);
+
+        items.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'param-item ' + item.category + (item.is_func ? ' func' : '');
+            div.innerHTML = '<span class="name">' + item.name + '</span>' +
+                (item.cascade_count > 0 ? '<span class="cascade">' + item.cascade_count + ' downstream</span>' : '');
+            div.onclick = () => selectParam(item.name);
+            div.id = 'item-' + item.name;
+            list.appendChild(div);
+        });
+    });
+}
+
+function selectParam(name) {
+    document.querySelectorAll('.param-item.selected').forEach(el => el.classList.remove('selected'));
+    const el = document.getElementById('item-' + name);
+    if (el) el.classList.add('selected');
+
+    const node = nodeMap[name];
+    if (!node) return;
+
+    const downDeps = getTransitiveDeps(name, 'down');
+    const upDeps = getTransitiveDeps(name, 'up');
+
+    let html = '<div class="badge ' + node.category + '">' + node.category.toUpperCase() + '</div>';
+    if (node.is_func) html += '<div class="badge intermediate">FUNCTION</div>';
+    html += '<h2>' + name + '</h2>';
+    html += '<div class="value">Current value: ' + node.value + '</div>';
+    html += '<div class="expr">' + escapeHtml(node.expr) + '</div>';
+
+    // Downstream
+    const downEntries = Object.entries(downDeps).sort((a,b) => a[1] - b[1] || a[0].localeCompare(b[0]));
+    html += '<div class="dep-section">';
+    html += '<h3>Downstream Impact (' + downEntries.length + ' affected if changed)</h3>';
+    if (downEntries.length > 0) {
+        html += '<ul class="dep-list">';
+        let currentLevel = 0;
+        downEntries.forEach(([n, level]) => {
+            if (level !== currentLevel) {
+                currentLevel = level;
+                html += '<li style="color:#666; font-style:italic; padding-top:8px;">Level ' + level +
+                    (level === 1 ? ' (direct)' : '') + '</li>';
+            }
+            const ni = nodeMap[n];
+            html += '<li onclick="selectParam(\''+n+'\')"><span class="name">' + n + '</span>' +
+                '<span class="val">' + (ni ? ni.value : '?') + '</span></li>';
+        });
+        html += '</ul>';
+    } else {
+        html += '<p style="color:#555; font-size:13px;">No downstream dependents (leaf parameter)</p>';
+    }
+    html += '</div>';
+
+    // Upstream
+    const upEntries = Object.entries(upDeps).sort((a,b) => a[1] - b[1] || a[0].localeCompare(b[0]));
+    html += '<div class="dep-section">';
+    html += '<h3>Upstream Dependencies (' + upEntries.length + ' ancestors)</h3>';
+    if (upEntries.length > 0) {
+        html += '<ul class="dep-list">';
+        let currentLevel = 0;
+        upEntries.forEach(([n, level]) => {
+            if (level !== currentLevel) {
+                currentLevel = level;
+                html += '<li style="color:#666; font-style:italic; padding-top:8px;">Level ' + level +
+                    (level === 1 ? ' (direct)' : '') + '</li>';
+            }
+            const ni = nodeMap[n];
+            html += '<li onclick="selectParam(\''+n+'\')"><span class="name">' + n + '</span>' +
+                '<span class="val">' + (ni ? ni.value : '?') + '</span></li>';
+        });
+        html += '</ul>';
+    } else {
+        html += '<p style="color:#555; font-size:13px;">No upstream dependencies (root parameter)</p>';
+    }
+    html += '</div>';
+
+    document.getElementById('detail').innerHTML = html;
+}
+
+function escapeHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Init
+renderList('');
+document.getElementById('searchBox').addEventListener('input', e => renderList(e.target.value));
+document.getElementById('stats').textContent =
+    nodes.length + ' params | ' +
+    nodes.filter(n=>n.category==='root').length + ' roots | ' +
+    nodes.filter(n=>n.category==='leaf').length + ' leaves';
+
+// Auto-select first root
+const firstRoot = nodes.find(n => n.category === 'root' && n.cascade_count > 0);
+if (firstRoot) selectParam(firstRoot.name);
+</script>
+</body>
+</html>

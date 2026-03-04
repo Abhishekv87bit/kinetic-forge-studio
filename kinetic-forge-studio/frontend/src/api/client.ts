@@ -39,6 +39,9 @@ export const chatApi = {
         }),
     reset: (projectId: string) =>
         api(`/projects/${projectId}/chat/reset`, { method: "POST" }),
+    /** Load persisted chat history (survives server restarts). */
+    history: (projectId: string) =>
+        api(`/projects/${projectId}/chat/history`),
 };
 
 export const uploadApi = {
@@ -108,6 +111,42 @@ export const gateApi = {
         }),
     chatStatus: (projectId: string) =>
         api(`/projects/${projectId}/chat/status`),
+    getInfo: (projectId: string) =>
+        api(`/projects/${projectId}/gate-info`),
+};
+
+export const rule99Api = {
+    /** Run Rule 99 consultants for the current gate or a specific topic. */
+    run: (projectId: string, topic?: string) =>
+        api(`/projects/${projectId}/rule99`, {
+            method: "POST",
+            body: JSON.stringify({ topic: topic ?? null }),
+        }),
+};
+
+export const rule500Api = {
+    /** Trigger the full Rule 500 pipeline up to a gate level. */
+    run: (projectId: string, gateLevel?: string) =>
+        api(`/projects/${projectId}/rule500`, {
+            method: "POST",
+            body: JSON.stringify({ gate_level: gateLevel ?? "design" }),
+        }),
+    /** Get pipeline progress / last run status. */
+    status: (projectId: string) =>
+        api(`/projects/${projectId}/rule500/status`),
+};
+
+export const snapshotApi = {
+    list: (projectId: string) => api(`/projects/${projectId}/snapshots`),
+    create: (projectId: string, label: string) =>
+        api(`/projects/${projectId}/snapshots`, {
+            method: "POST",
+            body: JSON.stringify({ label }),
+        }),
+    rollback: (projectId: string, snapshotId: number) =>
+        api(`/projects/${projectId}/snapshots/${snapshotId}/rollback`, {
+            method: "POST",
+        }),
 };
 
 export async function fetchHealth() {

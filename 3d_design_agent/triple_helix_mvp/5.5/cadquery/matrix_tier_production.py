@@ -629,7 +629,7 @@ def main():
 
 # ============================================================
 # UNIVERSAL VALIDATION INTERFACE
-# (Required by validate_kinetic.py — see docs/plans/2026-03-03-universal-validation-spec.md)
+# (Required by VLAD — see docs/plans/2026-03-03-universal-validation-spec.md)
 # ============================================================
 def get_mechanism_type():
     """This is a slider mechanism — sliders translate along X axis."""

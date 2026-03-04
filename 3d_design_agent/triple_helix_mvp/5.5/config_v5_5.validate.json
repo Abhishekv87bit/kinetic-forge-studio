@@ -1,0 +1,166 @@
+{
+  "file": "D:\\Claude local\\3d_design_agent\\triple_helix_mvp\\5.5\\config_v5_5.scad",
+  "config": "D:\\Claude local\\3d_design_agent\\triple_helix_mvp\\5.5\\config_v5_5.scad",
+  "parsed_count": 188,
+  "checks": [
+    {
+      "status": "PASS",
+      "name": "Required config vars",
+      "detail": "all 18 found"
+    },
+    {
+      "status": "PASS",
+      "name": "Slider plate thickness > 1.5mm",
+      "detail": "plate_t=2.40mm (CH_GAP/2=4.2 - S_GAP/2=1.5 - PIP=0.35)"
+    },
+    {
+      "status": "PASS",
+      "name": "Slider plate > rail depth",
+      "detail": "plate_t=2.40mm vs rail_depth=0.8mm (+0.3 margin)"
+    },
+    {
+      "status": "PASS",
+      "name": "Slot depth < plate thickness",
+      "detail": "slot_d=1.65mm vs plate_t=2.40mm"
+    },
+    {
+      "status": "PASS",
+      "name": "Z budget fits in half gap",
+      "detail": "pip+plate+s/2 = 4.250mm vs CH_GAP/2 = 4.250mm"
+    },
+    {
+      "status": "PASS",
+      "name": "Shaft fits frame bearing",
+      "detail": "shaft=4.0mm, frame_brg_ID=4.0mm"
+    },
+    {
+      "status": "PASS",
+      "name": "Shaft bore > shaft dia",
+      "detail": "bore=4.2mm > shaft=4.0mm (clearance=0.2mm)"
+    },
+    {
+      "status": "PASS",
+      "name": "D-flat depth < shaft radius",
+      "detail": "D_flat=0.6mm < radius=2.0mm"
+    },
+    {
+      "status": "PASS",
+      "name": "D-bore flat > 2mm",
+      "detail": "D_bore_flat=2.8mm (shaft - 2*D_flat)"
+    },
+    {
+      "status": "PASS",
+      "name": "CAM_ECC = ECCENTRICITY",
+      "detail": "CAM_ECC=4.8mm, ECCENTRICITY=4.8mm"
+    },
+    {
+      "status": "PASS",
+      "name": "Disc OD < bearing bore",
+      "detail": "DISC_OD=19.6mm < CAM_BRG_ID=20.0mm (gap=0.4mm)"
+    },
+    {
+      "status": "PASS",
+      "name": "Boss wall >= 1.5mm",
+      "detail": "boss_wall=2.9mm = (boss_OD=10.0 - bore=4.2)/2"
+    },
+    {
+      "status": "PASS",
+      "name": "Collar thickness >= 1.0mm",
+      "detail": "collar=3.0mm = axial_pitch=8.0 - disc_thick=5.0"
+    },
+    {
+      "status": "PASS",
+      "name": "Follower clears bearing",
+      "detail": "follower_ID=27.3mm > bearing_OD=27.0mm"
+    },
+    {
+      "status": "PASS",
+      "name": "Frame fits build plate",
+      "detail": "dia=348mm vs plate=349mm"
+    },
+    {
+      "status": "PASS",
+      "name": "FP bend ratio >= 8:1",
+      "detail": "FP_OD=4.0mm / string=0.5mm = 8:1"
+    },
+    {
+      "status": "PASS",
+      "name": "SP bend ratio >= 8:1",
+      "detail": "SP_OD=4.0mm / string=0.5mm = 8:1"
+    },
+    {
+      "status": "PASS",
+      "name": "Odd channel count",
+      "detail": "NUM_CHANNELS=7"
+    },
+    {
+      "status": "PASS",
+      "name": "Channel count >= 5",
+      "detail": "NUM_CHANNELS=7"
+    },
+    {
+      "status": "PASS",
+      "name": "Outer channels inside hex",
+      "detail": "max_offset=30.0mm < hex_FF/2=37.2mm"
+    },
+    {
+      "status": "PASS",
+      "name": "Outer channel width > 0",
+      "detail": "hex_w at d=30.0 = 51.4mm"
+    },
+    {
+      "status": "PASS",
+      "name": "Helix length correct",
+      "detail": "HELIX_LENGTH = 7 cams x 8.0mm = 56.0mm"
+    },
+    {
+      "status": "PASS",
+      "name": "Total twist = 360 deg",
+      "detail": "7 x 51.4deg = 360.0deg"
+    },
+    {
+      "status": "PASS",
+      "name": "Stack height reasonable",
+      "detail": "3 x 16.0mm = 48.0mm"
+    },
+    {
+      "status": "PASS",
+      "name": "Tier1 top = +tier_pitch + H/2",
+      "detail": "TIER1_TOP = 24.0mm"
+    },
+    {
+      "status": "PASS",
+      "name": "Tier3 bot = -tier_pitch - H/2",
+      "detail": "TIER3_BOT = -24.0mm"
+    },
+    {
+      "status": "PASS",
+      "name": "Wall thickness >= 3 perimeters",
+      "detail": "wall=1.5mm vs 3x0.4=1.2000000000000002mm"
+    },
+    {
+      "status": "PASS",
+      "name": "Rail depth >= 2 perimeters",
+      "detail": "rail=0.8mm vs 2x0.4=0.8mm"
+    },
+    {
+      "status": "PASS",
+      "name": "PIP Z gap >= 0.3mm",
+      "detail": "PIP_Z_GAP=0.35mm"
+    },
+    {
+      "status": "PASS",
+      "name": "S_GAP >= 2.5mm (PIP pulley zone)",
+      "detail": "S_GAP=3.0mm"
+    },
+    {
+      "status": "PASS",
+      "name": "Pulley wall >= 2 perimeters",
+      "detail": "wall=1.2mm = 3.1 perimeters at 0.4mm"
+    }
+  ],
+  "summary": {
+    "pass": 31,
+    "fail": 0
+  }
+}

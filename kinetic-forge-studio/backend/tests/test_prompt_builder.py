@@ -1,9 +1,7 @@
-"""Tests for the prompt builder and Claude client (mock only, no real API calls)."""
+"""Tests for the prompt builder (mock only, no real API calls)."""
 
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
 from app.ai.prompt_builder import PromptBuilder, SYSTEM_PROMPT
-from app.ai.claude_client import ClaudeClient, ClaudeResponse
 
 
 # ---------------------------------------------------------------------------
@@ -136,66 +134,3 @@ def test_user_prompt_empty_sections_omitted(builder):
     assert "## User Profile" not in prompt
     assert "## Current Question" not in prompt
     assert "## User Message" in prompt
-
-
-# ---------------------------------------------------------------------------
-# ClaudeClient Tests (Mock only — no real API calls)
-# ---------------------------------------------------------------------------
-
-def test_claude_response_to_dict():
-    """ClaudeResponse serialization."""
-    resp = ClaudeResponse(
-        content="Here is a gear design...",
-        model="claude-sonnet-4-20250514",
-        usage={"input_tokens": 100, "output_tokens": 50},
-        stop_reason="end_turn",
-    )
-    d = resp.to_dict()
-    assert d["content"] == "Here is a gear design..."
-    assert d["model"] == "claude-sonnet-4-20250514"
-    assert d["usage"]["input_tokens"] == 100
-    assert d["stop_reason"] == "end_turn"
-
-
-@pytest.mark.asyncio
-async def test_claude_client_no_api_key():
-    """Client should raise ValueError if no API key is set."""
-    client = ClaudeClient(api_key="")
-    with pytest.raises(ValueError, match="API key not configured"):
-        await client.send("Hello")
-    await client.close()
-
-
-@pytest.mark.asyncio
-async def test_claude_client_sends_correctly():
-    """Client should send the right payload to the API (mocked)."""
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_response.raise_for_status = MagicMock()
-    mock_response.json.return_value = {
-        "content": [{"type": "text", "text": "Design response here"}],
-        "model": "claude-sonnet-4-20250514",
-        "usage": {"input_tokens": 50, "output_tokens": 30},
-        "stop_reason": "end_turn",
-    }
-
-    mock_http = AsyncMock()
-    mock_http.post = AsyncMock(return_value=mock_response)
-
-    client = ClaudeClient(api_key="test-key-123")
-    client._http_client = mock_http
-
-    response = await client.send("Design a planetary gear", system_prompt="You are helpful")
-
-    assert response.content == "Design response here"
-    assert response.model == "claude-sonnet-4-20250514"
-    assert response.stop_reason == "end_turn"
-
-    # Verify the payload was correct
-    call_args = mock_http.post.call_args
-    payload = call_args.kwargs.get("json") or call_args[1].get("json")
-    assert payload["messages"][0]["content"] == "Design a planetary gear"
-    assert payload["system"] == "You are helpful"
-    assert "x-api-key" in (call_args.kwargs.get("headers") or call_args[1].get("headers"))
-
-    await client.close()

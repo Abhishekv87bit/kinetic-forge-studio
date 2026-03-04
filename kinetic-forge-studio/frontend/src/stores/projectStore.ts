@@ -36,6 +36,7 @@ interface ProjectState {
     loadProjects: () => Promise<void>;
     createProject: (name: string) => Promise<void>;
     openProject: (id: string) => Promise<void>;
+    refreshProject: () => Promise<void>;
     goHome: () => void;
 }
 
@@ -58,6 +59,17 @@ export const useProjectStore = create<ProjectState>((set) => ({
     openProject: async (id: string) => {
         const full = await projectsApi.get(id);
         set({ screen: "workspace", activeProject: full });
+    },
+
+    refreshProject: async () => {
+        const current = useProjectStore.getState().activeProject;
+        if (!current) return;
+        try {
+            const full = await projectsApi.get(current.id);
+            set({ activeProject: full });
+        } catch (e) {
+            // Silently fail — stale data is better than crashing
+        }
     },
 
     goHome: () => set({ screen: "home", activeProject: null }),

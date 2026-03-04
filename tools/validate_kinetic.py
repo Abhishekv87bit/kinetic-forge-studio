@@ -1,13 +1,13 @@
 """
-Universal Kinetic Sculpture Geometry Validator
-===============================================
+VLAD — Universal Kinetic Sculpture Geometry Validator
+=====================================================
 One script. Any project. All tiers. 35 checks across 8 tiers.
 
 Usage:
-    python validate_kinetic.py <production_module>
-    python validate_kinetic.py --full <production_module>
-    python validate_kinetic.py --json <production_module>
-    python validate_kinetic.py --mechanism-type linkage <production_module>
+    python vlad.py <production_module>
+    python vlad.py --full <production_module>
+    python vlad.py --json <production_module>
+    python vlad.py --mechanism-type linkage <production_module>
 
 The production module MUST expose:
     get_fixed_parts()    -> dict[str, cq.Workplane]
@@ -94,7 +94,7 @@ class ValidationResult:
 
     def print_report(self, module_name, mechanism_type, fixed_count, moving_count):
         print("\n" + "=" * 72)
-        print("  UNIVERSAL KINETIC SCULPTURE GEOMETRY VALIDATOR")
+        print("  VLAD — Universal Kinetic Sculpture Geometry Validator")
         print(f"  Module: {module_name}")
         print(f"  Mechanism: {mechanism_type}")
         print(f"  Parts: {fixed_count} fixed, {moving_count} moving")
@@ -1106,7 +1106,7 @@ def tier8_export(result, module, all_parts, quiet=False):
 # ---------------------------------------------------------------------------
 def main():
     parser = argparse.ArgumentParser(
-        description='Universal Kinetic Sculpture Geometry Validator')
+        description='VLAD — Universal Kinetic Sculpture Geometry Validator')
     parser.add_argument('module', help='Production module path (with or without .py)')
     parser.add_argument('--full', action='store_true',
                         help='Run expensive checks (M1 wall thickness)')
@@ -1137,7 +1137,7 @@ def main():
     # Import production module
     if not args.json_output:
         print("=" * 72)
-        print("  UNIVERSAL KINETIC SCULPTURE GEOMETRY VALIDATOR")
+        print("  VLAD — Universal Kinetic Sculpture Geometry Validator")
         print(f"  Module: {module_name}")
 
     # In JSON mode, suppress ALL stdout during import and geometry building

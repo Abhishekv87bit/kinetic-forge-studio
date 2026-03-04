@@ -63,6 +63,17 @@ mechanism_types:
       - multi-bar
       - parallel motion
     description: General linkage mechanism
+  rack_and_pinion:
+    keywords:
+      - rack and pinion
+      - rack-and-pinion
+      - rack & pinion
+      - rack pinion
+      - linear gear
+      - rack gear
+      - pinion gear
+      - steering rack
+    description: Rack and pinion (rotary to linear motion)
   gear_train:
     keywords:
       - gear train

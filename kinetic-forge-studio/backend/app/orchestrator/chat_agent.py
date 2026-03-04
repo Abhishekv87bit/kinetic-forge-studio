@@ -1,12 +1,19 @@
 """
-Claude API-powered chat agent for Kinetic Forge Studio.
+AI chat agent for Kinetic Forge Studio.
 
-Replaces the rigid classifier->question_tree loop with a conversational agent
-that understands natural language, asks clarifying questions, updates specs,
-and generates CAD code.
+This is the PRIMARY design brain of the application. The LLM receives a
+methodology-rich system prompt and generates structured output that the
+app parses automatically:
+- ```components [...] ``` → registered in DB, rendered in viewport
+- ```spec_update {...} ``` → updates the project spec sheet
+- ```verification {...} ``` → physics checks displayed inline
+- ```options {...} ``` → presented as clickable choices
+- ```python/openscad ``` → code displayed in chat + available for execution
 
-Uses httpx for async Claude API calls (Messages API).
-Falls back gracefully when no API key is configured.
+Supports multiple LLM providers:
+  - Preferred provider checked first (KFS_PREFERRED_PROVIDER, default: claude)
+  - Fallback chain: Claude → Groq → Grok
+  - No AI — falls back to keyword Pipeline when no key is set
 """
 
 import asyncio
@@ -14,7 +21,7 @@ import json
 import re
 import logging
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 import httpx
 
@@ -23,45 +30,17 @@ from app.ai.prompt_builder import PromptBuilder
 
 logger = logging.getLogger(__name__)
 
+# API endpoints
 CLAUDE_API_URL = "https://api.anthropic.com/v1/messages"
 CLAUDE_API_VERSION = "2023-06-01"
+GROK_API_URL = "https://api.x.ai/v1/chat/completions"
+GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
+GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
 
 # Retry configuration for transient failures
 MAX_RETRIES = 2
 RETRY_DELAY_SECONDS = 1.0
 RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 529}
-
-# System prompt for the chat agent
-AGENT_SYSTEM_PROMPT = """\
-You are the design agent for Kinetic Forge Studio, a kinetic sculpture design orchestrator.
-
-Your job:
-1. Understand the user's design intent through conversation
-2. Ask 1-3 clarifying questions (not more) when needed
-3. Update the design spec as parameters become clear
-4. Generate CAD code (CadQuery/build123d Python or OpenSCAD .scad) when ready
-5. Iterate on feedback ("too big", "add clearance", "change module")
-
-{context}
-
-Rules:
-- All dimensions in millimeters
-- Single motor unless impossible
-- Every dimension must be a named constant
-- For CadQuery: generate Python script using CadQuery API
-- For OpenSCAD: follow the template (Header -> Quality -> Tolerances -> Dimensions -> Toggles -> Colors -> Functions -> Primitives -> Assemblies)
-- When generating code, output it in a ```python or ```openscad code block
-- When updating spec parameters, include a JSON block tagged as:
-  ```spec_update
-  {{"field": "value", ...}}
-  ```
-- When presenting options, format them as a JSON block:
-  ```options
-  {{"field": "field_name", "options": [{{"label": "Option A", "value": "a", "description": "..."}}, ...]}}
-  ```
-- For iterative feedback, modify specific constants -- never full rewrites
-- Be concise. Use bullet points. Include specific numbers.
-"""
 
 
 @dataclass
@@ -71,16 +50,21 @@ class AgentResponse:
     response_type: str  # "answer", "question", "generation", "error"
     spec_updates: dict[str, Any] = field(default_factory=dict)
     code_blocks: list[dict[str, str]] = field(default_factory=list)
+    components: list[dict[str, Any]] = field(default_factory=list)
+    verification: dict[str, Any] | None = None
     options: dict | None = None
     model_used: str = ""
 
 
 class ChatAgent:
     """
-    Wraps Claude API calls for conversational design assistance.
+    Multi-provider AI chat agent — the primary design brain of KFS.
 
-    Every call auto-includes project context (spec, decisions, components,
-    profile, classifier results) so Claude has full situational awareness.
+    The LLM receives the full methodology system prompt (gear math, four-bar
+    rules, cam design, FDM constraints, etc.) and generates structured output
+    that the app registers as real components.
+
+    Priority: preferred_provider > Claude > Groq > Grok > fallback to Pipeline.
     """
 
     def __init__(self):
@@ -96,64 +80,215 @@ class ChatAgent:
         if self._client and not self._client.is_closed:
             await self._client.aclose()
 
+    def _active_provider(self) -> Literal["groq", "grok", "claude", "gemini"] | None:
+        """Return the active LLM provider, respecting preferred_provider config."""
+        preferred = settings.preferred_provider
+
+        # Check preferred provider first
+        key_map = {
+            "claude": settings.claude_api_key,
+            "groq": settings.groq_api_key,
+            "grok": settings.grok_api_key,
+            "gemini": settings.gemini_api_key,
+        }
+        if preferred in key_map and key_map[preferred]:
+            return preferred
+
+        # Fallback chain: claude → gemini → groq → grok
+        if settings.claude_api_key:
+            return "claude"
+        if settings.gemini_api_key:
+            return "gemini"
+        if settings.groq_api_key:
+            return "groq"
+        if settings.grok_api_key:
+            return "grok"
+        return None
+
     def is_available(self) -> bool:
-        """Check if Claude API is configured."""
-        return bool(settings.claude_api_key)
+        """Check if any AI provider is configured."""
+        return self._active_provider() is not None
+
+    def active_model(self) -> str:
+        """Return the model name for the active provider."""
+        provider = self._active_provider()
+        if provider == "groq":
+            return settings.groq_model
+        if provider == "grok":
+            return settings.grok_model
+        if provider == "claude":
+            return settings.claude_model
+        if provider == "gemini":
+            return settings.gemini_model
+        return ""
 
     async def chat(
         self,
         user_message: str,
         conversation_history: list[dict[str, str]],
         spec: dict[str, Any] | None = None,
+        gate_level: str = "design",
         locked_decisions: list[dict] | None = None,
         components: list[dict] | None = None,
         user_profile: dict | None = None,
         classifier_results: dict | None = None,
         library_matches: list[dict] | None = None,
+        consultant_context: dict | None = None,
+        scad_source: dict[str, str] | None = None,
     ) -> AgentResponse:
-        """Send a message to Claude with full project context."""
-        if not self.is_available():
+        """
+        Send a message to the active AI provider with full project context.
+
+        The system prompt includes the complete methodology (gear math,
+        physics rules, manufacturing constraints) so the LLM can reason
+        about designs at the level of an experienced engineer.
+        """
+        provider = self._active_provider()
+        if provider is None:
             return AgentResponse(
                 message=(
-                    "Claude API key not configured. "
-                    "Set KFS_CLAUDE_API_KEY environment variable to enable AI chat."
+                    "No AI API key configured. "
+                    "Set KFS_GROQ_API_KEY, KFS_GROK_API_KEY, or KFS_CLAUDE_API_KEY "
+                    "to enable the AI design agent."
                 ),
                 response_type="error",
             )
 
-        # Build context for system prompt
-        context = self._build_context(
-            spec, locked_decisions, components, user_profile,
-            classifier_results, library_matches,
+        # Build the methodology-rich system prompt with full context
+        system_prompt = self.prompt_builder.build_system_prompt(
+            spec=spec,
+            gate_level=gate_level,
+            locked_decisions=locked_decisions,
+            components=components,
+            user_profile=user_profile,
+            library_matches=library_matches,
+            consultant_context=consultant_context,
+            scad_source=scad_source,
         )
-        system_prompt = AGENT_SYSTEM_PROMPT.format(context=context)
 
-        # Build messages array
+        # Build messages array from conversation history
         messages = [
             {"role": msg["role"], "content": msg["content"]}
             for msg in conversation_history
         ]
         messages.append({"role": "user", "content": user_message})
 
-        # Call Claude API with retry
-        data = await self._call_api(system_prompt, messages)
+        # Route to the active provider
+        if provider == "groq":
+            data = await self._call_openai_compat(
+                system_prompt, messages,
+                api_url=GROQ_API_URL,
+                api_key=settings.groq_api_key,
+                model=settings.groq_model,
+                max_tokens=settings.groq_max_tokens,
+                provider_name="Groq",
+            )
+        elif provider == "grok":
+            data = await self._call_openai_compat(
+                system_prompt, messages,
+                api_url=GROK_API_URL,
+                api_key=settings.grok_api_key,
+                model=settings.grok_model,
+                max_tokens=settings.grok_max_tokens,
+                provider_name="Grok",
+            )
+        elif provider == "gemini":
+            data = await self._call_openai_compat(
+                system_prompt, messages,
+                api_url=GEMINI_API_URL,
+                api_key=settings.gemini_api_key,
+                model=settings.gemini_model,
+                max_tokens=settings.gemini_max_tokens,
+                provider_name="Gemini",
+            )
+        else:
+            data = await self._call_claude(system_prompt, messages)
+
         if data is None:
             return AgentResponse(
-                message="Could not reach Claude API after retries. Check your connection and API key.",
+                message=f"Could not reach {provider} API after retries. Check your connection and API key.",
                 response_type="error",
             )
 
-        # Extract text from response
-        content_blocks = data.get("content", [])
-        text_parts = [b["text"] for b in content_blocks if b.get("type") == "text"]
-        full_text = "\n".join(text_parts)
+        # Extract text — different response shapes per provider
+        if provider in ("groq", "grok", "gemini"):
+            full_text = self._extract_openai_text(data)
+            model_map = {"groq": settings.groq_model, "grok": settings.grok_model, "gemini": settings.gemini_model}
+            model = data.get("model", model_map.get(provider, ""))
+        else:
+            full_text = self._extract_claude_text(data)
+            model = data.get("model", settings.claude_model)
 
-        return self._parse_response(full_text, data.get("model", settings.claude_model))
+        return self._parse_response(full_text, model)
 
-    async def _call_api(
+    # ------------------------------------------------------------------
+    # Provider-specific API calls
+    # ------------------------------------------------------------------
+
+    async def _call_openai_compat(
+        self,
+        system_prompt: str,
+        messages: list[dict],
+        api_url: str,
+        api_key: str,
+        model: str,
+        max_tokens: int,
+        provider_name: str = "OpenAI-compat",
+    ) -> dict | None:
+        """Call any OpenAI-compatible chat completions API (Groq, Grok, etc.)."""
+        client = await self._get_client()
+
+        # OpenAI format: system prompt is a message, not a separate field
+        api_messages = [{"role": "system", "content": system_prompt}] + messages
+
+        for attempt in range(MAX_RETRIES + 1):
+            try:
+                response = await client.post(
+                    api_url,
+                    headers={
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": model,
+                        "max_tokens": max_tokens,
+                        "messages": api_messages,
+                    },
+                )
+
+                if response.status_code == 200:
+                    return response.json()
+
+                if response.status_code in RETRYABLE_STATUS_CODES and attempt < MAX_RETRIES:
+                    delay = RETRY_DELAY_SECONDS * (attempt + 1)
+                    logger.warning(
+                        "%s API returned %d, retrying in %.1fs (attempt %d/%d)",
+                        provider_name, response.status_code, delay, attempt + 1, MAX_RETRIES,
+                    )
+                    await asyncio.sleep(delay)
+                    continue
+
+                logger.error(
+                    "%s API error %d: %s",
+                    provider_name, response.status_code, response.text[:500],
+                )
+                return None
+
+            except httpx.RequestError as e:
+                if attempt < MAX_RETRIES:
+                    delay = RETRY_DELAY_SECONDS * (attempt + 1)
+                    logger.warning("%s API request error: %s, retrying in %.1fs", provider_name, e, delay)
+                    await asyncio.sleep(delay)
+                    continue
+                logger.error("%s API request failed after retries: %s", provider_name, e)
+                return None
+
+        return None
+
+    async def _call_claude(
         self, system_prompt: str, messages: list[dict],
     ) -> dict | None:
-        """Call Claude API with automatic retry on transient failures."""
+        """Call Anthropic Claude API (Messages API)."""
         client = await self._get_client()
 
         for attempt in range(MAX_RETRIES + 1):
@@ -176,7 +311,6 @@ class ChatAgent:
                 if response.status_code == 200:
                     return response.json()
 
-                # Retryable error
                 if response.status_code in RETRYABLE_STATUS_CODES and attempt < MAX_RETRIES:
                     delay = RETRY_DELAY_SECONDS * (attempt + 1)
                     logger.warning(
@@ -186,7 +320,6 @@ class ChatAgent:
                     await asyncio.sleep(delay)
                     continue
 
-                # Non-retryable error
                 logger.error(
                     "Claude API error %d: %s",
                     response.status_code, response.text[:500],
@@ -204,89 +337,57 @@ class ChatAgent:
 
         return None
 
-    def _build_context(
-        self,
-        spec: dict | None,
-        locked_decisions: list[dict] | None,
-        components: list[dict] | None,
-        user_profile: dict | None,
-        classifier_results: dict | None,
-        library_matches: list[dict] | None,
-    ) -> str:
-        """Build context string for the system prompt."""
-        parts = []
+    # ------------------------------------------------------------------
+    # Response text extraction (different shapes per provider)
+    # ------------------------------------------------------------------
 
-        if spec:
-            lines = ["Current project spec:"]
-            for k, v in spec.items():
-                lines.append(f"- {k}: {v}")
-            parts.append("\n".join(lines))
+    @staticmethod
+    def _extract_openai_text(data: dict) -> str:
+        """Extract text from OpenAI-format response (Groq, Grok, etc.)."""
+        choices = data.get("choices", [])
+        if choices:
+            return choices[0].get("message", {}).get("content", "")
+        return ""
 
-        if locked_decisions:
-            lines = ["Locked decisions:"]
-            for d in locked_decisions:
-                lines.append(
-                    f"- [{d.get('status', '?')}] {d.get('parameter', '?')} = {d.get('value', '?')}"
-                )
-            parts.append("\n".join(lines))
+    @staticmethod
+    def _extract_claude_text(data: dict) -> str:
+        """Extract text from Anthropic Messages response."""
+        content_blocks = data.get("content", [])
+        text_parts = [b["text"] for b in content_blocks if b.get("type") == "text"]
+        return "\n".join(text_parts)
 
-        if components:
-            lines = ["Components:"]
-            for c in components:
-                name = c.get("display_name", c.get("id", "?"))
-                ctype = c.get("component_type", "?")
-                lines.append(f"- {name} ({ctype})")
-            parts.append("\n".join(lines))
-
-        if user_profile:
-            printer = user_profile.get("printer", {})
-            prefs = user_profile.get("preferences", {})
-            lines = ["User profile:"]
-            if printer:
-                lines.append(
-                    f"- Printer: {printer.get('type', '?')}, "
-                    f"nozzle={printer.get('nozzle', '?')}mm, "
-                    f"tolerance={printer.get('tolerance', '?')}mm"
-                )
-            if prefs:
-                lines.append(f"- Material: {prefs.get('default_material', '?')}")
-                lines.append(f"- Shaft standard: {prefs.get('shaft_standard', '?')}mm")
-            style = user_profile.get("style_tags", [])
-            if style:
-                lines.append(f"- Style: {', '.join(style)}")
-            parts.append("\n".join(lines))
-
-        if library_matches:
-            lines = ["Library matches (consider before generating from scratch):"]
-            for match in library_matches[:3]:
-                name = match.get("name", "?")
-                mech = match.get("mechanism_types", "?")
-                lines.append(f"- {name} (mechanisms: {mech})")
-            parts.append("\n".join(lines))
-
-        if classifier_results:
-            fields = classifier_results.get("fields", {})
-            if fields:
-                lines = ["Classifier pre-extracted:"]
-                for k, v in fields.items():
-                    conf = classifier_results.get("confidence", {}).get(k, "?")
-                    lines.append(f"- {k} = {v} (confidence: {conf})")
-                parts.append("\n".join(lines))
-
-        return "\n\n".join(parts) if parts else "No project context yet."
+    # ------------------------------------------------------------------
+    # Response parser — extracts ALL structured blocks
+    # ------------------------------------------------------------------
 
     def _parse_response(self, text: str, model: str) -> AgentResponse:
         """
-        Parse Claude's response text for structured blocks.
+        Parse LLM response text for structured blocks.
 
         Extracts:
-        - ```spec_update {...} ``` blocks -> spec_updates dict
-        - ```python ... ``` or ```openscad ... ``` blocks -> code_blocks list
-        - ```options {...} ``` blocks -> options dict
+        - ```components [...] ``` → components list (THE KEY OUTPUT)
+        - ```spec_update {...} ``` → spec_updates dict
+        - ```verification {...} ``` → verification dict
+        - ```options {...} ``` → options dict
+        - ```python/openscad ... ``` → code_blocks list
         """
         spec_updates: dict[str, Any] = {}
         code_blocks: list[dict[str, str]] = []
+        components: list[dict[str, Any]] = []
+        verification: dict[str, Any] | None = None
         options: dict | None = None
+
+        # Extract components blocks (THE PRIMARY OUTPUT)
+        for match in re.finditer(r"```components\s*\n(.*?)\n```", text, re.DOTALL):
+            try:
+                parsed = json.loads(match.group(1))
+                if isinstance(parsed, list):
+                    components.extend(parsed)
+                elif isinstance(parsed, dict):
+                    # Single component wrapped in a dict
+                    components.append(parsed)
+            except json.JSONDecodeError:
+                logger.warning("Failed to parse components block: %s", match.group(1)[:200])
 
         # Extract spec_update blocks
         for match in re.finditer(r"```spec_update\s*\n(.*?)\n```", text, re.DOTALL):
@@ -295,6 +396,13 @@ class ChatAgent:
                 spec_updates.update(updates)
             except json.JSONDecodeError:
                 logger.warning("Failed to parse spec_update block: %s", match.group(1)[:100])
+
+        # Extract verification blocks
+        for match in re.finditer(r"```verification\s*\n(.*?)\n```", text, re.DOTALL):
+            try:
+                verification = json.loads(match.group(1))
+            except json.JSONDecodeError:
+                logger.warning("Failed to parse verification block: %s", match.group(1)[:100])
 
         # Extract options blocks
         for match in re.finditer(r"```options\s*\n(.*?)\n```", text, re.DOTALL):
@@ -310,13 +418,18 @@ class ChatAgent:
                 "code": match.group(2),
             })
 
-        # Clean display message: remove spec_update and options blocks, keep code
-        clean_text = re.sub(r"```spec_update\s*\n.*?\n```", "", text, flags=re.DOTALL)
+        # Clean display message: remove structured blocks, keep prose + code
+        clean_text = text
+        clean_text = re.sub(r"```components\s*\n.*?\n```", "", clean_text, flags=re.DOTALL)
+        clean_text = re.sub(r"```spec_update\s*\n.*?\n```", "", clean_text, flags=re.DOTALL)
+        clean_text = re.sub(r"```verification\s*\n.*?\n```", "", clean_text, flags=re.DOTALL)
         clean_text = re.sub(r"```options\s*\n.*?\n```", "", clean_text, flags=re.DOTALL)
         clean_text = clean_text.strip()
 
-        # Determine response type
-        if code_blocks:
+        # Determine response type based on what was generated
+        if components:
+            response_type = "generation"
+        elif code_blocks:
             response_type = "generation"
         elif options:
             response_type = "question"
@@ -328,6 +441,8 @@ class ChatAgent:
             response_type=response_type,
             spec_updates=spec_updates,
             code_blocks=code_blocks,
+            components=components,
+            verification=verification,
             options=options,
             model_used=model,
         )

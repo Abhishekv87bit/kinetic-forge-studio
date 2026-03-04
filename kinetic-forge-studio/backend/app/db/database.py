@@ -61,6 +61,31 @@ class Database:
                 created_at TEXT DEFAULT (datetime('now')),
                 project_id TEXT
             );
+            CREATE TABLE IF NOT EXISTS chat_messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                project_id TEXT NOT NULL,
+                role TEXT NOT NULL,
+                content TEXT NOT NULL,
+                model_used TEXT,
+                created_at TEXT DEFAULT (datetime('now')),
+                FOREIGN KEY (project_id) REFERENCES projects(id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_chat_messages_project
+                ON chat_messages(project_id, created_at);
+            CREATE TABLE IF NOT EXISTS snapshots (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                project_id TEXT NOT NULL,
+                label TEXT NOT NULL,
+                gate TEXT NOT NULL,
+                spec_json TEXT,
+                components_json TEXT,
+                decisions_json TEXT,
+                trigger TEXT DEFAULT 'auto',
+                created_at TEXT DEFAULT (datetime('now')),
+                FOREIGN KEY (project_id) REFERENCES projects(id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_snapshots_project
+                ON snapshots(project_id, created_at);
         """)
         await self.conn.commit()
 

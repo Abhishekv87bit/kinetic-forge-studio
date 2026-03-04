@@ -1,0 +1,589 @@
+# Rule 99 — Library Roster (~95 libraries)
+# Machine-readable catalog for the Rule 99 Production Consultant Pipeline.
+# Claude references this when Rule 99 triggers to select the right tools.
+
+libraries:
+  # ── PHASE 1: DESIGN ──────────────────────────────────────
+
+  # Kinematics & Mechanism
+  - name: SymPy
+    pip: sympy
+    phase: design
+    role: kinematics
+    purpose: "Solve linkage equations algebraically, derive exact cam profiles"
+    triggers: [four_bar, cam, linkage, slider_crank, scotch_yoke]
+
+  - name: SymPy.physics.mechanics
+    pip: sympy
+    phase: design
+    role: kinematics
+    purpose: "Lagrangian/Kane's method for equations of motion"
+    triggers: [linkage, four_bar, multi_body]
+
+  - name: SciPy
+    pip: scipy
+    phase: design
+    role: kinematics
+    purpose: "CubicSpline cam smoothing, jerk minimization, optimization"
+    triggers: [cam, optimization, wave]
+
+  - name: NumPy
+    pip: numpy
+    phase: design
+    role: kinematics
+    purpose: "Phase offset arrays, wave grids, matrix operations"
+    triggers: [wave, planetary, cam, always]
+
+  - name: Pyslvs
+    pip: null
+    github: "KmolYuan/Pyslvs-UI"
+    phase: design
+    role: kinematics
+    purpose: "Linkage mechanism synthesis - finds dimensions for target motion path"
+    triggers: [four_bar, linkage, slider_crank]
+
+  - name: pylinkage
+    pip: null
+    github: "HuMusic/pylinkage"
+    phase: design
+    role: kinematics
+    purpose: "Pure Python linkage simulation + optimization"
+    triggers: [four_bar, linkage]
+
+  - name: pydy
+    pip: null
+    github: "pydy/pydy"
+    phase: design
+    role: kinematics
+    purpose: "Multibody dynamics - symbolic equations of motion"
+    triggers: [linkage, multi_body]
+
+  - name: NetworkX
+    pip: networkx
+    phase: design
+    role: kinematics
+    purpose: "Linkage connectivity graphs, locking position detection"
+    triggers: [four_bar, linkage, kinematic_chain]
+
+  - name: easing-functions
+    pip: easing-functions
+    phase: design
+    role: kinematics
+    purpose: "Non-linear motion profiles (ease-in, bounce, elastic)"
+    triggers: [cam, wave, motion_profile]
+
+  - name: Ruckig
+    pip: null
+    github: "pantor/ruckig"
+    phase: design
+    role: kinematics
+    purpose: "Jerk-limited S-curve trajectories for motor control"
+    triggers: [motor, cam, motion_profile]
+
+  # Structural & Forces
+  - name: PyNite
+    pip: null
+    github: "JWock82/PyNite"
+    phase: design
+    role: structural
+    purpose: "3D frame analysis - deflection, stress, reactions"
+    triggers: [frame, bracket, structural]
+
+  - name: anastruct
+    pip: null
+    github: "ritchie46/anastruct"
+    phase: design
+    role: structural
+    purpose: "2D frame/truss analysis (faster than PyNite for 2D)"
+    triggers: [frame, truss, structural]
+
+  - name: sectionproperties
+    pip: null
+    github: "robbievanleeuwen/section-properties"
+    phase: design
+    role: structural
+    purpose: "Cross-section Ixx, Iyy, weight, plastic section modulus"
+    triggers: [shaft, beam, structural]
+
+  # Mass, Inertia & Balance
+  - name: Trimesh
+    pip: trimesh
+    phase: design
+    role: mass_balance
+    purpose: "Mass properties, center of mass, moment of inertia from mesh + density"
+    triggers: [always]
+
+  # Fit, Clearance & Tolerance
+  - name: dimstack
+    pip: null
+    github: "phcreery/dimstack"
+    phase: design
+    role: tolerance
+    purpose: "Tolerance stackup (worst-case + RSS + Monte Carlo)"
+    triggers: [shaft, bearing, assembly, tolerance]
+
+  - name: iso286_lookup.py
+    pip: null
+    custom: true
+    phase: design
+    role: tolerance
+    purpose: "ISO 286 shaft/hole fit tolerances per nominal diameter"
+    triggers: [shaft, bearing, hole, press_fit]
+
+  - name: pint
+    pip: pint
+    phase: design
+    role: tolerance
+    purpose: "Physical units - catches mm/inch, N/lbf errors"
+    triggers: [always]
+
+  # Materials & Corrosion
+  - name: pymatgen
+    pip: pymatgen
+    phase: design
+    role: materials
+    purpose: "Materials database, Pourbaix diagrams for galvanic corrosion"
+    triggers: [metal, multi_material, corrosion]
+
+  - name: Thermo
+    pip: thermo
+    phase: design
+    role: materials
+    purpose: "Thermal expansion coefficients, material property lookup"
+    triggers: [metal, thermal, multi_material]
+
+  # Drive System
+  - name: gearpy
+    pip: gearpy
+    phase: design
+    role: drive
+    purpose: "Gear train torque flow, speed ratios"
+    triggers: [planetary, gear_train, rack_and_pinion, spur_gear]
+
+  - name: cq_gears
+    pip: null
+    github: "meadiode/cq_gears"
+    phase: design
+    role: drive
+    purpose: "Gear profile generation (spur, helical, herringbone)"
+    triggers: [planetary, gear_train, helical]
+
+  - name: python-gearbox
+    pip: null
+    github: "kiskacompany/python-gearbox"
+    phase: design
+    role: drive
+    purpose: "Gear design per ISO 6336 / AGMA 2101"
+    triggers: [planetary, gear_train, production]
+
+  - name: cq-warehouse
+    pip: null
+    github: "gumyr/cq-warehouse"
+    phase: design
+    role: drive
+    purpose: "Fastener logic, grip length calculation"
+    triggers: [fastener, bolt, screw]
+
+  - name: BAT
+    pip: null
+    github: "misams/BAT"
+    phase: design
+    role: drive
+    purpose: "Bolt preload, torque, slippage analysis"
+    triggers: [bolt, fastener, structural]
+
+  - name: Springcalc
+    pip: null
+    github: "icyd/Springcalc"
+    phase: design
+    role: drive
+    purpose: "Spring characteristics from dimensions"
+    triggers: [spring, ratchet, cam]
+
+  # Collision & Interference
+  - name: python-fcl
+    pip: null
+    github: "BerkeleyAutomation/python-fcl"
+    phase: design
+    role: collision
+    purpose: "Moving part collision detection with clearance buffer"
+    triggers: [assembly, collision, moving_parts]
+
+  # Cables & Strings
+  - name: pycatenary
+    pip: null
+    github: "tridelat/pycatenary"
+    phase: design
+    role: cables
+    purpose: "Cable sag, tension, catenary equation solver"
+    triggers: [cable, string, pulley, belt]
+
+  # Vibration
+  - name: vibration_toolbox
+    pip: vibration_toolbox
+    phase: design
+    role: vibration
+    purpose: "Natural frequency analysis - resonance warnings"
+    triggers: [shaft, motor, high_speed]
+
+  - name: ROSS
+    pip: null
+    github: "petrobras/ross"
+    phase: design
+    role: vibration
+    purpose: "Rotordynamic analysis - critical speeds, Campbell diagrams"
+    triggers: [shaft, motor, high_speed]
+
+  # Aesthetics & Generative
+  - name: noise
+    pip: noise
+    phase: design
+    role: aesthetics
+    purpose: "Perlin noise - organic variation for repetitive elements"
+    triggers: [wave, organic, generative]
+
+  - name: topy
+    pip: null
+    github: "williamhunter/topy"
+    phase: design
+    role: aesthetics
+    purpose: "Topology optimization - lightweight organic shapes"
+    triggers: [frame, bracket, lightweight]
+
+  - name: sdf
+    pip: null
+    github: "fogleman/sdf"
+    phase: design
+    role: aesthetics
+    purpose: "Signed distance function modeling - organic mathematical forms"
+    triggers: [organic, generative, artistic]
+
+  # Optimization
+  - name: pymoo
+    pip: null
+    github: "anyoptimization/pymoo"
+    phase: design
+    role: optimization
+    purpose: "Multi-objective optimization (weight vs stiffness vs cost)"
+    triggers: [optimization, multi_objective]
+
+  - name: DEAP
+    pip: deap
+    phase: design
+    role: optimization
+    purpose: "Genetic algorithms - evolve mechanism designs"
+    triggers: [optimization, linkage, generative]
+
+  # Spatial Math
+  - name: spatialmath-python
+    pip: null
+    github: "petercorke/spatialmath-python"
+    phase: design
+    role: spatial
+    purpose: "Rigorous 3D transforms (SE3, quaternions, twists)"
+    triggers: [assembly, multi_body, rotation]
+
+  - name: ikpy
+    pip: ikpy
+    phase: design
+    role: spatial
+    purpose: "Inverse kinematics for serial kinematic chains"
+    triggers: [linkage, robot, serial_chain]
+
+  # ── PHASE 2: PROTOTYPING ─────────────────────────────────
+
+  # Mesh Processing
+  - name: pymeshfix
+    pip: pymeshfix
+    phase: prototype
+    role: mesh
+    purpose: "Fix holes, self-intersections, non-manifold edges"
+    triggers: [stl_repair, mesh_fix]
+
+  - name: PyMeshLab
+    pip: null
+    github: "cnr-isti-vclab/PyMeshLab"
+    phase: prototype
+    role: mesh
+    purpose: "200+ mesh filters - repair, simplify, smooth"
+    triggers: [stl_repair, mesh_simplify]
+
+  - name: numpy-stl
+    pip: numpy-stl
+    phase: prototype
+    role: mesh
+    purpose: "Fast STL read/write/transform"
+    triggers: [stl, mesh]
+
+  # Tolerance Compensation
+  - name: Shapely
+    pip: shapely
+    phase: prototype
+    role: tolerance_comp
+    purpose: "2D elephant's foot compensation via buffer()"
+    triggers: [fdm, first_layer]
+
+  # Slicing
+  - name: FullControl
+    pip: null
+    github: "FullControlXYZ/fullcontrol"
+    phase: prototype
+    role: slicing
+    purpose: "Non-planar printing, stress-line following"
+    triggers: [advanced_print, non_planar]
+
+  - name: SolidPython2
+    pip: null
+    github: "jeff-dh/SolidPython"
+    phase: prototype
+    role: slicing
+    purpose: "Generate OpenSCAD from Python syntax"
+    triggers: [openscad, python_cad]
+
+  # ── PHASE 3: PRODUCTION ──────────────────────────────────
+
+  # CAD & Drawing Generation
+  - name: CadQuery
+    pip: cadquery
+    phase: production
+    role: cad
+    purpose: "Parametric STEP file generation from Python"
+    triggers: [step, brep, production]
+
+  - name: Build123d
+    pip: build123d
+    phase: production
+    role: cad
+    purpose: "Modern Python CAD API, direct STEP export"
+    triggers: [step, brep, production]
+
+  - name: cadscript
+    pip: cadscript
+    phase: production
+    role: cad
+    purpose: "Simplified CadQuery API (OpenSCAD feel, STEP output)"
+    triggers: [step, simple_parts]
+
+  - name: PythonOCC
+    pip: null
+    github: "tpaviot/pythonocc-core"
+    phase: production
+    role: cad
+    purpose: "Direct OpenCASCADE kernel access - advanced B-rep ops"
+    triggers: [brep, advanced_cad]
+
+  - name: handcalcs
+    pip: null
+    github: "connorferster/handcalcs"
+    phase: production
+    role: documentation
+    purpose: "Engineering calculation reports (LaTeX-formatted)"
+    triggers: [report, calculations]
+
+  - name: mechplot
+    pip: null
+    github: "jorgepiloto/mechplot"
+    phase: production
+    role: documentation
+    purpose: "Publication-quality mechanism diagrams"
+    triggers: [linkage, mechanism, documentation]
+
+  # DXF / SVG
+  - name: EzDXF
+    pip: null
+    github: "mozman/ezdxf"
+    phase: production
+    role: dxf
+    purpose: "DXF with layers (CUT_RED, ETCH_BLUE), tabs"
+    triggers: [laser, waterjet, dxf]
+
+  - name: svgpathtools
+    pip: null
+    github: "mathandy/svgpathtools"
+    phase: production
+    role: dxf
+    purpose: "Parse, transform, boolean SVG paths"
+    triggers: [svg, laser]
+
+  - name: svg2gcode
+    pip: svg2gcode
+    phase: production
+    role: dxf
+    purpose: "SVG to G-code for CNC/laser"
+    triggers: [cnc, laser, gcode]
+
+  # Nesting
+  - name: nest2D
+    pip: nest2D
+    phase: production
+    role: nesting
+    purpose: "Irregular shape nesting with rotation"
+    triggers: [laser, waterjet, sheet]
+
+  - name: rectpack
+    pip: rectpack
+    phase: production
+    role: nesting
+    purpose: "Rectangle bin packing (simpler parts)"
+    triggers: [sheet, packing]
+
+  # CNC & G-code
+  - name: pygcode
+    pip: pygcode
+    phase: production
+    role: cnc
+    purpose: "Parse and manipulate G-code"
+    triggers: [cnc, gcode]
+
+  - name: mecode
+    pip: null
+    github: "jminardi/mecode"
+    phase: production
+    role: cnc
+    purpose: "Programmatic G-code with Python control flow"
+    triggers: [cnc, gcode, 3d_print]
+
+  # Fatigue & Lifetime
+  - name: py-fatigue
+    pip: null
+    github: "OWI-Lab/py_fatigue"
+    phase: production
+    role: fatigue
+    purpose: "S-N curves, Paris' law, crack growth, cycle counting"
+    triggers: [metal, cyclic_load, fatigue]
+
+  - name: fatpack
+    pip: null
+    github: "gunnstein/fatpack"
+    phase: production
+    role: fatigue
+    purpose: "Rainflow counting, Palmgren-Miner damage rule"
+    triggers: [cyclic_load, fatigue]
+
+  # Reliability
+  - name: reliability
+    pip: reliability
+    phase: production
+    role: reliability
+    purpose: "Weibull analysis, L10 to MTBF, survival curves"
+    triggers: [bearing, motor, lifetime]
+
+  # Costing & BOM
+  - name: openpyxl
+    pip: openpyxl
+    phase: production
+    role: bom
+    purpose: "Generate BOM spreadsheets"
+    triggers: [bom, export, production]
+
+  - name: tabulate
+    pip: tabulate
+    phase: production
+    role: bom
+    purpose: "Formatted BOM tables"
+    triggers: [bom, report]
+
+  # Acoustics
+  - name: MOSQITO
+    pip: null
+    github: "Eomys/MoSQITo"
+    phase: production
+    role: acoustics
+    purpose: "Psychoacoustic metrics - loudness, sharpness, roughness"
+    triggers: [noise, acoustics, motor]
+
+  # Tribology
+  - name: tribology
+    pip: tribology
+    phase: production
+    role: tribology
+    purpose: "Hertzian contact, EHL film thickness, friction, wear"
+    triggers: [bearing, shaft, gear, wear]
+
+  # ── PHASE 4: INSTALLED SCULPTURE ─────────────────────────
+
+  - name: PySerial
+    pip: pyserial
+    phase: installed
+    role: iot
+    purpose: "Serial communication with Arduino/ESP32"
+    triggers: [motor_control, sensor, arduino]
+
+  - name: paho-mqtt
+    pip: paho-mqtt
+    phase: installed
+    role: iot
+    purpose: "MQTT for sensor data pipeline"
+    triggers: [monitoring, sensor, iot]
+
+  - name: ODrive
+    pip: odrive
+    phase: installed
+    role: motor
+    purpose: "High-performance BLDC motor control"
+    triggers: [bldc, motor_control, precision]
+
+  - name: python-osc
+    pip: python-osc
+    phase: installed
+    role: control
+    purpose: "OSC protocol for TouchDesigner/Max/MSP"
+    triggers: [interactive, real_time, art]
+
+  - name: python-rtmidi
+    pip: python-rtmidi
+    phase: installed
+    role: control
+    purpose: "MIDI control - sync to music"
+    triggers: [music, sync, interactive]
+
+  - name: PyVista
+    pip: pyvista
+    phase: installed
+    role: visualization
+    purpose: "3D visualization of thousands of moving points"
+    triggers: [wave, large_array, visualization]
+
+# Custom scripts to build (referenced in Rule 500)
+custom_scripts:
+  - name: iso286_lookup.py
+    status: built
+    location: "production_pipeline/iso286_lookup.py"
+    purpose: "ISO 286 shaft/hole fit tolerance lookup"
+    priority: high
+
+  - name: tolerance_stackup.py
+    status: built
+    location: "production_pipeline/tolerance_stackup.py"
+    purpose: "Worst-case + RSS + Monte Carlo tolerance analysis"
+    priority: high
+
+  - name: galvanic_matrix.py
+    status: not_built
+    purpose: "Corrosion risk for material pairs (MIL-STD-889)"
+    priority: high
+
+  - name: kfactor_calc.py
+    status: not_built
+    purpose: "Sheet metal bend allowance (BA = pi(R+KT)theta/180)"
+    priority: medium
+
+  - name: weld_sizer.py
+    status: not_built
+    purpose: "Fillet/butt weld sizing per load (AWS D1.1)"
+    priority: medium
+
+  - name: finish_spec.py
+    status: not_built
+    purpose: "Coating recommendation (material + environment)"
+    priority: medium
+
+  - name: bom_generator.py
+    status: not_built
+    purpose: "Extract parts from config to spreadsheet"
+    priority: high
+
+  - name: dfm_advisor.py
+    status: not_built
+    purpose: "Part geometry to manufacturing method"
+    priority: medium

@@ -1,0 +1,2563 @@
+{
+  "_metadata": {
+    "generated_by": "extract_reference.py (Rule 500 Step 4.5)",
+    "generated_at": "2026-02-23T23:52:30.741584",
+    "reference_source": "D:\\Claude local\\3d_design_agent\\gears\\automatic-transmission-double-planetary-gearset-ravigneaux-model_files",
+    "reference_model": "Ford 4R70W Ravigneaux Double Planetary",
+    "stl_count": 13,
+    "components_analyzed": 13
+  },
+  "components": {
+    "big_sun_0_5_backlash": {
+      "file": "big_sun_0_5_backlash.stl",
+      "role": "large_sun",
+      "abbreviation": "SL",
+      "description": "Large sun gear (meshes with long pinion Po)",
+      "rotates": true,
+      "mesh_partners": [
+        "long_pinion"
+      ],
+      "dimensions": {
+        "bounding_box": {
+          "x_min": -20.0,
+          "x_max": 20.0,
+          "y_min": -19.999,
+          "y_max": 19.999,
+          "z_min": -38.0,
+          "z_max": 10.0
+        },
+        "radial_envelope": {
+          "r_min": 9.625,
+          "r_max": 20.0,
+          "r_mean": 18.043
+        },
+        "axial_range": {
+          "z_bot": -38.0,
+          "z_top": 10.0,
+          "height": 48.0
+        },
+        "mesh_stats": {
+          "vertices": 5192,
+          "faces": 10384,
+          "volume_mm3": 17801.21,
+          "is_watertight": true
+        },
+        "center_of_mass": [
+          -0.0,
+          -0.0,
+          -7.671
+        ],
+        "radial_profile": [
+          {
+            "z": -35.6,
+            "r_min": 9.625,
+            "r_max": 13.375
+          },
+          {
+            "z": -21.2,
+            "r_min": 12.5,
+            "r_max": 13.375
+          },
+          {
+            "z": -16.4,
+            "r_min": 9.625,
+            "r_max": 13.375
+          },
+          {
+            "z": -11.6,
+            "r_min": 9.625,
+            "r_max": 9.625
+          },
+          {
+            "z": -2.0,
+            "r_min": 13.375,
+            "r_max": 20.0
+          },
+          {
+            "z": 2.8,
+            "r_min": 17.75,
+            "r_max": 20.0
+          },
+          {
+            "z": 7.6,
+            "r_min": 9.625,
+            "r_max": 20.0
+          }
+        ]
+      }
+    },
+    "big_sun_ring": {
+      "file": "big_sun_ring.stl",
+      "role": "sun_retainer_large",
+      "abbreviation": "SRL",
+      "description": "Large sun gear retaining ring",
+      "rotates": false,
+      "mesh_partners": [],
+      "dimensions": {
+        "bounding_box": {
+          "x_min": -16.0,
+          "x_max": 15.986,
+          "y_min": -15.996,
+          "y_max": 15.996,
+          "z_min": -1.375,
+          "z_max": -0.125
+        },
+        "radial_envelope": {
+          "r_min": 13.625,
+          "r_max": 16.0,
+          "r_mean": 14.862
+        },
+        "axial_range": {
+          "z_bot": -1.375,
+          "z_top": -0.125,
+          "height": 1.25
+        },
+        "mesh_stats": {
+          "vertices": 288,
+          "faces": 576,
+          "volume_mm3": 276.13,
+          "is_watertight": true
+        },
+        "center_of_mass": [
+          0.0,
+          -0.0,
+          -0.75
+        ],
+        "radial_profile": [
+          {
+            "z": -1.312,
+            "r_min": 13.625,
+            "r_max": 16.0
+          },
+          {
+            "z": -0.188,
+            "r_min": 13.625,
+            "r_max": 16.0
+          }
+        ]
+      }
+    },
+    "clip": {
+      "file": "clip.stl",
+      "role": "retaining_clip",
+      "abbreviation": "CL",
+      "description": "Snap ring / retaining clip",
+      "rotates": false,
+      "mesh_partners": [],
+      "dimensions": {
+        "bounding_box": {
+          "x_min": -22.699,
+          "x_max": -8.884,
+          "y_min": 20.225,
+          "y_max": 34.225,
+          "z_min": -6.875,
+          "z_max": -5.625
+        },
+        "radial_envelope": {
+          "r_min": 24.649,
+          "r_max": 38.421,
+          "r_mean": 33.061
+        },
+        "axial_range": {
+          "z_bot": -6.875,
+          "z_top": -5.625,
+          "height": 1.25
+        },
+        "mesh_stats": {
+          "vertices": 110,
+          "faces": 216,
+          "volume_mm3": 102.58,
+          "is_watertight": true
+        },
+        "center_of_mass": [
+          -17.189,
+          28.074,
+          -6.25
+        ],
+        "radial_profile": [
+          {
+            "z": -6.812,
+            "r_min": 24.649,
+            "r_max": 38.421
+          },
+          {
+            "z": -5.688,
+            "r_min": 24.649,
+            "r_max": 38.421
+          }
+        ]
+      }
+    },
+    "long_pinion": {
+      "file": "long_pinion.stl",
+      "role": "long_pinion",
+      "abbreviation": "Po",
+      "description": "Long/outer planet pinion (spans both gear zones)",
+      "rotates": true,
+      "mesh_partners": [
+        "big_sun_0_5_backlash",
+        "ring_low_profile",
+        "short_pinion"
+      ],
+      "dimensions": {
+        "bounding_box": {
+          "x_min": 17.902,
+          "x_max": 44.9,
+          "y_min": -13.499,
+          "y_max": 13.498,
+          "z_min": 0.0,
+          "z_max": 22.0
+        },
+        "radial_envelope": {
+          "r_min": 17.903,
+          "r_max": 44.9,
+          "r_mean": 32.599
+        },
+        "axial_range": {
+          "z_bot": 0.0,
+          "z_top": 22.0,
+          "height": 22.0
+        },
+        "mesh_stats": {
+          "vertices": 7064,
+          "faces": 14128,
+          "volume_mm3": 9354.28,
+          "is_watertight": true
+        },
+        "center_of_mass": [
+          31.4,
+          -0.0,
+          10.998
+        ],
+        "radial_profile": [
+          {
+            "z": 1.1,
+            "r_min": 17.917,
+            "r_max": 44.892
+          },
+          {
+            "z": 3.3,
+            "r_min": 17.903,
+            "r_max": 44.892
+          },
+          {
+            "z": 5.5,
+            "r_min": 18.001,
+            "r_max": 44.895
+          },
+          {
+            "z": 7.7,
+            "r_min": 17.906,
+            "r_max": 44.89
+          },
+          {
+            "z": 9.9,
+            "r_min": 17.922,
+            "r_max": 44.9
+          },
+          {
+            "z": 12.1,
+            "r_min": 17.913,
+            "r_max": 44.898
+          },
+          {
+            "z": 14.3,
+            "r_min": 17.905,
+            "r_max": 44.894
+          },
+          {
+            "z": 16.5,
+            "r_min": 18.004,
+            "r_max": 44.897
+          },
+          {
+            "z": 18.7,
+            "r_min": 17.904,
+            "r_max": 44.888
+          },
+          {
+            "z": 20.9,
+            "r_min": 17.926,
+            "r_max": 44.896
+          }
+        ]
+      }
+    },
+    "planetary_1": {
+      "file": "planetary_1.stl",
+      "role": "carrier_plate_1",
+      "abbreviation": "C1",
+      "description": "Carrier plate 1 (front/output side)",
+      "rotates": true,
+      "mesh_partners": [],
+      "dimensions": {
+        "bounding_box": {
+          "x_min": -37.628,
+          "x_max": 39.983,
+          "y_min": -38.001,
+          "y_max": 38.001,
+          "z_min": -9.0,
+          "z_max": 26.5
+        },
+        "radial_envelope": {
+          "r_min": 4.125,
+          "r_max": 40.0,
+          "r_mean": 29.157
+        },
+        "axial_range": {
+          "z_bot": -9.0,
+          "z_top": 26.5,
+          "height": 35.5
+        },
+        "mesh_stats": {
+          "vertices": 1774,
+          "faces": 3548,
+          "volume_mm3": 17032.72,
+          "is_watertight": true
+        },
+        "center_of_mass": [
+          -0.0,
+          0.0,
+          15.699
+        ],
+        "radial_profile": [
+          {
+            "z": -7.225,
+            "r_min": 23.565,
+            "r_max": 35.311
+          },
+          {
+            "z": 10.525,
+            "r_min": 23.565,
+            "r_max": 35.311
+          },
+          {
+            "z": 24.725,
+            "r_min": 4.125,
+            "r_max": 40.0
+          }
+        ]
+      }
+    },
+    "planetary_2": {
+      "file": "planetary_2.stl",
+      "role": "carrier_plate_2",
+      "abbreviation": "C2",
+      "description": "Carrier plate 2 (middle separator)",
+      "rotates": true,
+      "mesh_partners": [],
+      "dimensions": {
+        "bounding_box": {
+          "x_min": -37.628,
+          "x_max": 39.983,
+          "y_min": -38.001,
+          "y_max": 38.001,
+          "z_min": -21.5,
+          "z_max": -1.5
+        },
+        "radial_envelope": {
+          "r_min": 13.625,
+          "r_max": 40.0,
+          "r_mean": 26.289
+        },
+        "axial_range": {
+          "z_bot": -21.5,
+          "z_top": -1.5,
+          "height": 20.0
+        },
+        "mesh_stats": {
+          "vertices": 1200,
+          "faces": 2424,
+          "volume_mm3": 8495.09,
+          "is_watertight": true
+        },
+        "center_of_mass": [
+          0.0,
+          -0.0,
+          -7.061
+        ],
+        "radial_profile": [
+          {
+            "z": -6.5,
+            "r_min": 15.5,
+            "r_max": 16.5
+          }
+        ]
+      }
+    },
+    "planetary_3": {
+      "file": "planetary_3.stl",
+      "role": "carrier_plate_3",
+      "abbreviation": "C3",
+      "description": "Carrier plate 3 (rear side)",
+      "rotates": true,
+      "mesh_partners": [],
+      "dimensions": {
+        "bounding_box": {
+          "x_min": 7.447,
+          "x_max": 39.983,
+          "y_min": -31.295,
+          "y_max": 11.232,
+          "z_min": -5.5,
+          "z_max": 10.5
+        },
+        "radial_envelope": {
+          "r_min": 16.718,
+          "r_max": 40.0,
+          "r_mean": 29.351
+        },
+        "axial_range": {
+          "z_bot": -5.5,
+          "z_top": 10.5,
+          "height": 16.0
+        },
+        "mesh_stats": {
+          "vertices": 380,
+          "faces": 764,
+          "volume_mm3": 2495.18,
+          "is_watertight": true
+        },
+        "center_of_mass": [
+          21.486,
+          -14.946,
+          -0.807
+        ],
+        "radial_profile": [
+          {
+            "z": -4.7,
+            "r_min": 16.718,
+            "r_max": 40.0
+          },
+          {
+            "z": -3.1,
+            "r_min": 16.718,
+            "r_max": 40.0
+          }
+        ]
+      }
+    },
+    "ring_low_profile": {
+      "file": "ring_low_profile.stl",
+      "role": "ring_gear",
+      "abbreviation": "R",
+      "description": "Ring/annulus gear (internal teeth, meshes with Po)",
+      "rotates": false,
+      "mesh_partners": [
+        "long_pinion"
+      ],
+      "dimensions": {
+        "bounding_box": {
+          "x_min": -48.0,
+          "x_max": 48.0,
+          "y_min": -48.0,
+          "y_max": 47.271,
+          "z_min": 12.0,
+          "z_max": 30.0
+        },
+        "radial_envelope": {
+          "r_min": 4.125,
+          "r_max": 48.0,
+          "r_mean": 40.585
+        },
+        "axial_range": {
+          "z_bot": 12.0,
+          "z_top": 30.0,
+          "height": 18.0
+        },
+        "mesh_stats": {
+          "vertices": 5473,
+          "faces": 11402,
+          "volume_mm3": 23559.76,
+          "is_watertight": true
+        },
+        "center_of_mass": [
+          -0.001,
+          -0.0,
+          22.673
+        ],
+        "radial_profile": [
+          {
+            "z": 12.9,
+            "r_min": 42.749,
+            "r_max": 44.999
+          },
+          {
+            "z": 14.7,
+            "r_min": 42.75,
+            "r_max": 48.0
+          },
+          {
+            "z": 16.5,
+            "r_min": 42.749,
+            "r_max": 44.999
+          },
+          {
+            "z": 18.3,
+            "r_min": 42.75,
+            "r_max": 45.0
+          },
+          {
+            "z": 20.1,
+            "r_min": 42.75,
+            "r_max": 45.0
+          },
+          {
+            "z": 21.9,
+            "r_min": 42.75,
+            "r_max": 45.0
+          },
+          {
+            "z": 23.7,
+            "r_min": 42.5,
+            "r_max": 45.0
+          },
+          {
+            "z": 27.3,
+            "r_min": 4.125,
+            "r_max": 48.0
+          },
+          {
+            "z": 29.1,
+            "r_min": 4.125,
+            "r_max": 47.0
+          }
+        ]
+      }
+    },
+    "shaft": {
+      "file": "shaft.stl",
+      "role": "central_shaft",
+      "abbreviation": "SH",
+      "description": "Central input/output shaft",
+      "rotates": true,
+      "mesh_partners": [],
+      "dimensions": {
+        "bounding_box": {
+          "x_min": -4.994,
+          "x_max": 4.994,
+          "y_min": -3.744,
+          "y_max": 4.98,
+          "z_min": -54.75,
+          "z_max": 33.5
+        },
+        "radial_envelope": {
+          "r_min": 3.575,
+          "r_max": 5.0,
+          "r_mean": 4.007
+        },
+        "axial_range": {
+          "z_bot": -54.75,
+          "z_top": 33.5,
+          "height": 88.25
+        },
+        "mesh_stats": {
+          "vertices": 340,
+          "faces": 676,
+          "volume_mm3": 4149.12,
+          "is_watertight": true
+        },
+        "center_of_mass": [
+          0.0,
+          0.02,
+          -11.133
+        ],
+        "radial_profile": [
+          {
+            "z": -50.337,
+            "r_min": 3.875,
+            "r_max": 5.0
+          },
+          {
+            "z": -32.688,
+            "r_min": 3.875,
+            "r_max": 3.875
+          },
+          {
+            "z": -23.863,
+            "r_min": 3.875,
+            "r_max": 3.875
+          },
+          {
+            "z": -6.212,
+            "r_min": 3.875,
+            "r_max": 3.875
+          },
+          {
+            "z": 11.438,
+            "r_min": 3.875,
+            "r_max": 3.875
+          },
+          {
+            "z": 29.088,
+            "r_min": 3.575,
+            "r_max": 3.875
+          }
+        ]
+      }
+    },
+    "short_pinion": {
+      "file": "short_pinion.stl",
+      "role": "short_pinion",
+      "abbreviation": "Pi",
+      "description": "Short/inner planet pinion (Ss zone only)",
+      "rotates": true,
+      "mesh_partners": [
+        "small_sun",
+        "long_pinion"
+      ],
+      "dimensions": {
+        "bounding_box": {
+          "x_min": -4.301,
+          "x_max": 21.697,
+          "y_min": 13.026,
+          "y_max": 39.024,
+          "z_min": 12.0,
+          "z_max": 22.0
+        },
+        "radial_envelope": {
+          "r_min": 14.441,
+          "r_max": 40.439,
+          "r_mean": 28.722
+        },
+        "axial_range": {
+          "z_bot": 12.0,
+          "z_top": 22.0,
+          "height": 10.0
+        },
+        "mesh_stats": {
+          "vertices": 5188,
+          "faces": 10376,
+          "volume_mm3": 3875.62,
+          "is_watertight": true
+        },
+        "center_of_mass": [
+          8.698,
+          26.025,
+          17.0
+        ],
+        "radial_profile": [
+          {
+            "z": 12.5,
+            "r_min": 14.852,
+            "r_max": 40.04
+          },
+          {
+            "z": 13.5,
+            "r_min": 14.45,
+            "r_max": 40.436
+          },
+          {
+            "z": 14.5,
+            "r_min": 14.441,
+            "r_max": 40.439
+          },
+          {
+            "z": 15.5,
+            "r_min": 14.462,
+            "r_max": 40.431
+          },
+          {
+            "z": 16.5,
+            "r_min": 14.634,
+            "r_max": 40.369
+          },
+          {
+            "z": 17.5,
+            "r_min": 14.881,
+            "r_max": 40.028
+          },
+          {
+            "z": 18.5,
+            "r_min": 14.471,
+            "r_max": 40.427
+          },
+          {
+            "z": 19.5,
+            "r_min": 14.442,
+            "r_max": 40.438
+          },
+          {
+            "z": 20.5,
+            "r_min": 14.445,
+            "r_max": 40.438
+          }
+        ]
+      }
+    },
+    "small_sun": {
+      "file": "small_sun.stl",
+      "role": "small_sun",
+      "abbreviation": "Ss",
+      "description": "Small sun gear (meshes with short pinion Pi)",
+      "rotates": true,
+      "mesh_partners": [
+        "short_pinion"
+      ],
+      "dimensions": {
+        "bounding_box": {
+          "x_min": -16.499,
+          "x_max": 16.5,
+          "y_min": -16.5,
+          "y_max": 16.499,
+          "z_min": -53.0,
+          "z_max": 22.0
+        },
+        "radial_envelope": {
+          "r_min": 4.125,
+          "r_max": 16.5,
+          "r_mean": 13.801
+        },
+        "axial_range": {
+          "z_bot": -53.0,
+          "z_top": 22.0,
+          "height": 75.0
+        },
+        "mesh_stats": {
+          "vertices": 3137,
+          "faces": 6274,
+          "volume_mm3": 20906.0,
+          "is_watertight": true
+        },
+        "center_of_mass": [
+          -0.0,
+          -0.0,
+          -7.702
+        ],
+        "radial_profile": [
+          {
+            "z": -49.25,
+            "r_min": 8.5,
+            "r_max": 9.375
+          },
+          {
+            "z": -26.75,
+            "r_min": 9.375,
+            "r_max": 9.375
+          },
+          {
+            "z": -11.75,
+            "r_min": 9.375,
+            "r_max": 9.375
+          },
+          {
+            "z": 10.75,
+            "r_min": 9.375,
+            "r_max": 16.5
+          },
+          {
+            "z": 18.25,
+            "r_min": 14.249,
+            "r_max": 16.5
+          }
+        ]
+      }
+    },
+    "small_sun_ring": {
+      "file": "small_sun_ring.stl",
+      "role": "sun_retainer_small",
+      "abbreviation": "SRS",
+      "description": "Small sun gear retaining ring",
+      "rotates": false,
+      "mesh_partners": [],
+      "dimensions": {
+        "bounding_box": {
+          "x_min": -11.998,
+          "x_max": 11.995,
+          "y_min": -12.0,
+          "y_max": 11.988,
+          "z_min": 10.05,
+          "z_max": 11.95
+        },
+        "radial_envelope": {
+          "r_min": 9.625,
+          "r_max": 12.0,
+          "r_mean": 10.88
+        },
+        "axial_range": {
+          "z_bot": 10.05,
+          "z_top": 11.95,
+          "height": 1.9
+        },
+        "mesh_stats": {
+          "vertices": 246,
+          "faces": 492,
+          "volume_mm3": 306.31,
+          "is_watertight": true
+        },
+        "center_of_mass": [
+          -0.0,
+          -0.0,
+          11.0
+        ],
+        "radial_profile": [
+          {
+            "z": 10.145,
+            "r_min": 9.625,
+            "r_max": 12.0
+          },
+          {
+            "z": 11.855,
+            "r_min": 9.625,
+            "r_max": 12.0
+          }
+        ]
+      }
+    },
+    "small_washer": {
+      "file": "small_washer.stl",
+      "role": "thrust_washer",
+      "abbreviation": "TW",
+      "description": "Thrust washer (axial load bearing)",
+      "rotates": false,
+      "mesh_partners": [],
+      "dimensions": {
+        "bounding_box": {
+          "x_min": 24.9,
+          "x_max": 37.9,
+          "y_min": -6.5,
+          "y_max": 6.5,
+          "z_min": -1.3,
+          "z_max": -0.05
+        },
+        "radial_envelope": {
+          "r_min": 24.9,
+          "r_max": 37.9,
+          "r_mean": 31.648
+        },
+        "axial_range": {
+          "z_bot": -1.3,
+          "z_top": -0.05,
+          "height": 1.25
+        },
+        "mesh_stats": {
+          "vertices": 172,
+          "faces": 344,
+          "volume_mm3": 98.93,
+          "is_watertight": true
+        },
+        "center_of_mass": [
+          31.4,
+          0.0,
+          -0.675
+        ],
+        "radial_profile": [
+          {
+            "z": -1.237,
+            "r_min": 24.9,
+            "r_max": 37.9
+          },
+          {
+            "z": -0.112,
+            "r_min": 24.9,
+            "r_max": 37.9
+          }
+        ]
+      }
+    }
+  },
+  "proportions": {
+    "sun_diameter_ratio_SL_over_Ss": 1.212,
+    "planet_height_ratio_Po_over_Pi": 2.2,
+    "ring_ID_mm": 8.25,
+    "SL_OD_mm": 40.0,
+    "Ss_OD_mm": 33.0,
+    "ring_OD_mm": 96.0,
+    "Po_OD_mm": 89.8,
+    "Pi_OD_mm": 80.88,
+    "z_stacking_order": [
+      {
+        "component": "shaft",
+        "role": "central_shaft",
+        "z_bot": -54.75,
+        "z_top": 33.5,
+        "height": 88.25
+      },
+      {
+        "component": "small_sun",
+        "role": "small_sun",
+        "z_bot": -53.0,
+        "z_top": 22.0,
+        "height": 75.0
+      },
+      {
+        "component": "big_sun_0_5_backlash",
+        "role": "large_sun",
+        "z_bot": -38.0,
+        "z_top": 10.0,
+        "height": 48.0
+      },
+      {
+        "component": "planetary_2",
+        "role": "carrier_plate_2",
+        "z_bot": -21.5,
+        "z_top": -1.5,
+        "height": 20.0
+      },
+      {
+        "component": "planetary_1",
+        "role": "carrier_plate_1",
+        "z_bot": -9.0,
+        "z_top": 26.5,
+        "height": 35.5
+      },
+      {
+        "component": "clip",
+        "role": "retaining_clip",
+        "z_bot": -6.875,
+        "z_top": -5.625,
+        "height": 1.25
+      },
+      {
+        "component": "planetary_3",
+        "role": "carrier_plate_3",
+        "z_bot": -5.5,
+        "z_top": 10.5,
+        "height": 16.0
+      },
+      {
+        "component": "big_sun_ring",
+        "role": "sun_retainer_large",
+        "z_bot": -1.375,
+        "z_top": -0.125,
+        "height": 1.25
+      },
+      {
+        "component": "small_washer",
+        "role": "thrust_washer",
+        "z_bot": -1.3,
+        "z_top": -0.05,
+        "height": 1.25
+      },
+      {
+        "component": "long_pinion",
+        "role": "long_pinion",
+        "z_bot": 0.0,
+        "z_top": 22.0,
+        "height": 22.0
+      },
+      {
+        "component": "small_sun_ring",
+        "role": "sun_retainer_small",
+        "z_bot": 10.05,
+        "z_top": 11.95,
+        "height": 1.9
+      },
+      {
+        "component": "ring_low_profile",
+        "role": "ring_gear",
+        "z_bot": 12.0,
+        "z_top": 30.0,
+        "height": 18.0
+      },
+      {
+        "component": "short_pinion",
+        "role": "short_pinion",
+        "z_bot": 12.0,
+        "z_top": 22.0,
+        "height": 10.0
+      }
+    ],
+    "axial_overlaps": [
+      {
+        "pair": [
+          "big_sun_0_5_backlash",
+          "big_sun_ring"
+        ],
+        "overlap_mm": 1.25,
+        "a_range": [
+          -38.0,
+          10.0
+        ],
+        "b_range": [
+          -1.375,
+          -0.125
+        ]
+      },
+      {
+        "pair": [
+          "big_sun_0_5_backlash",
+          "clip"
+        ],
+        "overlap_mm": 1.25,
+        "a_range": [
+          -38.0,
+          10.0
+        ],
+        "b_range": [
+          -6.875,
+          -5.625
+        ]
+      },
+      {
+        "pair": [
+          "big_sun_0_5_backlash",
+          "long_pinion"
+        ],
+        "overlap_mm": 10.0,
+        "a_range": [
+          -38.0,
+          10.0
+        ],
+        "b_range": [
+          0.0,
+          22.0
+        ]
+      },
+      {
+        "pair": [
+          "big_sun_0_5_backlash",
+          "planetary_1"
+        ],
+        "overlap_mm": 19.0,
+        "a_range": [
+          -38.0,
+          10.0
+        ],
+        "b_range": [
+          -9.0,
+          26.5
+        ]
+      },
+      {
+        "pair": [
+          "big_sun_0_5_backlash",
+          "planetary_2"
+        ],
+        "overlap_mm": 20.0,
+        "a_range": [
+          -38.0,
+          10.0
+        ],
+        "b_range": [
+          -21.5,
+          -1.5
+        ]
+      },
+      {
+        "pair": [
+          "big_sun_0_5_backlash",
+          "planetary_3"
+        ],
+        "overlap_mm": 15.5,
+        "a_range": [
+          -38.0,
+          10.0
+        ],
+        "b_range": [
+          -5.5,
+          10.5
+        ]
+      },
+      {
+        "pair": [
+          "big_sun_0_5_backlash",
+          "shaft"
+        ],
+        "overlap_mm": 48.0,
+        "a_range": [
+          -38.0,
+          10.0
+        ],
+        "b_range": [
+          -54.75,
+          33.5
+        ]
+      },
+      {
+        "pair": [
+          "big_sun_0_5_backlash",
+          "small_sun"
+        ],
+        "overlap_mm": 48.0,
+        "a_range": [
+          -38.0,
+          10.0
+        ],
+        "b_range": [
+          -53.0,
+          22.0
+        ]
+      },
+      {
+        "pair": [
+          "big_sun_0_5_backlash",
+          "small_washer"
+        ],
+        "overlap_mm": 1.25,
+        "a_range": [
+          -38.0,
+          10.0
+        ],
+        "b_range": [
+          -1.3,
+          -0.05
+        ]
+      },
+      {
+        "pair": [
+          "big_sun_ring",
+          "planetary_1"
+        ],
+        "overlap_mm": 1.25,
+        "a_range": [
+          -1.375,
+          -0.125
+        ],
+        "b_range": [
+          -9.0,
+          26.5
+        ]
+      },
+      {
+        "pair": [
+          "big_sun_ring",
+          "planetary_3"
+        ],
+        "overlap_mm": 1.25,
+        "a_range": [
+          -1.375,
+          -0.125
+        ],
+        "b_range": [
+          -5.5,
+          10.5
+        ]
+      },
+      {
+        "pair": [
+          "big_sun_ring",
+          "shaft"
+        ],
+        "overlap_mm": 1.25,
+        "a_range": [
+          -1.375,
+          -0.125
+        ],
+        "b_range": [
+          -54.75,
+          33.5
+        ]
+      },
+      {
+        "pair": [
+          "big_sun_ring",
+          "small_sun"
+        ],
+        "overlap_mm": 1.25,
+        "a_range": [
+          -1.375,
+          -0.125
+        ],
+        "b_range": [
+          -53.0,
+          22.0
+        ]
+      },
+      {
+        "pair": [
+          "big_sun_ring",
+          "small_washer"
+        ],
+        "overlap_mm": 1.175,
+        "a_range": [
+          -1.375,
+          -0.125
+        ],
+        "b_range": [
+          -1.3,
+          -0.05
+        ]
+      },
+      {
+        "pair": [
+          "clip",
+          "planetary_1"
+        ],
+        "overlap_mm": 1.25,
+        "a_range": [
+          -6.875,
+          -5.625
+        ],
+        "b_range": [
+          -9.0,
+          26.5
+        ]
+      },
+      {
+        "pair": [
+          "clip",
+          "planetary_2"
+        ],
+        "overlap_mm": 1.25,
+        "a_range": [
+          -6.875,
+          -5.625
+        ],
+        "b_range": [
+          -21.5,
+          -1.5
+        ]
+      },
+      {
+        "pair": [
+          "clip",
+          "shaft"
+        ],
+        "overlap_mm": 1.25,
+        "a_range": [
+          -6.875,
+          -5.625
+        ],
+        "b_range": [
+          -54.75,
+          33.5
+        ]
+      },
+      {
+        "pair": [
+          "clip",
+          "small_sun"
+        ],
+        "overlap_mm": 1.25,
+        "a_range": [
+          -6.875,
+          -5.625
+        ],
+        "b_range": [
+          -53.0,
+          22.0
+        ]
+      },
+      {
+        "pair": [
+          "long_pinion",
+          "planetary_1"
+        ],
+        "overlap_mm": 22.0,
+        "a_range": [
+          0.0,
+          22.0
+        ],
+        "b_range": [
+          -9.0,
+          26.5
+        ]
+      },
+      {
+        "pair": [
+          "long_pinion",
+          "planetary_3"
+        ],
+        "overlap_mm": 10.5,
+        "a_range": [
+          0.0,
+          22.0
+        ],
+        "b_range": [
+          -5.5,
+          10.5
+        ]
+      },
+      {
+        "pair": [
+          "long_pinion",
+          "ring_low_profile"
+        ],
+        "overlap_mm": 10.0,
+        "a_range": [
+          0.0,
+          22.0
+        ],
+        "b_range": [
+          12.0,
+          30.0
+        ]
+      },
+      {
+        "pair": [
+          "long_pinion",
+          "shaft"
+        ],
+        "overlap_mm": 22.0,
+        "a_range": [
+          0.0,
+          22.0
+        ],
+        "b_range": [
+          -54.75,
+          33.5
+        ]
+      },
+      {
+        "pair": [
+          "long_pinion",
+          "short_pinion"
+        ],
+        "overlap_mm": 10.0,
+        "a_range": [
+          0.0,
+          22.0
+        ],
+        "b_range": [
+          12.0,
+          22.0
+        ]
+      },
+      {
+        "pair": [
+          "long_pinion",
+          "small_sun"
+        ],
+        "overlap_mm": 22.0,
+        "a_range": [
+          0.0,
+          22.0
+        ],
+        "b_range": [
+          -53.0,
+          22.0
+        ]
+      },
+      {
+        "pair": [
+          "long_pinion",
+          "small_sun_ring"
+        ],
+        "overlap_mm": 1.9,
+        "a_range": [
+          0.0,
+          22.0
+        ],
+        "b_range": [
+          10.05,
+          11.95
+        ]
+      },
+      {
+        "pair": [
+          "planetary_1",
+          "planetary_2"
+        ],
+        "overlap_mm": 7.5,
+        "a_range": [
+          -9.0,
+          26.5
+        ],
+        "b_range": [
+          -21.5,
+          -1.5
+        ]
+      },
+      {
+        "pair": [
+          "planetary_1",
+          "planetary_3"
+        ],
+        "overlap_mm": 16.0,
+        "a_range": [
+          -9.0,
+          26.5
+        ],
+        "b_range": [
+          -5.5,
+          10.5
+        ]
+      },
+      {
+        "pair": [
+          "planetary_1",
+          "ring_low_profile"
+        ],
+        "overlap_mm": 14.5,
+        "a_range": [
+          -9.0,
+          26.5
+        ],
+        "b_range": [
+          12.0,
+          30.0
+        ]
+      },
+      {
+        "pair": [
+          "planetary_1",
+          "shaft"
+        ],
+        "overlap_mm": 35.5,
+        "a_range": [
+          -9.0,
+          26.5
+        ],
+        "b_range": [
+          -54.75,
+          33.5
+        ]
+      },
+      {
+        "pair": [
+          "planetary_1",
+          "short_pinion"
+        ],
+        "overlap_mm": 10.0,
+        "a_range": [
+          -9.0,
+          26.5
+        ],
+        "b_range": [
+          12.0,
+          22.0
+        ]
+      },
+      {
+        "pair": [
+          "planetary_1",
+          "small_sun"
+        ],
+        "overlap_mm": 31.0,
+        "a_range": [
+          -9.0,
+          26.5
+        ],
+        "b_range": [
+          -53.0,
+          22.0
+        ]
+      },
+      {
+        "pair": [
+          "planetary_1",
+          "small_sun_ring"
+        ],
+        "overlap_mm": 1.9,
+        "a_range": [
+          -9.0,
+          26.5
+        ],
+        "b_range": [
+          10.05,
+          11.95
+        ]
+      },
+      {
+        "pair": [
+          "planetary_1",
+          "small_washer"
+        ],
+        "overlap_mm": 1.25,
+        "a_range": [
+          -9.0,
+          26.5
+        ],
+        "b_range": [
+          -1.3,
+          -0.05
+        ]
+      },
+      {
+        "pair": [
+          "planetary_2",
+          "planetary_3"
+        ],
+        "overlap_mm": 4.0,
+        "a_range": [
+          -21.5,
+          -1.5
+        ],
+        "b_range": [
+          -5.5,
+          10.5
+        ]
+      },
+      {
+        "pair": [
+          "planetary_2",
+          "shaft"
+        ],
+        "overlap_mm": 20.0,
+        "a_range": [
+          -21.5,
+          -1.5
+        ],
+        "b_range": [
+          -54.75,
+          33.5
+        ]
+      },
+      {
+        "pair": [
+          "planetary_2",
+          "small_sun"
+        ],
+        "overlap_mm": 20.0,
+        "a_range": [
+          -21.5,
+          -1.5
+        ],
+        "b_range": [
+          -53.0,
+          22.0
+        ]
+      },
+      {
+        "pair": [
+          "planetary_3",
+          "shaft"
+        ],
+        "overlap_mm": 16.0,
+        "a_range": [
+          -5.5,
+          10.5
+        ],
+        "b_range": [
+          -54.75,
+          33.5
+        ]
+      },
+      {
+        "pair": [
+          "planetary_3",
+          "small_sun"
+        ],
+        "overlap_mm": 16.0,
+        "a_range": [
+          -5.5,
+          10.5
+        ],
+        "b_range": [
+          -53.0,
+          22.0
+        ]
+      },
+      {
+        "pair": [
+          "planetary_3",
+          "small_sun_ring"
+        ],
+        "overlap_mm": 0.45,
+        "a_range": [
+          -5.5,
+          10.5
+        ],
+        "b_range": [
+          10.05,
+          11.95
+        ]
+      },
+      {
+        "pair": [
+          "planetary_3",
+          "small_washer"
+        ],
+        "overlap_mm": 1.25,
+        "a_range": [
+          -5.5,
+          10.5
+        ],
+        "b_range": [
+          -1.3,
+          -0.05
+        ]
+      },
+      {
+        "pair": [
+          "ring_low_profile",
+          "shaft"
+        ],
+        "overlap_mm": 18.0,
+        "a_range": [
+          12.0,
+          30.0
+        ],
+        "b_range": [
+          -54.75,
+          33.5
+        ]
+      },
+      {
+        "pair": [
+          "ring_low_profile",
+          "short_pinion"
+        ],
+        "overlap_mm": 10.0,
+        "a_range": [
+          12.0,
+          30.0
+        ],
+        "b_range": [
+          12.0,
+          22.0
+        ]
+      },
+      {
+        "pair": [
+          "ring_low_profile",
+          "small_sun"
+        ],
+        "overlap_mm": 10.0,
+        "a_range": [
+          12.0,
+          30.0
+        ],
+        "b_range": [
+          -53.0,
+          22.0
+        ]
+      },
+      {
+        "pair": [
+          "shaft",
+          "short_pinion"
+        ],
+        "overlap_mm": 10.0,
+        "a_range": [
+          -54.75,
+          33.5
+        ],
+        "b_range": [
+          12.0,
+          22.0
+        ]
+      },
+      {
+        "pair": [
+          "shaft",
+          "small_sun"
+        ],
+        "overlap_mm": 75.0,
+        "a_range": [
+          -54.75,
+          33.5
+        ],
+        "b_range": [
+          -53.0,
+          22.0
+        ]
+      },
+      {
+        "pair": [
+          "shaft",
+          "small_sun_ring"
+        ],
+        "overlap_mm": 1.9,
+        "a_range": [
+          -54.75,
+          33.5
+        ],
+        "b_range": [
+          10.05,
+          11.95
+        ]
+      },
+      {
+        "pair": [
+          "shaft",
+          "small_washer"
+        ],
+        "overlap_mm": 1.25,
+        "a_range": [
+          -54.75,
+          33.5
+        ],
+        "b_range": [
+          -1.3,
+          -0.05
+        ]
+      },
+      {
+        "pair": [
+          "short_pinion",
+          "small_sun"
+        ],
+        "overlap_mm": 10.0,
+        "a_range": [
+          12.0,
+          22.0
+        ],
+        "b_range": [
+          -53.0,
+          22.0
+        ]
+      },
+      {
+        "pair": [
+          "small_sun",
+          "small_sun_ring"
+        ],
+        "overlap_mm": 1.9,
+        "a_range": [
+          -53.0,
+          22.0
+        ],
+        "b_range": [
+          10.05,
+          11.95
+        ]
+      },
+      {
+        "pair": [
+          "small_sun",
+          "small_washer"
+        ],
+        "overlap_mm": 1.25,
+        "a_range": [
+          -53.0,
+          22.0
+        ],
+        "b_range": [
+          -1.3,
+          -0.05
+        ]
+      }
+    ],
+    "radial_overlaps": [
+      {
+        "pair": [
+          "big_sun_0_5_backlash",
+          "big_sun_ring"
+        ],
+        "radial_overlap_mm": 2.375,
+        "a_range": [
+          9.625,
+          20.0
+        ],
+        "b_range": [
+          13.625,
+          16.0
+        ]
+      },
+      {
+        "pair": [
+          "big_sun_0_5_backlash",
+          "long_pinion"
+        ],
+        "radial_overlap_mm": 2.097,
+        "a_range": [
+          9.625,
+          20.0
+        ],
+        "b_range": [
+          17.903,
+          44.9
+        ]
+      },
+      {
+        "pair": [
+          "big_sun_0_5_backlash",
+          "planetary_1"
+        ],
+        "radial_overlap_mm": 10.375,
+        "a_range": [
+          9.625,
+          20.0
+        ],
+        "b_range": [
+          4.125,
+          40.0
+        ]
+      },
+      {
+        "pair": [
+          "big_sun_0_5_backlash",
+          "planetary_2"
+        ],
+        "radial_overlap_mm": 6.375,
+        "a_range": [
+          9.625,
+          20.0
+        ],
+        "b_range": [
+          13.625,
+          40.0
+        ]
+      },
+      {
+        "pair": [
+          "big_sun_0_5_backlash",
+          "planetary_3"
+        ],
+        "radial_overlap_mm": 3.282,
+        "a_range": [
+          9.625,
+          20.0
+        ],
+        "b_range": [
+          16.718,
+          40.0
+        ]
+      },
+      {
+        "pair": [
+          "big_sun_0_5_backlash",
+          "ring_low_profile"
+        ],
+        "radial_overlap_mm": 10.375,
+        "a_range": [
+          9.625,
+          20.0
+        ],
+        "b_range": [
+          4.125,
+          48.0
+        ]
+      },
+      {
+        "pair": [
+          "big_sun_0_5_backlash",
+          "short_pinion"
+        ],
+        "radial_overlap_mm": 5.559,
+        "a_range": [
+          9.625,
+          20.0
+        ],
+        "b_range": [
+          14.441,
+          40.439
+        ]
+      },
+      {
+        "pair": [
+          "big_sun_0_5_backlash",
+          "small_sun"
+        ],
+        "radial_overlap_mm": 6.875,
+        "a_range": [
+          9.625,
+          20.0
+        ],
+        "b_range": [
+          4.125,
+          16.5
+        ]
+      },
+      {
+        "pair": [
+          "big_sun_0_5_backlash",
+          "small_sun_ring"
+        ],
+        "radial_overlap_mm": 2.375,
+        "a_range": [
+          9.625,
+          20.0
+        ],
+        "b_range": [
+          9.625,
+          12.0
+        ]
+      },
+      {
+        "pair": [
+          "big_sun_ring",
+          "planetary_1"
+        ],
+        "radial_overlap_mm": 2.375,
+        "a_range": [
+          13.625,
+          16.0
+        ],
+        "b_range": [
+          4.125,
+          40.0
+        ]
+      },
+      {
+        "pair": [
+          "big_sun_ring",
+          "planetary_2"
+        ],
+        "radial_overlap_mm": 2.375,
+        "a_range": [
+          13.625,
+          16.0
+        ],
+        "b_range": [
+          13.625,
+          40.0
+        ]
+      },
+      {
+        "pair": [
+          "big_sun_ring",
+          "ring_low_profile"
+        ],
+        "radial_overlap_mm": 2.375,
+        "a_range": [
+          13.625,
+          16.0
+        ],
+        "b_range": [
+          4.125,
+          48.0
+        ]
+      },
+      {
+        "pair": [
+          "big_sun_ring",
+          "short_pinion"
+        ],
+        "radial_overlap_mm": 1.559,
+        "a_range": [
+          13.625,
+          16.0
+        ],
+        "b_range": [
+          14.441,
+          40.439
+        ]
+      },
+      {
+        "pair": [
+          "big_sun_ring",
+          "small_sun"
+        ],
+        "radial_overlap_mm": 2.375,
+        "a_range": [
+          13.625,
+          16.0
+        ],
+        "b_range": [
+          4.125,
+          16.5
+        ]
+      },
+      {
+        "pair": [
+          "clip",
+          "long_pinion"
+        ],
+        "radial_overlap_mm": 13.772,
+        "a_range": [
+          24.649,
+          38.421
+        ],
+        "b_range": [
+          17.903,
+          44.9
+        ]
+      },
+      {
+        "pair": [
+          "clip",
+          "planetary_1"
+        ],
+        "radial_overlap_mm": 13.772,
+        "a_range": [
+          24.649,
+          38.421
+        ],
+        "b_range": [
+          4.125,
+          40.0
+        ]
+      },
+      {
+        "pair": [
+          "clip",
+          "planetary_2"
+        ],
+        "radial_overlap_mm": 13.772,
+        "a_range": [
+          24.649,
+          38.421
+        ],
+        "b_range": [
+          13.625,
+          40.0
+        ]
+      },
+      {
+        "pair": [
+          "clip",
+          "planetary_3"
+        ],
+        "radial_overlap_mm": 13.772,
+        "a_range": [
+          24.649,
+          38.421
+        ],
+        "b_range": [
+          16.718,
+          40.0
+        ]
+      },
+      {
+        "pair": [
+          "clip",
+          "ring_low_profile"
+        ],
+        "radial_overlap_mm": 13.772,
+        "a_range": [
+          24.649,
+          38.421
+        ],
+        "b_range": [
+          4.125,
+          48.0
+        ]
+      },
+      {
+        "pair": [
+          "clip",
+          "short_pinion"
+        ],
+        "radial_overlap_mm": 13.772,
+        "a_range": [
+          24.649,
+          38.421
+        ],
+        "b_range": [
+          14.441,
+          40.439
+        ]
+      },
+      {
+        "pair": [
+          "clip",
+          "small_washer"
+        ],
+        "radial_overlap_mm": 13.0,
+        "a_range": [
+          24.649,
+          38.421
+        ],
+        "b_range": [
+          24.9,
+          37.9
+        ]
+      },
+      {
+        "pair": [
+          "long_pinion",
+          "planetary_1"
+        ],
+        "radial_overlap_mm": 22.097,
+        "a_range": [
+          17.903,
+          44.9
+        ],
+        "b_range": [
+          4.125,
+          40.0
+        ]
+      },
+      {
+        "pair": [
+          "long_pinion",
+          "planetary_2"
+        ],
+        "radial_overlap_mm": 22.097,
+        "a_range": [
+          17.903,
+          44.9
+        ],
+        "b_range": [
+          13.625,
+          40.0
+        ]
+      },
+      {
+        "pair": [
+          "long_pinion",
+          "planetary_3"
+        ],
+        "radial_overlap_mm": 22.097,
+        "a_range": [
+          17.903,
+          44.9
+        ],
+        "b_range": [
+          16.718,
+          40.0
+        ]
+      },
+      {
+        "pair": [
+          "long_pinion",
+          "ring_low_profile"
+        ],
+        "radial_overlap_mm": 26.997,
+        "a_range": [
+          17.903,
+          44.9
+        ],
+        "b_range": [
+          4.125,
+          48.0
+        ]
+      },
+      {
+        "pair": [
+          "long_pinion",
+          "short_pinion"
+        ],
+        "radial_overlap_mm": 22.536,
+        "a_range": [
+          17.903,
+          44.9
+        ],
+        "b_range": [
+          14.441,
+          40.439
+        ]
+      },
+      {
+        "pair": [
+          "long_pinion",
+          "small_washer"
+        ],
+        "radial_overlap_mm": 13.0,
+        "a_range": [
+          17.903,
+          44.9
+        ],
+        "b_range": [
+          24.9,
+          37.9
+        ]
+      },
+      {
+        "pair": [
+          "planetary_1",
+          "planetary_2"
+        ],
+        "radial_overlap_mm": 26.375,
+        "a_range": [
+          4.125,
+          40.0
+        ],
+        "b_range": [
+          13.625,
+          40.0
+        ]
+      },
+      {
+        "pair": [
+          "planetary_1",
+          "planetary_3"
+        ],
+        "radial_overlap_mm": 23.282,
+        "a_range": [
+          4.125,
+          40.0
+        ],
+        "b_range": [
+          16.718,
+          40.0
+        ]
+      },
+      {
+        "pair": [
+          "planetary_1",
+          "ring_low_profile"
+        ],
+        "radial_overlap_mm": 35.875,
+        "a_range": [
+          4.125,
+          40.0
+        ],
+        "b_range": [
+          4.125,
+          48.0
+        ]
+      },
+      {
+        "pair": [
+          "planetary_1",
+          "shaft"
+        ],
+        "radial_overlap_mm": 0.875,
+        "a_range": [
+          4.125,
+          40.0
+        ],
+        "b_range": [
+          3.575,
+          5.0
+        ]
+      },
+      {
+        "pair": [
+          "planetary_1",
+          "short_pinion"
+        ],
+        "radial_overlap_mm": 25.559,
+        "a_range": [
+          4.125,
+          40.0
+        ],
+        "b_range": [
+          14.441,
+          40.439
+        ]
+      },
+      {
+        "pair": [
+          "planetary_1",
+          "small_sun"
+        ],
+        "radial_overlap_mm": 12.375,
+        "a_range": [
+          4.125,
+          40.0
+        ],
+        "b_range": [
+          4.125,
+          16.5
+        ]
+      },
+      {
+        "pair": [
+          "planetary_1",
+          "small_sun_ring"
+        ],
+        "radial_overlap_mm": 2.375,
+        "a_range": [
+          4.125,
+          40.0
+        ],
+        "b_range": [
+          9.625,
+          12.0
+        ]
+      },
+      {
+        "pair": [
+          "planetary_1",
+          "small_washer"
+        ],
+        "radial_overlap_mm": 13.0,
+        "a_range": [
+          4.125,
+          40.0
+        ],
+        "b_range": [
+          24.9,
+          37.9
+        ]
+      },
+      {
+        "pair": [
+          "planetary_2",
+          "planetary_3"
+        ],
+        "radial_overlap_mm": 23.282,
+        "a_range": [
+          13.625,
+          40.0
+        ],
+        "b_range": [
+          16.718,
+          40.0
+        ]
+      },
+      {
+        "pair": [
+          "planetary_2",
+          "ring_low_profile"
+        ],
+        "radial_overlap_mm": 26.375,
+        "a_range": [
+          13.625,
+          40.0
+        ],
+        "b_range": [
+          4.125,
+          48.0
+        ]
+      },
+      {
+        "pair": [
+          "planetary_2",
+          "short_pinion"
+        ],
+        "radial_overlap_mm": 25.559,
+        "a_range": [
+          13.625,
+          40.0
+        ],
+        "b_range": [
+          14.441,
+          40.439
+        ]
+      },
+      {
+        "pair": [
+          "planetary_2",
+          "small_sun"
+        ],
+        "radial_overlap_mm": 2.875,
+        "a_range": [
+          13.625,
+          40.0
+        ],
+        "b_range": [
+          4.125,
+          16.5
+        ]
+      },
+      {
+        "pair": [
+          "planetary_2",
+          "small_washer"
+        ],
+        "radial_overlap_mm": 13.0,
+        "a_range": [
+          13.625,
+          40.0
+        ],
+        "b_range": [
+          24.9,
+          37.9
+        ]
+      },
+      {
+        "pair": [
+          "planetary_3",
+          "ring_low_profile"
+        ],
+        "radial_overlap_mm": 23.282,
+        "a_range": [
+          16.718,
+          40.0
+        ],
+        "b_range": [
+          4.125,
+          48.0
+        ]
+      },
+      {
+        "pair": [
+          "planetary_3",
+          "short_pinion"
+        ],
+        "radial_overlap_mm": 23.282,
+        "a_range": [
+          16.718,
+          40.0
+        ],
+        "b_range": [
+          14.441,
+          40.439
+        ]
+      },
+      {
+        "pair": [
+          "planetary_3",
+          "small_washer"
+        ],
+        "radial_overlap_mm": 13.0,
+        "a_range": [
+          16.718,
+          40.0
+        ],
+        "b_range": [
+          24.9,
+          37.9
+        ]
+      },
+      {
+        "pair": [
+          "ring_low_profile",
+          "shaft"
+        ],
+        "radial_overlap_mm": 0.875,
+        "a_range": [
+          4.125,
+          48.0
+        ],
+        "b_range": [
+          3.575,
+          5.0
+        ]
+      },
+      {
+        "pair": [
+          "ring_low_profile",
+          "short_pinion"
+        ],
+        "radial_overlap_mm": 25.998,
+        "a_range": [
+          4.125,
+          48.0
+        ],
+        "b_range": [
+          14.441,
+          40.439
+        ]
+      },
+      {
+        "pair": [
+          "ring_low_profile",
+          "small_sun"
+        ],
+        "radial_overlap_mm": 12.375,
+        "a_range": [
+          4.125,
+          48.0
+        ],
+        "b_range": [
+          4.125,
+          16.5
+        ]
+      },
+      {
+        "pair": [
+          "ring_low_profile",
+          "small_sun_ring"
+        ],
+        "radial_overlap_mm": 2.375,
+        "a_range": [
+          4.125,
+          48.0
+        ],
+        "b_range": [
+          9.625,
+          12.0
+        ]
+      },
+      {
+        "pair": [
+          "ring_low_profile",
+          "small_washer"
+        ],
+        "radial_overlap_mm": 13.0,
+        "a_range": [
+          4.125,
+          48.0
+        ],
+        "b_range": [
+          24.9,
+          37.9
+        ]
+      },
+      {
+        "pair": [
+          "shaft",
+          "small_sun"
+        ],
+        "radial_overlap_mm": 0.875,
+        "a_range": [
+          3.575,
+          5.0
+        ],
+        "b_range": [
+          4.125,
+          16.5
+        ]
+      },
+      {
+        "pair": [
+          "short_pinion",
+          "small_sun"
+        ],
+        "radial_overlap_mm": 2.059,
+        "a_range": [
+          14.441,
+          40.439
+        ],
+        "b_range": [
+          4.125,
+          16.5
+        ]
+      },
+      {
+        "pair": [
+          "short_pinion",
+          "small_washer"
+        ],
+        "radial_overlap_mm": 13.0,
+        "a_range": [
+          14.441,
+          40.439
+        ],
+        "b_range": [
+          24.9,
+          37.9
+        ]
+      },
+      {
+        "pair": [
+          "small_sun",
+          "small_sun_ring"
+        ],
+        "radial_overlap_mm": 2.375,
+        "a_range": [
+          4.125,
+          16.5
+        ],
+        "b_range": [
+          9.625,
+          12.0
+        ]
+      }
+    ]
+  },
+  "ravigneaux_constraints": {
+    "two_zone_axiom": {
+      "description": "Ss and SL sun gears must be in separate Z-zones (minimal or no overlap)",
+      "ss_z_range": [
+        -53.0,
+        22.0
+      ],
+      "sl_z_range": [
+        -38.0,
+        10.0
+      ],
+      "overlap_mm": 48.0,
+      "separation_mm": 0,
+      "rule": "overlap <= 0 (ideally separated by thrust plate thickness)"
+    },
+    "long_pinion_span": {
+      "description": "Long pinion (Po) must span both Ss and SL gear zones",
+      "po_z_range": [
+        0.0,
+        22.0
+      ],
+      "spans_ss_zone": false,
+      "spans_sl_zone": false,
+      "rule": "Po z_range must encompass both Ss and SL z_ranges"
+    },
+    "short_pinion_zone": {
+      "description": "Short pinion (Pi) must be confined to Ss gear zone only",
+      "pi_z_range": [
+        12.0,
+        22.0
+      ],
+      "within_ss_zone": true,
+      "overlaps_sl_zone": false,
+      "rule": "Pi z_range must be within Ss z_range (not SL)"
+    },
+    "ring_span": {
+      "description": "Ring gear must span the full combined gear zone height",
+      "ring_z_range": [
+        12.0,
+        30.0
+      ],
+      "combined_gear_z": [
+        -53.0,
+        22.0
+      ],
+      "rule": "Ring z_range >= combined Ss+SL z_range"
+    },
+    "height_ratios": {
+      "description": "Reference height ratios for proportional scaling",
+      "po_height_mm": 22.0,
+      "pi_height_mm": 10.0,
+      "ss_height_mm": 75.0,
+      "sl_height_mm": 48.0,
+      "ring_height_mm": 18.0,
+      "po_to_pi_ratio": 2.2,
+      "po_to_ring_ratio": 1.222
+    },
+    "radial_nesting": {
+      "description": "Radial nesting order: sun < planet < ring",
+      "ss_r_max": 16.5,
+      "sl_r_max": 20.0,
+      "po_r_max": 44.9,
+      "pi_r_max": 40.44,
+      "ring_r_inner": 4.12,
+      "ring_r_outer": 48.0,
+      "rule": "max(Ss_r, SL_r) < planet_orbit_r < ring_r_inner"
+    }
+  }
+}

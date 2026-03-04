@@ -16,8 +16,26 @@ class Settings(BaseSettings):
     freecad_path: str = "C:/Program Files/FreeCAD 1.0/bin/FreeCADCmd.exe"
     claude_api_key: str = ""
     claude_model: str = "claude-sonnet-4-20250514"
-    claude_max_tokens: int = 4096
+    claude_max_tokens: int = 8192
+
+    # Grok (xAI) — checked before Claude; set KFS_GROK_API_KEY to enable
+    grok_api_key: str = ""
+    grok_model: str = "grok-3-mini"
+    grok_max_tokens: int = 8192
+
+    # Groq (LPU inference, free tier) — set KFS_GROQ_API_KEY to enable
+    groq_api_key: str = ""
+    groq_model: str = "llama-3.3-70b-versatile"
+    groq_max_tokens: int = 8192
+
+    # Google Gemini — set KFS_GEMINI_API_KEY to enable
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-2.5-flash"
+    gemini_max_tokens: int = 16384
+
+    preferred_provider: str = "claude"  # claude | groq | grok | gemini — env: KFS_PREFERRED_PROVIDER
     cors_origins: list[str] = ["*"]
+    ntfy_topic: str = "bussabtheakhaijanab1851421"  # env: KFS_NTFY_TOPIC
 
     # Pipeline tool paths (external validation scripts)
     pipeline_dir: Path = Path("D:/Claude local/3d_design_agent")

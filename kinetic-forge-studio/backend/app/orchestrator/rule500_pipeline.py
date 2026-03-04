@@ -93,7 +93,7 @@ STEP_REGISTRY: list[tuple[int, str, str, bool, str]] = [
 
     # Phase 2: DESIGN GATE
     (6,  "OpenSCAD Compile",          "design",     True,  "step6_compile"),
-    (7,  "Geometry Validation",       "design",     True,  "step7_geometry_validation"),       # validate_kinetic.py Tiers T1, T2
+    (7,  "Geometry Validation",       "design",     True,  "step7_geometry_validation"),       # VLAD Tiers T1, T2
     (8,  "Consistency Audit",         "design",     False, "step8_consistency_audit"),
     (9,  "Visual Render",             "design",     False, "step9_visual_render"),
     (10, "Architecture Verification", "design",     False, "step10_architecture_verify"),
@@ -101,16 +101,16 @@ STEP_REGISTRY: list[tuple[int, str, str, bool, str]] = [
 
     # Phase 3: PROTOTYPE GATE
     (12, "STL Export",                "prototype",  False, "step12_stl_export"),
-    (13, "Collision Detection",       "prototype",  True,  "step13_collision"),                # validate_kinetic.py Tiers T3, T4, T5
-    (14, "Manufacturability Check",   "prototype",  False, "step14_manufacturability"),        # validate_kinetic.py Tier T6
+    (13, "Collision Detection",       "prototype",  True,  "step13_collision"),                # VLAD Tiers T3, T4, T5
+    (14, "Manufacturability Check",   "prototype",  False, "step14_manufacturability"),        # VLAD Tier T6
     (15, "ISO 286 Tolerance",         "prototype",  False, "step15_iso286"),
     (16, "Tolerance Stackup",         "prototype",  False, "step16_tolerance_stackup"),
     (17, "FDM Ground Truth",          "prototype",  False, "step17_fdm_ground_truth"),
-    (18, "STEP File Analysis",        "prototype",  False, "step18_step_analysis"),            # validate_kinetic.py Tier T8
+    (18, "STEP File Analysis",        "prototype",  False, "step18_step_analysis"),            # VLAD Tier T8
     (19, "Rule 99 Prototype Gate",    "prototype",  True,  "step19_rule99_gate2"),
 
     # Phase 4: PRODUCTION GATE
-    (20, "CadQuery B-Rep Generation", "production", False, "step20_cadquery_brep"),            # validate_kinetic.py Tiers T1, T3, T4 (rebuild)
+    (20, "CadQuery B-Rep Generation", "production", False, "step20_cadquery_brep"),            # VLAD Tiers T1, T3, T4 (rebuild)
     (21, "FreeCAD STEP Export",       "production", False, "step21_freecad_step"),
     (22, "FreeCAD Assembly",          "production", False, "step22_freecad_assembly"),
     (23, "Fabrication Drawings",      "production", False, "step23_fabrication_drawings"),

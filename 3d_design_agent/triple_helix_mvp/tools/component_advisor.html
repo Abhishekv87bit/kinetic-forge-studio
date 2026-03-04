@@ -1,0 +1,1320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenSCAD Component Advisor</title>
+<style>
+:root {
+  --bg: #1e1e2e;
+  --bg2: #262637;
+  --bg3: #2e2e42;
+  --fg: #cdd6f4;
+  --fg2: #a6adc8;
+  --accent: #89b4fa;
+  --accent2: #74c7ec;
+  --green: #a6e3a1;
+  --yellow: #f9e2af;
+  --red: #f38ba8;
+  --orange: #fab387;
+  --mauve: #cba6f7;
+  --border: #45475a;
+  --radius: 6px;
+  --font: 'Segoe UI', system-ui, sans-serif;
+  --mono: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+}
+[data-theme="light"] {
+  --bg: #eff1f5; --bg2: #e6e9ef; --bg3: #dce0e8;
+  --fg: #4c4f69; --fg2: #6c6f85;
+  --accent: #1e66f5; --accent2: #209fb5;
+  --green: #40a02b; --yellow: #df8e1d; --red: #d20f39; --orange: #fe640b; --mauve: #8839ef;
+  --border: #bcc0cc;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: var(--font); background: var(--bg); color: var(--fg); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+header { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; background: var(--bg2); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+header h1 { font-size: 16px; font-weight: 600; }
+header h1 span { color: var(--accent); }
+.header-actions { display: flex; gap: 8px; align-items: center; }
+button { font-family: var(--font); cursor: pointer; border: none; border-radius: var(--radius); padding: 6px 14px; font-size: 13px; transition: all 0.15s; }
+.btn-primary { background: var(--accent); color: #1e1e2e; font-weight: 600; }
+.btn-primary:hover { filter: brightness(1.1); }
+.btn-secondary { background: var(--bg3); color: var(--fg); border: 1px solid var(--border); }
+.btn-secondary:hover { background: var(--border); }
+.btn-small { padding: 3px 8px; font-size: 11px; }
+.btn-icon { background: none; color: var(--fg2); font-size: 18px; padding: 4px 8px; }
+.btn-icon:hover { color: var(--fg); }
+.main { display: flex; flex: 1; overflow: hidden; }
+.panel { display: flex; flex-direction: column; border-right: 1px solid var(--border); overflow: hidden; }
+.panel:last-child { border-right: none; }
+.panel-left { width: 30%; min-width: 280px; }
+.panel-center { width: 35%; min-width: 300px; }
+.panel-right { width: 35%; min-width: 300px; }
+.panel-header { padding: 8px 12px; background: var(--bg2); border-bottom: 1px solid var(--border); font-size: 12px; font-weight: 600; color: var(--fg2); text-transform: uppercase; letter-spacing: 0.5px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+.panel-body { flex: 1; overflow-y: auto; padding: 0; }
+.panel-body::-webkit-scrollbar { width: 6px; }
+.panel-body::-webkit-scrollbar-track { background: transparent; }
+.panel-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* Code Editor */
+.code-area { position: relative; flex: 1; display: flex; flex-direction: column; }
+#codeInput { width: 100%; flex: 1; resize: none; background: var(--bg); color: var(--fg); border: none; padding: 12px; font-family: var(--mono); font-size: 13px; line-height: 1.5; outline: none; tab-size: 2; }
+.drop-zone { position: absolute; inset: 0; background: rgba(137,180,250,0.1); border: 2px dashed var(--accent); display: none; align-items: center; justify-content: center; font-size: 16px; color: var(--accent); z-index: 10; pointer-events: none; }
+.drop-zone.active { display: flex; }
+.code-actions { display: flex; gap: 6px; padding: 8px 12px; background: var(--bg2); border-top: 1px solid var(--border); flex-shrink: 0; }
+.file-input { display: none; }
+.code-stats { font-size: 11px; color: var(--fg2); margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+/* Tree */
+.tree { padding: 8px; }
+.tree-node { user-select: none; }
+.tree-row { display: flex; align-items: center; padding: 4px 8px; border-radius: var(--radius); cursor: pointer; font-size: 13px; gap: 6px; }
+.tree-row:hover { background: var(--bg3); }
+.tree-row.selected { background: var(--accent); color: #1e1e2e; }
+.tree-row.selected .tree-dim, .tree-row.selected .tree-icon { color: #1e1e2e; }
+.tree-children { padding-left: 18px; border-left: 1px solid var(--border); margin-left: 14px; }
+.tree-toggle { width: 16px; text-align: center; font-size: 10px; color: var(--fg2); flex-shrink: 0; }
+.tree-icon { font-size: 14px; flex-shrink: 0; }
+.tree-label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tree-dim { font-size: 11px; color: var(--fg2); font-family: var(--mono); flex-shrink: 0; }
+.tree-badge { font-size: 10px; padding: 1px 5px; border-radius: 8px; font-weight: 600; flex-shrink: 0; }
+.badge-high { background: var(--green); color: #1e1e2e; }
+.badge-medium { background: var(--yellow); color: #1e1e2e; }
+.badge-low { background: var(--orange); color: #1e1e2e; }
+.badge-unknown { background: var(--border); color: var(--fg); }
+
+/* SVG Preview */
+.preview-container { height: 220px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; position: relative; overflow: hidden; }
+.preview-container svg { max-width: 100%; max-height: 100%; }
+.preview-label { position: absolute; bottom: 4px; right: 8px; font-size: 10px; color: var(--fg2); }
+
+/* Advisor Panel */
+.advisor-section { padding: 12px; border-bottom: 1px solid var(--border); }
+.advisor-section h3 { font-size: 13px; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.advisor-section h3 .section-icon { font-size: 15px; }
+.id-card { background: var(--bg3); border-radius: var(--radius); padding: 10px; margin-bottom: 8px; }
+.id-card .id-type { font-size: 14px; font-weight: 600; color: var(--accent); }
+.id-card .id-desc { font-size: 12px; color: var(--fg2); margin-top: 4px; }
+.id-card .id-dims { font-family: var(--mono); font-size: 12px; margin-top: 6px; color: var(--yellow); }
+.confidence-bar { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.confidence-fill { height: 4px; border-radius: 2px; flex: 1; background: var(--bg); overflow: hidden; }
+.confidence-fill .fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+.confidence-label { font-size: 11px; color: var(--fg2); min-width: 40px; }
+
+.part-match { background: var(--bg3); border-radius: var(--radius); padding: 8px 10px; margin-bottom: 6px; display: flex; align-items: flex-start; gap: 8px; cursor: pointer; transition: background 0.15s; }
+.part-match:hover { background: var(--border); }
+.part-match.best { border-left: 3px solid var(--green); }
+.part-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+.part-info { flex: 1; min-width: 0; }
+.part-name { font-size: 13px; font-weight: 600; }
+.part-spec { font-size: 11px; color: var(--fg2); font-family: var(--mono); }
+.part-note { font-size: 11px; color: var(--fg2); margin-top: 2px; }
+.part-tag { font-size: 10px; padding: 1px 6px; border-radius: 8px; background: var(--green); color: #1e1e2e; font-weight: 600; }
+
+.action-btn { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 8px 10px; background: var(--bg3); border: 1px solid transparent; border-radius: var(--radius); color: var(--fg); margin-bottom: 4px; font-size: 13px; }
+.action-btn:hover { border-color: var(--accent); background: var(--bg2); }
+.action-icon { font-size: 15px; flex-shrink: 0; width: 20px; text-align: center; }
+.action-label { font-weight: 500; }
+.action-desc { font-size: 11px; color: var(--fg2); }
+
+/* Empty / placeholder states */
+.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--fg2); text-align: center; padding: 32px; }
+.empty-state .empty-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
+.empty-state p { font-size: 13px; max-width: 240px; line-height: 1.5; }
+
+/* Modal for labeling */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 100; }
+.modal-overlay.show { display: flex; }
+.modal { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 20px; min-width: 320px; max-width: 440px; }
+.modal h3 { font-size: 15px; margin-bottom: 12px; }
+.modal input, .modal select { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); color: var(--fg); font-size: 13px; margin-bottom: 10px; outline: none; font-family: var(--font); }
+.modal input:focus, .modal select:focus { border-color: var(--accent); }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+
+/* Tooltip */
+.tooltip { position: fixed; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 10px; font-size: 12px; color: var(--fg); pointer-events: none; z-index: 200; max-width: 280px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+.tooltip .tt-dim { font-family: var(--mono); color: var(--yellow); }
+</style>
+</head>
+<body>
+<header>
+  <h1><span>OpenSCAD</span> Component Advisor</h1>
+  <div class="header-actions">
+    <button class="btn-primary" id="btnAnalyze" onclick="analyze()">Analyze</button>
+    <button class="btn-secondary" onclick="loadSample()">Load Sample</button>
+    <button class="btn-icon" onclick="toggleTheme()" title="Toggle theme">&#9681;</button>
+  </div>
+</header>
+<div class="main">
+  <!-- LEFT PANEL: Code Input -->
+  <div class="panel panel-left">
+    <div class="panel-header">Code Input</div>
+    <div class="code-area" id="dropTarget">
+      <div class="drop-zone" id="dropZone">Drop .scad file here</div>
+      <textarea id="codeInput" spellcheck="false" placeholder="Paste your OpenSCAD code here, or drag & drop a .scad file..."></textarea>
+    </div>
+    <div class="code-actions">
+      <button class="btn-secondary btn-small" onclick="document.getElementById('fileInput').click()">Open File</button>
+      <button class="btn-secondary btn-small" onclick="clearCode()">Clear</button>
+      <input type="file" id="fileInput" class="file-input" accept=".scad" onchange="loadFile(event)">
+      <div class="code-stats">
+        <span id="lineCount">0 lines</span>
+        <span id="moduleCount">0 modules</span>
+      </div>
+    </div>
+  </div>
+  <!-- CENTER PANEL: Tree + Preview -->
+  <div class="panel panel-center">
+    <div class="panel-header">
+      <span>Component Tree</span>
+      <span id="treeStats" style="font-weight:400"></span>
+    </div>
+    <div class="preview-container" id="previewContainer">
+      <div class="empty-state" style="height:auto"><p style="font-size:12px;color:var(--fg2)">Preview appears after analysis</p></div>
+    </div>
+    <div class="panel-body" id="treePanel">
+      <div class="empty-state">
+        <div class="empty-icon">&#128270;</div>
+        <p>Paste OpenSCAD code and click <strong>Analyze</strong> to see the component breakdown</p>
+      </div>
+    </div>
+  </div>
+  <!-- RIGHT PANEL: Advisor -->
+  <div class="panel panel-right">
+    <div class="panel-header">Advisor</div>
+    <div class="panel-body" id="advisorPanel">
+      <div class="empty-state">
+        <div class="empty-icon">&#128161;</div>
+        <p>Select a component from the tree to see part matches, identification, and actions</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Label Modal -->
+<div class="modal-overlay" id="labelModal">
+  <div class="modal">
+    <h3>Label Component</h3>
+    <p style="font-size:12px;color:var(--fg2);margin-bottom:10px" id="modalDesc"></p>
+    <select id="modalCategory">
+      <option value="">-- Select category --</option>
+      <option value="shaft">Shaft / Axle</option>
+      <option value="bearing_mount">Bearing Mount</option>
+      <option value="plate">Plate / Bracket</option>
+      <option value="ring">Ring / Collar</option>
+      <option value="housing">Housing / Enclosure</option>
+      <option value="gear">Gear</option>
+      <option value="pulley">Pulley</option>
+      <option value="cam">Cam / Eccentric</option>
+      <option value="arm">Arm / Lever</option>
+      <option value="spacer">Spacer / Standoff</option>
+      <option value="coupling">Coupling / Joint</option>
+      <option value="fastener">Fastener</option>
+      <option value="decorative">Decorative / Aesthetic</option>
+      <option value="other">Other</option>
+    </select>
+    <input type="text" id="modalLabel" placeholder="Custom label (optional)">
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn-primary" onclick="applyLabel()">Apply</button>
+    </div>
+  </div>
+</div>
+
+<!-- Tooltip -->
+<div class="tooltip" id="tooltip" style="display:none"></div>
+
+<script>
+// ============================================================
+// PARTS DATABASE
+// ============================================================
+const PARTS_DB = {
+  bearings: [
+    { name:"MR52ZZ", bore:2, od:5, w:2.5, type:"miniature", note:"Micro, very low load" },
+    { name:"MR63ZZ", bore:3, od:6, w:2.5, type:"miniature", note:"Micro" },
+    { name:"MR74ZZ", bore:4, od:7, w:2.5, type:"miniature", note:"Ultra-thin" },
+    { name:"MR84ZZ", bore:4, od:8, w:3, type:"miniature", note:"Common for 4mm shafts" },
+    { name:"MR84-2RS", bore:4, od:8, w:3, type:"miniature", note:"Sealed, dust-proof" },
+    { name:"684ZZ", bore:4, od:9, w:4, type:"standard", note:"Higher load than MR84" },
+    { name:"694ZZ", bore:4, od:11, w:4, type:"standard", note:"High load for 4mm" },
+    { name:"MR85ZZ", bore:5, od:8, w:2.5, type:"miniature", note:"Thin 5mm bore" },
+    { name:"MR105ZZ", bore:5, od:10, w:4, type:"miniature", note:"Good all-rounder" },
+    { name:"685ZZ", bore:5, od:11, w:5, type:"standard", note:"Standard 5mm" },
+    { name:"625ZZ", bore:5, od:16, w:5, type:"standard", note:"High load 5mm" },
+    { name:"MR106ZZ", bore:6, od:10, w:3, type:"miniature", note:"Thin 6mm bore" },
+    { name:"686ZZ", bore:6, od:13, w:5, type:"standard", note:"Standard 6mm" },
+    { name:"626ZZ", bore:6, od:19, w:6, type:"standard", note:"High load 6mm" },
+    { name:"623ZZ", bore:3, od:10, w:4, type:"standard", note:"Standard 3mm" },
+    { name:"624ZZ", bore:4, od:13, w:5, type:"standard", note:"Standard 4mm" },
+    { name:"MR128ZZ", bore:8, od:12, w:3.5, type:"miniature", note:"Thin 8mm bore" },
+    { name:"688ZZ", bore:8, od:16, w:5, type:"standard", note:"Standard 8mm" },
+    { name:"608ZZ", bore:8, od:22, w:7, type:"standard", note:"Skateboard bearing" },
+    { name:"6700ZZ", bore:10, od:15, w:4, type:"thin", note:"Thin section 10mm" },
+    { name:"6800ZZ", bore:10, od:19, w:5, type:"thin", note:"Thin 10mm" },
+    { name:"6900ZZ", bore:10, od:22, w:6, type:"thin", note:"Standard 10mm" },
+    { name:"6000ZZ", bore:10, od:26, w:8, type:"standard", note:"Heavy duty 10mm" },
+    { name:"6001ZZ", bore:12, od:28, w:8, type:"standard", note:"Standard 12mm" },
+    { name:"6704ZZ", bore:20, od:27, w:4, type:"thin", note:"Thin 20mm" },
+    { name:"6004ZZ", bore:20, od:42, w:12, type:"standard", note:"Standard 20mm" },
+    { name:"6005ZZ", bore:25, od:47, w:12, type:"standard", note:"Standard 25mm" },
+  ],
+  shafts: {
+    diameters: [1.5, 2, 2.5, 3, 4, 5, 6, 8, 10, 12, 15, 16, 20, 25],
+    types: [
+      { id:"round", name:"Round rod", note:"Standard, cheapest" },
+      { id:"dflat", name:"D-flat shaft", note:"Anti-rotation, good for cams" },
+      { id:"keyed", name:"Keyed shaft", note:"Positive drive, requires keyway" },
+      { id:"hollow", name:"Hollow tube", note:"Lighter, can run wire through" },
+    ],
+    materials: [
+      { id:"304ss", name:"304 Stainless", note:"Corrosion resistant, easy to find" },
+      { id:"silver", name:"Silver steel (drill rod)", note:"Hardened, precision ground" },
+      { id:"carbon", name:"Carbon steel", note:"Cheap, can rust" },
+      { id:"brass", name:"Brass rod", note:"Low friction, decorative" },
+      { id:"titanium", name:"Titanium", note:"Light, strong, expensive" },
+    ],
+  },
+  eclips: [
+    { name:"E-2", shaft:2, groove:1.6 },
+    { name:"E-3", shaft:3, groove:2.4 },
+    { name:"E-4", shaft:4, groove:3.2 },
+    { name:"E-5", shaft:5, groove:4.0 },
+    { name:"E-6", shaft:6, groove:5.0 },
+    { name:"E-8", shaft:8, groove:6.5 },
+    { name:"E-10", shaft:10, groove:8.0 },
+    { name:"E-12", shaft:12, groove:9.5 },
+    { name:"E-15", shaft:15, groove:12.0 },
+  ],
+  setscrews: [2, 2.5, 3, 4, 5, 6, 8, 10],
+  capscrews: [
+    { m:2, head:3.8, len:[4,5,6,8,10,12] },
+    { m:2.5, head:4.5, len:[4,5,6,8,10,12,16] },
+    { m:3, head:5.5, len:[5,6,8,10,12,16,20,25] },
+    { m:4, head:7, len:[6,8,10,12,16,20,25,30] },
+    { m:5, head:8.5, len:[8,10,12,16,20,25,30,35,40] },
+    { m:6, head:10, len:[10,12,16,20,25,30,35,40,50] },
+    { m:8, head:13, len:[12,16,20,25,30,35,40,50,60] },
+  ],
+  gt2: {
+    pitch: 2, widths: [6, 9, 10],
+    pulleys: [
+      { teeth:12, pd:7.64 }, { teeth:16, pd:10.19 }, { teeth:20, pd:12.73 },
+      { teeth:24, pd:15.28 }, { teeth:30, pd:19.10 }, { teeth:36, pd:22.92 },
+      { teeth:40, pd:25.46 }, { teeth:48, pd:30.56 }, { teeth:60, pd:38.20 },
+    ],
+  },
+  tubing: {
+    ods: [6, 8, 10, 12, 15, 16, 19, 20, 22, 25, 30, 32, 35, 38, 40, 50, 60, 75, 80, 100],
+    walls: [0.5, 1.0, 1.5, 2.0, 3.0],
+    materials: ["Aluminum 6061", "Steel 1018", "Stainless 304", "Brass", "Acrylic"],
+  },
+  magnets: [
+    { d:3, h:1 }, { d:3, h:2 }, { d:4, h:2 }, { d:5, h:2 }, { d:5, h:3 },
+    { d:6, h:2 }, { d:6, h:3 }, { d:8, h:3 }, { d:8, h:5 },
+    { d:10, h:3 }, { d:10, h:5 }, { d:12, h:5 }, { d:15, h:3 }, { d:20, h:5 },
+  ],
+  springs: {
+    wire: [0.3, 0.4, 0.5, 0.6, 0.8, 1.0, 1.2, 1.5, 2.0],
+    od: [3, 4, 5, 6, 8, 10, 12, 15, 20],
+  },
+  oRings: [
+    { id:5, cs:1.5 }, { id:6, cs:1.5 }, { id:8, cs:2 }, { id:10, cs:2 },
+    { id:12, cs:2 }, { id:15, cs:2.5 }, { id:18, cs:2.5 }, { id:20, cs:3 },
+    { id:25, cs:3 }, { id:30, cs:3 }, { id:35, cs:3.5 }, { id:40, cs:3.5 },
+  ],
+};
+
+// ============================================================
+// OPENSCAD PARSER
+// ============================================================
+function parseOpenSCAD(code) {
+  // Remove comments
+  let clean = code.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+
+  const nodes = [];
+  const moduleDefs = {};
+  const constants = {};
+
+  // Extract top-level constants
+  const constRe = /^[ \t]*(\w+)\s*=\s*([^;]+);/gm;
+  let cm;
+  while ((cm = constRe.exec(code)) !== null) {
+    let val = cm[2].trim();
+    let numVal = parseFloat(val);
+    if (!isNaN(numVal)) constants[cm[1]] = numVal;
+    else constants[cm[1]] = val;
+  }
+
+  // Extract module definitions
+  const modRe = /module\s+(\w+)\s*\(([^)]*)\)\s*\{/g;
+  let mm;
+  while ((mm = modRe.exec(clean)) !== null) {
+    let name = mm[1];
+    let params = mm[2];
+    let bodyStart = mm.index + mm[0].length;
+    let body = extractBlock(clean, bodyStart - 1);
+    moduleDefs[name] = { name, params, body, index: mm.index };
+  }
+
+  // Parse each module into component tree
+  for (let [name, def] of Object.entries(moduleDefs)) {
+    let node = parseBlock(def.body, name, constants);
+    node.isModule = true;
+    node.moduleName = name;
+    nodes.push(node);
+  }
+
+  // If no modules found, parse entire code as one block
+  if (nodes.length === 0) {
+    let node = parseBlock(clean, 'root', constants);
+    node.isModule = false;
+    nodes.push(node);
+  }
+
+  return { nodes, moduleDefs, constants };
+}
+
+function extractBlock(code, openBrace) {
+  let depth = 0;
+  let start = code.indexOf('{', openBrace);
+  if (start === -1) return '';
+  for (let i = start; i < code.length; i++) {
+    if (code[i] === '{') depth++;
+    else if (code[i] === '}') { depth--; if (depth === 0) return code.substring(start, i + 1); }
+  }
+  return code.substring(start);
+}
+
+function parseBlock(block, name, constants) {
+  const children = [];
+  const primitives = [];
+
+  // Find primitives
+  const primRe = /(cylinder|cube|sphere|square|circle|polygon|polyhedron|text)\s*\(([^)]*)\)/g;
+  let pm;
+  while ((pm = primRe.exec(block)) !== null) {
+    let params = parseParams(pm[2], constants);
+    primitives.push({ type: pm[0].match(/^\w+/)[0], params, raw: pm[0] });
+  }
+
+  // Find operations
+  const ops = [];
+  const opRe = /(difference|union|intersection|hull|minkowski|linear_extrude|rotate_extrude)\s*\(([^)]*)\)/g;
+  let om;
+  while ((om = opRe.exec(block)) !== null) {
+    let params = parseParams(om[2], constants);
+    ops.push({ type: om[0].match(/^\w+/)[0], params });
+  }
+
+  // Find transforms
+  const transforms = [];
+  const trRe = /(translate|rotate|scale|mirror|color)\s*\(([^)]*)\)/g;
+  let tm;
+  while ((tm = trRe.exec(block)) !== null) {
+    let params = parseParams(tm[2], constants);
+    transforms.push({ type: tm[0].match(/^\w+/)[0], params });
+  }
+
+  // Find module calls (not definitions)
+  const callRe = /(?<!module\s)(\b[a-z_]\w*)\s*\(([^)]*)\)\s*[;{]/gi;
+  const builtins = new Set(['cylinder','cube','sphere','square','circle','polygon','polyhedron','text',
+    'translate','rotate','scale','mirror','color','difference','union','intersection','hull',
+    'minkowski','linear_extrude','rotate_extrude','for','if','let','each','echo','assert',
+    'offset','projection','resize','multmatrix','render','import','surface','use','include',
+    'children','parent_module']);
+  let ccm;
+  while ((ccm = callRe.exec(block)) !== null) {
+    if (!builtins.has(ccm[1].toLowerCase())) {
+      children.push({ type: 'call', name: ccm[1], params: parseParams(ccm[2], constants), children: [], primitives: [], ops: [], transforms: [] });
+    }
+  }
+
+  return { name, children, primitives, ops, transforms, id: 'n_' + (nodeIdCounter++) };
+}
+
+let nodeIdCounter = 0;
+
+function parseParams(str, constants) {
+  const result = {};
+  if (!str || !str.trim()) return result;
+  str = str.trim();
+
+  // Named params: key = value
+  const namedRe = /(\w+)\s*=\s*(\[[^\]]*\]|"[^"]*"|[\w.+-]+)/g;
+  let nm;
+  while ((nm = namedRe.exec(str)) !== null) {
+    let val = nm[2];
+    if (val.startsWith('[')) {
+      val = val.replace(/[\[\]]/g, '').split(',').map(v => resolveValue(v.trim(), constants));
+    } else {
+      val = resolveValue(val, constants);
+    }
+    result[nm[1]] = val;
+  }
+
+  // Positional: first value if no named params matched
+  if (Object.keys(result).length === 0) {
+    let parts = str.split(',').map(s => s.trim());
+    if (parts.length === 1) {
+      let v = resolveValue(parts[0], constants);
+      if (v !== undefined) result._pos = v;
+    } else {
+      // Could be a vector
+      let vec = parts.map(p => resolveValue(p, constants));
+      result._vec = vec;
+    }
+  }
+
+  return result;
+}
+
+function resolveValue(v, constants) {
+  if (v === undefined || v === '') return undefined;
+  if (v === 'true') return true;
+  if (v === 'false') return false;
+  let num = parseFloat(v);
+  if (!isNaN(num)) return num;
+  if (constants && constants[v] !== undefined) return constants[v];
+  return v;
+}
+
+// ============================================================
+// COMPONENT RECOGNITION
+// ============================================================
+function identifyComponent(node) {
+  const prims = node.primitives || [];
+  const ops = node.ops || [];
+  const name = (node.name || node.moduleName || '').toLowerCase();
+
+  // Collect all cylinders and cubes
+  const cylinders = prims.filter(p => p.type === 'cylinder');
+  const cubes = prims.filter(p => p.type === 'cube');
+  const spheres = prims.filter(p => p.type === 'sphere');
+  const hasDifference = ops.some(o => o.type === 'difference');
+  const hasHull = ops.some(o => o.type === 'hull');
+  const hasRotateExtrude = ops.some(o => o.type === 'rotate_extrude');
+  const hasLinearExtrude = ops.some(o => o.type === 'linear_extrude');
+  const hasFor = (node.raw || '').includes('for');
+
+  // Extract dimensions
+  let dims = extractDimensions(node);
+
+  // Name-based hints
+  if (name.match(/shaft|axle|rod|pin/)) return { category: 'shaft', confidence: 'high', label: 'Shaft / Axle', dims };
+  if (name.match(/bearing|brg/)) return { category: 'bearing_mount', confidence: 'high', label: 'Bearing Mount', dims };
+  if (name.match(/plate|bracket|mount/)) return { category: 'plate', confidence: 'high', label: 'Plate / Bracket', dims };
+  if (name.match(/ring|collar|spacer/)) return { category: 'ring', confidence: 'high', label: 'Ring / Collar', dims };
+  if (name.match(/housing|case|enclosure|box/)) return { category: 'housing', confidence: 'high', label: 'Housing / Enclosure', dims };
+  if (name.match(/gear|cog/)) return { category: 'gear', confidence: 'high', label: 'Gear', dims };
+  if (name.match(/pulley|sheave|wheel/)) return { category: 'pulley', confidence: 'high', label: 'Pulley', dims };
+  if (name.match(/cam|eccentric|lobe/)) return { category: 'cam', confidence: 'high', label: 'Cam / Eccentric', dims };
+  if (name.match(/arm|lever|link|crank/)) return { category: 'arm', confidence: 'medium', label: 'Arm / Lever', dims };
+  if (name.match(/hub|boss/)) return { category: 'coupling', confidence: 'medium', label: 'Hub / Boss', dims };
+  if (name.match(/frame|structure|support/)) return { category: 'plate', confidence: 'medium', label: 'Frame / Structure', dims };
+  if (name.match(/motor/)) return { category: 'motor', confidence: 'high', label: 'Motor Mount', dims };
+  if (name.match(/idler/)) return { category: 'pulley', confidence: 'medium', label: 'Idler', dims };
+
+  // Geometry-based identification
+  if (cylinders.length > 0) {
+    let cyl = cylinders[0];
+    let r = cyl.params.r || cyl.params.r1 || (cyl.params.d ? cyl.params.d / 2 : null);
+    let h = cyl.params.h;
+
+    if (r && h) {
+      // Shaft: tall cylinder, aspect ratio > 4
+      if (h / r > 8) return { category: 'shaft', confidence: 'high', label: 'Shaft (detected by aspect ratio)', dims };
+      if (h / r > 4) return { category: 'shaft', confidence: 'medium', label: 'Possible shaft or pin', dims };
+
+      // Ring: difference of two cylinders, height small relative to OD
+      if (hasDifference && cylinders.length >= 2) {
+        let r2 = cylinders[1].params.r || (cylinders[1].params.d ? cylinders[1].params.d / 2 : null);
+        if (r2 && r2 < r && h < r * 2) {
+          dims.od = r * 2; dims.id = r2 * 2; dims.height = h;
+          return { category: 'ring', confidence: 'high', label: 'Ring (concentric cylinders)', dims };
+        }
+        // Bearing mount: block with bore
+        if (r2) {
+          dims.bore = Math.min(r, r2) * 2;
+          return { category: 'bearing_mount', confidence: 'medium', label: 'Possible bearing mount', dims };
+        }
+      }
+
+      // Spacer: short cylinder
+      if (h / r < 1.5 && h < 10) return { category: 'spacer', confidence: 'medium', label: 'Spacer / Washer', dims };
+    }
+  }
+
+  // Plate: cube with one thin dimension
+  if (cubes.length > 0 && !hasDifference) {
+    let c = cubes[0];
+    let size = c.params.size || c.params._vec;
+    if (Array.isArray(size) && size.length === 3) {
+      let sorted = [...size].sort((a, b) => a - b);
+      if (sorted[0] < sorted[2] / 4) return { category: 'plate', confidence: 'high', label: 'Plate / Panel', dims };
+    }
+  }
+
+  // Housing: cube with difference (hollowed out)
+  if (cubes.length > 0 && hasDifference) {
+    return { category: 'housing', confidence: 'low', label: 'Possible housing / enclosure', dims };
+  }
+
+  // Pulley: rotate_extrude
+  if (hasRotateExtrude) return { category: 'pulley', confidence: 'medium', label: 'Revolved profile (pulley / wheel?)', dims };
+
+  // Extrusion
+  if (hasLinearExtrude) return { category: 'plate', confidence: 'low', label: 'Extruded profile', dims };
+
+  return { category: 'unknown', confidence: 'none', label: 'Unidentified component', dims };
+}
+
+function extractDimensions(node) {
+  const dims = {};
+  for (let p of (node.primitives || [])) {
+    if (p.type === 'cylinder') {
+      let r = p.params.r || (p.params.d ? p.params.d / 2 : null);
+      if (r) { dims.radius = r; dims.diameter = r * 2; }
+      if (p.params.h) dims.height = p.params.h;
+      if (p.params.r1) dims.r1 = p.params.r1;
+      if (p.params.r2) dims.r2 = p.params.r2;
+    }
+    if (p.type === 'cube') {
+      let s = p.params.size || p.params._vec || p.params._pos;
+      if (Array.isArray(s)) { dims.x = s[0]; dims.y = s[1]; dims.z = s[2]; }
+      else if (typeof s === 'number') { dims.x = dims.y = dims.z = s; }
+    }
+    if (p.type === 'sphere') {
+      let r = p.params.r || (p.params.d ? p.params.d / 2 : null);
+      if (r) { dims.radius = r; dims.diameter = r * 2; }
+    }
+  }
+  return dims;
+}
+
+// ============================================================
+// PART MATCHING
+// ============================================================
+function findPartMatches(identification) {
+  const matches = [];
+  const dims = identification.dims || {};
+  const cat = identification.category;
+
+  // Bearing matches: look for bore diameter
+  if (cat === 'bearing_mount' || cat === 'ring' || cat === 'shaft') {
+    let bore = dims.bore || dims.diameter || dims.id;
+    if (!bore && dims.radius) bore = dims.radius * 2;
+    if (bore) {
+      // Exact bore match
+      let exact = PARTS_DB.bearings.filter(b => Math.abs(b.bore - bore) < 0.5);
+      // Close bore match
+      let close = PARTS_DB.bearings.filter(b => Math.abs(b.bore - bore) < 2 && Math.abs(b.bore - bore) >= 0.5);
+      exact.forEach((b, i) => matches.push({ group: 'Bearings', part: b, best: i === 0, spec: `${b.bore}x${b.od}x${b.w}mm`, icon: '&#9881;' }));
+      close.forEach(b => matches.push({ group: 'Bearings (close)', part: b, best: false, spec: `${b.bore}x${b.od}x${b.w}mm`, icon: '&#9881;' }));
+    }
+  }
+
+  // Shaft matches
+  if (cat === 'shaft' || cat === 'bearing_mount') {
+    let dia = dims.diameter || (dims.radius ? dims.radius * 2 : null) || dims.bore;
+    if (dia) {
+      let exactDia = PARTS_DB.shafts.diameters.filter(d => Math.abs(d - dia) < 0.5);
+      let closeDia = PARTS_DB.shafts.diameters.filter(d => Math.abs(d - dia) < 2 && Math.abs(d - dia) >= 0.5);
+      let allDia = [...exactDia, ...closeDia];
+      allDia.forEach((d, i) => {
+        PARTS_DB.shafts.types.forEach(t => {
+          matches.push({ group: 'Shafts', part: { name: `${d}mm ${t.name}`, note: t.note }, best: i === 0 && t.id === 'round', spec: `OD ${d}mm`, icon: '&#9135;' });
+        });
+      });
+    }
+  }
+
+  // E-clip matches
+  if (cat === 'shaft') {
+    let dia = dims.diameter || (dims.radius ? dims.radius * 2 : null);
+    if (dia) {
+      let clips = PARTS_DB.eclips.filter(e => Math.abs(e.shaft - dia) < 1);
+      clips.forEach((e, i) => matches.push({ group: 'Retention', part: { name: `E-clip ${e.name}`, note: `Groove dia ${e.groove}mm` }, best: i === 0, spec: `For ${e.shaft}mm shaft`, icon: '&#128295;' }));
+    }
+  }
+
+  // Tube stock matches for rings
+  if (cat === 'ring') {
+    let od = dims.od || dims.diameter;
+    if (od) {
+      let tubes = PARTS_DB.tubing.ods.filter(t => Math.abs(t - od) < 5);
+      tubes.forEach((t, i) => {
+        matches.push({ group: 'Tube Stock', part: { name: `${t}mm OD tube`, note: PARTS_DB.tubing.materials.join(', ') }, best: i === 0, spec: `OD ${t}mm, walls: ${PARTS_DB.tubing.walls.join('/')}mm`, icon: '&#9898;' });
+      });
+    }
+  }
+
+  // Pulley matches
+  if (cat === 'pulley') {
+    let dia = dims.diameter || (dims.radius ? dims.radius * 2 : null);
+    if (dia) {
+      let close = PARTS_DB.gt2.pulleys.filter(p => Math.abs(p.pd - dia) < 5);
+      close.forEach((p, i) => matches.push({ group: 'GT2 Pulleys', part: { name: `GT2 ${p.teeth}T`, note: `PD ${p.pd}mm, widths: ${PARTS_DB.gt2.widths.join('/')}mm` }, best: i === 0, spec: `${p.teeth} teeth, PD ${p.pd}mm`, icon: '&#9881;' }));
+    }
+  }
+
+  // Fastener matches for plates with holes
+  if (cat === 'plate' || cat === 'bearing_mount' || cat === 'housing') {
+    let bore = dims.bore || dims.id;
+    if (bore) {
+      let screws = PARTS_DB.capscrews.filter(s => Math.abs(s.m - bore) < 1 || Math.abs(s.m + 0.5 - bore) < 0.5);
+      screws.forEach((s, i) => matches.push({ group: 'Fasteners', part: { name: `M${s.m} Cap Screw`, note: `Head OD ${s.head}mm, lengths: ${s.len.slice(0,5).join(',')}mm` }, best: i === 0, spec: `M${s.m}`, icon: '&#128297;' }));
+    }
+  }
+
+  // Magnet matches for small cylinders
+  if (dims.diameter && dims.diameter <= 25 && dims.height && dims.height <= 10) {
+    let mags = PARTS_DB.magnets.filter(m => Math.abs(m.d - dims.diameter) < 2 && Math.abs(m.h - dims.height) < 2);
+    if (mags.length > 0) {
+      mags.forEach((m, i) => matches.push({ group: 'Magnets', part: { name: `N52 ${m.d}x${m.h}mm`, note: 'Neodymium disc magnet' }, best: i === 0, spec: `${m.d}mm dia x ${m.h}mm`, icon: '&#129522;' }));
+    }
+  }
+
+  return matches;
+}
+
+// ============================================================
+// ACTIONS GENERATOR
+// ============================================================
+function getActions(identification) {
+  const cat = identification.category;
+  const dims = identification.dims || {};
+  const actions = [];
+
+  actions.push({ icon: '&#128208;', label: 'Dimensions', desc: formatDims(dims) || 'No dimensions detected' });
+
+  if (cat === 'shaft') {
+    actions.push({ icon: '&#128207;', label: 'Resize', desc: 'Change diameter or length' });
+    actions.push({ icon: '&#128260;', label: 'Add Feature', desc: 'D-flat, keyway, groove for E-clip' });
+    actions.push({ icon: '&#128200;', label: 'Stress Check', desc: `Dia ${dims.diameter||'?'}mm: torsion, bending, deflection` });
+    actions.push({ icon: '&#127981;', label: 'Manufacturing', desc: 'Cut from round stock, precision ground, or turned' });
+  } else if (cat === 'bearing_mount') {
+    actions.push({ icon: '&#128207;', label: 'Resize Bore', desc: 'Match to standard bearing size' });
+    actions.push({ icon: '&#10133;', label: 'Add Retention', desc: 'Snap ring groove, press-fit step, set screw' });
+    actions.push({ icon: '&#128295;', label: 'Tolerance', desc: 'H7 bore for slip fit, H6 for light press' });
+    actions.push({ icon: '&#127981;', label: 'Manufacturing', desc: 'FDM print vs CNC bore comparison' });
+  } else if (cat === 'ring') {
+    actions.push({ icon: '&#128207;', label: 'Resize', desc: 'Change OD, ID, height, wall' });
+    actions.push({ icon: '&#128260;', label: 'Replace', desc: 'Swap for tube stock (cut to length)' });
+    actions.push({ icon: '&#10133;', label: 'Add Feature', desc: 'Ledge, bolt holes, groove, keyway' });
+    actions.push({ icon: '&#128256;', label: 'Split', desc: 'Make into upper + lower halves' });
+    actions.push({ icon: '&#127981;', label: 'Manufacturing', desc: 'FDM vs lathe-turned vs laser-cut stack' });
+  } else if (cat === 'plate') {
+    actions.push({ icon: '&#128207;', label: 'Resize', desc: 'Change dimensions or thickness' });
+    actions.push({ icon: '&#10133;', label: 'Add Features', desc: 'Mounting holes, slots, fillets, chamfers' });
+    actions.push({ icon: '&#128200;', label: 'Weight', desc: estimateWeight(dims, 'pla') });
+    actions.push({ icon: '&#127981;', label: 'Manufacturing', desc: 'FDM vs laser-cut vs waterjet vs CNC' });
+  } else if (cat === 'pulley') {
+    actions.push({ icon: '&#128207;', label: 'Resize', desc: 'Change tooth count or width' });
+    actions.push({ icon: '&#128260;', label: 'Replace', desc: 'Use off-the-shelf GT2 aluminum pulley' });
+    actions.push({ icon: '&#10133;', label: 'Add Bore', desc: 'Set screw, D-flat, or press-fit bore' });
+  } else if (cat === 'cam') {
+    actions.push({ icon: '&#128207;', label: 'Modify Profile', desc: 'Change eccentricity, lobe count' });
+    actions.push({ icon: '&#128200;', label: 'Stroke', desc: dims.radius ? `Eccentricity -> ${dims.radius*2}mm stroke` : 'Measure eccentricity' });
+    actions.push({ icon: '&#128260;', label: 'Replace', desc: 'Eccentric bore in disc = simpler cam' });
+  } else if (cat === 'housing') {
+    actions.push({ icon: '&#128207;', label: 'Resize', desc: 'Change dimensions, wall thickness' });
+    actions.push({ icon: '&#10133;', label: 'Add Features', desc: 'Mounting tabs, ventilation, cable routing' });
+    actions.push({ icon: '&#128256;', label: 'Split', desc: 'Make into lid + base with snap fits or screws' });
+  } else if (cat === 'gear') {
+    actions.push({ icon: '&#128207;', label: 'Parameters', desc: 'Module, teeth, pressure angle' });
+    actions.push({ icon: '&#128260;', label: 'Replace', desc: 'Off-the-shelf brass or steel gear' });
+  } else {
+    actions.push({ icon: '&#128207;', label: 'Resize', desc: 'Modify dimensions' });
+    actions.push({ icon: '&#128260;', label: 'Reclassify', desc: 'Label this component manually' });
+  }
+
+  actions.push({ icon: '&#128196;', label: 'Export Note', desc: 'Copy dimensions for ordering / drawing' });
+
+  return actions;
+}
+
+function formatDims(dims) {
+  let parts = [];
+  if (dims.diameter) parts.push(`Dia ${dims.diameter}mm`);
+  else if (dims.radius) parts.push(`R ${dims.radius}mm`);
+  if (dims.height) parts.push(`H ${dims.height}mm`);
+  if (dims.od) parts.push(`OD ${dims.od}mm`);
+  if (dims.id) parts.push(`ID ${dims.id}mm`);
+  if (dims.bore) parts.push(`Bore ${dims.bore}mm`);
+  if (dims.x && dims.y && dims.z) parts.push(`${dims.x} x ${dims.y} x ${dims.z}mm`);
+  return parts.join(', ');
+}
+
+function estimateWeight(dims, material) {
+  let vol = 0;
+  if (dims.x && dims.y && dims.z) vol = dims.x * dims.y * dims.z;
+  else if (dims.radius && dims.height) vol = Math.PI * dims.radius * dims.radius * dims.height;
+  if (!vol) return 'Cannot estimate (dimensions unclear)';
+  let densities = { pla: 1.24e-3, abs: 1.04e-3, petg: 1.27e-3, aluminum: 2.70e-3, steel: 7.85e-3 };
+  let d = densities[material] || densities.pla;
+  let g = vol * d;
+  let infill = material === 'pla' ? 0.2 : 1.0;
+  if (material === 'pla' || material === 'abs' || material === 'petg') g *= infill;
+  return `~${g.toFixed(1)}g (${material.toUpperCase()}, ${material === 'pla' ? '20%' : '100%'} infill)`;
+}
+
+// ============================================================
+// APP STATE
+// ============================================================
+let appState = {
+  parsed: null,
+  flatNodes: [],
+  identifications: {},
+  selectedNodeId: null,
+  userLabels: {},
+};
+
+// ============================================================
+// ANALYSIS & RENDERING
+// ============================================================
+function analyze() {
+  const code = document.getElementById('codeInput').value;
+  if (!code.trim()) return;
+
+  nodeIdCounter = 0;
+  let parsed = parseOpenSCAD(code);
+  appState.parsed = parsed;
+  appState.flatNodes = [];
+  appState.identifications = {};
+  appState.selectedNodeId = null;
+
+  // Flatten and identify
+  function walk(node) {
+    appState.flatNodes.push(node);
+    let id = identifyComponent(node);
+    if (appState.userLabels[node.id]) {
+      id.category = appState.userLabels[node.id].category;
+      id.label = appState.userLabels[node.id].label;
+      id.confidence = 'high';
+    }
+    appState.identifications[node.id] = id;
+    for (let child of (node.children || [])) walk(child);
+  }
+  for (let n of parsed.nodes) walk(n);
+
+  renderTree();
+  renderPreview();
+  renderAdvisorEmpty();
+  updateStats();
+  document.getElementById('btnAnalyze').textContent = 'Re-analyze';
+}
+
+function updateStats() {
+  let code = document.getElementById('codeInput').value;
+  let lines = code.split('\n').length;
+  let modules = Object.keys(appState.parsed?.moduleDefs || {}).length;
+  document.getElementById('lineCount').textContent = `${lines} lines`;
+  document.getElementById('moduleCount').textContent = `${modules} modules`;
+
+  let total = appState.flatNodes.length;
+  let identified = appState.flatNodes.filter(n => appState.identifications[n.id]?.category !== 'unknown').length;
+  document.getElementById('treeStats').textContent = `${identified}/${total} identified`;
+}
+
+// ============================================================
+// TREE RENDERING
+// ============================================================
+function renderTree() {
+  const panel = document.getElementById('treePanel');
+  if (!appState.parsed || appState.flatNodes.length === 0) {
+    panel.innerHTML = '<div class="empty-state"><div class="empty-icon">&#128270;</div><p>No components found</p></div>';
+    return;
+  }
+
+  let html = '<div class="tree">';
+  for (let node of appState.parsed.nodes) {
+    html += renderTreeNode(node, 0);
+  }
+  html += '</div>';
+  panel.innerHTML = html;
+}
+
+function renderTreeNode(node, depth) {
+  let id = appState.identifications[node.id] || {};
+  let hasChildren = (node.children && node.children.length > 0) || (node.primitives && node.primitives.length > 0);
+  let icon = getNodeIcon(id.category);
+  let badgeClass = getBadgeClass(id.confidence);
+  let dimStr = formatDims(id.dims || {});
+  let sel = appState.selectedNodeId === node.id ? ' selected' : '';
+
+  let html = `<div class="tree-node">`;
+  html += `<div class="tree-row${sel}" onclick="selectNode('${node.id}')" oncontextmenu="openLabelModal(event,'${node.id}')">`;
+  html += `<span class="tree-toggle">${hasChildren ? '&#9660;' : ''}</span>`;
+  html += `<span class="tree-icon">${icon}</span>`;
+  html += `<span class="tree-label">${node.name || node.moduleName || 'unnamed'}</span>`;
+  if (dimStr) html += `<span class="tree-dim">${dimStr}</span>`;
+  if (id.confidence && id.confidence !== 'none') html += `<span class="tree-badge ${badgeClass}">${id.confidence}</span>`;
+  if (id.category === 'unknown') html += `<span class="tree-badge badge-unknown">?</span>`;
+  html += `</div>`;
+
+  if (hasChildren) {
+    html += `<div class="tree-children">`;
+    // Show primitives
+    for (let p of (node.primitives || [])) {
+      let pIcon = p.type === 'cylinder' ? '&#9898;' : p.type === 'cube' ? '&#11036;' : p.type === 'sphere' ? '&#9899;' : '&#9670;';
+      let pDim = primDimStr(p);
+      html += `<div class="tree-row" style="opacity:0.7;cursor:default"><span class="tree-toggle"></span><span class="tree-icon">${pIcon}</span><span class="tree-label">${p.type}(${p.raw ? abbreviate(p.raw, 40) : ''})</span>`;
+      if (pDim) html += `<span class="tree-dim">${pDim}</span>`;
+      html += `</div>`;
+    }
+    // Show child module calls
+    for (let child of (node.children || [])) {
+      html += renderTreeNode(child, depth + 1);
+    }
+    html += `</div>`;
+  }
+
+  html += `</div>`;
+  return html;
+}
+
+function primDimStr(p) {
+  if (p.type === 'cylinder') {
+    let r = p.params.r || (p.params.d ? p.params.d / 2 : null);
+    let h = p.params.h;
+    let parts = [];
+    if (r) parts.push(`r${r}`);
+    if (p.params.d) parts.push(`d${p.params.d}`);
+    if (h) parts.push(`h${h}`);
+    return parts.join(' ');
+  }
+  if (p.type === 'cube') {
+    let s = p.params.size || p.params._vec;
+    if (Array.isArray(s)) return `${s[0]}x${s[1]}x${s[2]}`;
+    if (typeof s === 'number') return `${s}^3`;
+  }
+  if (p.type === 'sphere') {
+    let r = p.params.r || (p.params.d ? p.params.d / 2 : null);
+    return r ? `r${r}` : '';
+  }
+  return '';
+}
+
+function abbreviate(s, max) {
+  s = s.replace(/\s+/g, ' ');
+  return s.length > max ? s.substring(0, max) + '...' : s;
+}
+
+function getNodeIcon(cat) {
+  const icons = {
+    shaft: '&#9135;', bearing_mount: '&#9881;', plate: '&#9632;', ring: '&#9898;',
+    housing: '&#128230;', gear: '&#9881;', pulley: '&#9898;', cam: '&#128308;',
+    arm: '&#10145;', spacer: '&#9644;', coupling: '&#128279;', motor: '&#9889;',
+    fastener: '&#128297;', decorative: '&#10024;', unknown: '&#10067;',
+  };
+  return icons[cat] || '&#128230;';
+}
+
+function getBadgeClass(conf) {
+  return { high: 'badge-high', medium: 'badge-medium', low: 'badge-low' }[conf] || 'badge-unknown';
+}
+
+// ============================================================
+// NODE SELECTION & ADVISOR
+// ============================================================
+function selectNode(nodeId) {
+  appState.selectedNodeId = nodeId;
+  renderTree();
+  renderAdvisor(nodeId);
+}
+
+function renderAdvisorEmpty() {
+  document.getElementById('advisorPanel').innerHTML = '<div class="empty-state"><div class="empty-icon">&#128161;</div><p>Select a component from the tree to see part matches, identification, and actions</p></div>';
+}
+
+function renderAdvisor(nodeId) {
+  let node = appState.flatNodes.find(n => n.id === nodeId);
+  if (!node) return renderAdvisorEmpty();
+
+  let id = appState.identifications[nodeId];
+  let matches = findPartMatches(id);
+  let actions = getActions(id);
+
+  let html = '';
+
+  // ID Card
+  html += `<div class="advisor-section">`;
+  html += `<h3><span class="section-icon">&#128196;</span> Identification</h3>`;
+  html += `<div class="id-card">`;
+  html += `<div class="id-type">${id.label}</div>`;
+  html += `<div class="id-desc">${getCategoryDescription(id.category)}</div>`;
+  let dimStr = formatDims(id.dims || {});
+  if (dimStr) html += `<div class="id-dims">${dimStr}</div>`;
+  html += `<div class="confidence-bar"><span class="confidence-label">${id.confidence || 'unknown'}</span><div class="confidence-fill"><div class="fill" style="width:${confidencePct(id.confidence)}%;background:${confidenceColor(id.confidence)}"></div></div></div>`;
+  html += `</div>`;
+  if (id.category === 'unknown') {
+    html += `<button class="btn-secondary btn-small" onclick="openLabelModal(null,'${nodeId}')">Label this component</button>`;
+  }
+  html += `</div>`;
+
+  // Part Matches
+  if (matches.length > 0) {
+    let groups = {};
+    for (let m of matches) {
+      if (!groups[m.group]) groups[m.group] = [];
+      groups[m.group].push(m);
+    }
+    for (let [group, items] of Object.entries(groups)) {
+      html += `<div class="advisor-section">`;
+      html += `<h3><span class="section-icon">&#128295;</span> ${group}</h3>`;
+      for (let item of items.slice(0, 6)) {
+        html += `<div class="part-match${item.best ? ' best' : ''}">`;
+        html += `<span class="part-icon">${item.icon}</span>`;
+        html += `<div class="part-info">`;
+        html += `<div class="part-name">${item.part.name}${item.best ? ' <span class="part-tag">BEST</span>' : ''}</div>`;
+        html += `<div class="part-spec">${item.spec}</div>`;
+        if (item.part.note) html += `<div class="part-note">${item.part.note}</div>`;
+        html += `</div></div>`;
+      }
+      if (items.length > 6) {
+        html += `<div style="font-size:11px;color:var(--fg2);padding:4px 8px">+${items.length - 6} more matches</div>`;
+      }
+      html += `</div>`;
+    }
+  } else {
+    html += `<div class="advisor-section"><h3><span class="section-icon">&#128295;</span> Part Matches</h3><p style="font-size:12px;color:var(--fg2)">No off-the-shelf matches found for this geometry. Try labeling the component for better results.</p></div>`;
+  }
+
+  // Actions
+  html += `<div class="advisor-section">`;
+  html += `<h3><span class="section-icon">&#9889;</span> Actions</h3>`;
+  for (let a of actions) {
+    html += `<button class="action-btn"><span class="action-icon">${a.icon}</span><div><div class="action-label">${a.label}</div><div class="action-desc">${a.desc}</div></div></button>`;
+  }
+  html += `</div>`;
+
+  document.getElementById('advisorPanel').innerHTML = html;
+}
+
+function getCategoryDescription(cat) {
+  const descs = {
+    shaft: 'Cylindrical rod for transmitting rotation or supporting rotating parts',
+    bearing_mount: 'Block or plate with cylindrical bore sized for a bearing press-fit',
+    plate: 'Flat structural element, typically laser-cut or 3D printed',
+    ring: 'Annular shape — could be collar, spacer, or structural ring',
+    housing: 'Enclosed volume — motor mount, electronics enclosure, bearing housing',
+    gear: 'Toothed wheel for power transmission',
+    pulley: 'Wheel with groove for belt or cable drive',
+    cam: 'Rotating profile that converts rotation to linear motion',
+    arm: 'Elongated structural member connecting two points',
+    spacer: 'Short cylindrical element maintaining distance between parts',
+    coupling: 'Element connecting two shafts or components',
+    motor: 'Motor or motor mounting bracket',
+    fastener: 'Screw, bolt, nut, or clip',
+    decorative: 'Aesthetic element with no structural function',
+    unknown: 'Component not yet identified. Right-click to label manually.',
+  };
+  return descs[cat] || 'Unknown component type';
+}
+
+function confidencePct(c) { return { high: 90, medium: 60, low: 30, none: 5 }[c] || 5; }
+function confidenceColor(c) { return { high: 'var(--green)', medium: 'var(--yellow)', low: 'var(--orange)', none: 'var(--red)' }[c] || 'var(--red)'; }
+
+// ============================================================
+// SVG PREVIEW
+// ============================================================
+function renderPreview() {
+  const container = document.getElementById('previewContainer');
+  if (!appState.flatNodes.length) {
+    container.innerHTML = '<div class="empty-state" style="height:auto"><p style="font-size:12px;color:var(--fg2)">No components to preview</p></div>';
+    return;
+  }
+
+  let svgW = 380, svgH = 200;
+  let shapes = [];
+
+  for (let node of appState.flatNodes) {
+    let id = appState.identifications[node.id] || {};
+    let dims = id.dims || {};
+    for (let p of (node.primitives || [])) {
+      if (p.type === 'cylinder') {
+        let r = p.params.r || (p.params.d ? p.params.d / 2 : 5);
+        shapes.push({ type: 'circle', r: r, label: node.name, cat: id.category });
+      } else if (p.type === 'cube') {
+        let s = p.params.size || p.params._vec;
+        if (Array.isArray(s)) shapes.push({ type: 'rect', w: s[0], h: s[1], label: node.name, cat: id.category });
+        else if (typeof s === 'number') shapes.push({ type: 'rect', w: s, h: s, label: node.name, cat: id.category });
+      } else if (p.type === 'sphere') {
+        let r = p.params.r || (p.params.d ? p.params.d / 2 : 5);
+        shapes.push({ type: 'circle', r: r, label: node.name, cat: id.category });
+      }
+    }
+  }
+
+  if (shapes.length === 0) {
+    container.innerHTML = '<div class="empty-state" style="height:auto"><p style="font-size:12px;color:var(--fg2)">No drawable primitives found</p></div>';
+    return;
+  }
+
+  // Auto-scale
+  let maxDim = 1;
+  for (let s of shapes) {
+    if (s.type === 'circle') maxDim = Math.max(maxDim, s.r * 2);
+    else maxDim = Math.max(maxDim, s.w, s.h);
+  }
+  let scale = Math.min((svgW - 40) / (maxDim * Math.ceil(Math.sqrt(shapes.length))), (svgH - 40) / maxDim, 3);
+  scale = Math.max(scale, 0.2);
+
+  let cols = Math.ceil(Math.sqrt(shapes.length));
+  let spacing = Math.min(maxDim * scale + 20, (svgW - 20) / cols);
+
+  const catColors = {
+    shaft: '#89b4fa', bearing_mount: '#a6e3a1', plate: '#f9e2af', ring: '#74c7ec',
+    housing: '#cba6f7', pulley: '#fab387', cam: '#f38ba8', gear: '#a6e3a1',
+    arm: '#89b4fa', unknown: '#6c7086',
+  };
+
+  let svg = `<svg width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}" xmlns="http://www.w3.org/2000/svg">`;
+  svg += `<rect width="${svgW}" height="${svgH}" fill="var(--bg)" rx="4"/>`;
+
+  shapes.forEach((s, i) => {
+    let col = i % cols;
+    let row = Math.floor(i / cols);
+    let cx = 30 + col * spacing + spacing / 2;
+    let cy = 20 + row * (spacing) + spacing / 2;
+    let color = catColors[s.cat] || catColors.unknown;
+
+    if (s.type === 'circle') {
+      let r = Math.max(s.r * scale, 4);
+      svg += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="1.5" opacity="0.8"/>`;
+      svg += `<circle cx="${cx}" cy="${cy}" r="1.5" fill="${color}" opacity="0.6"/>`;
+    } else {
+      let w = Math.max(s.w * scale, 6);
+      let h = Math.max(s.h * scale, 6);
+      svg += `<rect x="${cx - w/2}" y="${cy - h/2}" width="${w}" height="${h}" fill="none" stroke="${color}" stroke-width="1.5" rx="1" opacity="0.8"/>`;
+    }
+    svg += `<text x="${cx}" y="${cy + spacing/2 - 4}" text-anchor="middle" fill="${color}" font-size="9" font-family="var(--font)" opacity="0.7">${(s.label||'').substring(0,12)}</text>`;
+  });
+
+  svg += `</svg>`;
+  container.innerHTML = svg + '<div class="preview-label">Top-down schematic</div>';
+}
+
+// ============================================================
+// MODAL / LABELING
+// ============================================================
+let labelTarget = null;
+
+function openLabelModal(event, nodeId) {
+  if (event) event.preventDefault();
+  labelTarget = nodeId;
+  let node = appState.flatNodes.find(n => n.id === nodeId);
+  document.getElementById('modalDesc').textContent = `Component: ${node?.name || 'unnamed'} | ${formatDims(appState.identifications[nodeId]?.dims || {}) || 'No dims'}`;
+  document.getElementById('modalCategory').value = appState.identifications[nodeId]?.category || '';
+  document.getElementById('modalLabel').value = '';
+  document.getElementById('labelModal').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('labelModal').classList.remove('show');
+  labelTarget = null;
+}
+
+function applyLabel() {
+  if (!labelTarget) return;
+  let cat = document.getElementById('modalCategory').value;
+  let label = document.getElementById('modalLabel').value.trim();
+  if (cat) {
+    appState.userLabels[labelTarget] = { category: cat, label: label || getCategoryDescription(cat).split(' ')[0] };
+    analyze(); // re-run with new labels
+    if (appState.flatNodes.find(n => n.id === labelTarget)) selectNode(labelTarget);
+  }
+  closeModal();
+}
+
+// ============================================================
+// FILE HANDLING
+// ============================================================
+function loadFile(event) {
+  let file = event.target.files[0];
+  if (!file) return;
+  let reader = new FileReader();
+  reader.onload = function(e) {
+    document.getElementById('codeInput').value = e.target.result;
+    analyze();
+  };
+  reader.readAsText(file);
+}
+
+function clearCode() {
+  document.getElementById('codeInput').value = '';
+  appState = { parsed: null, flatNodes: [], identifications: {}, selectedNodeId: null, userLabels: {} };
+  document.getElementById('treePanel').innerHTML = '<div class="empty-state"><div class="empty-icon">&#128270;</div><p>Paste OpenSCAD code and click <strong>Analyze</strong> to see the component breakdown</p></div>';
+  document.getElementById('advisorPanel').innerHTML = '<div class="empty-state"><div class="empty-icon">&#128161;</div><p>Select a component from the tree to see part matches, identification, and actions</p></div>';
+  document.getElementById('previewContainer').innerHTML = '<div class="empty-state" style="height:auto"><p style="font-size:12px;color:var(--fg2)">Preview appears after analysis</p></div>';
+  document.getElementById('lineCount').textContent = '0 lines';
+  document.getElementById('moduleCount').textContent = '0 modules';
+  document.getElementById('treeStats').textContent = '';
+  document.getElementById('btnAnalyze').textContent = 'Analyze';
+}
+
+// Drag and drop
+let dropTarget = document.getElementById('dropTarget');
+let dropZone = document.getElementById('dropZone');
+dropTarget.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('active'); });
+dropTarget.addEventListener('dragleave', e => { dropZone.classList.remove('active'); });
+dropTarget.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('active');
+  let file = e.dataTransfer.files[0];
+  if (file && file.name.endsWith('.scad')) {
+    let reader = new FileReader();
+    reader.onload = ev => { document.getElementById('codeInput').value = ev.target.result; analyze(); };
+    reader.readAsText(file);
+  }
+});
+
+// Theme toggle
+function toggleTheme() {
+  document.documentElement.toggleAttribute('data-theme');
+  let has = document.documentElement.hasAttribute('data-theme');
+  document.documentElement.setAttribute('data-theme', has ? 'light' : '');
+  if (!has) document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', 'light');
+}
+
+// ============================================================
+// SAMPLE CODE
+// ============================================================
+function loadSample() {
+  document.getElementById('codeInput').value = `// Triple Helix Kinetic Sculpture - Sample Components
+// Units: mm
+
+// === CONSTANTS ===
+SHAFT_DIA = 4;
+SHAFT_R = SHAFT_DIA / 2;
+SHAFT_LEN = 120;
+BEARING_BORE = 4;
+BEARING_OD = 8;
+BEARING_W = 3;
+MOUNT_WALL = 3;
+HEX_R = 89;
+HEX_H = 6;
+RING_WALL = 6;
+PLATE_W = 24;
+PLATE_L = 36;
+PLATE_H = 6;
+PULLEY_TEETH = 20;
+PULLEY_PD = 12.73;
+CAM_R = 20;
+CAM_ECCENTRICITY = 8;
+ARM_W = 12;
+ARM_L = 80;
+ARM_H = 8;
+
+$fn = 64;
+
+// === MODULES ===
+
+module shaft() {
+    color("Silver")
+    cylinder(r = SHAFT_R, h = SHAFT_LEN, center = true);
+}
+
+module bearing() {
+    color("DarkGray")
+    difference() {
+        cylinder(r = BEARING_OD/2, h = BEARING_W, center = true);
+        cylinder(r = BEARING_BORE/2, h = BEARING_W + 1, center = true);
+    }
+}
+
+module bearing_mount() {
+    color("SteelBlue")
+    difference() {
+        cube([PLATE_W, PLATE_L, PLATE_H], center = true);
+        cylinder(r = BEARING_OD/2 + 0.1, h = PLATE_H + 1, center = true);
+    }
+}
+
+module hex_ring() {
+    color("Tomato")
+    difference() {
+        cylinder(r = HEX_R, h = HEX_H, $fn = 6);
+        cylinder(r = HEX_R - RING_WALL, h = HEX_H + 1, $fn = 6);
+    }
+}
+
+module cam_disc() {
+    color("Orange")
+    union() {
+        cylinder(r = CAM_R, h = 8);
+        translate([CAM_ECCENTRICITY, 0, 0])
+            cylinder(r = SHAFT_R + 1, h = 12);
+    }
+}
+
+module gt2_pulley() {
+    color("Gold")
+    difference() {
+        cylinder(r = PULLEY_PD/2 + 1, h = 8);
+        cylinder(r = SHAFT_R, h = 10);
+        // V-groove approximation
+        translate([0, 0, 2])
+            rotate_extrude()
+                translate([PULLEY_PD/2, 0])
+                    rotate([0, 0, 45])
+                        square([1.5, 1.5]);
+    }
+}
+
+module frame_arm() {
+    color("CornflowerBlue")
+    hull() {
+        cube([ARM_W, ARM_W, ARM_H], center = true);
+        translate([ARM_L, 0, 0])
+            cube([ARM_W, ARM_W, ARM_H], center = true);
+    }
+}
+
+module collar() {
+    color("Gray")
+    difference() {
+        cylinder(r = 6, h = 5);
+        cylinder(r = SHAFT_R + 0.15, h = 6);
+    }
+}
+
+module spacer_washer() {
+    color("LightGray")
+    difference() {
+        cylinder(r = 5, h = 1.5);
+        cylinder(r = SHAFT_R + 0.2, h = 2);
+    }
+}
+
+// === ASSEMBLY ===
+shaft();
+translate([0, 0, 30]) bearing();
+translate([0, 0, 30]) bearing_mount();
+translate([0, 0, -50]) hex_ring();
+translate([40, 0, 0]) cam_disc();
+translate([0, 30, 0]) gt2_pulley();
+translate([-60, 0, 0]) frame_arm();
+translate([0, 0, 50]) collar();
+translate([0, 0, -20]) spacer_washer();
+`;
+  analyze();
+}
+
+// ============================================================
+// KEYBOARD SHORTCUTS
+// ============================================================
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); analyze(); }
+  if (e.key === 'Escape') closeModal();
+});
+
+// Auto-update line count
+document.getElementById('codeInput').addEventListener('input', () => {
+  let lines = document.getElementById('codeInput').value.split('\n').length;
+  document.getElementById('lineCount').textContent = `${lines} lines`;
+});
+</script>
+</body>
+</html>
