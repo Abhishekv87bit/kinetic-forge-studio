@@ -96,7 +96,8 @@
       "mcp__freecad__list_documents",
       "mcp__freecad__execute_code",
       "mcp__freecad__get_view",
-      "mcp__mcp-registry__search_mcp_registry"
+      "mcp__mcp-registry__search_mcp_registry",
+      "Bash(git reset HEAD kinetic-forge-studio/frontend/.vite/)"
     ]
   }
 }
