@@ -80,3 +80,50 @@ test_*.png
 
 # Keep these despite wildcards
 !.gitkeep
+
+# ── Claude Code local config (machine-specific) ──
+.claude/launch.json
+.claude/ralph-loop.local.md
+.mcp.json
+
+# ── Scratch / one-off analysis scripts ──
+corridor_*.py
+overlap_analysis.py
+reconstruct_density_v0.py
+scaling_*.py
+drive_path_analysis.py
+frame_geometry_solver*.py
+verify_gear_wave.js
+gemini_*.txt
+report.log
+
+# ── Separate projects (have their own repos or are standalone) ──
+Jeff/
+alpha-pulse/
+tools/aidl/
+tools/aws-workstation/
+
+# ── OpenSCAD scratch files (underscore prefix = debug/temp) ──
+3d_design_agent/_*.scad
+3d_design_agent/_*.echo
+3d_design_agent/optimize_*.ps1
+3d_design_agent/read_openscad_settings.ps1
+
+# ── Generated HTML visualizations ──
+3d_design_agent/*.html
+3d_design_agent/waffle_grid_planetary/*.html
+3d_design_agent/visualizations/
+
+# ── Downloaded reference models (re-downloadable) ──
+3d_design_agent/gears/
+3d_design_agent/Pulley/
+
+# ── Checkpoint copies (bulky, versioned backups) ──
+3d_design_agent/triple_helix_mvp/check point/
+
+# ── Claude config in subdirectories ──
+3d_design_agent/.claude/
+3d_design_agent/waffle_grid_planetary/.claude/
+
+# ── Temp search/validation outputs ──
+**/TEMP_SEARCH_RESULT.txt
