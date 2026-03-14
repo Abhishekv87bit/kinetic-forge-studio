@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "freecad": {
+      "command": "uvx",
+      "args": ["freecad-mcp"]
+    },
+    "kfs-tools": {
+      "command": "python",
+      "args": ["kfs_mcp_server.py"],
+      "cwd": "kinetic-forge-studio/backend"
+    }
+  }
+}

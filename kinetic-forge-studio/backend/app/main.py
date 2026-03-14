@@ -1,3 +1,4 @@
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
@@ -11,8 +12,20 @@ from app.routes.export import router as export_router
 from app.routes.profile import router as profile_router
 from app.routes.viewer import router as viewer_router
 
+# Production pipeline middleware (GAP-PPL-003, 005, 008, 013)
+from app.middleware.input_guardrails import InputGuardrailsMiddleware
+from app.middleware.observability import setup_observability, get_cost_summary
+from app.middleware.rate_limiter import setup_rate_limiting
+from app.middleware.resilience import get_all_circuit_states
+from app.middleware.cache import get_cache_stats
+
+logger = logging.getLogger("kfs")
+
 app = FastAPI(title=settings.app_name, version=settings.version)
 
+# ── Middleware stack (order matters: outermost first) ──
+
+# 1. CORS (must be outermost)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
@@ -21,6 +34,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 2. Input guardrails — block injection before reaching routes (GAP-PPL-005)
+app.add_middleware(InputGuardrailsMiddleware)
+
+# 3. Rate limiting (GAP-PPL-013)
+limiter = setup_rate_limiting(app, default_limit="60/minute")
+
+# 4. Observability — trace LLM calls, track costs (GAP-PPL-003 + GAP-PPL-007)
+setup_observability()
+
+# ── Routes ──
 app.include_router(projects_router)
 app.include_router(chat_router)
 app.include_router(upload_router)
@@ -40,4 +63,11 @@ async def shutdown():
 
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "version": settings.version}
+    """Health endpoint with pipeline status (GAP-PPL-008)."""
+    return {
+        "status": "ok",
+        "version": settings.version,
+        "circuits": get_all_circuit_states(),
+        "costs": get_cost_summary(),
+        "cache": get_cache_stats(),
+    }

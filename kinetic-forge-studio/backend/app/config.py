@@ -3,7 +3,7 @@ from pydantic import ConfigDict
 from pathlib import Path
 
 class Settings(BaseSettings):
-    model_config = ConfigDict(env_prefix="KFS_", env_file=".env", env_file_encoding="utf-8")
+    model_config = ConfigDict(env_prefix="KFS_", env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     app_name: str = "Kinetic Forge Studio"
     version: str = "0.1.0"

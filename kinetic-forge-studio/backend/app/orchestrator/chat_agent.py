@@ -20,6 +20,7 @@ import asyncio
 import json
 import re
 import logging
+import time
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
@@ -27,6 +28,7 @@ import httpx
 
 from app.config import settings
 from app.ai.prompt_builder import PromptBuilder
+from app.middleware.observability import log_llm_call
 
 logger = logging.getLogger(__name__)
 
@@ -242,6 +244,7 @@ class ChatAgent:
         api_messages = [{"role": "system", "content": system_prompt}] + messages
 
         for attempt in range(MAX_RETRIES + 1):
+            call_start = time.time()
             try:
                 response = await client.post(
                     api_url,
@@ -255,12 +258,30 @@ class ChatAgent:
                         "messages": api_messages,
                     },
                 )
+                latency_ms = (time.time() - call_start) * 1000
 
                 if response.status_code == 200:
-                    return response.json()
+                    data = response.json()
+                    usage = data.get("usage", {})
+                    log_llm_call(
+                        name=f"chat_{provider_name.lower()}",
+                        model=data.get("model", model),
+                        input_tokens=usage.get("prompt_tokens", 0),
+                        output_tokens=usage.get("completion_tokens", 0),
+                        latency_ms=latency_ms,
+                        success=True,
+                    )
+                    return data
 
                 if response.status_code in RETRYABLE_STATUS_CODES and attempt < MAX_RETRIES:
                     delay = RETRY_DELAY_SECONDS * (attempt + 1)
+                    log_llm_call(
+                        name=f"chat_{provider_name.lower()}",
+                        model=model,
+                        latency_ms=latency_ms,
+                        success=False,
+                        error=f"HTTP {response.status_code} (retry {attempt + 1}/{MAX_RETRIES})",
+                    )
                     logger.warning(
                         "%s API returned %d, retrying in %.1fs (attempt %d/%d)",
                         provider_name, response.status_code, delay, attempt + 1, MAX_RETRIES,
@@ -268,6 +289,13 @@ class ChatAgent:
                     await asyncio.sleep(delay)
                     continue
 
+                log_llm_call(
+                    name=f"chat_{provider_name.lower()}",
+                    model=model,
+                    latency_ms=latency_ms,
+                    success=False,
+                    error=f"HTTP {response.status_code}: {response.text[:200]}",
+                )
                 logger.error(
                     "%s API error %d: %s",
                     provider_name, response.status_code, response.text[:500],
@@ -275,6 +303,14 @@ class ChatAgent:
                 return None
 
             except httpx.RequestError as e:
+                latency_ms = (time.time() - call_start) * 1000
+                log_llm_call(
+                    name=f"chat_{provider_name.lower()}",
+                    model=model,
+                    latency_ms=latency_ms,
+                    success=False,
+                    error=str(e),
+                )
                 if attempt < MAX_RETRIES:
                     delay = RETRY_DELAY_SECONDS * (attempt + 1)
                     logger.warning("%s API request error: %s, retrying in %.1fs", provider_name, e, delay)
@@ -292,6 +328,7 @@ class ChatAgent:
         client = await self._get_client()
 
         for attempt in range(MAX_RETRIES + 1):
+            call_start = time.time()
             try:
                 response = await client.post(
                     CLAUDE_API_URL,
@@ -303,16 +340,40 @@ class ChatAgent:
                     json={
                         "model": settings.claude_model,
                         "max_tokens": settings.claude_max_tokens,
-                        "system": system_prompt,
+                        "system": [
+                            {
+                                "type": "text",
+                                "text": system_prompt,
+                                "cache_control": {"type": "ephemeral"},
+                            }
+                        ],
                         "messages": messages,
                     },
                 )
+                latency_ms = (time.time() - call_start) * 1000
 
                 if response.status_code == 200:
-                    return response.json()
+                    data = response.json()
+                    usage = data.get("usage", {})
+                    log_llm_call(
+                        name="chat_claude",
+                        model=data.get("model", settings.claude_model),
+                        input_tokens=usage.get("input_tokens", 0),
+                        output_tokens=usage.get("output_tokens", 0),
+                        latency_ms=latency_ms,
+                        success=True,
+                    )
+                    return data
 
                 if response.status_code in RETRYABLE_STATUS_CODES and attempt < MAX_RETRIES:
                     delay = RETRY_DELAY_SECONDS * (attempt + 1)
+                    log_llm_call(
+                        name="chat_claude",
+                        model=settings.claude_model,
+                        latency_ms=latency_ms,
+                        success=False,
+                        error=f"HTTP {response.status_code} (retry {attempt + 1}/{MAX_RETRIES})",
+                    )
                     logger.warning(
                         "Claude API returned %d, retrying in %.1fs (attempt %d/%d)",
                         response.status_code, delay, attempt + 1, MAX_RETRIES,
@@ -320,6 +381,13 @@ class ChatAgent:
                     await asyncio.sleep(delay)
                     continue
 
+                log_llm_call(
+                    name="chat_claude",
+                    model=settings.claude_model,
+                    latency_ms=latency_ms,
+                    success=False,
+                    error=f"HTTP {response.status_code}: {response.text[:200]}",
+                )
                 logger.error(
                     "Claude API error %d: %s",
                     response.status_code, response.text[:500],
@@ -327,6 +395,14 @@ class ChatAgent:
                 return None
 
             except httpx.RequestError as e:
+                latency_ms = (time.time() - call_start) * 1000
+                log_llm_call(
+                    name="chat_claude",
+                    model=settings.claude_model,
+                    latency_ms=latency_ms,
+                    success=False,
+                    error=str(e),
+                )
                 if attempt < MAX_RETRIES:
                     delay = RETRY_DELAY_SECONDS * (attempt + 1)
                     logger.warning("Claude API request error: %s, retrying in %.1fs", e, delay)
