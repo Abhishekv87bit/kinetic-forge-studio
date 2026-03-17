@@ -60,9 +60,29 @@ Pin drum encodes 8 training examples:
 
 ---
 
-## 3. The Six Faces
+## 3. The Six Faces & Viewer Experience
 
-The machine is a 600 x 400 x 300mm box. Each face has a distinct purpose.
+The machine is a 600 x 400 x 300mm box on a museum pedestal (~900mm high). Each face has a distinct purpose, designed around how a human approaches, observes, and interacts.
+
+### 3.0 The Viewer Journey
+
+**Stage 1 — APPROACH (3m)**: A golden box on a dark pedestal. Strings catch light inside. Something is moving. Sound: tick...tock...tick...tock...
+
+**Stage 2 — FRONT FACE (1m, eye level)**: The primary display. Top-to-bottom triptych: 42 worm gears (memory) → 42 spiral cams (learning) → 3 error sliders (convergence). Brass plaques label each zone.
+
+**Stage 3 — LEFT FACE (interaction station)**: Three brass word prisms at hand height. A red mode lever. An answer prism at eye level. Brass instruction plaque. The viewer touches the machine here.
+
+**Stage 4 — RIGHT FACE (walk around)**: Pantograph diamonds breathing, shaped cams tracing functions, spring toggles snapping. The computation engine, visible through acrylic.
+
+**Stage 5 — BACK FACE (backstage)**: Motor, barrel cam, pendulum. The engine room — partially hidden, heard more than seen. Raw mechanism, like seeing backstage at a theater.
+
+**Stage 6 — THE STOP**: After ~20 minutes of training, the ticking stops. Silence. The convergence detector has tripped. The machine decided it has learned enough. A brass plaque reads: "WHEN I KNOW ENOUGH, I STOP."
+
+**Stage 7 — PREDICTION**: The viewer pulls the mode lever (CLUNK). Turns the three word prisms. Watches the forward pass ripple through the strings. The answer prism rotates: chunk-chunk-chunk. A word appears.
+
+**Pedestal height**: Box bottom at 900mm. Input prisms at ~1000-1100mm (hand height). Weight matrix at ~1100-1300mm (eye level). Pin drum at ~1360mm (slightly above — the "teacher" looks down). Answer prism at ~1250mm (easy to read).
+
+**Lighting**: LED strips behind frame edges (the only electronics besides the motor). Side-lit brass wire glows gold against the dark PLA frame. Clear acrylic panels become windows into the mechanism.
 
 ### 3.1 FRONT — Weight Matrix (42 Worm Gears)
 
@@ -96,15 +116,24 @@ The machine is a 600 x 400 x 300mm box. Each face has a distinct purpose.
 
 **Spring toggle neuron firing**: Bistable toggle mechanism produces an audible SNAP when a neuron's activation crosses threshold. Binary, decisive, satisfying.
 
-**42 Archimedean spiral cam gradient computers**: Mounted behind the worm gear grid, one per weight. Each spiral cam stores the forward-pass string displacement as an angular position (via ratchet). During the adjoint pass, the backward-traveling string wraps onto the cam at the stored radius. The resulting torque = forward displacement x adjoint displacement = exact gradient. 42 brass spirals catching light at different angles — the most visually striking addition to the machine.
+**42 Archimedean spiral cam gradient computers**: Mounted on the front face BELOW the worm gear grid (not behind it — they must be visible). One per weight. Each spiral cam stores the forward-pass string displacement as an angular position (via ratchet). During the adjoint pass, the backward-traveling string wraps onto the cam at the stored radius. The resulting torque = forward displacement x adjoint displacement = exact gradient. 42 brass spirals catching light at different angles.
+
+**Front face triptych (top to bottom)**: The front face is the primary display, read top-to-bottom like a story:
+- **Top third**: Worm gear weight matrix (THE MEMORY — 42 gears settle into final positions)
+- **Middle third**: Spiral cam gradient array (THE LEARNING — 42 discs oscillate during adjoint pass, shrink as gradients decrease)
+- **Bottom third**: 3 sliding collar differentials on a polished brass plate (THE ERROR — sliders converge toward "ZERO ERROR" as training progresses)
+
+Viewers watch: memory stabilizing, learning diminishing, error vanishing. The machine tells its own story.
 
 ### 3.4 LEFT — I/O Panel (Human Interaction)
 
-**What you see**: Three large brass dials with engraved word labels (3 positions each). A prominent red lever for TRAIN/PREDICT mode. A triangular answer prism that rotates to display the prediction.
+**What you see**: Three brass word prisms (rotating polygon drums) at comfortable hand height. A prominent red lever for TRAIN/PREDICT mode. A matching answer prism above that rotates to show the prediction.
 
-**Input dials**: Each dial connects via string to the one-hot selector mechanism inside. Turn dial to "Cat" → string pulls the [1,0,0] position. Detent clicks at each of 3 positions.
+**Input word prisms**: Each input is a triangular prism (3 rectangular faces for 3 words) mounted on a horizontal axis. The user rotates the prism by hand — it clicks into detent positions (spring-loaded ball detent, one per face). The selected word faces the viewer directly in large engraved text. No pointer, no decoding — you just read the face pointing at you. The prism shaft connects via string to the one-hot selector mechanism inside. Each of the 3 detent positions engages exactly one of three string clamps.
 
-**One-hot gating mechanism**: Each dial position engages exactly one of three string clamps. Active position: clamp releases string, allowing it to transmit weight displacement to the pantograph. Inactive positions: clamp locks string to a fixed anchor, producing exactly zero displacement regardless of worm gear position. Spring-loaded cam followers on the dial shaft actuate the clamps — rotating the dial physically disconnects 2 strings and connects 1. This ensures inactive inputs contribute precisely zero to the pantograph sum (not "less" — zero).
+**Scalability**: For a larger vocabulary, replace triangular prisms with pentagonal (5 words), hexagonal (6), or heptagonal (7). The one-hot encoding expands accordingly — more faces = more input bits = more weights. The POC uses triangular (3 words).
+
+**One-hot gating mechanism**: Each prism detent position engages exactly one of three string clamps. Active position: clamp releases string, allowing it to transmit weight displacement to the pantograph. Inactive positions: clamp locks string to a fixed anchor, producing exactly zero displacement regardless of worm gear position. Spring-loaded cam followers on the prism shaft actuate the clamps — rotating the prism physically disconnects 2 strings and connects 1. This ensures inactive inputs contribute precisely zero to the pantograph sum (not "less" — zero).
 
 **Mode switch — Dog clutch with dual output routing**: Large lever with spring-loaded toggle. CLUNK sound on engagement. The dog clutch is a sliding collar on a horizontal shaft behind the output rods. It has two sets of engagement teeth:
 - **TRAIN position**: Lateral coupling links connect 3 output rods to 3 independent whippletree error beams. Geneva drive disengaged — prism sits still. Motor runs, pin drum feeds, adjoint pass computes gradients, weights update.
@@ -114,7 +143,7 @@ The machine is a 600 x 400 x 300mm box. Each face has a distinct purpose.
 
 **Winner-take-all comparator (PREDICT only)**: A tilting brass comparison beam (120mm) rests on whichever of the 3 output rods is highest. The beam's tilt drives a follower arm into the Geneva drive input disc, indexing the answer prism to the winning face.
 
-**Answer prism — 3-slot Geneva drive**: Triangular prism with 3 faces (one per output word). Geneva drive produces 120-degree indexing — discrete, positive stops. Engages only in PREDICT mode.
+**Answer word prism — 3-slot Geneva drive**: A triangular prism matching the input prisms in form factor — same brass material, same size, same horizontal axis mount. 3 rectangular faces, each engraved with one output word. Geneva drive produces 120-degree indexing — discrete, positive stops (chunk-chunk-chunk). Engages only in PREDICT mode. Mounted above the mode lever at eye level, so the viewer looks straight at the answer. The visual symmetry between input prisms (below, hand height) and answer prism (above, eye level) reinforces the input→output narrative: "I chose these words, the machine predicted this one."
 
 ### 3.5 BACK — Motor & Timing
 
@@ -125,6 +154,14 @@ The machine is a 600 x 400 x 300mm box. Each face has a distinct purpose.
 **Gravity pendulum escapement**: Replaces clock escapement. Weighted arm swings with audible tick-tock, gating the computation into discrete steps. Each swing = one neural operation advancing.
 
 **Shishi-odoshi upgrade**: At end of each training example, a water-hammer style striker produces a resonant TOCK — marking completion. Gravity fills, tips, strikes, resets.
+
+**Convergence auto-stop (mechanical logic)**: The machine knows when it has learned enough and stops itself. Three mechanical AND gate inputs come from the sliding collar differentials: when all 3 error sliders are within a threshold of center, spring-loaded pins (one per slider) drop into threshold notches. When all 3 pins are engaged simultaneously, a mechanical AND condition is met — a common bar drops under spring force, which disengages the motor clutch. Training stops. The pendulum swings to a halt. Silence.
+
+Implementation: Each sliding collar has a V-notch at center position. A spring-loaded pin rides above the slider. When the slider is within the notch width (~2mm = convergence threshold), the pin drops into the notch. Three pins connect to a common trigger bar via short levers. The trigger bar is held up by any pin that hasn't dropped. When all 3 drop: trigger bar falls → trips a lever → disengages the motor drive clutch (same clutch used by the mode switch). The motor continues spinning but the barrel cam stops — the machine goes silent.
+
+**The theater**: Viewers watch error bars converge over 15-20 minutes. Then suddenly — the ticking stops. The machine decided it has learned. The brass plaque next to the convergence detector reads: "WHEN I KNOW ENOUGH, I STOP."
+
+The convergence threshold is adjustable — the V-notch width on each slider can be changed by replacing the notch insert (wider = easier to converge, narrower = more precise).
 
 ### 3.6 BOTTOM — Loss Computation & Gradient Descent
 
@@ -166,12 +203,18 @@ The machine is a 600 x 400 x 300mm box. Each face has a distinct purpose.
 **Over**: Perturbation-based learning (robust but 3x slower), contrastive Hebbian (approximate gradients), digital twin (hybrid, defeats the purpose).
 **Rationale**: Nature 2024 proved it works mechanically. Halves training time. Same 21 strings carry both forward and adjoint signals (Maxwell's reciprocity). Shaped cams compute ReLU derivative for free (flat = 0, ramp = 1). The two-phase breathing cycle (forward wave left-to-right, adjoint wave right-to-left) is more visually dramatic than one-directional flow.
 
-### 4.5 Single Motor
+### 4.5 I/O Form Factor: Rotating Word Prisms (Not Dials)
+
+**Decision**: Triangular brass prisms (3 rectangular faces, horizontal axis) for both input selection and answer display.
+**Over**: Watch-style dials with pointers, LCD displays, printed labels.
+**Rationale**: The selected word IS the face — large, legible, unambiguous. No pointer to decode, no tiny labels to squint at. Input and answer share the same physical vocabulary (both are prisms), reinforcing the input→output narrative. Scales to 5-7 faces for larger vocabulary. Detent clicks provide tactile feedback.
+
+### 4.6 Single Motor
 
 **Decision**: One NEMA 17 stepper drives everything through mechanical sequencing.
 **Rationale**: Project rule. Single motor proves that all complexity emerges from one source of energy — like how neural networks emerge from simple repeated operations.
 
-### 4.6 Materials Palette
+### 4.7 Materials Palette
 
 | Material | Role | Color |
 |----------|------|-------|
@@ -181,7 +224,7 @@ The machine is a 600 x 400 x 300mm box. Each face has a distinct purpose.
 | Steel | Precision (pivots, shafts, ball) | Silver |
 | Red accent | Answers + interaction (prism, lever knob, dial pointers) | Deep red |
 
-### 4.7 Sound Palette (Designed Acoustic Events)
+### 4.8 Sound Palette (Designed Acoustic Events)
 
 | Event | Sound | Mechanism |
 |-------|-------|-----------|
@@ -194,7 +237,8 @@ The machine is a 600 x 400 x 300mm box. Each face has a distinct purpose.
 | Ball release (gradient) | silence → rolling | Brachistochrone track |
 | Answer revealed | chunk-chunk-chunk | Geneva drive indexing |
 | Dial selection | click | Detent mechanism |
-| Full convergence | sustained rolling silence | Loss → near zero, minimal motion |
+| Convergence auto-stop | tick...tock...(silence) | Mechanical AND gate trips motor clutch |
+| Full convergence | sustained silence, stillness | All motion ceases — the machine has learned |
 
 ---
 
@@ -324,8 +368,9 @@ The two-phase cycle creates a visible breathing rhythm: strings tighten left-to-
 | Clamp bar assembly | 4 | 80-200 wide x 12 | Brass jaws, steel cam follower |
 | Sliding collar differential | 3 | 80 rail x 10x8 slider | Brass slider, blued steel spring |
 | Comparison beam (predict) | 1 | 120 x 8 x 4 | Brass |
-| Input dial | 3 | 44dia x 15 | Brass |
-| Answer prism | 1 | 50dia x 40 | Red PLA/resin |
+| Input word prism (triangular) | 3 | 40 face width x 60 long, on horizontal axis | Brass, engraved text |
+| Answer word prism (triangular) | 1 | 40 face width x 60 long, on horizontal axis | Brass, engraved text |
+| Convergence detector (AND gate) | 1 | 3 spring pins + trigger bar, 80mm wide | Steel pins, brass bar |
 | Pin drum | 1 | 70dia x 360 | Brass |
 | Gravity pendulum | 1 | 250 long, 30dia bob | Brass + steel rod |
 | Barrel cam (sequencer) | 1 | 40dia x 180 | Dark brass, 7 groove sections |
