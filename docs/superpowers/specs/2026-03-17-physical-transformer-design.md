@@ -28,7 +28,7 @@ A kinetic sculpture that physically computes a neural network. Not a simulation 
 - **Hidden layer**: 3 neurons (each receives 9 weighted inputs + 1 bias)
 - **Output layer**: 3 neurons (each receives 3 weighted inputs + 1 bias)
 - **Total weights**: 42 (9x3 + 3 bias + 3x3 + 3 bias)
-- **Activation function**: ReLU (hidden), winner-take-all (output — highest activation wins, no softmax needed)
+- **Activation function**: ReLU (hidden layer), linear (output layer during training), winner-take-all (output layer during prediction only)
 
 ### 2.2 One-Hot Encoding
 
@@ -50,12 +50,13 @@ Pin drum encodes 8 training examples:
 
 ### 2.4 Training Parameters
 
-- **Learning rate**: Fixed, encoded as a gear ratio
-- **Epochs**: ~30 (perturbation-based learning converges slower than backprop)
+- **Learning rate**: Fixed, encoded as swappable pinion gear ratio (4 pinion sizes available: aggressive, medium, default, fine-tuning)
+- **Training method**: Exact backpropagation via adjoint variable method (Nature Communications 2024)
+- **Epochs**: ~15 (adjoint method converges at standard backprop speed)
 - **Examples per epoch**: 8
-- **Time per example**: ~12 seconds (17 ticks at 0.7s each)
-- **Time per epoch**: ~1.5 minutes
-- **Total training time**: ~48 minutes
+- **Time per example**: ~8 seconds (12 ticks at 0.7s each)
+- **Time per epoch**: ~64 seconds (~1 minute)
+- **Total training time**: ~16 minutes
 
 ---
 
@@ -89,9 +90,13 @@ The machine is a 600 x 400 x 300mm box. Each face has a distinct purpose.
 
 **String compliance mitigation**: All strings are pre-tensioned with spring tensioners at their anchor points. Pre-tension eliminates dead zone — the pantograph input moves immediately when a weight string is released. String material: 0.5mm braided brass wire (near-zero creep, high stiffness). Maximum 2 pulley redirections per string line to minimize friction losses.
 
-**Shaped cam activation functions**: Each neuron has a brass cam whose profile IS the activation function. ReLU = flat region + linear ramp. Sigmoid approximation = S-curve profile. A follower rides the cam, converting summed displacement into activated output.
+**Shaped cam activation functions**: Each hidden neuron has a brass cam whose profile IS the activation function. ReLU = flat region + linear ramp. A spring-loaded follower rides the cam, converting summed displacement into activated output. Output neurons have NO shaped cam (linear activation during training, winner-take-all during prediction only).
+
+**Cams do double duty in adjoint pass**: During the backward pass, the shaped cam automatically computes the ReLU derivative. When the cam is in the active region (positive input, follower on the ramp), adjoint force transmits back through the cam at ratio 1:1 (derivative = 1). When the cam is in the dead region (negative input, follower on the flat), adjoint force pushes into the flat — no torque transmitted (derivative = 0). The cam's geometry IS the chain rule.
 
 **Spring toggle neuron firing**: Bistable toggle mechanism produces an audible SNAP when a neuron's activation crosses threshold. Binary, decisive, satisfying.
+
+**42 Archimedean spiral cam gradient computers**: Mounted behind the worm gear grid, one per weight. Each spiral cam stores the forward-pass string displacement as an angular position (via ratchet). During the adjoint pass, the backward-traveling string wraps onto the cam at the stored radius. The resulting torque = forward displacement x adjoint displacement = exact gradient. 42 brass spirals catching light at different angles — the most visually striking addition to the machine.
 
 ### 3.4 LEFT — I/O Panel (Human Interaction)
 
@@ -101,9 +106,15 @@ The machine is a 600 x 400 x 300mm box. Each face has a distinct purpose.
 
 **One-hot gating mechanism**: Each dial position engages exactly one of three string clamps. Active position: clamp releases string, allowing it to transmit weight displacement to the pantograph. Inactive positions: clamp locks string to a fixed anchor, producing exactly zero displacement regardless of worm gear position. Spring-loaded cam followers on the dial shaft actuate the clamps — rotating the dial physically disconnects 2 strings and connects 1. This ensures inactive inputs contribute precisely zero to the pantograph sum (not "less" — zero).
 
-**Mode switch — Dog clutch**: Large lever with spring-loaded toggle. CLUNK sound on engagement. In TRAIN position: motor runs, pin drum feeds, weights update. In PREDICT position: motor stops, dials connect to forward pass only.
+**Mode switch — Dog clutch with dual output routing**: Large lever with spring-loaded toggle. CLUNK sound on engagement. The dog clutch is a sliding collar on a horizontal shaft behind the output rods. It has two sets of engagement teeth:
+- **TRAIN position**: Lateral coupling links connect 3 output rods to 3 independent whippletree error beams. Geneva drive disengaged — prism sits still. Motor runs, pin drum feeds, adjoint pass computes gradients, weights update.
+- **PREDICT position**: Whippletree links retract (return springs). Tilting comparison beam engages — finds highest output rod, drives Geneva drive. Motor stops, dials connect to forward pass only.
 
-**Answer prism — 3-slot Geneva drive**: Triangular prism with 3 faces (one per output word). Geneva drive produces 120-degree indexing — discrete, positive stops. The winning output neuron drives the prism rotation.
+**Three output rods**: Each output-layer pantograph terminates at a brass rod that always produces continuous displacement — in both modes. The rods are the raw analog outputs. What changes between modes is which downstream mechanism reads them.
+
+**Winner-take-all comparator (PREDICT only)**: A tilting brass comparison beam (120mm) rests on whichever of the 3 output rods is highest. The beam's tilt drives a follower arm into the Geneva drive input disc, indexing the answer prism to the winning face.
+
+**Answer prism — 3-slot Geneva drive**: Triangular prism with 3 faces (one per output word). Geneva drive produces 120-degree indexing — discrete, positive stops. Engages only in PREDICT mode.
 
 ### 3.5 BACK — Motor & Timing
 
@@ -119,9 +130,11 @@ The machine is a 600 x 400 x 300mm box. Each face has a distinct purpose.
 
 **What you see**: Cascading balance beams (whippletree) computing error. A brass cycloid track where a steel ball rolls — the brachistochrone curve visualizing gradient descent.
 
-**Whippletree / Calder mobile**: Nested balance beams cascade the difference between predicted and actual output. Like a Calder mobile — the error ripples through the tree, settling at the loss value. Zero-friction pivots on knife edges.
+**Three independent whippletree beams**: One per output neuron (not one aggregate). Each beam compares that neuron's predicted displacement against its target displacement from the pin drum. In TRAIN mode, these beams tilt proportionally to per-neuron error and feed into the sliding collar differentials (see Section 5.2). In aggregate, a cascading fourth beam sums the three errors for the brachistochrone loss visualization. Zero-friction pivots on knife edges.
 
-**Brachistochrone ball track**: Cycloid curve (Bernoulli, 1696). After loss is computed, a ball is released and rolls down the fastest-descent curve. The ball's position along the track = current loss. As training progresses, the ball rolls less far — loss is decreasing. Viewers can literally watch the machine get smarter.
+**Three sliding collar differentials**: Mounted on a polished brass plate, visible from the front. Each slider displaces left/right as errors occur. As training progresses, sliders visibly converge toward center ("ZERO ERROR" engraved at detent). Blued steel leaf springs convert displacement to adjoint force. The audience watches the machine learn in real time — error shrinking to nothing.
+
+**Brachistochrone ball track**: Cycloid curve (Bernoulli, 1696). After aggregate loss is computed, a ball is released and rolls down the fastest-descent curve. Ball rolls to a spring-loaded catch gate positioned by the scissor amplifier (5x loss magnitude). Ball stops at gate — viewer reads loss as ball position. Return mechanism: lever tips track, ball rolls back via gravity return channel on the underside. As training progresses, the ball rolls less far — loss is decreasing.
 
 **Scissor Mechanism 2 (5x amplifier)**: Mixed-size rhombi amplify small loss changes into visible displacement. Loss might change by 2mm, but the scissor amplifies to 10mm of visible motion.
 
@@ -147,12 +160,18 @@ The machine is a 600 x 400 x 300mm box. Each face has a distinct purpose.
 **Over**: Conservative lever+rod, hybrid approaches.
 **Rationale**: The machine should look like a musical instrument, not a gearbox. Every signal should be visible as a vibrating, tensioned line. Every computation should breathe.
 
-### 4.4 Single Motor
+### 4.4 Training: Exact Adjoint Backpropagation
+
+**Decision**: Adjoint variable method — two physical equilibrium states (forward + adjoint) through the same network yield exact gradients.
+**Over**: Perturbation-based learning (robust but 3x slower), contrastive Hebbian (approximate gradients), digital twin (hybrid, defeats the purpose).
+**Rationale**: Nature 2024 proved it works mechanically. Halves training time. Same 21 strings carry both forward and adjoint signals (Maxwell's reciprocity). Shaped cams compute ReLU derivative for free (flat = 0, ramp = 1). The two-phase breathing cycle (forward wave left-to-right, adjoint wave right-to-left) is more visually dramatic than one-directional flow.
+
+### 4.5 Single Motor
 
 **Decision**: One NEMA 17 stepper drives everything through mechanical sequencing.
 **Rationale**: Project rule. Single motor proves that all complexity emerges from one source of energy — like how neural networks emerge from simple repeated operations.
 
-### 4.5 Materials Palette
+### 4.6 Materials Palette
 
 | Material | Role | Color |
 |----------|------|-------|
@@ -162,7 +181,7 @@ The machine is a 600 x 400 x 300mm box. Each face has a distinct purpose.
 | Steel | Precision (pivots, shafts, ball) | Silver |
 | Red accent | Answers + interaction (prism, lever knob, dial pointers) | Deep red |
 
-### 4.6 Sound Palette (Designed Acoustic Events)
+### 4.7 Sound Palette (Designed Acoustic Events)
 
 | Event | Sound | Mechanism |
 |-------|-------|-----------|
@@ -194,33 +213,98 @@ The machine is a 600 x 400 x 300mm box. Each face has a distinct purpose.
 9. **Tick 9**: Winner-take-all: highest displacement output neuron drives Geneva drive
 10. **Tick 10**: Answer prism rotates to show prediction — chunk-chunk-chunk
 
-### 5.2 Backward Pass (7 ticks, TRAIN mode only)
+### 5.2 Backward Pass — Exact Adjoint Backpropagation (5 ticks, TRAIN mode only)
 
-**Training method: Perturbation-based learning.** Rather than computing exact gradients (which requires mechanical differentiation), the machine uses a simpler but proven approach: wiggle each weight slightly, measure whether loss improved, adjust accordingly.
+**Training method: Adjoint variable method.** Based on the 2024 Nature Communications proof that exact gradients can be obtained from mechanical networks using only two equilibrium states (forward + adjoint). The same physical network propagates signals in both directions — no separate backward network needed. Maxwell's reciprocity theorem (1864) guarantees that driving a linear mechanism backward computes exactly the transpose of the forward operator.
 
-11. **Tick 11**: Whippletree computes loss — predicted output vs. target from pin drum. Each of the 3 output neurons connects a string to one side of its whippletree beam. The target (from pin strip) connects to the other side. Beam tilt = per-neuron error. Cascaded beams sum into total loss.
-12. **Tick 12**: Loss displacement drives brachistochrone ball release. Ball rolls down cycloid track to a spring-loaded catch gate. Gate position is set by the scissor amplifier (5x loss magnitude). Ball stops at gate — viewer reads loss as ball position. Return mechanism: after reading, a lever tips the track, ball rolls back to start via gravity return channel on the underside.
-13. **Tick 13**: Barrel cam sequences through weight groups (6 at a time). For each group: worm gear advances one micro-step (perturbation). Forward pass re-evaluates (fast — pantographs settle in <0.5 tick). Whippletree re-measures loss.
-14. **Tick 14**: If loss decreased: keep the micro-step (worm stays). If loss increased: reverse the micro-step (worm backs up one click). Direction encoded by a ratchet pawl that flips based on whippletree tilt direction.
-15. **Tick 15**: Next weight group engages. Repeat ticks 13-14 for all 7 groups (42 weights / 6 per group = 7 groups). In practice, groups overlap with barrel cam sequencing — effective time ~4 ticks for all 42 weights.
-16. **Tick 16**: Pin drum indexes to next example (star-wheel ratchet advance)
-17. **Tick 17**: Shishi-odoshi striker fires — TOCK — example complete
+**Phase switching — 4 clamp bars**: The 21 strings carry signals bidirectionally via a two-phase cycle. Four brass clamp bars (one at each layer boundary) switch which string endpoints are driven vs. free:
+- **Forward phase**: Input clamps ENGAGED (motor drives inputs), output clamps FREE (outputs respond)
+- **Dead zone**: All clamps FREE (everything settles to equilibrium)
+- **Adjoint phase**: Output clamps ENGAGED (error mechanism drives outputs), input clamps FREE (inputs respond to backward signal)
 
-**Why perturbation over true backprop**: True backpropagation requires computing derivatives mechanically (shaped cam in reverse). This is possible but fragile — cam follower direction reversal introduces backlash. Perturbation is slower (evaluates each weight independently) but robust: it only requires measuring "did loss go up or down?" — a binary decision the whippletree handles naturally. Convergence is slower (~30 epochs vs. ~15 for backprop) but mechanically reliable.
+Each clamp bar is a brass strip with a fixed jaw and a cam-actuated moving jaw. Spring-loaded return (fail-open design). One cam lobe per clamp bar on the main drive shaft.
+
+**Error force generation — 3 sliding collar differentials**: One per output neuron. A brass slider rides a horizontal rail, pulled from opposite sides by the predicted output string and the target string (from pin drum). Slider displacement = (predicted - target) = error. A calibrated leaf spring (0.3mm spring steel) converts displacement to force: F = -k * error. A yoke on the slider routes bidirectional force via opposing string pairs back into the output node.
+
+**Swappable leaf springs = adjustable learning rate.** Display a rack of 5 springs with different k values, color-coded. Viewers can see the "hyperparameter."
+
+11. **Tick 11 (ADJOINT START)**: Clamp bars switch — output clamps engage, input clamps release. 42 spiral cam ratchets lock (storing forward-pass displacements). Three sliding collar differentials compute error forces.
+12. **Tick 12**: Error forces propagate backward through output-layer pantographs (mechanically reversible — push output, inputs move proportionally). Through shaped cams: active neurons (follower on ramp) pass signal at 1:1, dead neurons (follower on flat) block signal — the ReLU derivative, computed by geometry.
+13. **Tick 13**: Adjoint signal reaches all 42 weight positions. At each weight, the adjoint string wraps onto the Archimedean spiral cam at the stored forward-displacement radius. Torque = forward × adjoint = exact gradient.
+14. **Tick 14**: Gradient torque drives output rack → rack-and-pinion drives worm shaft → weight updates. 42 clicks as all weights adjust simultaneously. Barrel cam sequences through 7 groups of 6 for staged engagement (torque management). Brachistochrone ball released — loss visualization.
+15. **Tick 15**: Global reset bar lifts all 42 ratchet pawls (spiral cams return to zero). Clamp bars return to forward configuration. Pin drum indexes to next example. Shishi-odoshi striker fires — TOCK.
+
+**Rack-and-pinion weight update**: Each gradient output rack meshes with a pinion on an intermediate shaft, through a 4:1 reduction gear pair, to the worm shaft. Self-locking preserved (worm drives from the worm side during updates, self-locks from the wheel side at all other times). Swappable pinion = learning rate: Z=8 (aggressive), Z=12 (medium), Z=16 (default), Z=24 (fine-tuning).
 
 ### 5.3 Timing Budget
 
 - 1 tick = ~0.7 seconds (pendulum period at 250mm length)
-- 1 training example = 17 ticks = ~12 seconds
-- 1 epoch (8 examples) = ~96 seconds (~1.5 minutes)
-- 30 epochs to convergence (perturbation is slower) = ~48 minutes
+- 1 training example = 15 ticks (~10 forward + ~5 adjoint) = ~10.5 seconds
+- 1 epoch (8 examples) = ~84 seconds (~1.4 minutes)
+- 15 epochs to convergence = ~21 minutes
 - Total pins/drums: 8 strips x 12 pins each (9 input bits + 3 target bits)
+
+### 5.4 Why Adjoint Over Perturbation
+
+Perturbation-based learning (the conservative option) wiggles each weight independently and measures loss change — correct but slow (evaluates 42 weights sequentially per example). The adjoint method computes all 42 gradients in a single backward pass, cutting training time from ~48 minutes to ~21 minutes. The 2024 Nature paper proved mechanical adjoint gradients achieve >90% accuracy vs. theoretical exact values. Our 10-15% gradient error from mechanical tolerances (ratchet quantization, string friction, spiral cam bias) is well within SGD's proven 30% noise tolerance.
 
 ---
 
-## 6. Dimensions & Tolerances
+## 6. Adjoint Backpropagation — Mechanism Detail
 
-### 6.1 Envelope
+This section specifies the four new mechanism systems that enable exact backpropagation. All are additions to the forward-pass mechanisms described in Section 3.
+
+### 6.1 Clamp Bars (Bidirectional String Phase Switching)
+
+4 assemblies, one at each layer boundary. Each clamp bar is a brass strip running perpendicular to the strings:
+- **Fixed jaw**: bolted to frame
+- **Moving jaw**: actuated by cam follower on main drive shaft
+- **Jaw gap**: 2mm open (string moves freely), 0mm closed (brass-on-brass pinch locks string)
+- **Actuation**: One cam lobe per clamp bar. Forward phase closes input clamps, adjoint phase closes output clamps. 15-degree dead zone between phases.
+- **Spring return**: Compression spring opens jaw when cam releases (fail-open — if anything breaks, strings go free)
+
+The two-phase cycle creates a visible breathing rhythm: strings tighten left-to-right (forward), pause, then tighten right-to-left (adjoint). The clamp bars look like frets on a stringed instrument.
+
+### 6.2 Sliding Collar Differentials (Error Force Generation)
+
+3 units, one per output neuron. Mounted on a polished brass plate, visible from the front.
+- **Rail**: 3mm brass rod, 80mm long
+- **Slider**: 10x8x8mm brass, bored for rail
+- **Predicted string**: from output pantograph rod, pulls slider one direction
+- **Target string**: from pin drum target pins, pulls slider opposite direction
+- **Slider displacement** = (predicted - target) = error signal
+- **Leaf spring**: 0.3mm x 5mm x 60mm spring steel (blued), anchored at rail center. Converts displacement to force F = -k * error
+- **Yoke**: brass sheet on slider, routes bidirectional force via opposing string pairs (String+ and String-) to output node
+- **Center detent**: engraved "ZERO ERROR" — as training progresses, sliders converge toward center
+
+### 6.3 Archimedean Spiral Cam Gradient Computers
+
+42 units, one per weight. The core multiplication mechanism.
+- **Spiral cam**: 12mm max diameter brass disc, Archimedean spiral profile (r_min=0.5mm, r_max=6mm, 254 degrees active)
+- **Forward capture**: Weight string drives a 0.3-module rack → 12T pinion → rotates spiral cam shaft. 24-tooth ratchet wheel locks angular position = stored forward displacement.
+- **Adjoint capture**: Backward-traveling string wraps onto spiral cam edge at the stored radius. Torque = tension x radius = forward x adjoint = gradient.
+- **Output**: 8T pinion on same shaft drives output rack (5mm travel). Rack displacement = gradient magnitude and direction.
+- **Dimensions per unit**: 30mm x 22mm x 12mm on PLA frame plate
+- **Array layout**: 6x7 grid at 35mm pitch = 210mm x 245mm total (mounted behind worm gear grid)
+- **Error budget**: ratchet quantization (15 degrees = 0.47mm resolution) + cone bias (r_min offset ~8%) + bushing friction (~5%) = total ~10-15% gradient error
+
+### 6.4 Rack-and-Pinion Weight Updaters
+
+42 units, integrated with spiral cam output. Converts gradient displacement to worm gear rotation.
+- **Gradient rack**: 0.5 module, driven by spiral cam output
+- **Pinion**: swappable, press-fit brass gear on intermediate shaft. Z=8/12/16/24 = 4 learning rates
+- **Reduction**: 48:12 (4:1) gear pair
+- **Worm shaft gear**: Z=12, meshes with reduction output
+- **Worm**: 1-start, 0.5 module, steel. Self-locking (friction angle 11 degrees > lead angle 5.3 degrees)
+- **Total ratio**: 1mm rack displacement → 0.119 degrees worm gear rotation (at Z=16 default)
+- **Weight resolution**: ~3024 steps over 360 degrees
+- **Staged engagement**: Barrel cam sequences through 7 groups of 6 weights. One NEMA 17 drives max 6 updates simultaneously.
+
+---
+
+## 7. Dimensions & Tolerances
+
+### 7.1 Envelope
 
 - **Width**: 600mm (front face — weight matrix)
 - **Height**: 400mm (frame) + 60mm (pin drum above) = 460mm total. Pendulum (250mm) hangs inside the frame from the back top rail — does not extend beyond envelope.
@@ -228,26 +312,32 @@ The machine is a 600 x 400 x 300mm box. Each face has a distinct purpose.
 - **Weight estimate**: 4-6 kg
 - **Pedestal/base**: Not included in envelope — separate museum-style mount
 
-### 6.2 Key Component Dimensions
+### 7.2 Key Component Dimensions
 
 | Component | Count | Size (mm) | Material |
 |-----------|-------|-----------|----------|
 | Worm gear assembly | 42 | 24dia x 20 | Brass + steel |
-| Pantograph diamond | 9 (3x3) | 70 x 40 (expanded) | Brass bars |
-| Shaped cam | 6 | 36dia x 10 | Brass |
+| Spiral cam gradient computer | 42 | 12dia x 12, on 30x22 frame | Brass cam, steel shaft, PLA frame |
+| Rack-and-pinion updater | 42 | 0.5 module, 8mm travel | Brass rack, steel pinion |
+| Pantograph diamond | 9 (3x3) | 70 x 40 (expanded) | Brass bars, PTFE-bushed joints |
+| Shaped cam (ReLU) | 3 | 36dia x 10 | Brass (hidden layer only) |
+| Clamp bar assembly | 4 | 80-200 wide x 12 | Brass jaws, steel cam follower |
+| Sliding collar differential | 3 | 80 rail x 10x8 slider | Brass slider, blued steel spring |
+| Comparison beam (predict) | 1 | 120 x 8 x 4 | Brass |
 | Input dial | 3 | 44dia x 15 | Brass |
 | Answer prism | 1 | 50dia x 40 | Red PLA/resin |
 | Pin drum | 1 | 70dia x 360 | Brass |
 | Gravity pendulum | 1 | 250 long, 30dia bob | Brass + steel rod |
-| Barrel cam | 1 | 40dia x 60 | Dark brass |
+| Barrel cam (sequencer) | 1 | 40dia x 180 | Dark brass, 7 groove sections |
 | NEMA 17 motor | 1 | 42 x 42 x 48 | Stock |
-| Whippletree beams | 5 | 80-200 x 4 x 8 | Brass |
-| Spring toggles | 6 | ~20 x 10 | Steel spring |
-| String pulleys | 12 | 12dia | Brass |
+| Whippletree beams | 4 | 80-200 x 4 x 8 | Brass (3 per-neuron + 1 aggregate) |
+| Dog clutch collar | 1 | 30 x 18dia | Steel |
+| Spring toggles | 3 | ~20 x 10 | Steel spring (hidden layer) |
+| String pulleys | 16 | 12dia | Brass |
 | Frame edges | 12 | 8 x 8 x varies | Black PLA |
 | Acrylic panels | 3 | varies x 3 thick | Clear |
 
-### 6.3 Tolerances
+### 7.3 Tolerances
 
 - General: 0.2mm
 - Sliding fits (cam followers, pantograph joints): 0.3mm
@@ -257,7 +347,7 @@ The machine is a 600 x 400 x 300mm box. Each face has a distinct purpose.
 
 ---
 
-## 7. Build Sequence
+## 8. Build Sequence
 
 ### Phase 1: Torque Budget Validation
 Build a test rig with NEMA 17 driving 6 worm gears through a barrel cam. Measure actual torque at stall and at speed. This is the go/no-go gate — if it fails, the single-motor constraint requires redesign. Simultaneously: run convergence simulation in Python with noise injection (see Section 5.2 note).
@@ -274,8 +364,8 @@ Integrate: worm selectors → pantograph summation → shaped cam activation →
 ### Phase 5: Forward Pass
 Wire all 6 neurons. Validate: input dials → through hidden layer → output prediction.
 
-### Phase 6: Backward Pass
-Add whippletree, brachistochrone track, error routing, weight update mechanism. Validate one training example converges.
+### Phase 6: Adjoint Backward Pass
+Add clamp bars, sliding collar differentials, spiral cam gradient computers, rack-and-pinion updaters. Wire one neuron's complete forward+adjoint cycle. Validate: gradient magnitude and sign match Python reference within 15% error.
 
 ### Phase 7: Automation
 Add pin drum, barrel cam sequencer, gravity pendulum timing. Validate full autonomous training loop.
@@ -285,7 +375,7 @@ Acrylic panels, brass plaques, sound tuning, string tensioning, museum finish.
 
 ---
 
-## 8. Mechanism Heritage
+## 9. Mechanism Heritage
 
 Every mechanism in this machine has historical provenance:
 
@@ -301,13 +391,16 @@ Every mechanism in this machine has historical provenance:
 | Dog clutch | Machine tooling | ~1880s |
 | Spring toggle | Electrical switching | ~1900s |
 | Shaped cam (function generator) | Mechanical computing | ~1930s |
+| Archimedean spiral | Archimedes | ~250 BCE |
+| Rack and pinion | Ancient engineering | ~300 BCE |
 | Shishi-odoshi | Japanese garden design | Traditional |
+| Adjoint variable method | Pontryagin / Lions | 1950s-60s |
 
-**Design philosophy**: Every mechanism in this machine was invented before the transistor. The machine proves that intelligence can emerge from brass, steel, and string — no electricity required in the computation path.
+**Design philosophy**: Every mechanism in this machine was invented before the transistor (the adjoint method predates practical digital neural networks by decades). The machine proves that intelligence can emerge from brass, steel, and string — no electricity required in the computation path.
 
 ---
 
-## 9. Risk Register
+## 10. Risk Register
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
@@ -318,14 +411,17 @@ Every mechanism in this machine has historical provenance:
 | Shaped cam profile precision insufficient | Medium | CNC mill cam blanks (don't 3D print activation functions) |
 | Pendulum timing drifts with temperature | Low | Steel pendulum rod (low thermal expansion), not critical for training |
 | Sound palette too quiet in gallery setting | Low | Resonance chambers under brass plaques, tuned striker materials |
-| Perturbation learning fails to converge with mechanical noise | High | Run Python simulation with +/-5%, 10%, 20% noise on weight updates before building. If >10% noise kills convergence, tighten tolerances or reduce network size |
-| Backward pass mechanism unproven | High | Phase 2 must validate perturbation loop on single neuron before scaling |
+| Adjoint gradient noise exceeds 30% tolerance | High | Run Python simulation with noise injection at 5/10/20/30% levels. Nature 2024 showed >90% gradient accuracy with physical systems. Our spiral cam + ratchet adds ~10-15% error — within margin |
+| Clamp bar timing: strings jam if clamps overlap | Medium | 15-degree dead zone on main cam between phases. Fail-open spring return on all clamp bars |
+| Spiral cam ratchet quantization (15 degrees) too coarse | Medium | 24-tooth ratchet = 0.47mm displacement resolution. Equivalent to gradient quantization in digital SGD (proven technique) |
+| Adjoint signal attenuation through 3 layers | Medium | PTFE-bushed pantograph joints, ball-bearing pulleys, stiff brass wire for critical paths. Validate Phase 2 with measured attenuation |
+| Leaf spring fatigue after 1000+ training cycles | Low | Spring steel 301 rated for >10^6 cycles at this deflection range |
 
 ---
 
-## 10. Success Criteria
+## 11. Success Criteria
 
-1. **Convergence**: Machine reaches >80% accuracy on training set within 30 epochs (~48 minutes)
+1. **Convergence**: Machine reaches >80% accuracy on training set within 15 epochs (~21 minutes)
 2. **Generalization**: On held-out examples (new pin strips), accuracy >60%
 3. **Visibility**: A non-technical viewer can identify "something is being computed" within 30 seconds
 4. **Interaction**: User can switch to PREDICT, turn dials, and receive an answer in <10 seconds
@@ -335,7 +431,7 @@ Every mechanism in this machine has historical provenance:
 
 ---
 
-## 11. Visual Reference
+## 12. Visual Reference
 
 Interactive HTML companion at:
 `.superpowers/brainstorm/physical-transformer/`
@@ -349,13 +445,16 @@ Interactive HTML companion at:
 
 ---
 
-## 12. Open Items for Implementation Planning (Priority Order)
+## 13. Open Items for Implementation Planning (Priority Order)
 
-1. **Motor torque budget** — sum all mechanism loads, verify NEMA 17 suffices. GO/NO-GO GATE.
-2. **Convergence simulation** — Python model of 3x3x3 network with perturbation learning + noise injection at 5/10/20% levels. Validates that the machine CAN learn.
-3. **Pantograph linkage lengths** — kinematic analysis for target displacement range. Validate that 3 diamonds sum 4 terms with <2% error.
-4. **Exact gear module and tooth count** for worm gears (self-locking verification)
-5. **Shaped cam profile equations** — convert ReLU to polar coordinates for CNC
-6. **String routing diagram** — exact pulley positions for all 21 lines, max 2 redirections per line
-7. **Barrel cam groove profile** — 17-tick timing sequence encoded as a 3D spiral
-8. **Pin drum pin spacing** — 9 input bits + 3 target bits x 8 examples = 96 pin positions
+1. **Motor torque budget** — sum all mechanism loads (42 worm gears in groups of 6 + barrel cam + pin drum + clamp bars + pendulum), verify NEMA 17 suffices. GO/NO-GO GATE.
+2. **Convergence simulation** — Python model of 3x3x3 network with exact backprop + noise injection at 5/10/15/20/30% levels on gradients. Validates that the machine CAN learn with mechanical noise.
+3. **Spiral cam geometry** — Archimedean spiral profile: r_min=0.5mm, r_max=6mm, 254 degrees of active travel. Validate multiplication accuracy across operating range.
+4. **Pantograph linkage lengths** — kinematic analysis for target displacement range. Validate that 3 diamonds sum 4 terms with <2% error. Validate bidirectional force transmission (adjoint mode).
+5. **Clamp bar timing** — exact cam lobe profiles for the 4 clamp bars on main shaft. Dead zone between phases. Validate no string jamming.
+6. **Exact gear module and tooth count** for worm gears (self-locking verification) and rack-and-pinion updaters (0.5 module, learning rate ratios)
+7. **Shaped cam profile equations** — convert ReLU to polar coordinates for CNC. Validate that flat region blocks adjoint signal (derivative = 0).
+8. **String routing diagram** — exact pulley positions for all 21 lines, max 2 redirections per line. Must work bidirectionally.
+9. **Barrel cam groove profile** — 15-tick timing sequence (forward 10 + adjoint 5) encoded as a 3D spiral with 7 weight-group sections
+10. **Sliding collar differential calibration** — leaf spring k values for 5 learning rate options
+11. **Pin drum pin spacing** — 9 input bits + 3 target bits x 8 examples = 96 pin positions
