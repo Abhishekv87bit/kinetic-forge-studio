@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Section 3: Mechanism Details — The Physical Transformer</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0a0a0f; color: #e0e0e0; line-height: 1.7; }
+  .header { text-align: center; padding: 30px 20px 15px; border-bottom: 1px solid #1a1a2e; }
+  .header h1 { font-size: 1.8em; font-weight: 300; letter-spacing: 0.15em; color: #c9a84c; }
+  .header .sub { color: #666; font-size: 0.9em; margin-top: 4px; }
+  .nav { display: flex; justify-content: center; gap: 4px; padding: 15px; flex-wrap: wrap; border-bottom: 1px solid #0f0f1a; }
+  .nav a { color: #555; text-decoration: none; padding: 6px 14px; border: 1px solid #1a1a2e; border-radius: 4px; font-size: 0.8em; transition: all 0.3s; }
+  .nav a:hover { color: #c9a84c; border-color: #c9a84c; }
+  .nav a.active { color: #c9a84c; border-color: #c9a84c; background: rgba(201,168,76,0.08); }
+  .content { max-width: 1200px; margin: 0 auto; padding: 30px; }
+  .section-title { font-size: 1.4em; color: #c9a84c; font-weight: 300; letter-spacing: 0.08em; margin: 40px 0 20px; padding-bottom: 8px; border-bottom: 1px solid #1a1a2e; }
+
+  /* Mechanism detail cards */
+  .mech-card {
+    background: #0d0d15;
+    border: 1px solid #1a1a2e;
+    border-radius: 12px;
+    margin: 25px 0;
+    overflow: hidden;
+    transition: border-color 0.3s;
+  }
+  .mech-card:hover { border-color: #2a2a3e; }
+  .mech-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 20px 24px;
+    border-bottom: 1px solid #1a1a2e;
+  }
+  .mech-number {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 600; font-size: 1.1em;
+    flex-shrink: 0;
+  }
+  .mech-header h3 { font-size: 1.15em; font-weight: 500; }
+  .mech-header .neural-op { color: #888; font-size: 0.85em; }
+  .mech-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+  }
+  .mech-diagram {
+    padding: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-right: 1px solid #1a1a2e;
+    min-height: 250px;
+  }
+  .mech-details {
+    padding: 24px;
+  }
+  .mech-details h4 {
+    color: #c9a84c;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin: 16px 0 8px;
+  }
+  .mech-details h4:first-child { margin-top: 0; }
+  .mech-details p { color: #bbb; font-size: 0.92em; margin-bottom: 8px; }
+  .mech-details ul { color: #999; font-size: 0.88em; padding-left: 16px; }
+  .mech-details li { margin-bottom: 4px; }
+  .mech-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 0.75em;
+    margin: 2px;
+    font-weight: 500;
+  }
+  .tag-reuleaux { background: rgba(160,124,197,0.2); color: #a07cc5; }
+  .tag-margolin { background: rgba(201,168,76,0.2); color: #c9a84c; }
+  .tag-original { background: rgba(92,160,108,0.2); color: #5ca06c; }
+
+  .motion-desc {
+    background: rgba(201,168,76,0.05);
+    border-left: 2px solid #c9a84c;
+    padding: 10px 14px;
+    margin: 10px 0;
+    font-size: 0.88em;
+    color: #ccc;
+    font-style: italic;
+  }
+
+  @media (max-width: 768px) {
+    .mech-body { grid-template-columns: 1fr; }
+    .mech-diagram { border-right: none; border-bottom: 1px solid #1a1a2e; min-height: 200px; }
+  }
+
+  .footer-nav { display: flex; justify-content: space-between; padding: 30px 0; margin-top: 40px; border-top: 1px solid #1a1a2e; }
+  .footer-nav a { color: #c9a84c; text-decoration: none; font-size: 0.9em; padding: 8px 16px; border: 1px solid #c9a84c; border-radius: 4px; transition: all 0.3s; }
+  .footer-nav a:hover { background: rgba(201,168,76,0.1); }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>THE PHYSICAL TRANSFORMER</h1>
+    <div class="sub">Section 3 of 5 &mdash; Mechanism Details</div>
+  </div>
+  <div class="nav">
+    <a href="01-architecture.html">1. Architecture</a>
+    <a href="02-network.html">2. Neural Network</a>
+    <a href="03-mechanisms.html" class="active">3. Mechanisms</a>
+    <a href="04-signal-flow.html">4. Signal Flow</a>
+    <a href="05-dimensions.html">5. Dimensions</a>
+  </div>
+
+  <div class="content">
+
+    <!-- ============ MECHANISM 1: WEIGHTED ARCHIMEDES LEVER ============ -->
+    <div class="mech-card">
+      <div class="mech-header">
+        <div class="mech-number" style="background:rgba(160,124,197,0.2); color:#a07cc5;">1</div>
+        <div>
+          <h3 style="color:#a07cc5;">The Weighted Archimedes Lever</h3>
+          <div class="neural-op">Neural operation: Weighted Sum + Backpropagation</div>
+        </div>
+      </div>
+      <div class="mech-body">
+        <div class="mech-diagram">
+          <svg viewBox="0 0 400 240" width="100%">
+            <!-- The beam -->
+            <line x1="30" y1="100" x2="370" y2="100" stroke="#a07cc5" stroke-width="3"/>
+
+            <!-- Fulcrum triangle (center pivot) -->
+            <polygon points="200,100 190,125 210,125" fill="#a07cc5" opacity="0.4"/>
+
+            <!-- Sliding weights (pivot blocks) shown as brass rectangles -->
+            <g transform="translate(80, 85)">
+              <rect width="20" height="12" fill="#c9a84c" rx="2" opacity="0.8"/>
+              <text x="10" y="28" text-anchor="middle" fill="#888" font-size="8">w1</text>
+              <line x1="10" y1="12" x2="10" y2="20" stroke="#888" stroke-width="0.5" stroke-dasharray="2,2"/>
+            </g>
+            <g transform="translate(130, 85)">
+              <rect width="20" height="12" fill="#c9a84c" rx="2" opacity="0.8"/>
+              <text x="10" y="28" text-anchor="middle" fill="#888" font-size="8">w2</text>
+            </g>
+            <g transform="translate(240, 85)">
+              <rect width="20" height="12" fill="#c9a84c" rx="2" opacity="0.8"/>
+              <text x="10" y="28" text-anchor="middle" fill="#888" font-size="8">w3</text>
+            </g>
+            <g transform="translate(310, 85)">
+              <rect width="20" height="12" fill="#c9a84c" rx="2" opacity="0.8"/>
+              <text x="10" y="28" text-anchor="middle" fill="#888" font-size="8">w4</text>
+            </g>
+
+            <!-- Input connections (brass rods from below, pushing up) -->
+            <g stroke="#7eb8da" stroke-width="1.5" opacity="0.6">
+              <line x1="90" y1="140" x2="90" y2="100"/>
+              <line x1="140" y1="140" x2="140" y2="100"/>
+              <line x1="250" y1="140" x2="250" y2="100"/>
+              <line x1="320" y1="140" x2="320" y2="100"/>
+            </g>
+            <!-- Input labels -->
+            <text x="90" y="155" text-anchor="middle" fill="#7eb8da" font-size="8">i1 (active)</text>
+            <text x="140" y="155" text-anchor="middle" fill="#555" font-size="8">i2 (off)</text>
+            <text x="250" y="155" text-anchor="middle" fill="#7eb8da" font-size="8">i5 (active)</text>
+            <text x="320" y="155" text-anchor="middle" fill="#555" font-size="8">i7 (off)</text>
+
+            <!-- Active input indicators -->
+            <circle cx="90" cy="140" r="4" fill="#7eb8da" opacity="0.6"/>
+            <circle cx="250" cy="140" r="4" fill="#7eb8da" opacity="0.6"/>
+
+            <!-- Output: beam tip displacement -->
+            <g>
+              <line x1="370" y1="100" x2="370" y2="60" stroke="#5ca06c" stroke-width="1.5" stroke-dasharray="3,3" opacity="0.5"/>
+              <text x="385" y="80" fill="#5ca06c" font-size="9">output</text>
+              <path d="M365,68 L370,58 L375,68" fill="none" stroke="#5ca06c" stroke-width="1.5" opacity="0.5"/>
+            </g>
+
+            <!-- Annotation: worm gear connection -->
+            <text x="80" y="75" fill="#c9a84c" font-size="8" opacity="0.7">worm gears position these blocks &darr;</text>
+
+            <!-- Forward/Backward labels -->
+            <text x="50" y="190" fill="#7eb8da" font-size="10" font-weight="500">FORWARD &rarr;</text>
+            <text x="50" y="205" fill="#555" font-size="8">inputs push rods up at active positions</text>
+            <text x="250" y="190" fill="#da7e7e" font-size="10" font-weight="500">&larr; BACKWARD</text>
+            <text x="250" y="205" fill="#555" font-size="8">error pushes beam tip, force propagates back</text>
+
+            <!-- ReLU mechanical stop -->
+            <rect x="365" y="100" width="10" height="30" fill="#333" rx="1" opacity="0.5"/>
+            <text x="390" y="118" fill="#888" font-size="7">ReLU stop</text>
+          </svg>
+        </div>
+        <div class="mech-details">
+          <h4>How It Works</h4>
+          <p>A brass beam (150-200mm long) balanced on a central fulcrum. Along the beam, <strong>sliding brass blocks</strong> sit in dovetail slots. Each block's position along the beam encodes one weight value.</p>
+          <p>Active inputs push brass rods upward through the midplane. The rods contact the beam at the corresponding weight positions. The beam tips proportional to the weighted sum of active inputs.</p>
+
+          <h4>Why This Is Brilliant</h4>
+          <ul>
+            <li>Same lever does forward AND backward pass</li>
+            <li>Only 2 friction points (fulcrum + beam)</li>
+            <li>Weight values are literally visible (block position)</li>
+            <li>ReLU = simple mechanical stop at zero</li>
+          </ul>
+
+          <div class="motion-desc">
+            "The beam tilts like a thinking scale. During training, you watch the brass blocks slowly creep along the beam &mdash; the weights physically moving as the machine learns."
+          </div>
+
+          <span class="mech-tag tag-reuleaux">Reuleaux Set T</span>
+          <span class="mech-tag tag-margolin">Margolin aesthetic</span>
+
+          <h4>Quantities</h4>
+          <p>6 levers total: 3 hidden neurons + 3 output neurons</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ MECHANISM 2: SELF-LOCKING WORM GEARS ============ -->
+    <div class="mech-card">
+      <div class="mech-header">
+        <div class="mech-number" style="background:rgba(126,184,218,0.2); color:#7eb8da;">2</div>
+        <div>
+          <h3 style="color:#7eb8da;">Self-Locking Worm Gear Grid</h3>
+          <div class="neural-op">Neural operation: Weight Storage (Persistent Memory)</div>
+        </div>
+      </div>
+      <div class="mech-body">
+        <div class="mech-diagram">
+          <svg viewBox="0 0 400 250" width="100%">
+            <!-- Single worm gear detail -->
+            <text x="200" y="20" text-anchor="middle" fill="#7eb8da" font-size="11" font-weight="500">SINGLE WORM GEAR CELL</text>
+
+            <!-- Worm (screw) -->
+            <g transform="translate(120, 100)">
+              <!-- Worm shaft -->
+              <rect x="-10" y="-40" width="20" height="80" fill="none" stroke="#7eb8da" stroke-width="1.5" rx="3"/>
+              <!-- Thread lines -->
+              <line x1="-8" y1="-30" x2="8" y2="-22" stroke="#7eb8da" stroke-width="1" opacity="0.5"/>
+              <line x1="-8" y1="-18" x2="8" y2="-10" stroke="#7eb8da" stroke-width="1" opacity="0.5"/>
+              <line x1="-8" y1="-6" x2="8" y2="2" stroke="#7eb8da" stroke-width="1" opacity="0.5"/>
+              <line x1="-8" y1="6" x2="8" y2="14" stroke="#7eb8da" stroke-width="1" opacity="0.5"/>
+              <line x1="-8" y1="18" x2="8" y2="26" stroke="#7eb8da" stroke-width="1" opacity="0.5"/>
+              <text x="0" y="55" text-anchor="middle" fill="#888" font-size="8">worm</text>
+              <text x="0" y="67" text-anchor="middle" fill="#555" font-size="7">(ratchet-driven)</text>
+            </g>
+
+            <!-- Worm wheel -->
+            <g transform="translate(200, 100)">
+              <circle cx="0" cy="0" r="30" fill="none" stroke="#c9a84c" stroke-width="1.5"/>
+              <!-- Teeth suggestion -->
+              <g stroke="#c9a84c" stroke-width="0.8" opacity="0.4">
+                <line x1="0" y1="-30" x2="0" y2="-35"/>
+                <line x1="15" y1="-26" x2="17" y2="-31"/>
+                <line x1="26" y1="-15" x2="31" y2="-17"/>
+                <line x1="30" y1="0" x2="35" y2="0"/>
+                <line x1="26" y1="15" x2="31" y2="17"/>
+                <line x1="15" y1="26" x2="17" y2="31"/>
+                <line x1="0" y1="30" x2="0" y2="35"/>
+                <line x1="-15" y1="26" x2="-17" y2="31"/>
+                <line x1="-26" y1="15" x2="-31" y2="17"/>
+                <line x1="-30" y1="0" x2="-35" y2="0"/>
+                <line x1="-26" y1="-15" x2="-31" y2="-17"/>
+                <line x1="-15" y1="-26" x2="-17" y2="-31"/>
+              </g>
+              <!-- Pointer showing weight position -->
+              <line x1="0" y1="0" x2="22" y2="-18" stroke="#c9a84c" stroke-width="2"/>
+              <circle cx="0" cy="0" r="3" fill="#c9a84c"/>
+              <text x="0" y="50" text-anchor="middle" fill="#888" font-size="8">wheel</text>
+              <text x="0" y="62" text-anchor="middle" fill="#555" font-size="7">(positions lever block)</text>
+            </g>
+
+            <!-- Output: slider connection -->
+            <g transform="translate(280, 100)">
+              <line x1="0" y1="0" x2="60" y2="0" stroke="#a07cc5" stroke-width="1.5" stroke-dasharray="4,4" opacity="0.5"/>
+              <rect x="60" y="-6" width="16" height="12" fill="#c9a84c" rx="2" opacity="0.6"/>
+              <text x="68" y="20" text-anchor="middle" fill="#a07cc5" font-size="8">to lever</text>
+              <text x="68" y="30" text-anchor="middle" fill="#555" font-size="7">sliding block</text>
+            </g>
+
+            <!-- Self-locking annotation -->
+            <g transform="translate(120, 170)">
+              <rect x="-80" y="-12" width="160" height="50" rx="4" fill="rgba(201,168,76,0.05)" stroke="#c9a84c" stroke-width="0.5"/>
+              <text x="0" y="4" text-anchor="middle" fill="#c9a84c" font-size="9" font-weight="500">SELF-LOCKING PROPERTY</text>
+              <text x="0" y="18" text-anchor="middle" fill="#888" font-size="8">Friction angle > lead angle</text>
+              <text x="0" y="30" text-anchor="middle" fill="#888" font-size="8">Cannot be back-driven = memory persists</text>
+            </g>
+
+            <!-- Error input -->
+            <g transform="translate(120, 35)">
+              <text x="0" y="0" text-anchor="middle" fill="#da7e7e" font-size="8">error signal</text>
+              <path d="M0,5 L0,18" stroke="#da7e7e" stroke-width="1.5" marker-end="url(#arr2)"/>
+            </g>
+            <defs>
+              <marker id="arr2" viewBox="0 0 10 6" refX="9" refY="3" markerWidth="6" markerHeight="4" orient="auto">
+                <path d="M0,0 L10,3 L0,6" fill="#da7e7e"/>
+              </marker>
+            </defs>
+          </svg>
+        </div>
+        <div class="mech-details">
+          <h4>How It Works</h4>
+          <p>Each worm gear cell: a small worm (screw) meshes with a worm wheel. The wheel's rotation positions a sliding block on the Archimedes lever. Because the worm's friction angle exceeds its lead angle, the wheel <strong>cannot back-drive the worm</strong>.</p>
+          <p>This means: once a weight is set, it stays put until actively driven. Power off the motor &mdash; weights remain. This IS persistent memory.</p>
+
+          <h4>Weight Update Mechanism</h4>
+          <p>During backprop, an error signal drives a ratchet that turns the worm by discrete clicks. Each click shifts the lever block by a fixed increment. This is mechanical stochastic gradient descent with a fixed learning rate.</p>
+
+          <h4>Visual Impact</h4>
+          <div class="motion-desc">
+            "42 worm gears arranged in a 7&times;6 grid, brass on black. During training, you see individual worms turn — click, click — as the machine adjusts its beliefs. Gears near important features spin more. Irrelevant weights stay still."
+          </div>
+
+          <span class="mech-tag tag-reuleaux">Reuleaux Set M</span>
+          <span class="mech-tag tag-original">Torsen heritage</span>
+
+          <h4>Quantities & Scale</h4>
+          <p>42 cells. Each cell: ~15mm worm + 12mm wheel. Grid: ~120mm &times; 100mm total.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ MECHANISM 3: WHIPPLETREE ============ -->
+    <div class="mech-card">
+      <div class="mech-header">
+        <div class="mech-number" style="background:rgba(92,160,108,0.2); color:#5ca06c;">3</div>
+        <div>
+          <h3 style="color:#5ca06c;">The Whippletree (Calder Mobile)</h3>
+          <div class="neural-op">Neural operation: Loss Computation</div>
+        </div>
+      </div>
+      <div class="mech-body">
+        <div class="mech-diagram">
+          <svg viewBox="0 0 400 260" width="100%">
+            <text x="200" y="18" text-anchor="middle" fill="#5ca06c" font-size="11" font-weight="500">CASCADED BALANCE BEAMS</text>
+
+            <!-- Top beam (final loss) -->
+            <g transform="translate(200, 60)">
+              <line x1="-100" y1="0" x2="100" y2="0" stroke="#5ca06c" stroke-width="2.5"/>
+              <polygon points="0,0 -6,12 6,12" fill="#5ca06c" opacity="0.4"/>
+              <!-- Damper -->
+              <rect x="40" y="-15" width="20" height="10" fill="rgba(201,168,76,0.3)" stroke="#c9a84c" stroke-width="0.5" rx="2"/>
+              <text x="50" y="-18" text-anchor="middle" fill="#c9a84c" font-size="7">damper</text>
+              <text x="0" y="26" text-anchor="middle" fill="#888" font-size="8">total loss</text>
+            </g>
+
+            <!-- Left sub-beam (output 1 vs target 1) -->
+            <g transform="translate(100, 120)">
+              <line x1="-60" y1="0" x2="60" y2="0" stroke="#5ca06c" stroke-width="2"/>
+              <polygon points="0,0 -5,10 5,10" fill="#5ca06c" opacity="0.3"/>
+              <!-- Strings up to top beam -->
+              <line x1="0" y1="-10" x2="0" y2="-48" stroke="#5ca06c" stroke-width="0.8" stroke-dasharray="3,3" opacity="0.4"/>
+              <text x="0" y="22" text-anchor="middle" fill="#888" font-size="8">o1 error</text>
+
+              <!-- Left pan: actual output -->
+              <circle cx="-50" cy="10" r="8" fill="none" stroke="#a07cc5" stroke-width="1"/>
+              <text x="-50" y="30" text-anchor="middle" fill="#a07cc5" font-size="7">actual</text>
+
+              <!-- Right pan: target -->
+              <circle cx="50" cy="10" r="8" fill="none" stroke="#c9684c" stroke-width="1"/>
+              <text x="50" y="30" text-anchor="middle" fill="#c9684c" font-size="7">target</text>
+            </g>
+
+            <!-- Right sub-beam -->
+            <g transform="translate(300, 120)">
+              <line x1="-60" y1="0" x2="60" y2="0" stroke="#5ca06c" stroke-width="2"/>
+              <polygon points="0,0 -5,10 5,10" fill="#5ca06c" opacity="0.3"/>
+              <line x1="0" y1="-10" x2="0" y2="-48" stroke="#5ca06c" stroke-width="0.8" stroke-dasharray="3,3" opacity="0.4"/>
+              <text x="0" y="22" text-anchor="middle" fill="#888" font-size="8">o2+o3 error</text>
+
+              <circle cx="-50" cy="10" r="8" fill="none" stroke="#a07cc5" stroke-width="1"/>
+              <text x="-50" y="30" text-anchor="middle" fill="#a07cc5" font-size="7">actual</text>
+              <circle cx="50" cy="10" r="8" fill="none" stroke="#c9684c" stroke-width="1"/>
+              <text x="50" y="30" text-anchor="middle" fill="#c9684c" font-size="7">target</text>
+            </g>
+
+            <!-- States visualization -->
+            <g transform="translate(60, 190)">
+              <text x="0" y="0" fill="#da7e7e" font-size="9" font-weight="500">WRONG (early training):</text>
+              <line x1="0" y1="15" x2="80" y2="30" stroke="#da7e7e" stroke-width="2"/>
+              <polygon points="40,22 35,30 45,30" fill="#da7e7e" opacity="0.4"/>
+              <text x="90" y="28" fill="#555" font-size="8">beams tilt wildly</text>
+            </g>
+            <g transform="translate(240, 190)">
+              <text x="0" y="0" fill="#5ca06c" font-size="9" font-weight="500">CORRECT (after training):</text>
+              <line x1="0" y1="20" x2="80" y2="20" stroke="#5ca06c" stroke-width="2"/>
+              <polygon points="40,20 35,28 45,28" fill="#5ca06c" opacity="0.4"/>
+              <text x="90" y="25" fill="#555" font-size="8">beams settle level</text>
+            </g>
+
+            <!-- Annotation -->
+            <text x="200" y="252" text-anchor="middle" fill="#c9a84c" font-size="9" opacity="0.7">eddy-current damper makes settling motion slow and graceful</text>
+          </svg>
+        </div>
+        <div class="mech-details">
+          <h4>How It Works</h4>
+          <p>Three sub-beams compare each output neuron's value against the target from the pin drum. The difference (error) tilts the beam. A top-level beam aggregates all three errors into total loss.</p>
+          <p>When the network is wrong, beams tilt dramatically. As it learns, they gracefully settle toward level. An <strong>eddy-current damper</strong> (copper plate + permanent magnet) makes the settling motion slow and beautiful &mdash; like a Calder mobile finding equilibrium.</p>
+
+          <h4>Why Whippletree</h4>
+          <ul>
+            <li><strong>Zero friction</strong> in the computation (just pivots in air)</li>
+            <li>Zero gears, zero strings &mdash; pure lever physics</li>
+            <li>Error magnitude = beam tilt angle &mdash; instantly readable</li>
+            <li>Historical: whippletrees distributed horse team forces evenly</li>
+          </ul>
+
+          <div class="motion-desc">
+            "A mobile of brass and steel. During training it lurches, recovers, overshoots, settles. Over epochs, the oscillations dampen. When the machine finally 'gets it,' the whole assembly hangs still. Silence = intelligence."
+          </div>
+
+          <span class="mech-tag tag-reuleaux">Reuleaux Set T</span>
+          <span class="mech-tag tag-margolin">Calder mobile</span>
+          <span class="mech-tag tag-original">zero-friction computation</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ MECHANISM 4: ESCAPEMENT ============ -->
+    <div class="mech-card">
+      <div class="mech-header">
+        <div class="mech-number" style="background:rgba(201,168,76,0.2); color:#c9a84c;">4</div>
+        <div>
+          <h3 style="color:#c9a84c;">The Clock Escapement (Heartbeat)</h3>
+          <div class="neural-op">Neural operation: Sequencing / Timing</div>
+        </div>
+      </div>
+      <div class="mech-body">
+        <div class="mech-diagram">
+          <svg viewBox="0 0 400 250" width="100%">
+            <text x="200" y="20" text-anchor="middle" fill="#c9a84c" font-size="11" font-weight="500">ESCAPEMENT HEARTBEAT CYCLE</text>
+
+            <!-- Escape wheel -->
+            <g transform="translate(160, 130)">
+              <circle cx="0" cy="0" r="40" fill="none" stroke="#c9a84c" stroke-width="1.5" opacity="0.3"/>
+              <!-- Teeth (sawtooth) -->
+              <g fill="#c9a84c" opacity="0.5">
+                <polygon points="0,-40 3,-48 -3,-48"/>
+                <polygon points="28,-28 34,-34 26,-36"/>
+                <polygon points="40,0 48,3 48,-3"/>
+                <polygon points="28,28 34,34 26,36"/>
+                <polygon points="0,40 3,48 -3,48"/>
+                <polygon points="-28,28 -34,34 -26,36"/>
+                <polygon points="-40,0 -48,3 -48,-3"/>
+                <polygon points="-28,-28 -34,-34 -26,-36"/>
+              </g>
+              <circle cx="0" cy="0" r="3" fill="#c9a84c"/>
+              <text x="0" y="60" text-anchor="middle" fill="#888" font-size="8">escape wheel</text>
+              <text x="0" y="72" text-anchor="middle" fill="#555" font-size="7">(main shaft driven)</text>
+            </g>
+
+            <!-- Anchor/pallet -->
+            <g transform="translate(250, 90)">
+              <path d="M-20,0 L0,-30 L20,0" fill="none" stroke="#c9a84c" stroke-width="2"/>
+              <circle cx="0" cy="-30" r="4" fill="#c9a84c" opacity="0.5"/>
+              <!-- Pallet faces -->
+              <rect x="-24" y="-3" width="8" height="6" fill="#c9a84c" opacity="0.4" transform="rotate(-30,-20,0)"/>
+              <rect x="16" y="-3" width="8" height="6" fill="#c9a84c" opacity="0.4" transform="rotate(30,20,0)"/>
+              <text x="0" y="18" text-anchor="middle" fill="#888" font-size="8">anchor</text>
+            </g>
+
+            <!-- Timing annotations -->
+            <g transform="translate(320, 50)">
+              <text x="0" y="0" fill="#c9a84c" font-size="9" font-weight="500">One tick =</text>
+              <text x="0" y="16" fill="#888" font-size="8">one neuron evaluated</text>
+              <text x="0" y="40" fill="#c9a84c" font-size="9" font-weight="500">6 ticks =</text>
+              <text x="0" y="56" fill="#888" font-size="8">complete forward pass</text>
+              <text x="0" y="80" fill="#c9a84c" font-size="9" font-weight="500">12 ticks =</text>
+              <text x="0" y="96" fill="#888" font-size="8">forward + backward</text>
+              <text x="0" y="120" fill="#c9a84c" font-size="9" font-weight="500">~100 ticks =</text>
+              <text x="0" y="136" fill="#888" font-size="8">one epoch (~8 examples)</text>
+            </g>
+
+            <!-- Sound annotation -->
+            <g transform="translate(60, 210)">
+              <text x="0" y="0" fill="#c9a84c" font-size="10" font-style="italic">tick... tick... tick...</text>
+              <text x="0" y="16" fill="#555" font-size="8">audible computation</text>
+            </g>
+          </svg>
+        </div>
+        <div class="mech-details">
+          <h4>How It Works</h4>
+          <p>A clock escapement on the main motor shaft converts continuous rotation into discrete, evenly-spaced ticks. Each tick advances the computation by one neuron.</p>
+          <p>The escapement doesn't just time the machine &mdash; it <strong>creates the rhythm</strong>. The machine doesn't compute smoothly; it thinks in beats, like a brain firing neurons in sequence.</p>
+
+          <h4>Why Not a Governor</h4>
+          <ul>
+            <li>Governor = continuous, smooth, boring</li>
+            <li>Escapement = discrete, rhythmic, alive</li>
+            <li>Each tick is audible &mdash; you can <strong>hear</strong> the machine thinking</li>
+            <li>Speed adjustable by changing pendulum/balance length</li>
+          </ul>
+
+          <div class="motion-desc">
+            "The most clock-like sound in the sculpture. Regular, meditative, almost breathing. Speeds up slightly under no-load (correct predictions) and labors under heavy error (wrong predictions). The machine literally sounds stressed when it's confused."
+          </div>
+
+          <span class="mech-tag tag-reuleaux">Reuleaux Set X</span>
+          <span class="mech-tag tag-original">audible computation</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ MECHANISM 5: BRACHISTOCHRONE ============ -->
+    <div class="mech-card">
+      <div class="mech-header">
+        <div class="mech-number" style="background:rgba(218,126,126,0.2); color:#da7e7e;">5</div>
+        <div>
+          <h3 style="color:#da7e7e;">The Brachistochrone Ball Track</h3>
+          <div class="neural-op">Neural operation: Gradient Descent Visualization</div>
+        </div>
+      </div>
+      <div class="mech-body">
+        <div class="mech-diagram">
+          <svg viewBox="0 0 400 220" width="100%">
+            <text x="200" y="18" text-anchor="middle" fill="#da7e7e" font-size="11" font-weight="500">CYCLOID CURVE = FASTEST DESCENT</text>
+
+            <!-- The cycloid curve -->
+            <path d="M40,40 C60,40 70,60 90,80 C110,100 120,140 160,160 C180,170 220,175 260,178 C300,180 340,180 360,180"
+                  fill="none" stroke="#da7e7e" stroke-width="2.5"/>
+
+            <!-- Track walls (groove) -->
+            <path d="M40,35 C60,35 70,55 90,75 C110,95 120,135 160,155 C180,165 220,170 260,173 C300,175 340,175 360,175"
+                  fill="none" stroke="#da7e7e" stroke-width="0.8" opacity="0.3"/>
+            <path d="M40,45 C60,45 70,65 90,85 C110,105 120,145 160,165 C180,175 220,180 260,183 C300,185 340,185 360,185"
+                  fill="none" stroke="#da7e7e" stroke-width="0.8" opacity="0.3"/>
+
+            <!-- Ball at high loss position (start) -->
+            <circle cx="55" cy="42" r="8" fill="#da7e7e" opacity="0.8"/>
+            <text x="55" y="25" text-anchor="middle" fill="#da7e7e" font-size="8">HIGH LOSS</text>
+            <text x="55" y="65" text-anchor="middle" fill="#888" font-size="7">epoch 1</text>
+
+            <!-- Ball at medium position (ghost) -->
+            <circle cx="130" cy="130" r="7" fill="#da7e7e" opacity="0.3"/>
+            <text x="130" y="150" text-anchor="middle" fill="#555" font-size="7">epoch 5</text>
+
+            <!-- Ball at low loss (end) -->
+            <circle cx="340" cy="180" r="8" fill="#5ca06c" opacity="0.8"/>
+            <text x="340" y="200" text-anchor="middle" fill="#5ca06c" font-size="8">LOW LOSS</text>
+            <text x="340" y="170" text-anchor="middle" fill="#888" font-size="7">converged</text>
+
+            <!-- Annotations -->
+            <g transform="translate(220, 50)">
+              <rect x="-70" y="-12" width="140" height="50" rx="4" fill="rgba(218,126,126,0.05)" stroke="#da7e7e" stroke-width="0.5"/>
+              <text x="0" y="4" text-anchor="middle" fill="#da7e7e" font-size="9" font-weight="500">BRACHISTOCHRONE</text>
+              <text x="0" y="18" text-anchor="middle" fill="#888" font-size="8">Bernoulli 1696 &mdash; curve of</text>
+              <text x="0" y="30" text-anchor="middle" fill="#888" font-size="8">fastest descent = cycloid</text>
+            </g>
+
+            <!-- Mathematical isomorphism note -->
+            <text x="200" y="215" text-anchor="middle" fill="#c9a84c" font-size="9" opacity="0.7">Ball position along track &equiv; total loss &mdash; same math, physical embodiment</text>
+          </svg>
+        </div>
+        <div class="mech-details">
+          <h4>How It Works</h4>
+          <p>A brass ball sits in a cycloid-shaped track. The ball's position along the track is mechanically linked to the total loss from the whippletree. High loss = ball at the top. As the machine learns, the ball rolls down the curve of fastest descent.</p>
+          <p>This is not a metaphor. The brachistochrone IS gradient descent &mdash; mathematically isomorphic. Bernoulli solved it in 1696. Now it's a physical sculpture element.</p>
+
+          <h4>Visual Impact</h4>
+          <ul>
+            <li>Early training: ball high up, rolling fast (steep gradient)</li>
+            <li>Mid training: ball in the curve, decelerating</li>
+            <li>Converged: ball rests at bottom, barely moving</li>
+            <li>The curve shape itself teaches calculus of variations</li>
+          </ul>
+
+          <div class="motion-desc">
+            "A single brass ball rolling down a golden curve. It starts fast &mdash; the machine is learning rapidly. Then it slows. And slows. And finally... rests. The machine has learned. The ball is still."
+          </div>
+
+          <span class="mech-tag tag-reuleaux">Reuleaux Set R</span>
+          <span class="mech-tag tag-margolin">Bernoulli 1696</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ MECHANISM 6: PIN DRUM ============ -->
+    <div class="mech-card">
+      <div class="mech-header">
+        <div class="mech-number" style="background:rgba(201,104,76,0.2); color:#c9684c;">6</div>
+        <div>
+          <h3 style="color:#c9684c;">The Training Data Pin Drum</h3>
+          <div class="neural-op">Neural operation: Training Data Storage + Epoch Cycling</div>
+        </div>
+      </div>
+      <div class="mech-body">
+        <div class="mech-diagram">
+          <svg viewBox="0 0 400 240" width="100%">
+            <text x="200" y="18" text-anchor="middle" fill="#c9684c" font-size="11" font-weight="500">ELEVATED PIN DRUM WITH MODULAR STRIPS</text>
+
+            <!-- Drum body -->
+            <g transform="translate(200, 120)">
+              <!-- Cylinder (3D hint) -->
+              <ellipse cx="-80" cy="0" rx="30" ry="60" fill="none" stroke="#c9684c" stroke-width="1.5" opacity="0.5"/>
+              <rect x="-80" y="-60" width="160" height="120" fill="#0d0d15" stroke="#c9684c" stroke-width="1.5"/>
+              <ellipse cx="80" cy="0" rx="30" ry="60" fill="none" stroke="#c9684c" stroke-width="1.5"/>
+
+              <!-- Pin rows (training examples) -->
+              <g fill="#c9684c">
+                <!-- Row 1: Cat Eats Fish -> Cat -->
+                <circle cx="-60" cy="-40" r="3"/><circle cx="-40" cy="-40" r="2" opacity="0.3"/><circle cx="-20" cy="-40" r="2" opacity="0.3"/>
+                <circle cx="0" cy="-40" r="3"/><circle cx="20" cy="-40" r="2" opacity="0.3"/><circle cx="40" cy="-40" r="2" opacity="0.3"/>
+                <!-- Row 2 -->
+                <circle cx="-60" cy="-20" r="2" opacity="0.3"/><circle cx="-40" cy="-20" r="3"/><circle cx="-20" cy="-20" r="2" opacity="0.3"/>
+                <circle cx="0" cy="-20" r="2" opacity="0.3"/><circle cx="20" cy="-20" r="2" opacity="0.3"/><circle cx="40" cy="-20" r="3"/>
+                <!-- Row 3 -->
+                <circle cx="-60" cy="0" r="2" opacity="0.3"/><circle cx="-40" cy="0" r="2" opacity="0.3"/><circle cx="-20" cy="0" r="3"/>
+                <circle cx="0" cy="0" r="3"/><circle cx="20" cy="0" r="2" opacity="0.3"/><circle cx="40" cy="0" r="2" opacity="0.3"/>
+              </g>
+
+              <!-- Red pins (target/answer columns) highlighted -->
+              <g>
+                <circle cx="60" cy="-40" r="3" fill="#e53935"/>
+                <circle cx="60" cy="-20" r="2" fill="#e53935" opacity="0.3"/>
+                <circle cx="60" cy="0" r="2" fill="#e53935" opacity="0.3"/>
+              </g>
+
+              <!-- Labels -->
+              <text x="-10" y="-52" text-anchor="middle" fill="#c9684c" font-size="7">input pins (brass)</text>
+              <text x="60" y="-52" text-anchor="middle" fill="#e53935" font-size="7">target (red)</text>
+
+              <!-- Modular strip hint -->
+              <rect x="-65" y="25" width="130" height="15" fill="none" stroke="#c9a84c" stroke-width="0.8" stroke-dasharray="3,3" rx="2"/>
+              <text x="0" y="35" text-anchor="middle" fill="#c9a84c" font-size="7">removable pin strip</text>
+            </g>
+
+            <!-- Epoch counter -->
+            <g transform="translate(340, 50)">
+              <circle cx="0" cy="0" r="20" fill="none" stroke="#888" stroke-width="1"/>
+              <line x1="0" y1="0" x2="0" y2="-16" stroke="#c9a84c" stroke-width="1.5"/>
+              <circle cx="0" cy="0" r="2" fill="#c9a84c"/>
+              <text x="0" y="30" text-anchor="middle" fill="#888" font-size="8">epoch counter</text>
+              <text x="0" y="42" text-anchor="middle" fill="#555" font-size="7">worm-and-wheel</text>
+            </g>
+
+            <!-- Big arrow / plaque -->
+            <g transform="translate(200, 210)">
+              <rect x="-140" y="-10" width="280" height="25" rx="3" fill="rgba(201,168,76,0.08)" stroke="#c9a84c" stroke-width="0.5"/>
+              <text x="0" y="7" text-anchor="middle" fill="#c9a84c" font-size="9" font-weight="500">"HERE IS THE TRAINING DATA &mdash; answers before questions"</text>
+            </g>
+          </svg>
+        </div>
+        <div class="mech-details">
+          <h4>How It Works</h4>
+          <p>A transparent cylindrical drum sits elevated at the top of the sculpture. Brass pins encode the input data; <strong>red pins</strong> encode the correct answers (targets). The drum rotates continuously during training, feeding one example per escapement cycle.</p>
+
+          <h4>Modular Pin Strips</h4>
+          <p>Pin strips slide in/out of the drum. Change the curriculum by swapping strips &mdash; physically reprogrammable, like changing a punch card. Different strips = different training data = different learned behavior.</p>
+
+          <h4>Epoch Counter</h4>
+          <p>A worm-and-wheel on the drum shaft counts complete revolutions. Pointer dial shows: "The machine has seen all training data N times." Convergence typically happens around epoch 15-30.</p>
+
+          <div class="motion-desc">
+            "The drum rotates above everything, like a music box cylinder. Brass and red pins catch the light. Below it, the whole machine responds &mdash; levers tilting, worms clicking, beams swaying. The drum is the teacher, the machine is the student."
+          </div>
+
+          <span class="mech-tag tag-reuleaux">Reuleaux Set A</span>
+          <span class="mech-tag tag-original">Jacquard heritage</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ MECHANISM 7: DOG CLUTCH ============ -->
+    <div class="mech-card">
+      <div class="mech-header">
+        <div class="mech-number" style="background:rgba(218,126,126,0.15); color:#da7e7e;">7</div>
+        <div>
+          <h3 style="color:#da7e7e;">Dog Clutch Mode Switch + Answer Prism</h3>
+          <div class="neural-op">Neural operation: TRAIN / PREDICT mode + Output Display</div>
+        </div>
+      </div>
+      <div class="mech-body">
+        <div class="mech-diagram">
+          <svg viewBox="0 0 400 230" width="100%">
+            <!-- Dog clutch -->
+            <text x="120" y="20" text-anchor="middle" fill="#da7e7e" font-size="11" font-weight="500">DOG CLUTCH</text>
+
+            <!-- Two engagement positions -->
+            <g transform="translate(60, 80)">
+              <text x="0" y="-10" text-anchor="middle" fill="#c9684c" font-size="9" font-weight="500">TRAIN</text>
+              <!-- Shaft from drum -->
+              <rect x="-30" y="-3" width="25" height="6" fill="#c9684c" rx="1" opacity="0.6"/>
+              <!-- Clutch teeth -->
+              <polygon points="-5,-6 0,-3 -5,0 0,3 -5,6 5,6 5,-6" fill="#c9684c" opacity="0.4"/>
+              <polygon points="5,-6 10,-3 5,0 10,3 5,6 15,6 15,-6" fill="#c9684c" opacity="0.4"/>
+              <!-- Shaft to selectors -->
+              <rect x="15" y="-3" width="25" height="6" fill="#a07cc5" rx="1" opacity="0.6"/>
+              <text x="0" y="20" text-anchor="middle" fill="#888" font-size="7">drum drives selectors</text>
+            </g>
+
+            <g transform="translate(60, 140)">
+              <text x="0" y="-10" text-anchor="middle" fill="#7eb8da" font-size="9" font-weight="500">PREDICT</text>
+              <rect x="-30" y="-3" width="25" height="6" fill="#7eb8da" rx="1" opacity="0.6"/>
+              <polygon points="-5,-6 0,-3 -5,0 0,3 -5,6 5,6 5,-6" fill="#7eb8da" opacity="0.4"/>
+              <rect x="15" y="-3" width="5" height="6" fill="#888" rx="1" opacity="0.3"/>
+              <text x="30" y="3" fill="#888" font-size="8">disengaged</text>
+              <text x="0" y="20" text-anchor="middle" fill="#888" font-size="7">manual dials drive selectors</text>
+            </g>
+
+            <!-- Lever handle -->
+            <g transform="translate(120, 110)">
+              <rect x="-3" y="-25" width="6" height="50" fill="#c9a84c" rx="2" opacity="0.5"/>
+              <circle cx="0" cy="-25" r="6" fill="#c9a84c" opacity="0.3"/>
+              <text x="15" y="0" fill="#c9a84c" font-size="8">lever</text>
+            </g>
+
+            <!-- Answer prism -->
+            <g transform="translate(300, 100)">
+              <text x="0" y="-40" text-anchor="middle" fill="#5ca06c" font-size="11" font-weight="500">ANSWER PRISM</text>
+
+              <!-- Triangular prism (3 faces) -->
+              <polygon points="0,-30 -35,15 35,15" fill="none" stroke="#5ca06c" stroke-width="2"/>
+              <!-- Face labels -->
+              <text x="0" y="-8" text-anchor="middle" fill="#c9a84c" font-size="12" font-weight="600">Cat</text>
+              <text x="-28" y="30" text-anchor="middle" fill="#888" font-size="9">Dog</text>
+              <text x="28" y="30" text-anchor="middle" fill="#888" font-size="9">Bird</text>
+
+              <!-- Rack teeth below -->
+              <g transform="translate(-20, 35)">
+                <rect x="0" y="0" width="40" height="8" fill="none" stroke="#5ca06c" stroke-width="0.8" opacity="0.5"/>
+                <line x1="5" y1="0" x2="5" y2="8" stroke="#5ca06c" stroke-width="0.5" opacity="0.4"/>
+                <line x1="10" y1="0" x2="10" y2="8" stroke="#5ca06c" stroke-width="0.5" opacity="0.4"/>
+                <line x1="15" y1="0" x2="15" y2="8" stroke="#5ca06c" stroke-width="0.5" opacity="0.4"/>
+                <line x1="20" y1="0" x2="20" y2="8" stroke="#5ca06c" stroke-width="0.5" opacity="0.4"/>
+                <line x1="25" y1="0" x2="25" y2="8" stroke="#5ca06c" stroke-width="0.5" opacity="0.4"/>
+                <line x1="30" y1="0" x2="30" y2="8" stroke="#5ca06c" stroke-width="0.5" opacity="0.4"/>
+                <line x1="35" y1="0" x2="35" y2="8" stroke="#5ca06c" stroke-width="0.5" opacity="0.4"/>
+              </g>
+              <text x="0" y="55" text-anchor="middle" fill="#888" font-size="7">detented rack-and-pinion</text>
+              <text x="0" y="67" text-anchor="middle" fill="#555" font-size="7">clicks into position</text>
+            </g>
+
+            <!-- Sound annotation -->
+            <text x="300" y="185" text-anchor="middle" fill="#c9a84c" font-size="9" font-style="italic">click &mdash; click &mdash; CLUNK (answer)</text>
+          </svg>
+        </div>
+        <div class="mech-details">
+          <h4>Dog Clutch</h4>
+          <p>A physical lever with a satisfying <strong>clunk</strong>. In TRAIN position, the pin drum drives the input selectors automatically. In PREDICT position, the drum disengages and 3 manual dials connect to the selectors instead.</p>
+          <p>The viewer literally switches the machine between "learning mode" and "thinking mode."</p>
+
+          <h4>Answer Prism</h4>
+          <p>A 3-sided triangular prism with one word engraved on each face. Driven by a detented rack-and-pinion from the output neuron with the highest activation. The prism rotates through positions with distinct clicks &mdash; building suspense &mdash; then locks at the prediction.</p>
+          <p>Unlike a dial gauge (where all answers are visible), the prism only shows one face at a time. <strong>Mystery preserved.</strong></p>
+
+          <div class="motion-desc">
+            "You turn the three input dials: Cat... Chases... Seed. The machine ticks six times. The prism rotates: click... click... CLUNK. 'Cat' faces you. The machine has never seen this combination before. It generalized."
+          </div>
+
+          <span class="mech-tag tag-reuleaux">Reuleaux Set A + N</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-nav">
+      <a href="02-network.html">&larr; Previous: Neural Network</a>
+      <a href="04-signal-flow.html">Next: Signal Flow &rarr;</a>
+    </div>
+  </div>
+</body>
+</html>

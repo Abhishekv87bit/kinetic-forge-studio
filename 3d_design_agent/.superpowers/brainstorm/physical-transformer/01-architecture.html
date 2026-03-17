@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Section 1: Architecture Overview — The Physical Transformer</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #0a0a0f;
+    color: #e0e0e0;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+  .header {
+    text-align: center;
+    padding: 30px 20px 15px;
+    border-bottom: 1px solid #1a1a2e;
+  }
+  .header h1 {
+    font-size: 1.8em;
+    font-weight: 300;
+    letter-spacing: 0.15em;
+    color: #c9a84c;
+  }
+  .header .sub { color: #666; font-size: 0.9em; margin-top: 4px; }
+  .nav {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    padding: 15px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid #0f0f1a;
+  }
+  .nav a {
+    color: #555;
+    text-decoration: none;
+    padding: 6px 14px;
+    border: 1px solid #1a1a2e;
+    border-radius: 4px;
+    font-size: 0.8em;
+    transition: all 0.3s;
+  }
+  .nav a:hover { color: #c9a84c; border-color: #c9a84c; }
+  .nav a.active { color: #c9a84c; border-color: #c9a84c; background: rgba(201,168,76,0.08); }
+
+  .content { max-width: 1200px; margin: 0 auto; padding: 30px; }
+
+  /* The big concept diagram */
+  .concept-box {
+    background: #0d0d15;
+    border: 1px solid #1a1a2e;
+    border-radius: 12px;
+    padding: 40px;
+    margin: 30px 0;
+    text-align: center;
+  }
+  .concept-box h2 {
+    font-size: 1.3em;
+    color: #c9a84c;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    margin-bottom: 25px;
+  }
+
+  /* SVG diagram styles */
+  svg text { font-family: 'Segoe UI', system-ui, sans-serif; }
+
+  /* Narrative text */
+  .narrative {
+    max-width: 800px;
+    margin: 30px auto;
+    font-size: 1.05em;
+    color: #bbb;
+  }
+  .narrative p { margin-bottom: 18px; }
+  .narrative em { color: #c9a84c; font-style: normal; font-weight: 500; }
+  .narrative strong { color: #e0e0e0; }
+
+  /* Operation mapping table */
+  .op-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 30px 0;
+    font-size: 0.92em;
+  }
+  .op-table th {
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 2px solid #c9a84c;
+    color: #c9a84c;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+  }
+  .op-table td {
+    padding: 10px 16px;
+    border-bottom: 1px solid #1a1a2e;
+    vertical-align: top;
+  }
+  .op-table tr:hover { background: rgba(201,168,76,0.03); }
+  .op-table .mech { color: #7eb8da; }
+  .op-table .source { color: #666; font-size: 0.85em; }
+  .op-table .reuleaux { color: #a07cc5; }
+
+  /* Key insight callouts */
+  .insight {
+    background: linear-gradient(135deg, rgba(201,168,76,0.08), rgba(201,168,76,0.02));
+    border-left: 3px solid #c9a84c;
+    padding: 20px 24px;
+    margin: 25px 0;
+    border-radius: 0 8px 8px 0;
+  }
+  .insight .label {
+    font-size: 0.75em;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: #c9a84c;
+    margin-bottom: 6px;
+  }
+  .insight p { color: #ccc; margin: 0; }
+
+  /* The five faces */
+  .faces-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin: 30px 0;
+  }
+  .face-card {
+    background: #0d0d15;
+    border: 1px solid #1a1a2e;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    transition: all 0.3s;
+  }
+  .face-card:hover {
+    border-color: #c9a84c;
+    transform: translateY(-2px);
+  }
+  .face-card .icon { font-size: 2em; margin-bottom: 10px; }
+  .face-card h3 { color: #c9a84c; font-size: 0.95em; font-weight: 500; margin-bottom: 6px; }
+  .face-card p { color: #888; font-size: 0.82em; }
+
+  .section-title {
+    font-size: 1.4em;
+    color: #c9a84c;
+    font-weight: 300;
+    letter-spacing: 0.08em;
+    margin: 40px 0 20px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #1a1a2e;
+  }
+
+  .footer-nav {
+    display: flex;
+    justify-content: space-between;
+    padding: 30px 0;
+    margin-top: 40px;
+    border-top: 1px solid #1a1a2e;
+  }
+  .footer-nav a {
+    color: #c9a84c;
+    text-decoration: none;
+    font-size: 0.9em;
+    padding: 8px 16px;
+    border: 1px solid #c9a84c;
+    border-radius: 4px;
+    transition: all 0.3s;
+  }
+  .footer-nav a:hover { background: rgba(201,168,76,0.1); }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>THE PHYSICAL TRANSFORMER</h1>
+    <div class="sub">Section 1 of 5 &mdash; Architecture Overview</div>
+  </div>
+  <div class="nav">
+    <a href="01-architecture.html" class="active">1. Architecture</a>
+    <a href="02-network.html">2. Neural Network</a>
+    <a href="03-mechanisms.html">3. Mechanisms</a>
+    <a href="04-signal-flow.html">4. Signal Flow</a>
+    <a href="05-dimensions.html">5. Dimensions</a>
+  </div>
+
+  <div class="content">
+
+    <!-- The Core Thesis -->
+    <div class="narrative">
+      <p><em>The Physical Transformer</em> is a kinetic sculpture that physically computes a neural network. Not a simulation. Not a metaphor. The machine actually learns — it trains on data encoded in a pin drum, adjusts its own weights through self-locking worm gears, and converges to correct predictions over epochs of mesmerizing mechanical motion.</p>
+      <p>After training, a viewer turns three input dials, and the machine <em>thinks</em> — levers pivot, brass rods transmit signals through a transparent midplane, and a three-sided answer prism clicks into position with the prediction.</p>
+    </div>
+
+    <!-- The Big Diagram: Five Faces -->
+    <div class="concept-box">
+      <h2>THE FIVE FACES</h2>
+      <svg viewBox="0 0 1000 520" width="100%" style="max-width:1000px;">
+        <!-- Background subtle grid -->
+        <defs>
+          <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#1a1a2e" stroke-width="0.5"/>
+          </pattern>
+          <marker id="arrow" viewBox="0 0 10 6" refX="9" refY="3" markerWidth="8" markerHeight="6" orient="auto">
+            <path d="M0,0 L10,3 L0,6" fill="#c9a84c" opacity="0.6"/>
+          </marker>
+          <linearGradient id="goldFade" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#c9a84c" stop-opacity="0.3"/>
+            <stop offset="100%" stop-color="#c9a84c" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <rect width="1000" height="520" fill="url(#grid)"/>
+
+        <!-- Central box: The Machine (isometric hint) -->
+        <g transform="translate(500, 260)">
+          <!-- 3D box outline -->
+          <path d="M-120,-80 L120,-80 L160,-40 L160,100 L40,100 L-120,100 L-120,-80 Z" fill="#0d0d15" stroke="#c9a84c" stroke-width="1.5" opacity="0.4"/>
+          <path d="M120,-80 L160,-40 L40,-40 L-120,-40" fill="none" stroke="#c9a84c" stroke-width="0.8" opacity="0.3" stroke-dasharray="4,4"/>
+          <path d="M40,100 L40,-40 L160,-40" fill="none" stroke="#c9a84c" stroke-width="0.8" opacity="0.3" stroke-dasharray="4,4"/>
+          <text x="0" y="-10" text-anchor="middle" fill="#c9a84c" font-size="16" font-weight="300" letter-spacing="4">THE MACHINE</text>
+          <text x="0" y="15" text-anchor="middle" fill="#888" font-size="11">600 x 400 x 300 mm</text>
+          <text x="0" y="35" text-anchor="middle" fill="#666" font-size="10">single motor &bull; 42 weights</text>
+          <text x="0" y="55" text-anchor="middle" fill="#666" font-size="10">9 inputs &rarr; 3 hidden &rarr; 3 outputs</text>
+        </g>
+
+        <!-- FRONT FACE: Weight Matrix -->
+        <g transform="translate(130, 130)">
+          <rect x="-80" y="-45" width="160" height="90" rx="6" fill="#0d0d15" stroke="#7eb8da" stroke-width="1.2"/>
+          <!-- Mini worm gear grid -->
+          <g transform="translate(-50,-15)" fill="#7eb8da" opacity="0.5">
+            <circle cx="0" cy="0" r="4"/><circle cx="16" cy="0" r="4"/><circle cx="32" cy="0" r="4"/><circle cx="48" cy="0" r="4"/><circle cx="64" cy="0" r="4"/><circle cx="80" cy="0" r="4"/>
+            <circle cx="0" cy="16" r="4"/><circle cx="16" cy="16" r="4"/><circle cx="32" cy="16" r="4"/><circle cx="48" cy="16" r="4"/><circle cx="64" cy="16" r="4"/><circle cx="80" cy="16" r="4"/>
+          </g>
+          <text x="0" y="-55" text-anchor="middle" fill="#7eb8da" font-size="12" font-weight="500" letter-spacing="2">FRONT</text>
+          <text x="0" y="-70" text-anchor="middle" fill="#7eb8da" font-size="10" opacity="0.7">Weight Matrix Face</text>
+          <text x="0" y="60" text-anchor="middle" fill="#555" font-size="9">42 worm gears in 7x6 grid</text>
+          <text x="0" y="73" text-anchor="middle" fill="#555" font-size="9">self-locking = persistent memory</text>
+          <!-- Arrow to center -->
+          <line x1="80" y1="0" x2="230" y2="100" stroke="#7eb8da" stroke-width="0.8" opacity="0.3" stroke-dasharray="4,4"/>
+        </g>
+
+        <!-- TOP FACE: Pin Drum -->
+        <g transform="translate(500, 55)">
+          <rect x="-90" y="-35" width="180" height="70" rx="6" fill="#0d0d15" stroke="#c9684c" stroke-width="1.2"/>
+          <!-- Mini drum illustration -->
+          <ellipse cx="-30" cy="0" rx="15" ry="20" fill="none" stroke="#c9684c" stroke-width="0.8" opacity="0.5"/>
+          <line x1="-30" y1="-20" x2="40" y2="-20" stroke="#c9684c" stroke-width="0.8" opacity="0.5"/>
+          <line x1="-30" y1="20" x2="40" y2="20" stroke="#c9684c" stroke-width="0.8" opacity="0.5"/>
+          <ellipse cx="40" cy="0" rx="15" ry="20" fill="none" stroke="#c9684c" stroke-width="0.8" opacity="0.5"/>
+          <!-- pins -->
+          <g fill="#c9684c" opacity="0.6">
+            <circle cx="-10" cy="-10" r="2"/><circle cx="5" cy="-10" r="2"/><circle cx="20" cy="5" r="2"/>
+            <circle cx="-5" cy="5" r="2"/><circle cx="10" cy="-5" r="2"/><circle cx="25" cy="-10" r="2"/>
+          </g>
+          <text x="0" y="-45" text-anchor="middle" fill="#c9684c" font-size="12" font-weight="500" letter-spacing="2">TOP</text>
+          <text x="0" y="-58" text-anchor="middle" fill="#c9684c" font-size="10" opacity="0.7">Training Data Drum</text>
+          <text x="0" y="50" text-anchor="middle" fill="#555" font-size="9">elevated, transparent, brass+red pins</text>
+          <text x="0" y="63" text-anchor="middle" fill="#555" font-size="9">modular pin strips = the textbook</text>
+        </g>
+
+        <!-- RIGHT FACE: Computation -->
+        <g transform="translate(870, 200)">
+          <rect x="-80" y="-55" width="160" height="110" rx="6" fill="#0d0d15" stroke="#a07cc5" stroke-width="1.2"/>
+          <!-- Lever illustration -->
+          <g transform="translate(0, -10)">
+            <line x1="-50" y1="0" x2="50" y2="0" stroke="#a07cc5" stroke-width="2" opacity="0.6"/>
+            <circle cx="-50" cy="0" r="4" fill="#a07cc5" opacity="0.4"/>
+            <circle cx="50" cy="0" r="4" fill="#a07cc5" opacity="0.4"/>
+            <!-- pivot triangle -->
+            <polygon points="0,0 -6,10 6,10" fill="#a07cc5" opacity="0.5"/>
+            <!-- sliding weight -->
+            <rect x="15" y="-6" width="12" height="6" fill="#c9a84c" opacity="0.6" rx="1"/>
+            <text x="21" y="-9" text-anchor="middle" fill="#c9a84c" font-size="7" opacity="0.7">w</text>
+          </g>
+          <text x="0" y="-65" text-anchor="middle" fill="#a07cc5" font-size="12" font-weight="500" letter-spacing="2">RIGHT</text>
+          <text x="0" y="-78" text-anchor="middle" fill="#a07cc5" font-size="10" opacity="0.7">Computation Face</text>
+          <text x="0" y="30" text-anchor="middle" fill="#555" font-size="9">6 weighted Archimedes levers</text>
+          <text x="0" y="43" text-anchor="middle" fill="#555" font-size="9">pivot position = learned weight</text>
+          <line x1="-80" y1="10" x2="-220" y2="70" stroke="#a07cc5" stroke-width="0.8" opacity="0.3" stroke-dasharray="4,4"/>
+        </g>
+
+        <!-- BOTTOM: Loss + Gradient -->
+        <g transform="translate(500, 460)">
+          <rect x="-110" y="-35" width="220" height="70" rx="6" fill="#0d0d15" stroke="#5ca06c" stroke-width="1.2"/>
+          <!-- Whippletree sketch -->
+          <g transform="translate(-40, -5)">
+            <line x1="0" y1="0" x2="80" y2="0" stroke="#5ca06c" stroke-width="1.5" opacity="0.5"/>
+            <line x1="20" y1="0" x2="20" y2="15" stroke="#5ca06c" stroke-width="1" opacity="0.5"/>
+            <line x1="60" y1="0" x2="60" y2="15" stroke="#5ca06c" stroke-width="1" opacity="0.5"/>
+            <line x1="10" y1="15" x2="30" y2="15" stroke="#5ca06c" stroke-width="1.5" opacity="0.5"/>
+            <line x1="50" y1="15" x2="70" y2="15" stroke="#5ca06c" stroke-width="1.5" opacity="0.5"/>
+            <circle cx="40" cy="-3" r="3" fill="#5ca06c" opacity="0.4"/>
+          </g>
+          <!-- Cycloid ball track -->
+          <g transform="translate(55, -5)">
+            <path d="M0,-10 Q10,10 20,-8 Q30,10 40,-6" fill="none" stroke="#c9a84c" stroke-width="1" opacity="0.5"/>
+            <circle cx="5" cy="-7" r="3" fill="#c9a84c" opacity="0.5"/>
+          </g>
+          <text x="0" y="-45" text-anchor="middle" fill="#5ca06c" font-size="12" font-weight="500" letter-spacing="2">BOTTOM</text>
+          <text x="0" y="-58" text-anchor="middle" fill="#5ca06c" font-size="10" opacity="0.7">Loss + Gradient Descent</text>
+          <text x="0" y="50" text-anchor="middle" fill="#555" font-size="9">whippletree = loss &bull; cycloid ball track = gradient</text>
+        </g>
+
+        <!-- LEFT FACE: Output + Input -->
+        <g transform="translate(130, 370)">
+          <rect x="-80" y="-45" width="160" height="90" rx="6" fill="#0d0d15" stroke="#da7e7e" stroke-width="1.2"/>
+          <!-- Three dials -->
+          <g transform="translate(-35, -5)">
+            <circle cx="0" cy="0" r="12" fill="none" stroke="#da7e7e" stroke-width="1" opacity="0.5"/>
+            <line x1="0" y1="0" x2="0" y2="-10" stroke="#da7e7e" stroke-width="1.5" opacity="0.7"/>
+            <circle cx="35" cy="0" r="12" fill="none" stroke="#da7e7e" stroke-width="1" opacity="0.5"/>
+            <line x1="35" y1="0" x2="38" y2="-9" stroke="#da7e7e" stroke-width="1.5" opacity="0.7"/>
+            <circle cx="70" cy="0" r="12" fill="none" stroke="#da7e7e" stroke-width="1" opacity="0.5"/>
+            <line x1="70" y1="0" x2="65" y2="-9" stroke="#da7e7e" stroke-width="1.5" opacity="0.7"/>
+          </g>
+          <!-- Prism -->
+          <g transform="translate(55, -5)">
+            <polygon points="0,-12 10,8 -10,8" fill="none" stroke="#c9a84c" stroke-width="1" opacity="0.5"/>
+          </g>
+          <text x="0" y="-55" text-anchor="middle" fill="#da7e7e" font-size="12" font-weight="500" letter-spacing="2">LEFT</text>
+          <text x="0" y="-68" text-anchor="middle" fill="#da7e7e" font-size="10" opacity="0.7">I/O Face</text>
+          <text x="0" y="60" text-anchor="middle" fill="#555" font-size="9">3 input dials + answer prism</text>
+          <text x="0" y="73" text-anchor="middle" fill="#555" font-size="9">dog clutch: TRAIN / PREDICT</text>
+          <line x1="80" y1="-20" x2="230" y2="-50" stroke="#da7e7e" stroke-width="0.8" opacity="0.3" stroke-dasharray="4,4"/>
+        </g>
+
+        <!-- BACK: Motor + Timing -->
+        <g transform="translate(870, 410)">
+          <rect x="-70" y="-35" width="140" height="70" rx="6" fill="#0d0d15" stroke="#888" stroke-width="1.2"/>
+          <!-- Escapement symbol -->
+          <g transform="translate(0, 0)">
+            <circle cx="0" cy="0" r="15" fill="none" stroke="#888" stroke-width="1" opacity="0.4"/>
+            <line x1="0" y1="0" x2="0" y2="-13" stroke="#c9a84c" stroke-width="1.5" opacity="0.6"/>
+            <line x1="0" y1="0" x2="10" y2="8" stroke="#c9a84c" stroke-width="1.5" opacity="0.6"/>
+          </g>
+          <text x="0" y="-45" text-anchor="middle" fill="#888" font-size="12" font-weight="500" letter-spacing="2">BACK</text>
+          <text x="0" y="-58" text-anchor="middle" fill="#888" font-size="10" opacity="0.7">Motor + Timing</text>
+          <text x="0" y="50" text-anchor="middle" fill="#555" font-size="9">escapement = heartbeat sequencer</text>
+          <text x="0" y="63" text-anchor="middle" fill="#555" font-size="9">epoch counter + reset crank</text>
+        </g>
+      </svg>
+    </div>
+
+    <!-- Core Thesis: What IS this machine? -->
+    <div class="section-title">THE THESIS</div>
+    <div class="narrative">
+      <p><strong>AI is not magic. It's just mathematical probability.</strong></p>
+      <p>Every viewer who watches this machine will understand that a neural network is nothing more than: <em>multiply numbers, add them up, clip negatives, check the answer, adjust the multipliers, repeat</em>. The magic dissolves. The mystery remains — because watching 42 weights self-adjust until the machine starts predicting correctly is genuinely mesmerizing.</p>
+      <p>The machine completes the trilogy:</p>
+    </div>
+
+    <div class="faces-grid">
+      <div class="face-card">
+        <div class="icon" style="color:#7eb8da;">I</div>
+        <h3>Triple Helix</h3>
+        <p>Mechanical wave superposition. Waves add. The Margolin aesthetic established.</p>
+      </div>
+      <div class="face-card">
+        <div class="icon" style="color:#a07cc5;">II</div>
+        <h3>Murmuration Engine</h3>
+        <p>919 balls. Spatial phase distribution. Emergence from simple rules.</p>
+      </div>
+      <div class="face-card" style="border-color:#c9a84c;">
+        <div class="icon" style="color:#c9a84c;">III</div>
+        <h3>Physical Transformer</h3>
+        <p>The machine <em>learns</em>. Computation as choreography. The trilogy's capstone.</p>
+      </div>
+    </div>
+
+    <!-- Operation Mapping Table -->
+    <div class="section-title">NEURAL OPERATION &rarr; MECHANISM MAPPING</div>
+
+    <table class="op-table">
+      <thead>
+        <tr>
+          <th>Neural Operation</th>
+          <th>Mechanism</th>
+          <th>Reuleaux Heritage</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Training data storage</td>
+          <td class="mech">Elevated circular pin drum<br><span class="source">Transparent, brass frame, red pins, modular strips</span></td>
+          <td class="reuleaux">Set A (cylinder pairs)</td>
+        </tr>
+        <tr>
+          <td>Input loading</td>
+          <td class="mech">Dog clutch + one-hot selectors<br><span class="source">TRAIN: drum auto-feeds &bull; PREDICT: manual dials</span></td>
+          <td class="reuleaux">Set N (ratchets)</td>
+        </tr>
+        <tr>
+          <td>Weight storage (memory)</td>
+          <td class="mech">42 self-locking worm gears in 7x6 visible grid<br><span class="source">Cannot back-drive = persistent learned weights</span></td>
+          <td class="reuleaux">Set M (screw mechanisms)</td>
+        </tr>
+        <tr>
+          <td>Weighted sum (neurons)</td>
+          <td class="mech">Weighted Archimedes lever<br><span class="source">Beam with sliding pivots &mdash; pivot position = weight value</span></td>
+          <td class="reuleaux">Set T (pantographs/parallel guides)</td>
+        </tr>
+        <tr>
+          <td>ReLU activation</td>
+          <td class="mech">Lever with mechanical stop<br><span class="source">Dead zone below zero &mdash; negative inputs produce zero output</span></td>
+          <td class="reuleaux">Mechanical stop (basic constraint)</td>
+        </tr>
+        <tr>
+          <td>Signal routing</td>
+          <td class="mech">1.5mm rigid brass rods through transparent midplane<br><span class="source">Replace strings &mdash; no droop, no delay, visible signal paths</span></td>
+          <td class="reuleaux">Set V (belt/cord) &rarr; evolved to rigid links</td>
+        </tr>
+        <tr>
+          <td>Output display</td>
+          <td class="mech">Detented rack-and-pinion &rarr; 3-sided answer prisms<br><span class="source">Click-click-click &mdash; stops at prediction. Mystery preserved.</span></td>
+          <td class="reuleaux">Set N (Geneva/ratchet hybrid)</td>
+        </tr>
+        <tr>
+          <td>Loss computation</td>
+          <td class="mech">Whippletree (cascaded balance beams) + damping<br><span class="source">Bars tilt when wrong, settle level when right. Calder mobile.</span></td>
+          <td class="reuleaux">Set T (parallel motion)</td>
+        </tr>
+        <tr>
+          <td>Gradient visualization</td>
+          <td class="mech">Brachistochrone (cycloid) ball track<br><span class="source">Ball rolls down curve of fastest descent = gradient descent made literal</span></td>
+          <td class="reuleaux">Set R (cycloid curves)</td>
+        </tr>
+        <tr>
+          <td>Backpropagation</td>
+          <td class="mech">Same weighted lever, driven in reverse<br><span class="source">Forward: inputs drive beam tip. Backward: error drives opposite end.<br>The lever IS the neuron in both directions.</span></td>
+          <td class="reuleaux">Lever reversibility (Archimedes)</td>
+        </tr>
+        <tr>
+          <td>Weight update</td>
+          <td class="mech">Error signal &rarr; ratcheted worm gear drive<br><span class="source">Each click adjusts the sliding pivot on the lever above</span></td>
+          <td class="reuleaux">Set M (screw) + Set N (ratchet)</td>
+        </tr>
+        <tr>
+          <td>Sequencing / timing</td>
+          <td class="mech">Clock escapement on main shaft<br><span class="source">Discrete ticks = heartbeat. Machine computes in beats, not continuous.</span></td>
+          <td class="reuleaux">Set X (escapements)</td>
+        </tr>
+        <tr>
+          <td>Epoch counter</td>
+          <td class="mech">Worm-and-wheel on drum shaft + pointer dial<br><span class="source">Shows how many times the machine has seen all training data</span></td>
+          <td class="reuleaux">Set M (worm drive)</td>
+        </tr>
+        <tr>
+          <td>Mode switch</td>
+          <td class="mech">Dog clutch lever: TRAIN / PREDICT<br><span class="source">Physical lever. Satisfying clunk. Whole machine changes behavior.</span></td>
+          <td class="reuleaux">Set A (clutch pairs)</td>
+        </tr>
+        <tr>
+          <td>Reset</td>
+          <td class="mech">Common shaft + hand crank returns all worms to zero<br><span class="source">"Erase memory" &mdash; dramatic full-machine reset</span></td>
+          <td class="reuleaux">Set D (crank mechanisms)</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Key Insights from Genius Review -->
+    <div class="section-title">DESIGN BREAKTHROUGHS</div>
+
+    <div class="insight">
+      <div class="label">Breakthrough #1 &mdash; The Bidirectional Lever</div>
+      <p>The same weighted Archimedes lever computes both the forward pass AND backpropagation. Drive inputs from one end = inference. Drive error from the other end = learning. This eliminates ball-and-disk integrators entirely and makes the machine's deepest truth visible: <strong>backprop IS the forward pass in reverse</strong>.</p>
+    </div>
+
+    <div class="insight">
+      <div class="label">Breakthrough #2 &mdash; The Escapement Heartbeat</div>
+      <p>A clock escapement replaces the governor. The machine doesn't compute continuously — it computes in discrete beats, like a thinking brain. Each tick evaluates one neuron. The rhythm is audible: tick... tick... tick. You can <em>hear</em> the machine thinking.</p>
+    </div>
+
+    <div class="insight">
+      <div class="label">Breakthrough #3 &mdash; Brass Rods, Not Strings</div>
+      <p>At 300mm scale, strings either droop limply or need impractical tension. Thin rigid brass rods (1.5mm) through a transparent acrylic midplane transmit signals instantly with zero compliance. The golden lines cutting through clear acrylic are more beautiful than any string.</p>
+    </div>
+
+    <div class="insight">
+      <div class="label">Breakthrough #4 &mdash; Single Lever vs Compound Pantograph</div>
+      <p>A 9-stage compound pantograph loses 37-77% of its signal to friction (0.95^9). One weighted Archimedes lever with 9 sliding pivots does the same computation with 2 friction points instead of 18. Simpler, more reliable, more Margolin.</p>
+    </div>
+
+    <div class="insight">
+      <div class="label">Breakthrough #5 &mdash; The Whippletree as Calder Mobile</div>
+      <p>Loss computation uses cascaded balance beams — a whippletree. When the network is wrong, the beams tilt dramatically. As it learns, they settle toward level. Add an eddy-current damper and the settling motion becomes a slow, graceful dance. Like a Calder mobile finding equilibrium.</p>
+    </div>
+
+    <div class="footer-nav">
+      <span></span>
+      <a href="02-network.html">Next: Neural Network Layout &rarr;</a>
+    </div>
+  </div>
+</body>
+</html>

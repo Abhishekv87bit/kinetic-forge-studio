@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Section 5: Dimensions & Build — The Physical Transformer</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0a0a0f; color: #e0e0e0; line-height: 1.7; }
+  .header { text-align: center; padding: 30px 20px 15px; border-bottom: 1px solid #1a1a2e; }
+  .header h1 { font-size: 1.8em; font-weight: 300; letter-spacing: 0.15em; color: #c9a84c; }
+  .header .sub { color: #666; font-size: 0.9em; margin-top: 4px; }
+  .nav { display: flex; justify-content: center; gap: 4px; padding: 15px; flex-wrap: wrap; border-bottom: 1px solid #0f0f1a; }
+  .nav a { color: #555; text-decoration: none; padding: 6px 14px; border: 1px solid #1a1a2e; border-radius: 4px; font-size: 0.8em; transition: all 0.3s; }
+  .nav a:hover { color: #c9a84c; border-color: #c9a84c; }
+  .nav a.active { color: #c9a84c; border-color: #c9a84c; background: rgba(201,168,76,0.08); }
+  .content { max-width: 1200px; margin: 0 auto; padding: 30px; }
+  .section-title { font-size: 1.4em; color: #c9a84c; font-weight: 300; letter-spacing: 0.08em; margin: 40px 0 20px; padding-bottom: 8px; border-bottom: 1px solid #1a1a2e; }
+  .narrative { max-width: 800px; margin: 20px auto; font-size: 1.05em; color: #bbb; }
+  .narrative p { margin-bottom: 18px; }
+  .narrative em { color: #c9a84c; font-style: normal; font-weight: 500; }
+
+  .dim-box {
+    background: #0d0d15;
+    border: 1px solid #1a1a2e;
+    border-radius: 12px;
+    padding: 30px;
+    margin: 30px 0;
+    text-align: center;
+  }
+  .dim-box h2 { font-size: 1.2em; color: #c9a84c; font-weight: 400; letter-spacing: 0.08em; margin-bottom: 20px; }
+
+  .spec-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 16px;
+    margin: 20px 0;
+  }
+  .spec-card {
+    background: #0d0d15;
+    border: 1px solid #1a1a2e;
+    border-radius: 8px;
+    padding: 20px;
+  }
+  .spec-card h3 { color: #c9a84c; font-size: 0.95em; font-weight: 500; margin-bottom: 10px; }
+  .spec-card .value { font-size: 1.8em; font-weight: 300; color: #e0e0e0; margin-bottom: 4px; }
+  .spec-card .unit { color: #888; font-size: 0.85em; }
+  .spec-card p { color: #888; font-size: 0.82em; margin-top: 8px; }
+
+  .build-sequence {
+    position: relative;
+    max-width: 800px;
+    margin: 30px auto;
+  }
+  .build-sequence::before {
+    content: '';
+    position: absolute;
+    left: 24px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(to bottom, #c9a84c, #5ca06c);
+  }
+  .build-step {
+    position: relative;
+    padding-left: 55px;
+    margin-bottom: 25px;
+  }
+  .build-step::before {
+    content: attr(data-num);
+    position: absolute;
+    left: 12px;
+    top: 2px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #0d0d15;
+    border: 2px solid #c9a84c;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75em;
+    font-weight: 600;
+    color: #c9a84c;
+  }
+  .build-step h3 { font-size: 1em; color: #e0e0e0; margin-bottom: 4px; }
+  .build-step .duration { color: #c9a84c; font-size: 0.82em; }
+  .build-step p { color: #999; font-size: 0.9em; margin-top: 4px; }
+
+  .material-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-size: 0.9em;
+  }
+  .material-table th {
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 2px solid #c9a84c;
+    color: #c9a84c;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+  }
+  .material-table td {
+    padding: 8px 14px;
+    border-bottom: 1px solid #1a1a2e;
+    color: #bbb;
+  }
+  .material-table tr:hover { background: rgba(201,168,76,0.03); }
+
+  .callout {
+    background: linear-gradient(135deg, rgba(201,168,76,0.08), rgba(201,168,76,0.02));
+    border-left: 3px solid #c9a84c;
+    padding: 16px 20px;
+    margin: 20px 0;
+    border-radius: 0 8px 8px 0;
+    font-size: 0.95em;
+    color: #ccc;
+  }
+
+  .footer-nav { display: flex; justify-content: space-between; padding: 30px 0; margin-top: 40px; border-top: 1px solid #1a1a2e; }
+  .footer-nav a { color: #c9a84c; text-decoration: none; font-size: 0.9em; padding: 8px 16px; border: 1px solid #c9a84c; border-radius: 4px; transition: all 0.3s; }
+  .footer-nav a:hover { background: rgba(201,168,76,0.1); }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>THE PHYSICAL TRANSFORMER</h1>
+    <div class="sub">Section 5 of 5 &mdash; Physical Dimensions & Build Sequence</div>
+  </div>
+  <div class="nav">
+    <a href="01-architecture.html">1. Architecture</a>
+    <a href="02-network.html">2. Neural Network</a>
+    <a href="03-mechanisms.html">3. Mechanisms</a>
+    <a href="04-signal-flow.html">4. Signal Flow</a>
+    <a href="05-dimensions.html" class="active">5. Dimensions</a>
+  </div>
+
+  <div class="content">
+
+    <div class="section-title">OVERALL DIMENSIONS</div>
+
+    <div class="dim-box">
+      <h2>THE MACHINE &mdash; ENVELOPE</h2>
+      <svg viewBox="0 0 700 350" width="100%" style="max-width:700px;">
+        <!-- 3D box with dimensions -->
+        <g transform="translate(350, 175)">
+          <!-- Isometric box -->
+          <path d="M-200,-60 L0,-120 L200,-60 L200,60 L0,120 L-200,60 Z" fill="#0d0d15" stroke="#c9a84c" stroke-width="1.5" opacity="0.3"/>
+          <path d="M-200,-60 L-200,60 L0,0 L0,-120 Z" fill="rgba(126,184,218,0.05)" stroke="#7eb8da" stroke-width="0.8"/>
+          <path d="M0,-120 L200,-60 L200,60 L0,0 Z" fill="rgba(160,124,197,0.05)" stroke="#a07cc5" stroke-width="0.8"/>
+          <path d="M-200,60 L0,120 L200,60 L0,0 Z" fill="rgba(92,160,108,0.05)" stroke="#5ca06c" stroke-width="0.8"/>
+
+          <!-- Width dimension (600mm) -->
+          <line x1="-200" y1="75" x2="200" y2="75" stroke="#c9a84c" stroke-width="1" opacity="0.5"/>
+          <text x="0" y="95" text-anchor="middle" fill="#c9a84c" font-size="14" font-weight="500">600 mm (width)</text>
+
+          <!-- Depth dimension (300mm) -->
+          <line x1="210" y1="-60" x2="210" y2="60" stroke="#a07cc5" stroke-width="1" opacity="0.5"/>
+          <text x="250" y="5" text-anchor="middle" fill="#a07cc5" font-size="14" font-weight="500" transform="rotate(-30, 250, 5)">300 mm (depth)</text>
+
+          <!-- Height dimension (400mm) -->
+          <line x1="-210" y1="-60" x2="-210" y2="60" stroke="#7eb8da" stroke-width="1" opacity="0.5"/>
+          <text x="-250" y="5" text-anchor="middle" fill="#7eb8da" font-size="14" font-weight="500" transform="rotate(30, -250, 5)">400 mm (height)</text>
+
+          <!-- Center label -->
+          <text x="0" y="-5" text-anchor="middle" fill="#888" font-size="11">+ pin drum above</text>
+          <text x="0" y="12" text-anchor="middle" fill="#888" font-size="11">+ brachistochrone below</text>
+        </g>
+
+        <!-- Pin drum above -->
+        <g transform="translate(350, 35)">
+          <ellipse cx="0" cy="0" rx="60" ry="15" fill="none" stroke="#c9684c" stroke-width="1" opacity="0.4"/>
+          <text x="80" y="5" fill="#c9684c" font-size="10">pin drum: +100mm</text>
+        </g>
+      </svg>
+    </div>
+
+    <div class="spec-grid">
+      <div class="spec-card">
+        <h3>Envelope</h3>
+        <div class="value">600 &times; 400 &times; 300</div>
+        <div class="unit">mm (W &times; H &times; D)</div>
+        <p>Main body without pin drum elevation or ball track</p>
+      </div>
+      <div class="spec-card">
+        <h3>Total Height</h3>
+        <div class="value">~550</div>
+        <div class="unit">mm with pin drum</div>
+        <p>Drum elevated 100-150mm above main body</p>
+      </div>
+      <div class="spec-card">
+        <h3>Weight (est.)</h3>
+        <div class="value">3-5</div>
+        <div class="unit">kg (3D printed + brass)</div>
+        <p>PLA structure, brass rods, steel shafts</p>
+      </div>
+      <div class="spec-card">
+        <h3>Neurons</h3>
+        <div class="value">6</div>
+        <div class="unit">3 hidden + 3 output</div>
+        <p>Each: one weighted Archimedes lever</p>
+      </div>
+      <div class="spec-card">
+        <h3>Weights</h3>
+        <div class="value">42</div>
+        <div class="unit">self-locking worm gears</div>
+        <p>27 input-hidden + 9 hidden-output + 6 biases</p>
+      </div>
+      <div class="spec-card">
+        <h3>Signal Lines</h3>
+        <div class="value">~21</div>
+        <div class="unit">1.5mm brass rods</div>
+        <p>Through transparent acrylic midplane</p>
+      </div>
+      <div class="spec-card">
+        <h3>Motor</h3>
+        <div class="value">1</div>
+        <div class="unit">single motor</div>
+        <p>Geared DC motor, ~6V, via escapement</p>
+      </div>
+      <div class="spec-card">
+        <h3>Training Time</h3>
+        <div class="value">~40</div>
+        <div class="unit">minutes (20 epochs)</div>
+        <p>~2 min/epoch, convergence at ~20 epochs</p>
+      </div>
+    </div>
+
+    <!-- Component Dimensions -->
+    <div class="section-title">COMPONENT DIMENSIONS</div>
+
+    <table class="material-table">
+      <thead>
+        <tr>
+          <th>Component</th>
+          <th>Count</th>
+          <th>Approx. Size</th>
+          <th>Material</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Weighted Archimedes lever</td>
+          <td>6</td>
+          <td>150-200mm beam length</td>
+          <td>Brass rod + PLA brackets</td>
+        </tr>
+        <tr>
+          <td>Sliding weight block</td>
+          <td>42</td>
+          <td>8 &times; 8 &times; 5mm</td>
+          <td>Brass (dovetail slot)</td>
+        </tr>
+        <tr>
+          <td>Worm gear cell</td>
+          <td>42</td>
+          <td>15mm worm + 12mm wheel</td>
+          <td>PLA worm, brass wheel</td>
+        </tr>
+        <tr>
+          <td>Weight grid (front face)</td>
+          <td>1</td>
+          <td>~120 &times; 100mm (7&times;6)</td>
+          <td>PLA frame, brass gears</td>
+        </tr>
+        <tr>
+          <td>Signal brass rod</td>
+          <td>~21</td>
+          <td>1.5mm dia, 50-150mm long</td>
+          <td>Brass rod</td>
+        </tr>
+        <tr>
+          <td>Transparent midplane</td>
+          <td>1</td>
+          <td>300 &times; 400 &times; 3mm</td>
+          <td>Clear acrylic</td>
+        </tr>
+        <tr>
+          <td>Pin drum</td>
+          <td>1</td>
+          <td>80mm dia &times; 100mm long</td>
+          <td>PLA cylinder, brass pins</td>
+        </tr>
+        <tr>
+          <td>Whippletree assembly</td>
+          <td>1</td>
+          <td>~200 &times; 100mm</td>
+          <td>Brass beams, steel pivots</td>
+        </tr>
+        <tr>
+          <td>Brachistochrone track</td>
+          <td>1</td>
+          <td>~150mm span</td>
+          <td>Brass rail, steel ball</td>
+        </tr>
+        <tr>
+          <td>Escapement</td>
+          <td>1</td>
+          <td>~40mm wheel dia</td>
+          <td>Brass wheel, steel anchor</td>
+        </tr>
+        <tr>
+          <td>Answer prism</td>
+          <td>1</td>
+          <td>~30mm triangle side</td>
+          <td>PLA with engraved text</td>
+        </tr>
+        <tr>
+          <td>Input dial</td>
+          <td>3</td>
+          <td>~30mm diameter</td>
+          <td>Brass knob</td>
+        </tr>
+        <tr>
+          <td>Dog clutch lever</td>
+          <td>1</td>
+          <td>~80mm lever length</td>
+          <td>Brass lever, steel clutch</td>
+        </tr>
+        <tr>
+          <td>Epoch counter dial</td>
+          <td>1</td>
+          <td>~25mm diameter</td>
+          <td>Brass pointer, PLA dial</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Tolerance Budget -->
+    <div class="section-title">TOLERANCE BUDGET</div>
+
+    <div class="narrative">
+      <p>At 3D-print scale, every tolerance matters. The design targets these clearances:</p>
+    </div>
+
+    <div class="spec-grid">
+      <div class="spec-card">
+        <h3>General Clearance</h3>
+        <div class="value">0.2</div>
+        <div class="unit">mm</div>
+        <p>Between non-sliding parts</p>
+      </div>
+      <div class="spec-card">
+        <h3>Sliding Fit</h3>
+        <div class="value">0.3</div>
+        <div class="unit">mm</div>
+        <p>Brass rods through acrylic holes</p>
+      </div>
+      <div class="spec-card">
+        <h3>Press Fit</h3>
+        <div class="value">0.1</div>
+        <div class="unit">mm interference</div>
+        <p>Shafts into PLA bearings</p>
+      </div>
+      <div class="spec-card">
+        <h3>Min Feature</h3>
+        <div class="value">1.5</div>
+        <div class="unit">mm</div>
+        <p>Smallest component (brass rod dia)</p>
+      </div>
+    </div>
+
+    <div class="callout">
+      <strong>Design for robustness:</strong> No component is thinner than 1.5mm. Worm gear teeth are oversized for 3D printing. Lever pivots use steel pins in brass bushings, not PLA-on-PLA. Every sliding joint can be lubricated.
+    </div>
+
+    <!-- Build Sequence -->
+    <div class="section-title">BUILD SEQUENCE</div>
+
+    <div class="narrative">
+      <p>The genius review recommended building in order of risk. Each phase validates the hardest unknowns first, so you never build the whole machine only to find one component doesn't work.</p>
+    </div>
+
+    <div class="build-sequence">
+      <div class="build-step" data-num="1">
+        <h3>Phase 1: One Weighted Lever</h3>
+        <div class="duration">Prototype first, validate everything</div>
+        <p>Build one neuron: beam, fulcrum, 3 sliding blocks, mechanical stop (ReLU), one input rod. Verify: does the beam tip move proportionally to the weighted sum? Does the ReLU stop work? How much friction?</p>
+      </div>
+
+      <div class="build-step" data-num="2">
+        <h3>Phase 2: Worm Gear Grid (3 cells)</h3>
+        <div class="duration">Test weight persistence</div>
+        <p>Build 3 worm gear cells. Verify: do they self-lock? Can error ratchets adjust them? How many clicks to traverse full range? Calibrate weight resolution.</p>
+      </div>
+
+      <div class="build-step" data-num="3">
+        <h3>Phase 3: Escapement + Motor</h3>
+        <div class="duration">Establish the heartbeat</div>
+        <p>Build the clock escapement and connect to motor. Verify: consistent tick rate? Adjustable speed? Audible ticks? This sets the rhythm for everything else.</p>
+      </div>
+
+      <div class="build-step" data-num="4">
+        <h3>Phase 4: Forward Pass (1 hidden neuron)</h3>
+        <div class="duration">First end-to-end signal path</div>
+        <p>Connect input selectors to one lever via brass rods through midplane. Verify: does a one-hot input produce correct weighted sum at beam tip? Signal routing works?</p>
+      </div>
+
+      <div class="build-step" data-num="5">
+        <h3>Phase 5: Full Forward Pass</h3>
+        <div class="duration">All 6 neurons, all 42 weights</div>
+        <p>Build remaining 5 neurons. Connect all layers. Add answer prism. Verify: does inference work? Manual dials in, correct prediction out?</p>
+      </div>
+
+      <div class="build-step" data-num="6">
+        <h3>Phase 6: Backward Pass</h3>
+        <div class="duration">Learning circuitry</div>
+        <p>Add whippletree (loss computation), error backpropagation through reversed levers, ratcheted worm gear updates. Verify: does the machine actually learn?</p>
+      </div>
+
+      <div class="build-step" data-num="7">
+        <h3>Phase 7: Pin Drum + Automation</h3>
+        <div class="duration">Autonomous training</div>
+        <p>Build pin drum, dog clutch, epoch counter. Wire up autonomous training loop. Verify: does the machine train itself and converge?</p>
+      </div>
+
+      <div class="build-step" data-num="8">
+        <h3>Phase 8: Polish</h3>
+        <div class="duration">Brachistochrone, dampers, labels</div>
+        <p>Add gradient ball track, eddy-current damper on whippletree, brass plaque ("HERE IS THE TRAINING DATA"), reset crank. Final tuning of tick rate, learning rate, and training data.</p>
+      </div>
+    </div>
+
+    <!-- Materials -->
+    <div class="section-title">MATERIALS & AESTHETIC</div>
+
+    <div class="narrative">
+      <p>The material palette is deliberate. <em>Brass</em> for signal and weight elements (warm, golden, catches light). <em>Black PLA</em> for structure (recedes visually). <em>Clear acrylic</em> for the midplane (invisible, reveals signal routing). <em>Steel</em> for precision shafts and pivots. <em>Red</em> for target pins on the drum (the answers, highlighted).</p>
+    </div>
+
+    <table class="material-table">
+      <thead>
+        <tr>
+          <th>Material</th>
+          <th>Used For</th>
+          <th>Visual Role</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="color:#c9a84c;">Brass</td>
+          <td>Signal rods, weight blocks, lever beams, input dials, drum frame, plaque</td>
+          <td>Golden "nervous system" of the machine. Everything the eye should follow is brass.</td>
+        </tr>
+        <tr>
+          <td style="color:#888;">Black PLA</td>
+          <td>Frame, brackets, housing, worm bodies</td>
+          <td>Disappears. Structure shouldn't compete with mechanism for attention.</td>
+        </tr>
+        <tr>
+          <td style="color:#7eb8da;">Clear Acrylic</td>
+          <td>Midplane, drum cylinder</td>
+          <td>Invisible structure. Reveals what's inside. Brass rods cutting through crystal.</td>
+        </tr>
+        <tr>
+          <td style="color:#e0e0e0;">Steel</td>
+          <td>Shafts, pivot pins, ball (brachistochrone), anchor (escapement)</td>
+          <td>Precision elements. Dark, functional, strong.</td>
+        </tr>
+        <tr>
+          <td style="color:#e53935;">Red PLA/Paint</td>
+          <td>Target pins on drum, "wrong" indicator on whippletree</td>
+          <td>Danger/answer color. Draws eye to training data targets.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <strong>The rule:</strong> If it computes, it's brass. If it supports, it's black. If it should be transparent, it's acrylic. If it needs precision, it's steel. If it's an answer, it's red.
+    </div>
+
+    <!-- Final Statement -->
+    <div class="section-title">THE PROMISE</div>
+
+    <div class="narrative">
+      <p>When complete, this machine will sit on a table. A viewer will watch it train for 40 minutes &mdash; levers swinging, worms clicking, beams settling, a ball slowly rolling down a golden curve. Then they'll flip a brass lever (CLUNK), turn three dials, and watch the machine <em>think</em>: tick... tick... tick... click-click-CLUNK. The answer prism stops.</p>
+      <p>The machine predicted correctly. Something it was never explicitly told.</p>
+      <p><em>"AI is not magic. It's just mathematical probability."</em></p>
+      <p>And yet, watching 42 brass blocks slowly creep along their beams until the machine starts getting answers right... that IS magic. The mechanical kind.</p>
+    </div>
+
+    <div class="footer-nav">
+      <a href="04-signal-flow.html">&larr; Previous: Signal Flow</a>
+      <a href="01-architecture.html">Back to Architecture &rarr;</a>
+    </div>
+  </div>
+</body>
+</html>

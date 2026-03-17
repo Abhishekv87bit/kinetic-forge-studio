@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Physical Transformer — Design Companion</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #0a0a0f;
+    color: #e0e0e0;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+  .header {
+    text-align: center;
+    padding: 40px 20px 20px;
+    border-bottom: 1px solid #1a1a2e;
+  }
+  .header h1 {
+    font-size: 2.4em;
+    font-weight: 300;
+    letter-spacing: 0.15em;
+    color: #c9a84c;
+    text-transform: uppercase;
+  }
+  .header .subtitle {
+    font-size: 1.1em;
+    color: #888;
+    margin-top: 8px;
+    font-style: italic;
+  }
+  .trilogy {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    margin-top: 20px;
+    font-size: 0.85em;
+    color: #666;
+  }
+  .trilogy .piece { text-align: center; }
+  .trilogy .piece.active { color: #c9a84c; font-weight: 600; }
+  .trilogy .piece .num { font-size: 0.7em; display: block; color: #444; }
+  .nav {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    padding: 20px;
+    flex-wrap: wrap;
+  }
+  .nav a {
+    color: #888;
+    text-decoration: none;
+    padding: 8px 16px;
+    border: 1px solid #1a1a2e;
+    border-radius: 4px;
+    font-size: 0.85em;
+    transition: all 0.3s;
+  }
+  .nav a:hover, .nav a.active {
+    color: #c9a84c;
+    border-color: #c9a84c;
+    background: rgba(201, 168, 76, 0.05);
+  }
+  .section {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 30px;
+  }
+  .section h2 {
+    font-size: 1.6em;
+    font-weight: 300;
+    color: #c9a84c;
+    letter-spacing: 0.1em;
+    margin-bottom: 30px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #1a1a2e;
+  }
+  .loading {
+    text-align: center;
+    padding: 100px 20px;
+    color: #666;
+    font-size: 1.2em;
+  }
+  .loading .spinner {
+    width: 40px; height: 40px;
+    border: 2px solid #1a1a2e;
+    border-top-color: #c9a84c;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .redirect-msg { color: #c9a84c; }
+</style>
+<script>
+  // Auto-redirect to latest design page
+  setTimeout(() => {
+    // This index page just shows the loading state
+    // Each section will be its own HTML file
+  }, 1000);
+</script>
+</head>
+<body>
+  <div class="header">
+    <h1>The Physical Transformer</h1>
+    <div class="subtitle">A machine that learns — Kinetic Neural Network Sculpture</div>
+    <div class="trilogy">
+      <div class="piece"><span class="num">I</span>Triple Helix</div>
+      <div class="piece"><span class="num">II</span>Murmuration Engine</div>
+      <div class="piece active"><span class="num">III</span>Physical Transformer</div>
+    </div>
+  </div>
+  <div class="nav">
+    <a href="01-architecture.html" class="active">Architecture</a>
+    <a href="02-network.html">Neural Network</a>
+    <a href="03-mechanisms.html">Mechanisms</a>
+    <a href="04-signal-flow.html">Signal Flow</a>
+    <a href="05-dimensions.html">Dimensions</a>
+    <a href="06-3d-explorer.html" style="color:#c9a84c;border-color:#c9a84c;">3D Explorer</a>
+  </div>
+  <div class="loading">
+    <div class="spinner"></div>
+    <p>Click a section above to explore the design</p>
+    <p class="redirect-msg">Start with <a href="01-architecture.html" style="color:#c9a84c;">Architecture</a></p>
+  </div>
+</body>
+</html>

@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Physical Transformer — 3D Explorer</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0a0f; color: #e0e0e0; font-family: 'Segoe UI', system-ui, sans-serif; overflow: hidden; }
+  #canvas-container { width: 100vw; height: 100vh; position: relative; }
+  canvas { display: block; }
+
+  /* HUD overlay */
+  .hud { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+  .hud-title {
+    position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+    font-size: 1.3em; font-weight: 300; letter-spacing: 0.15em; color: #c9a84c;
+    text-transform: uppercase; text-shadow: 0 0 20px rgba(201,168,76,0.3);
+  }
+  .hud-subtitle {
+    position: absolute; top: 52px; left: 50%; transform: translateX(-50%);
+    font-size: 0.75em; color: #666; letter-spacing: 0.1em;
+  }
+
+  /* Face label */
+  .face-label {
+    position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%);
+    background: rgba(10,10,15,0.85); border: 1px solid #c9a84c; border-radius: 8px;
+    padding: 12px 24px; max-width: 500px; text-align: center;
+    font-size: 0.9em; color: #ccc; pointer-events: auto;
+    transition: opacity 0.4s;
+  }
+  .face-label h3 { color: #c9a84c; font-weight: 400; letter-spacing: 0.08em; margin-bottom: 6px; font-size: 1.05em; }
+  .face-label .mechanisms { font-size: 0.82em; color: #999; margin-top: 6px; }
+
+  /* Controls hint */
+  .controls-hint {
+    position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+    font-size: 0.7em; color: #444; letter-spacing: 0.05em;
+  }
+
+  /* Info panel */
+  .info-panel {
+    position: absolute; top: 80px; right: 20px; width: 260px;
+    background: rgba(10,10,15,0.9); border: 1px solid #1a1a2e; border-radius: 8px;
+    padding: 16px; pointer-events: auto; font-size: 0.8em;
+  }
+  .info-panel h4 { color: #c9a84c; font-weight: 400; margin-bottom: 8px; letter-spacing: 0.06em; }
+  .info-panel .stat { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #111; }
+  .info-panel .stat span:first-child { color: #888; }
+  .info-panel .stat span:last-child { color: #e0e0e0; }
+
+  /* Mode buttons */
+  .mode-buttons {
+    position: absolute; top: 80px; left: 20px;
+    display: flex; flex-direction: column; gap: 8px; pointer-events: auto;
+  }
+  .mode-btn {
+    background: rgba(10,10,15,0.9); border: 1px solid #1a1a2e; border-radius: 6px;
+    color: #888; padding: 8px 14px; font-size: 0.75em; cursor: pointer;
+    letter-spacing: 0.05em; transition: all 0.3s; font-family: inherit;
+  }
+  .mode-btn:hover, .mode-btn.active { color: #c9a84c; border-color: #c9a84c; }
+
+  /* Interaction spotlight */
+  .interaction-spot {
+    position: absolute; padding: 6px 12px; background: rgba(201,168,76,0.15);
+    border: 1px solid rgba(201,168,76,0.4); border-radius: 20px;
+    color: #c9a84c; font-size: 0.7em; pointer-events: auto; cursor: pointer;
+    transition: all 0.3s; white-space: nowrap;
+  }
+  .interaction-spot:hover { background: rgba(201,168,76,0.3); }
+
+  /* Nav link */
+  .nav-back {
+    position: absolute; top: 20px; left: 20px; pointer-events: auto;
+    color: #555; text-decoration: none; font-size: 0.8em; transition: color 0.3s;
+  }
+  .nav-back:hover { color: #c9a84c; }
+
+  /* Animation state indicator */
+  .anim-state {
+    position: absolute; top: 20px; right: 20px;
+    font-size: 0.7em; color: #555; letter-spacing: 0.06em;
+  }
+
+  /* String glow */
+  @keyframes stringPulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+</style>
+</head>
+<body>
+<div id="canvas-container">
+  <div class="hud">
+    <a href="index.html" class="nav-back">< Back to Overview</a>
+    <div class="hud-title">The Physical Transformer</div>
+    <div class="hud-subtitle">Interactive 3D Explorer — Orbit to explore all six faces</div>
+    <div class="anim-state" id="animState">IDLE</div>
+
+    <div class="mode-buttons">
+      <button class="mode-btn active" onclick="setView('free')">Free Orbit</button>
+      <button class="mode-btn" onclick="setView('front')">Front — Weights</button>
+      <button class="mode-btn" onclick="setView('back')">Back — Motor</button>
+      <button class="mode-btn" onclick="setView('left')">Left — I/O Panel</button>
+      <button class="mode-btn" onclick="setView('right')">Right — Compute</button>
+      <button class="mode-btn" onclick="setView('top')">Top — Pin Drum</button>
+      <button class="mode-btn" onclick="setView('human')">Human POV</button>
+      <button class="mode-btn" onclick="toggleAnimation()">Play / Pause</button>
+    </div>
+
+    <div class="info-panel">
+      <h4>Specifications</h4>
+      <div class="stat"><span>Envelope</span><span>600 x 400 x 300 mm</span></div>
+      <div class="stat"><span>Weight (est.)</span><span>4-6 kg</span></div>
+      <div class="stat"><span>Neurons</span><span>6 (3 hidden + 3 output)</span></div>
+      <div class="stat"><span>Weights</span><span>42 (worm gears)</span></div>
+      <div class="stat"><span>Signal Lines</span><span>~21 strings</span></div>
+      <div class="stat"><span>Summation</span><span>Pantograph diamonds</span></div>
+      <div class="stat"><span>Routing</span><span>Brass pulleys + strings</span></div>
+      <div class="stat"><span>Motor</span><span>Single NEMA 17</span></div>
+      <div class="stat"><span>Training</span><span>~40 min / 20 epochs</span></div>
+      <div class="stat"><span>Aesthetic</span><span>Margolin (string + cam)</span></div>
+    </div>
+
+    <div class="face-label" id="faceLabel">
+      <h3>Drag to orbit — Scroll to zoom</h3>
+      <p>Click the view buttons to jump to each face, or orbit freely to discover the machine.</p>
+      <div class="mechanisms">Pantograph diamonds + String routing + Margolin aesthetic</div>
+    </div>
+
+    <div class="controls-hint">
+      Drag: orbit &nbsp;|&nbsp; Scroll: zoom &nbsp;|&nbsp; Right-drag: pan &nbsp;|&nbsp; Buttons: preset views
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.162.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ─── Scene Setup ──────────────────────────────────────────
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0a0f);
+scene.fog = new THREE.FogExp2(0x0a0a0f, 0.0008);
+
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 5000);
+camera.position.set(500, 350, 600);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+container.insertBefore(renderer.domElement, container.firstChild);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.target.set(0, 150, 0);
+controls.minDistance = 200;
+controls.maxDistance = 2000;
+controls.maxPolarAngle = Math.PI * 0.85;
+
+// ─── Materials ────────────────────────────────────────────
+const brass = new THREE.MeshStandardMaterial({
+  color: 0xc9a84c, metalness: 0.85, roughness: 0.25,
+  emissive: 0x1a1508, emissiveIntensity: 0.1
+});
+const darkBrass = new THREE.MeshStandardMaterial({
+  color: 0x8a7030, metalness: 0.8, roughness: 0.35
+});
+const blackPLA = new THREE.MeshStandardMaterial({
+  color: 0x1a1a1a, metalness: 0.05, roughness: 0.7
+});
+const clearAcrylic = new THREE.MeshPhysicalMaterial({
+  color: 0xffffff, metalness: 0, roughness: 0.05,
+  transmission: 0.92, thickness: 3, ior: 1.49,
+  transparent: true, opacity: 0.15
+});
+const steel = new THREE.MeshStandardMaterial({
+  color: 0xcccccc, metalness: 0.9, roughness: 0.15
+});
+const redAccent = new THREE.MeshStandardMaterial({
+  color: 0xcc3333, metalness: 0.3, roughness: 0.4,
+  emissive: 0x330000, emissiveIntensity: 0.2
+});
+const stringMat = new THREE.LineBasicMaterial({ color: 0xc9a84c, linewidth: 1, transparent: true, opacity: 0.7 });
+const stringGlowMat = new THREE.LineBasicMaterial({ color: 0xffe0a0, linewidth: 2, transparent: true, opacity: 0.4 });
+const floorMat = new THREE.MeshStandardMaterial({ color: 0x111118, metalness: 0.1, roughness: 0.9 });
+
+// ─── Lights ───────────────────────────────────────────────
+const ambientLight = new THREE.AmbientLight(0x222240, 0.6);
+scene.add(ambientLight);
+
+const keyLight = new THREE.DirectionalLight(0xfff5e0, 1.2);
+keyLight.position.set(400, 600, 300);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(2048, 2048);
+keyLight.shadow.camera.near = 100;
+keyLight.shadow.camera.far = 1500;
+keyLight.shadow.camera.left = -500;
+keyLight.shadow.camera.right = 500;
+keyLight.shadow.camera.top = 500;
+keyLight.shadow.camera.bottom = -500;
+scene.add(keyLight);
+
+const fillLight = new THREE.DirectionalLight(0xc0d0ff, 0.4);
+fillLight.position.set(-300, 200, -200);
+scene.add(fillLight);
+
+const rimLight = new THREE.DirectionalLight(0xffe0a0, 0.3);
+rimLight.position.set(0, 100, -400);
+scene.add(rimLight);
+
+// Spotlight on the machine (museum lighting)
+const spotLight = new THREE.SpotLight(0xfff0d0, 0.8, 1200, Math.PI / 6, 0.5, 1);
+spotLight.position.set(0, 700, 0);
+spotLight.target.position.set(0, 150, 0);
+spotLight.castShadow = true;
+scene.add(spotLight);
+scene.add(spotLight.target);
+
+// ─── Floor (museum pedestal) ──────────────────────────────
+const pedestalGeo = new THREE.CylinderGeometry(400, 420, 20, 64);
+const pedestal = new THREE.Mesh(pedestalGeo, floorMat);
+pedestal.position.y = -10;
+pedestal.receiveShadow = true;
+scene.add(pedestal);
+
+// Subtle floor plane
+const floorGeo = new THREE.PlaneGeometry(3000, 3000);
+const floor = new THREE.Mesh(floorGeo, new THREE.MeshStandardMaterial({ color: 0x080810, roughness: 0.95 }));
+floor.rotation.x = -Math.PI / 2;
+floor.position.y = -20;
+floor.receiveShadow = true;
+scene.add(floor);
+
+// ─── Grid helper (subtle) ────────────────────────────────
+const gridHelper = new THREE.GridHelper(2000, 40, 0x151520, 0x0d0d15);
+gridHelper.position.y = -19;
+scene.add(gridHelper);
+
+// ─── Machine Group ────────────────────────────────────────
+const machine = new THREE.Group();
+scene.add(machine);
+
+// Dimensions: 600 x 300(depth) x 400(height) — centered at origin, bottom at y=0
+const W = 600, D = 300, H = 400;
+
+// ─── Main Frame (black PLA structural frame) ─────────────
+function addFrameEdge(x1,y1,z1, x2,y2,z2, thickness=8) {
+  const dir = new THREE.Vector3(x2-x1, y2-y1, z2-z1);
+  const len = dir.length();
+  dir.normalize();
+  const geo = new THREE.BoxGeometry(thickness, len, thickness);
+  const mesh = new THREE.Mesh(geo, blackPLA);
+  mesh.position.set((x1+x2)/2, (y1+y2)/2, (z1+z2)/2);
+  // align Y axis to direction
+  const up = new THREE.Vector3(0,1,0);
+  const quat = new THREE.Quaternion().setFromUnitVectors(up, dir);
+  mesh.quaternion.copy(quat);
+  mesh.castShadow = true;
+  machine.add(mesh);
+}
+// Bottom rectangle
+addFrameEdge(-W/2,0,-D/2, W/2,0,-D/2);
+addFrameEdge(-W/2,0,D/2, W/2,0,D/2);
+addFrameEdge(-W/2,0,-D/2, -W/2,0,D/2);
+addFrameEdge(W/2,0,-D/2, W/2,0,D/2);
+// Top rectangle
+addFrameEdge(-W/2,H,-D/2, W/2,H,-D/2);
+addFrameEdge(-W/2,H,D/2, W/2,H,D/2);
+addFrameEdge(-W/2,H,-D/2, -W/2,H,D/2);
+addFrameEdge(W/2,H,-D/2, W/2,H,D/2);
+// Verticals
+addFrameEdge(-W/2,0,-D/2, -W/2,H,-D/2);
+addFrameEdge(W/2,0,-D/2, W/2,H,-D/2);
+addFrameEdge(-W/2,0,D/2, -W/2,H,D/2);
+addFrameEdge(W/2,0,D/2, W/2,H,D/2);
+
+// ─── Clear Acrylic Side Panels ────────────────────────────
+// Front panel (weight matrix visible)
+const frontPanelGeo = new THREE.PlaneGeometry(W - 20, H - 20);
+const frontPanel = new THREE.Mesh(frontPanelGeo, clearAcrylic);
+frontPanel.position.set(0, H/2, D/2 - 2);
+machine.add(frontPanel);
+
+// Right panel (computation visible)
+const rightPanelGeo = new THREE.PlaneGeometry(D - 20, H - 20);
+const rightPanel = new THREE.Mesh(rightPanelGeo, clearAcrylic);
+rightPanel.position.set(W/2 - 2, H/2, 0);
+rightPanel.rotation.y = Math.PI / 2;
+machine.add(rightPanel);
+
+// Left panel (I/O panel — partially open)
+const leftPanelGeo = new THREE.PlaneGeometry(D - 20, H * 0.5);
+const leftPanel = new THREE.Mesh(leftPanelGeo, clearAcrylic);
+leftPanel.position.set(-W/2 + 2, H * 0.75, 0);
+leftPanel.rotation.y = -Math.PI / 2;
+machine.add(leftPanel);
+
+// ─── FRONT FACE: Worm Gear Weight Matrix (7 x 6 grid) ───
+const wormGearGroup = new THREE.Group();
+const gearRows = 7, gearCols = 6;
+const gearSpacingX = (W - 100) / (gearCols - 1);
+const gearSpacingY = (H - 120) / (gearRows - 1);
+for (let r = 0; r < gearRows; r++) {
+  for (let c = 0; c < gearCols; c++) {
+    // Worm gear housing
+    const housingGeo = new THREE.CylinderGeometry(12, 12, 20, 16);
+    const housing = new THREE.Mesh(housingGeo, darkBrass);
+    const x = -W/2 + 50 + c * gearSpacingX;
+    const y = 60 + r * gearSpacingY;
+    housing.position.set(x, y, D/2 - 15);
+    housing.rotation.x = Math.PI / 2;
+    housing.castShadow = true;
+    wormGearGroup.add(housing);
+
+    // Worm shaft (visible brass rod)
+    const shaftGeo = new THREE.CylinderGeometry(2, 2, 30, 8);
+    const shaft = new THREE.Mesh(shaftGeo, brass);
+    shaft.position.set(x, y, D/2 - 15);
+    shaft.rotation.x = Math.PI / 2;
+    wormGearGroup.add(shaft);
+
+    // Position indicator disc
+    const discGeo = new THREE.CylinderGeometry(8, 8, 1, 16);
+    const isBias = c >= 5;
+    const isHidden = r < 4 && !isBias;
+    const mat = isBias ? new THREE.MeshStandardMaterial({
+      color: 0xc9a84c, metalness: 0.7, roughness: 0.3, emissive: 0x2a1f08, emissiveIntensity: 0.3
+    }) : isHidden ? new THREE.MeshStandardMaterial({
+      color: 0x4466aa, metalness: 0.6, roughness: 0.3, emissive: 0x0a0a22, emissiveIntensity: 0.2
+    }) : new THREE.MeshStandardMaterial({
+      color: 0x7744aa, metalness: 0.6, roughness: 0.3, emissive: 0x150a22, emissiveIntensity: 0.2
+    });
+    const disc = new THREE.Mesh(discGeo, mat);
+    disc.position.set(x, y, D/2 - 3);
+    disc.rotation.x = Math.PI / 2;
+    wormGearGroup.add(disc);
+  }
+}
+machine.add(wormGearGroup);
+
+// Weight matrix label (brass plaque)
+const plaqueGeo = new THREE.BoxGeometry(180, 18, 1);
+const plaque = new THREE.Mesh(plaqueGeo, brass);
+plaque.position.set(0, 25, D/2 + 1);
+machine.add(plaque);
+
+// ─── TOP FACE: Pin Drum ──────────────────────────────────
+const drumGroup = new THREE.Group();
+const drumGeo = new THREE.CylinderGeometry(35, 35, W * 0.6, 32);
+const drum = new THREE.Mesh(drumGeo, darkBrass);
+drum.rotation.z = Math.PI / 2;
+drum.position.set(0, H + 30, 0);
+drum.castShadow = true;
+drumGroup.add(drum);
+
+// Pin strips on drum
+for (let strip = 0; strip < 8; strip++) {
+  const angle = (strip / 8) * Math.PI * 2;
+  for (let pin = 0; pin < 9; pin++) {
+    const hasPin = Math.random() > 0.4;
+    if (!hasPin) continue;
+    const pinGeo = new THREE.CylinderGeometry(1.5, 1.5, 8, 6);
+    const pinMesh = new THREE.Mesh(pinGeo, brass);
+    const px = -W * 0.3 + pin * (W * 0.6 / 8);
+    const py = H + 30 + Math.cos(angle) * 36;
+    const pz = Math.sin(angle) * 36;
+    pinMesh.position.set(px, py, pz);
+    drumGroup.add(pinMesh);
+  }
+}
+
+// Drum support brackets
+const bracketGeo = new THREE.BoxGeometry(12, 50, 12);
+const bracketL = new THREE.Mesh(bracketGeo, blackPLA);
+bracketL.position.set(-W * 0.32, H + 15, 0);
+bracketL.castShadow = true;
+drumGroup.add(bracketL);
+const bracketR = new THREE.Mesh(bracketGeo, blackPLA);
+bracketR.position.set(W * 0.32, H + 15, 0);
+bracketR.castShadow = true;
+drumGroup.add(bracketR);
+
+machine.add(drumGroup);
+
+// ─── RIGHT FACE: Computation (Pantograph Diamonds) ───────
+const computeGroup = new THREE.Group();
+
+// 3 pantograph diamond chains (one per hidden neuron)
+for (let neuron = 0; neuron < 3; neuron++) {
+  const ny = 100 + neuron * 100;
+  const baseX = W/2 - 20;
+
+  // Diamond shape (rhombus made of 4 bars)
+  for (let d = 0; d < 3; d++) {
+    const dx = -40 - d * 50;
+    const barLen = 35;
+    const openAmount = 10 + Math.random() * 15; // varying openness
+
+    // Four bars of the diamond
+    const barGeo = new THREE.BoxGeometry(3, barLen, 3);
+    const angles = [0.3, -0.3, Math.PI + 0.3, Math.PI - 0.3];
+    angles.forEach((angle, i) => {
+      const bar = new THREE.Mesh(barGeo, brass);
+      bar.position.set(baseX + dx + Math.sin(angle) * openAmount, ny + Math.cos(angle) * openAmount * 0.6, (i < 2 ? -3 : 3));
+      bar.rotation.z = angle * 0.4;
+      bar.castShadow = true;
+      computeGroup.add(bar);
+    });
+
+    // Pivot joints (small spheres)
+    const pivotGeo = new THREE.SphereGeometry(3, 8, 8);
+    const pivotPositions = [
+      [baseX + dx, ny + openAmount * 0.8, 0],
+      [baseX + dx, ny - openAmount * 0.8, 0],
+      [baseX + dx + openAmount, ny, 0],
+      [baseX + dx - openAmount, ny, 0]
+    ];
+    pivotPositions.forEach(pos => {
+      const pivot = new THREE.Mesh(pivotGeo, steel);
+      pivot.position.set(...pos);
+      computeGroup.add(pivot);
+    });
+  }
+
+  // Shaped cam (activation function)
+  const camGeo = new THREE.TorusGeometry(18, 4, 8, 32);
+  const cam = new THREE.Mesh(camGeo, brass);
+  cam.position.set(baseX - 190, ny, 0);
+  cam.rotation.y = Math.PI / 2;
+  cam.castShadow = true;
+  computeGroup.add(cam);
+
+  // Cam follower
+  const followerGeo = new THREE.SphereGeometry(5, 8, 8);
+  const follower = new THREE.Mesh(followerGeo, steel);
+  follower.position.set(baseX - 190, ny + 20, 0);
+  computeGroup.add(follower);
+}
+
+machine.add(computeGroup);
+
+// ─── LEFT FACE: I/O Panel ─────────────────────────────────
+const ioGroup = new THREE.Group();
+
+// 3 Input dials
+for (let i = 0; i < 3; i++) {
+  const dialY = 100 + i * 90;
+  const dialX = -W/2;
+  const dialZ = -60 + i * 60;
+
+  // Dial body
+  const dialGeo = new THREE.CylinderGeometry(22, 22, 15, 32);
+  const dial = new THREE.Mesh(dialGeo, brass);
+  dial.position.set(dialX - 10, dialY, dialZ);
+  dial.rotation.z = Math.PI / 2;
+  dial.castShadow = true;
+  ioGroup.add(dial);
+
+  // Dial pointer
+  const pointerGeo = new THREE.BoxGeometry(8, 2, 20);
+  const pointer = new THREE.Mesh(pointerGeo, redAccent);
+  pointer.position.set(dialX - 18, dialY, dialZ);
+  pointer.rotation.y = i * 0.8; // different positions
+  ioGroup.add(pointer);
+
+  // Dial label ring
+  const ringGeo = new THREE.TorusGeometry(25, 1.5, 8, 32);
+  const ring = new THREE.Mesh(ringGeo, darkBrass);
+  ring.position.set(dialX - 18, dialY, dialZ);
+  ring.rotation.y = Math.PI / 2;
+  ioGroup.add(ring);
+
+  // Word position markers (3 per dial)
+  for (let w = 0; w < 3; w++) {
+    const angle = (w / 3) * Math.PI * 2 - Math.PI / 2;
+    const markerGeo = new THREE.SphereGeometry(3, 8, 8);
+    const marker = new THREE.Mesh(markerGeo, redAccent);
+    marker.position.set(dialX - 18, dialY + Math.sin(angle) * 28, dialZ + Math.cos(angle) * 28);
+    ioGroup.add(marker);
+  }
+}
+
+// Mode switch (dog clutch) — prominent lever
+const leverBaseGeo = new THREE.CylinderGeometry(15, 15, 8, 16);
+const leverBase = new THREE.Mesh(leverBaseGeo, darkBrass);
+leverBase.position.set(-W/2 - 10, 50, 0);
+leverBase.rotation.z = Math.PI / 2;
+ioGroup.add(leverBase);
+
+const leverArmGeo = new THREE.BoxGeometry(6, 60, 6);
+const leverArm = new THREE.Mesh(leverArmGeo, brass);
+leverArm.position.set(-W/2 - 15, 80, 0);
+leverArm.rotation.z = 0.3; // tilted to TRAIN position
+leverArm.castShadow = true;
+ioGroup.add(leverArm);
+
+const leverKnobGeo = new THREE.SphereGeometry(8, 12, 12);
+const leverKnob = new THREE.Mesh(leverKnobGeo, redAccent);
+leverKnob.position.set(-W/2 - 30, 105, 0);
+ioGroup.add(leverKnob);
+
+machine.add(ioGroup);
+
+// ─── BACK FACE: Motor + Timing ────────────────────────────
+const motorGroup = new THREE.Group();
+
+// NEMA 17 motor body
+const motorBodyGeo = new THREE.BoxGeometry(42, 42, 48);
+const motorBody = new THREE.Mesh(motorBodyGeo, blackPLA);
+motorBody.position.set(0, 80, -D/2 - 30);
+motorBody.castShadow = true;
+motorGroup.add(motorBody);
+
+// Motor shaft
+const motorShaftGeo = new THREE.CylinderGeometry(2.5, 2.5, 30, 8);
+const motorShaft = new THREE.Mesh(motorShaftGeo, steel);
+motorShaft.position.set(0, 80, -D/2 - 5);
+motorShaft.rotation.x = Math.PI / 2;
+motorGroup.add(motorShaft);
+
+// Main timing cam
+const mainCamGeo = new THREE.CylinderGeometry(30, 30, 10, 32);
+const mainCam = new THREE.Mesh(mainCamGeo, brass);
+mainCam.position.set(0, 80, -D/2 + 10);
+mainCam.rotation.x = Math.PI / 2;
+mainCam.castShadow = true;
+motorGroup.add(mainCam);
+
+// Escapement (gravity pendulum)
+const pendulumArmGeo = new THREE.BoxGeometry(3, 120, 3);
+const pendulumArm = new THREE.Mesh(pendulumArmGeo, brass);
+pendulumArm.position.set(80, 200, -D/2 + 10);
+pendulumArm.castShadow = true;
+motorGroup.add(pendulumArm);
+
+const pendulumBobGeo = new THREE.SphereGeometry(15, 16, 16);
+const pendulumBob = new THREE.Mesh(pendulumBobGeo, darkBrass);
+pendulumBob.position.set(80, 140, -D/2 + 10);
+pendulumBob.castShadow = true;
+motorGroup.add(pendulumBob);
+
+// Barrel cam for sequencing
+const barrelCamGeo = new THREE.CylinderGeometry(20, 20, 60, 32);
+const barrelCam = new THREE.Mesh(barrelCamGeo, darkBrass);
+barrelCam.position.set(-80, 200, -D/2 + 10);
+barrelCam.rotation.x = Math.PI / 2;
+barrelCam.castShadow = true;
+motorGroup.add(barrelCam);
+
+// Spiral groove on barrel cam
+const spiralCurve = new THREE.Curve();
+const spiralPoints = [];
+for (let t = 0; t < Math.PI * 6; t += 0.1) {
+  spiralPoints.push(new THREE.Vector3(
+    -80 + t * 3 - 28,
+    200 + Math.cos(t) * 21,
+    -D/2 + 10 + Math.sin(t) * 21
+  ));
+}
+const spiralGeo = new THREE.BufferGeometry().setFromPoints(spiralPoints);
+const spiralLine = new THREE.Line(spiralGeo, stringMat);
+motorGroup.add(spiralLine);
+
+machine.add(motorGroup);
+
+// ─── BOTTOM: Whippletree (Loss Computation) ──────────────
+const whippletreeGroup = new THREE.Group();
+
+// Main balance beam
+const mainBeamGeo = new THREE.BoxGeometry(200, 4, 8);
+const mainBeam = new THREE.Mesh(mainBeamGeo, brass);
+mainBeam.position.set(0, 25, 0);
+mainBeam.castShadow = true;
+whippletreeGroup.add(mainBeam);
+
+// Main pivot
+const mainPivotGeo = new THREE.CylinderGeometry(4, 4, 12, 8);
+const mainPivot = new THREE.Mesh(mainPivotGeo, steel);
+mainPivot.position.set(0, 18, 0);
+mainPivot.castShadow = true;
+whippletreeGroup.add(mainPivot);
+
+// Sub-beams (cascaded)
+for (let side = -1; side <= 1; side += 2) {
+  const subBeamGeo = new THREE.BoxGeometry(80, 3, 6);
+  const subBeam = new THREE.Mesh(subBeamGeo, brass);
+  subBeam.position.set(side * 80, 15, 0);
+  subBeam.rotation.z = side * 0.05;
+  whippletreeGroup.add(subBeam);
+
+  const subPivotGeo = new THREE.CylinderGeometry(3, 3, 8, 8);
+  const subPivot = new THREE.Mesh(subPivotGeo, steel);
+  subPivot.position.set(side * 80, 10, 0);
+  whippletreeGroup.add(subPivot);
+}
+
+machine.add(whippletreeGroup);
+
+// ─── Brachistochrone Ball Track ───────────────────────────
+const trackPoints = [];
+for (let t = 0; t <= Math.PI; t += 0.05) {
+  // Cycloid curve
+  trackPoints.push(new THREE.Vector3(
+    -200 + (t - Math.sin(t)) * 60,
+    H - 20 - (1 - Math.cos(t)) * 80,
+    D/2 - 40
+  ));
+}
+const trackGeo = new THREE.TubeGeometry(
+  new THREE.CatmullRomCurve3(trackPoints), 64, 3, 8, false
+);
+const track = new THREE.Mesh(trackGeo, brass);
+track.castShadow = true;
+machine.add(track);
+
+// Ball on track
+const ballGeo = new THREE.SphereGeometry(5, 16, 16);
+const ball = new THREE.Mesh(ballGeo, steel);
+ball.position.copy(trackPoints[0]);
+ball.castShadow = true;
+machine.add(ball);
+const ballRef = ball;
+const trackRef = trackPoints;
+
+// ─── Answer Prism (output display) ────────────────────────
+const prismGeo = new THREE.CylinderGeometry(25, 25, 40, 3);
+const prism = new THREE.Mesh(prismGeo, redAccent);
+prism.position.set(-W/2 + 60, 350, 80);
+prism.rotation.y = Math.PI / 6;
+prism.castShadow = true;
+machine.add(prism);
+
+// Prism mount
+const prismMountGeo = new THREE.CylinderGeometry(4, 4, 15, 8);
+const prismMount = new THREE.Mesh(prismMountGeo, steel);
+prismMount.position.set(-W/2 + 60, 330, 80);
+machine.add(prismMount);
+
+// ─── STRINGS (Margolin aesthetic) ─────────────────────────
+const stringsGroup = new THREE.Group();
+
+// String paths from worm gears to pantograph diamonds
+for (let n = 0; n < 3; n++) {
+  const ny = 100 + n * 100;
+  // Strings from front face worm gears to right face pantographs
+  for (let g = 0; g < 3; g++) {
+    const startX = -W/2 + 50 + g * gearSpacingX;
+    const startY = 60 + (n * 2 + g % 2) * gearSpacingY;
+    const startZ = D/2 - 20;
+    const endX = W/2 - 60 - g * 50;
+    const endY = ny;
+    const endZ = 0;
+
+    // String with slight catenary sag
+    const stringPoints = [];
+    const steps = 20;
+    for (let s = 0; s <= steps; s++) {
+      const t = s / steps;
+      const sag = Math.sin(t * Math.PI) * 15; // catenary sag
+      stringPoints.push(new THREE.Vector3(
+        startX + (endX - startX) * t,
+        startY + (endY - startY) * t - sag,
+        startZ + (endZ - startZ) * t
+      ));
+    }
+    const sGeo = new THREE.BufferGeometry().setFromPoints(stringPoints);
+    const sLine = new THREE.Line(sGeo, stringMat);
+    stringsGroup.add(sLine);
+
+    // Glow duplicate
+    const sGlow = new THREE.Line(sGeo.clone(), stringGlowMat);
+    stringsGroup.add(sGlow);
+  }
+}
+
+// Vertical strings from pantographs down to whippletree
+for (let n = 0; n < 3; n++) {
+  const ny = 100 + n * 100;
+  const points = [
+    new THREE.Vector3(W/2 - 100, ny - 30, 0),
+    new THREE.Vector3(W/2 - 100 - n * 30, 30, 0)
+  ];
+  const vGeo = new THREE.BufferGeometry().setFromPoints(points);
+  stringsGroup.add(new THREE.Line(vGeo, stringMat));
+}
+
+// Strings from I/O dials into the machine
+for (let i = 0; i < 3; i++) {
+  const dialY = 100 + i * 90;
+  const dialZ = -60 + i * 60;
+  const points = [
+    new THREE.Vector3(-W/2, dialY, dialZ),
+    new THREE.Vector3(-W/2 + 80, dialY + 10, dialZ * 0.3),
+    new THREE.Vector3(-W/2 + 150, 60 + i * gearSpacingY * 2, 0)
+  ];
+  const curve = new THREE.CatmullRomCurve3(points);
+  const curvePoints = curve.getPoints(20);
+  const cGeo = new THREE.BufferGeometry().setFromPoints(curvePoints);
+  stringsGroup.add(new THREE.Line(cGeo, stringMat));
+}
+
+machine.add(stringsGroup);
+
+// ─── Pulley Guides (small brass pulleys for string routing) ──
+const pulleyGroup = new THREE.Group();
+for (let i = 0; i < 12; i++) {
+  const pulleyGeo = new THREE.TorusGeometry(6, 1.5, 8, 16);
+  const pulley = new THREE.Mesh(pulleyGeo, brass);
+  pulley.position.set(
+    -200 + Math.random() * 400,
+    40 + Math.random() * 320,
+    -100 + Math.random() * 200
+  );
+  pulley.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+  pulleyGroup.add(pulley);
+
+  // Pulley axle
+  const axleGeo = new THREE.CylinderGeometry(1, 1, 8, 6);
+  const axle = new THREE.Mesh(axleGeo, steel);
+  axle.position.copy(pulley.position);
+  axle.rotation.copy(pulley.rotation);
+  pulleyGroup.add(axle);
+}
+machine.add(pulleyGroup);
+
+// ─── Spring Toggle Mechanisms (neuron firing) ─────────────
+for (let n = 0; n < 3; n++) {
+  const ny = 100 + n * 100;
+  // Spring
+  const springPoints = [];
+  for (let t = 0; t < Math.PI * 8; t += 0.2) {
+    springPoints.push(new THREE.Vector3(
+      W/2 - 220 + t * 2,
+      ny + Math.sin(t) * 4,
+      Math.cos(t) * 4
+    ));
+  }
+  const springGeo = new THREE.BufferGeometry().setFromPoints(springPoints);
+  const spring = new THREE.Line(springGeo, new THREE.LineBasicMaterial({ color: 0x999999 }));
+  machine.add(spring);
+}
+
+// ─── HUMAN FIGURE (for scale) ─────────────────────────────
+const humanGroup = new THREE.Group();
+const skinMat = new THREE.MeshStandardMaterial({ color: 0xd4a574, roughness: 0.6 });
+const clothMat = new THREE.MeshStandardMaterial({ color: 0x2a2a3a, roughness: 0.7 });
+
+// Torso
+const torsoGeo = new THREE.CylinderGeometry(18, 15, 55, 8);
+const torso = new THREE.Mesh(torsoGeo, clothMat);
+torso.position.set(-450, 125, 100);
+humanGroup.add(torso);
+
+// Head
+const headGeo = new THREE.SphereGeometry(14, 12, 12);
+const head = new THREE.Mesh(headGeo, skinMat);
+head.position.set(-450, 165, 100);
+humanGroup.add(head);
+
+// Legs
+for (let side = -1; side <= 1; side += 2) {
+  const legGeo = new THREE.CylinderGeometry(7, 6, 80, 8);
+  const leg = new THREE.Mesh(legGeo, clothMat);
+  leg.position.set(-450 + side * 10, 55, 100);
+  humanGroup.add(leg);
+}
+
+// Arms
+const armGeoR = new THREE.CylinderGeometry(5, 4, 55, 8);
+const armR = new THREE.Mesh(armGeoR, clothMat);
+armR.position.set(-430, 130, 80);
+armR.rotation.z = -0.8;
+armR.rotation.x = -0.3;
+humanGroup.add(armR);
+
+const armGeoL = new THREE.CylinderGeometry(5, 4, 55, 8);
+const armL = new THREE.Mesh(armGeoL, clothMat);
+armL.position.set(-470, 120, 100);
+armL.rotation.z = 0.4;
+humanGroup.add(armL);
+
+// Hand reaching toward dial
+const handGeo = new THREE.SphereGeometry(5, 8, 8);
+const handR = new THREE.Mesh(handGeo, skinMat);
+handR.position.set(-W/2 - 25, 130, 30);
+humanGroup.add(handR);
+
+scene.add(humanGroup);
+
+// ─── Brass Plaque Labels (3D text substitute) ─────────────
+function addPlaque(text, x, y, z, rotY = 0, width = 80) {
+  const pGeo = new THREE.BoxGeometry(width, 12, 1);
+  const p = new THREE.Mesh(pGeo, brass);
+  p.position.set(x, y, z);
+  p.rotation.y = rotY;
+  machine.add(p);
+  // Engraved line
+  const lineGeo = new THREE.BoxGeometry(width - 10, 0.5, 1.5);
+  const line = new THREE.Mesh(lineGeo, new THREE.MeshStandardMaterial({ color: 0x0a0a0f }));
+  line.position.set(x, y - 3, z + (rotY === 0 ? 1 : 0));
+  line.rotation.y = rotY;
+  machine.add(line);
+}
+addPlaque('42 WEIGHTS', 0, 25, D/2 + 3, 0, 120);
+addPlaque('MOTOR', 0, 50, -D/2 - 55, Math.PI, 60);
+addPlaque('INPUT', -W/2 - 3, 320, 0, -Math.PI/2, 60);
+addPlaque('ANSWER', -W/2 + 60, 315, 80, 0, 70);
+
+// ─── Animation State ──────────────────────────────────────
+let animating = false;
+let animTime = 0;
+const animStateEl = document.getElementById('animState');
+
+window.toggleAnimation = function() {
+  animating = !animating;
+  animStateEl.textContent = animating ? 'TRAINING...' : 'IDLE';
+  animStateEl.style.color = animating ? '#c9a84c' : '#555';
+};
+
+// ─── Face Detection & Labels ──────────────────────────────
+const faceInfo = {
+  front: {
+    title: 'FRONT — Weight Matrix',
+    desc: '42 self-locking worm gears arranged in a 7x6 grid. Blue = input-to-hidden weights, Purple = hidden-to-output, Gold = biases. Each gear position encodes one learned weight — visible, tangible memory.',
+    mechanisms: 'Self-locking worm gears (friction angle > lead angle) | Friction-clutch reset shaft'
+  },
+  back: {
+    title: 'BACK — Motor & Timing',
+    desc: 'Single NEMA 17 stepper drives everything through a barrel cam sequencer. Gravity pendulum provides the heartbeat — each swing is one neural operation. The barrel cam\'s spiral groove orchestrates the entire forward-backward pass.',
+    mechanisms: 'Barrel Cam 2b sequencer | Gravity pendulum escapement | Shishi-odoshi heartbeat'
+  },
+  left: {
+    title: 'LEFT — I/O Panel (Human Interaction)',
+    desc: 'Three brass dials for input words (turn to select Cat, Eats, or Fish). Big red lever switches between TRAIN and PREDICT modes with a satisfying CLUNK. Triangular answer prism rotates to show the prediction.',
+    mechanisms: 'Dog clutch mode switch | Spring-loaded toggle | 3-slot Geneva drive answer prism'
+  },
+  right: {
+    title: 'RIGHT — Computation Engine',
+    desc: 'Pantograph diamond chains expand and contract to compute weighted sums — pure mechanical addition. Shaped brass cams trace activation functions (ReLU = flat+ramp, sigmoid = S-curve). The beating heart of the neural network.',
+    mechanisms: 'Pantograph cascade (rhombus diamonds) | Shaped cam activation functions | Spring toggle neuron firing'
+  },
+  top: {
+    title: 'TOP — Pin Drum (Training Data)',
+    desc: 'Removable brass cylinder with pin strips encoding training sentences. Each strip = one training example. The drum rotates automatically during training, feeding examples into the machine. "Here is the training data — answers before questions."',
+    mechanisms: 'Barrel cam indexing | Modular pin strips | Star-wheel ratchet advance'
+  },
+  bottom: {
+    title: 'BOTTOM — Loss & Gradient Descent',
+    desc: 'Whippletree balance beams cascade like a Calder mobile, computing the error between prediction and truth. The brachistochrone ball track (cycloid curve, Bernoulli 1696) visualizes gradient descent — the ball always finds the fastest path down.',
+    mechanisms: 'Whippletree / Calder mobile | Brachistochrone cycloid track | Scissor 5x amplifier'
+  }
+};
+
+const faceLabelEl = document.getElementById('faceLabel');
+function updateFaceLabel() {
+  const cameraDir = new THREE.Vector3();
+  camera.getWorldDirection(cameraDir);
+
+  // Determine which face the camera is most looking at
+  const faces = [
+    { name: 'front', dot: cameraDir.dot(new THREE.Vector3(0, 0, -1)) },
+    { name: 'back', dot: cameraDir.dot(new THREE.Vector3(0, 0, 1)) },
+    { name: 'left', dot: cameraDir.dot(new THREE.Vector3(1, 0, 0)) },
+    { name: 'right', dot: cameraDir.dot(new THREE.Vector3(-1, 0, 0)) },
+    { name: 'top', dot: cameraDir.dot(new THREE.Vector3(0, -1, 0)) },
+    { name: 'bottom', dot: cameraDir.dot(new THREE.Vector3(0, 1, 0)) },
+  ];
+  faces.sort((a, b) => b.dot - a.dot);
+  const best = faces[0];
+
+  if (best.dot > 0.3) {
+    const info = faceInfo[best.name];
+    faceLabelEl.innerHTML = `<h3>${info.title}</h3><p>${info.desc}</p><div class="mechanisms">${info.mechanisms}</div>`;
+    faceLabelEl.style.opacity = '1';
+  }
+}
+
+// ─── View Presets ─────────────────────────────────────────
+let targetCameraPos = null;
+let targetLookAt = null;
+const lerpSpeed = 0.04;
+
+window.setView = function(view) {
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+
+  const center = new THREE.Vector3(0, 180, 0);
+  switch(view) {
+    case 'front':
+      targetCameraPos = new THREE.Vector3(0, 200, 550);
+      targetLookAt = new THREE.Vector3(0, 180, 0);
+      break;
+    case 'back':
+      targetCameraPos = new THREE.Vector3(0, 200, -550);
+      targetLookAt = new THREE.Vector3(0, 180, 0);
+      break;
+    case 'left':
+      targetCameraPos = new THREE.Vector3(-550, 200, 0);
+      targetLookAt = new THREE.Vector3(-W/2, 200, 0);
+      break;
+    case 'right':
+      targetCameraPos = new THREE.Vector3(550, 180, 0);
+      targetLookAt = new THREE.Vector3(W/2 - 100, 180, 0);
+      break;
+    case 'top':
+      targetCameraPos = new THREE.Vector3(0, 600, 100);
+      targetLookAt = new THREE.Vector3(0, H, 0);
+      break;
+    case 'human':
+      targetCameraPos = new THREE.Vector3(-380, 165, 120);
+      targetLookAt = new THREE.Vector3(-W/2 + 50, 200, 0);
+      break;
+    case 'free':
+    default:
+      targetCameraPos = new THREE.Vector3(500, 350, 600);
+      targetLookAt = new THREE.Vector3(0, 150, 0);
+      break;
+  }
+};
+
+// ─── Animation Loop ───────────────────────────────────────
+function animate() {
+  requestAnimationFrame(animate);
+  animTime += 0.016;
+
+  // Smooth camera transitions
+  if (targetCameraPos) {
+    camera.position.lerp(targetCameraPos, lerpSpeed);
+    controls.target.lerp(targetLookAt, lerpSpeed);
+    if (camera.position.distanceTo(targetCameraPos) < 1) {
+      targetCameraPos = null;
+      targetLookAt = null;
+    }
+  }
+
+  // Machine animation when training
+  if (animating) {
+    // Pendulum swing
+    pendulumArm.rotation.z = Math.sin(animTime * 2) * 0.15;
+    pendulumBob.position.x = 80 + Math.sin(animTime * 2) * 18;
+
+    // Pin drum rotation
+    drum.rotation.z = Math.PI / 2 + animTime * 0.1;
+
+    // Barrel cam rotation
+    barrelCam.rotation.z = animTime * 0.3;
+
+    // Main timing cam
+    mainCam.rotation.z = animTime * 0.5;
+
+    // Pantograph breathing (diamonds expand/contract)
+    computeGroup.children.forEach((child, i) => {
+      if (child.isMesh && child.material === brass && child.geometry.type === 'BoxGeometry') {
+        const phase = i * 0.3;
+        child.position.y += Math.sin(animTime * 1.5 + phase) * 0.08;
+      }
+    });
+
+    // Ball on brachistochrone track
+    const trackProgress = (Math.sin(animTime * 0.8) + 1) / 2;
+    const idx = Math.floor(trackProgress * (trackRef.length - 1));
+    if (trackRef[idx]) {
+      ballRef.position.copy(trackRef[idx]);
+    }
+
+    // Whippletree tilting
+    mainBeam.rotation.z = Math.sin(animTime * 1.2) * 0.08;
+
+    // String tension pulse (opacity animation)
+    stringsGroup.children.forEach((child, i) => {
+      if (child.isLine && child.material.opacity !== undefined) {
+        child.material.opacity = 0.4 + Math.sin(animTime * 2 + i * 0.5) * 0.3;
+      }
+    });
+
+    // Answer prism rotation (during output phase)
+    prism.rotation.y = Math.PI / 6 + Math.sin(animTime * 0.3) * 0.05;
+
+    // Mode switch lever slight vibration during training
+    leverArm.rotation.z = 0.3 + Math.sin(animTime * 8) * 0.005;
+  }
+
+  // Update face label on orbit
+  updateFaceLabel();
+
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+animate();
+
+// ─── Resize Handler ───────────────────────────────────────
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Initial face label
+setTimeout(updateFaceLabel, 500);
+
+</script>
+</body>
+</html>
