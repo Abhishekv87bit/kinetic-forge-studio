@@ -45,18 +45,24 @@ A Python CLI tool that processes multiple account statement PDFs from a local fo
 #### Column Consolidation
 - Detects column structure from first PDF
 - Verifies subsequent PDFs have same columns (warn if different)
-- If columns differ, use union of all column names (fill missing cells with None)
+- If columns differ, use union of all column names (fill missing cells with empty string `""`)
+- **Column order:** Preserved from first PDF, new columns appended to the right
 
 #### CSV Writer
 - Combines all DataFrames row-by-row
 - Writes to output CSV with UTF-8 encoding
 - Uses pandas `.to_csv()` for standard formatting
 
-#### Error Handler
+#### Error Handler & Logging
 - Wraps PDF parsing in try-except
 - Logs filename and error message for failed PDFs
 - Continues to next file
 - Reports summary at end: total files processed, files skipped, total rows extracted
+
+**Logging Levels:**
+- **INFO** → stdout: "Processing file.pdf ... OK (N rows)"
+- **WARNING** → stderr: Column mismatches, empty tables, missing data
+- **ERROR** → stderr: Corrupted PDFs, IO errors, invalid arguments
 
 ### Data Flow
 ```
@@ -137,16 +143,45 @@ tax-statement-extractor/
 2. **Subsequent PDFs:**
    - If columns match exactly: concatenate data directly
    - If columns differ: warn user, merge column sets (order preserved from first PDF, new columns appended)
-3. **Missing values:** Fill with empty string or None (pandas default)
+3. **Missing values:** Fill with empty string `""` (CSV-safe, readable in Excel)
+
+**Example:**
+```
+PDF 1 columns: [Date, Amount, Description]
+PDF 2 columns: [Date, Amount, Category, Description]
+Output columns: [Date, Amount, Description, Category]
+Output row from PDF 2: [2026-03-01, 150.00, Groceries, "", Utilities]  # Empty string for missing "Category" in schema position
+```
+
+**Column Reordering:**
+- If PDF 2 has columns in different order (e.g., [Description, Amount, Date, Category]):
+  - Reorder PDF 2's columns to match first PDF's order
+  - Warn user: "Column order mismatch in file.pdf — reordered to match first PDF"
+
+### Input Validation
+- **File discovery:** Only process `.pdf` files (case-insensitive: `.PDF`, `.Pdf`, etc.)
+- **Non-PDF files:** Silently ignored (no warning)
+- **Recursion:** Only process PDFs in root of input folder; ignore subfolders
+- **Empty folder:** Exit with error if zero PDF files found
+
+### CSV Output Formatting
+- **Index:** Not written (`index=False`)
+- **Quoting:** Minimal—quote only when necessary (`quoting='minimal'`)
+- **Line terminator:** Windows-compatible (`lineterminator='\r\n'`)
+- **Encoding:** UTF-8 (`encoding='utf-8'`)
 
 ### Error Scenarios
 | Scenario | Behavior |
 |----------|----------|
 | PDF has no tables | Skip, log warning, continue |
+| PDF has empty table (zero rows) | Skip, log warning, continue |
 | PDF is corrupted/unreadable | Skip, log error, continue |
-| PDF has different columns | Log warning, merge columns, continue |
-| Input folder is empty | Exit with error message |
+| PDF has different columns | Reorder to match first PDF, log warning, continue |
+| PDF has columns in different order | Reorder to match first PDF, log warning, continue |
+| Input folder is empty (zero PDFs) | Exit with error message |
+| Input folder path doesn't exist | Exit with error message |
 | Output path is invalid | Exit with error message |
+| Missing `--input` or `--output` argument | Exit with usage message |
 
 ---
 
@@ -156,27 +191,41 @@ tax-statement-extractor/
 - [ ] Extract single table from sample PDF
 - [ ] Extract multiple tables from same PDF
 - [ ] Concatenate multiple PDFs with identical columns
-- [ ] Handle PDFs with different column sets
+- [ ] Concatenate single PDF in folder
+- [ ] Handle PDFs with different column sets (merge columns)
+- [ ] Handle PDFs with columns in different order (reorder to match first)
+- [ ] Handle PDF with empty table (zero rows)
 - [ ] Skip corrupted PDF, continue processing
 - [ ] Generate valid CSV with correct row count
+- [ ] Handle Unicode and special characters in table data
+- [ ] Handle invalid CLI arguments (missing --input, missing --output)
+- [ ] Reject non-existent input folder path
+- [ ] Reject input folder with zero PDF files
 
 ### Manual Verification
 - [ ] Test with 3-month sample statements (Jan, Feb, Mar)
-- [ ] Verify column order preserved
+- [ ] Verify column order preserved from first PDF
 - [ ] Verify all rows included (count matches expected)
 - [ ] Open output CSV in Excel, verify readability
+- [ ] Verify CSV parameters correct (no index, proper quoting, CRLF line endings)
+
+### Performance Test
+- [ ] Process 12 sample PDFs (avg 50 rows each) in <5 seconds
 
 ---
 
 ## 7. Success Criteria
 
 - ✅ CLI runs without errors on 12-month statement batch
-- ✅ Output CSV contains all rows from all PDFs
+- ✅ Output CSV contains all rows from all PDFs (row count = sum of all PDF rows)
+- ✅ All columns from all PDFs present in output
 - ✅ Column order matches first PDF
-- ✅ No data transformation applied
-- ✅ Skipped files logged with reason
-- ✅ Summary report shows file count and row count
-- ✅ Output CSV is valid and opens in Excel/Sheets
+- ✅ No data transformation applied (values unchanged from source PDFs)
+- ✅ Skipped files logged with reason (stderr)
+- ✅ Summary report shows correct file count and row count (stdout)
+- ✅ Output CSV is valid (parseable with pandas.read_csv, no truncated rows)
+- ✅ CSV parameters correct: no index column, minimal quoting, CRLF line endings, UTF-8 encoding
+- ✅ Output opens correctly in Excel/Sheets with proper formatting
 
 ---
 
