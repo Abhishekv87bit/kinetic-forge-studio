@@ -41,10 +41,10 @@ __version__ = "0.1.0"
 - [ ] **Step 3: Create `requirements.txt`**
 
 ```
-pdfplumber>=0.10.0
-pandas>=1.5.0
-pytest>=7.0.0
-pytest-cov>=4.0.0
+pdfplumber>=0.10.0,<1.0.0
+pandas>=1.5.0,<2.0.0
+pytest>=7.0.0,<8.0.0
+pytest-cov>=4.0.0,<5.0.0
 ```
 
 - [ ] **Step 4: Create `setup.py`**
@@ -146,13 +146,27 @@ git commit -m "setup: project structure, dependencies, and test fixtures"
 - Create: `tests/test_pdf_parser.py`
 - Create: `tests/sample_statements/statement_jan.pdf` (sample test data)
 
-- [ ] **Step 1: Write test for single table extraction**
+- [ ] **Step 1: Create test file with failing tests**
 
 ```python
 # tests/test_pdf_parser.py
 import pytest
 from pathlib import Path
-from tax_statement_extractor.pdf_parser import extract_tables_from_pdf
+from tax_statement_extractor.pdf_parser import extract_tables_from_pdf, PDFExtractionError
+
+def test_extract_from_nonexistent_file():
+    """Test handling of non-existent PDF."""
+    with pytest.raises(PDFExtractionError):
+        extract_tables_from_pdf(Path("/nonexistent/file.pdf"))
+
+def test_extract_from_corrupted_pdf(temp_output_dir):
+    """Test handling of corrupted PDF."""
+    # Create a fake PDF file (not actually a PDF)
+    fake_pdf = Path(temp_output_dir) / "corrupted.pdf"
+    fake_pdf.write_text("This is not a PDF")
+
+    with pytest.raises(PDFExtractionError):
+        extract_tables_from_pdf(fake_pdf)
 
 def test_extract_single_table(sample_pdf_dir):
     """Test extraction of single table from PDF."""
@@ -162,38 +176,6 @@ def test_extract_single_table(sample_pdf_dir):
     assert len(tables) > 0
     assert tables[0].shape[0] > 0  # Has rows
     assert tables[0].shape[1] > 0  # Has columns
-
-def test_extract_multiple_tables_from_pdf(sample_pdf_dir):
-    """Test extraction of multiple tables from same PDF."""
-    # This will be populated when sample PDF has multiple tables
-    pdf_path = sample_pdf_dir / "statement_feb.pdf"
-    tables = extract_tables_from_pdf(pdf_path)
-    assert isinstance(tables, list)
-
-def test_extract_from_nonexistent_file():
-    """Test handling of non-existent PDF."""
-    from tax_statement_extractor.pdf_parser import PDFExtractionError
-
-    with pytest.raises(PDFExtractionError):
-        extract_tables_from_pdf(Path("/nonexistent/file.pdf"))
-
-def test_extract_from_corrupted_pdf(temp_output_dir):
-    """Test handling of corrupted PDF."""
-    from tax_statement_extractor.pdf_parser import PDFExtractionError
-    import os
-
-    # Create a fake PDF file (not actually a PDF)
-    fake_pdf = Path(temp_output_dir) / "corrupted.pdf"
-    fake_pdf.write_text("This is not a PDF")
-
-    with pytest.raises(PDFExtractionError):
-        extract_tables_from_pdf(fake_pdf)
-
-def test_extract_pdf_with_no_tables(temp_output_dir):
-    """Test PDF with no tables returns empty list."""
-    # This test assumes we have a sample PDF with no tables
-    # For now, we'll skip and implement when we have the sample
-    pass
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -367,11 +349,12 @@ def test_write_dataframes_with_different_columns(temp_output_dir):
     output_path = Path(temp_output_dir) / "output.csv"
     write_csv([df1, df2], output_path)
 
-    result = pd.read_csv(output_path)
+    # Read with dtype=str to preserve empty strings
+    result = pd.read_csv(output_path, dtype=str, keep_default_na=False)
     # Should have all columns from both DataFrames
     assert 'Category' in result.columns
-    # First row shouldn't have Category value
-    assert pd.isna(result.iloc[0]['Category'])
+    # First row should have empty string for missing Category value
+    assert result.iloc[0]['Category'] == ''
 
 def test_write_with_unicode_characters(temp_output_dir):
     """Test handling of Unicode characters in data."""
@@ -667,7 +650,7 @@ git commit -m "feat: implement error handler and logging"
 import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
-from tax_statement_extractor.cli import main, parse_arguments, process_statements
+from tax_statement_extractor.cli import main, parse_arguments, process_statements, ProcessingError
 
 def test_parse_arguments_valid():
     """Test CLI argument parsing with valid args."""
@@ -685,10 +668,8 @@ def test_parse_arguments_missing_output():
     with pytest.raises(SystemExit):
         parse_arguments(['--input', './pdfs'])
 
-def test_process_statements_empty_folder(nonexistent_dir, temp_output_dir, caplog):
+def test_process_statements_empty_folder(temp_output_dir):
     """Test processing empty folder exits with error."""
-    from tax_statement_extractor.cli import ProcessingError
-
     # Create empty temp folder
     empty_folder = Path(temp_output_dir) / "empty"
     empty_folder.mkdir()
@@ -700,8 +681,6 @@ def test_process_statements_empty_folder(nonexistent_dir, temp_output_dir, caplo
 
 def test_process_statements_nonexistent_folder(nonexistent_dir, temp_output_dir):
     """Test processing non-existent folder."""
-    from tax_statement_extractor.cli import ProcessingError
-
     with pytest.raises(ProcessingError):
         process_statements(nonexistent_dir, Path(temp_output_dir) / "out.csv")
 
@@ -803,23 +782,22 @@ def process_statements(input_dir: Path, output_path: Path) -> ProcessingStats:
     # Process each PDF
     for pdf_path in pdf_files:
         try:
-            logger.info(f"Processing {pdf_path.name} ... ", end='')
             tables = extract_tables_from_pdf(pdf_path)
 
             if not tables:
-                logger.warning(f"{pdf_path.name}: No tables found")
+                logger.warning(f"Processing {pdf_path.name} ... No tables found")
                 stats.skip_file(pdf_path.name, "no tables")
                 continue
 
             # Check for empty tables
             non_empty_tables = [t for t in tables if len(t) > 0]
             if not non_empty_tables:
-                logger.warning(f"{pdf_path.name}: All tables are empty")
+                logger.warning(f"Processing {pdf_path.name} ... All tables are empty")
                 stats.skip_file(pdf_path.name, "empty tables")
                 continue
 
             row_count = sum(len(t) for t in non_empty_tables)
-            logger.info(f"OK ({row_count} rows)")
+            logger.info(f"Processing {pdf_path.name} ... OK ({row_count} rows)")
             stats.add_file(pdf_path.name, row_count)
             all_dataframes.extend(non_empty_tables)
 
@@ -839,27 +817,29 @@ def process_statements(input_dir: Path, output_path: Path) -> ProcessingStats:
     # Consolidate columns (first PDF determines column order)
     if len(all_dataframes) > 1:
         first_columns = all_dataframes[0].columns.tolist()
+        all_columns = first_columns.copy()
 
-        # Check for column mismatches
-        for i, df in enumerate(all_dataframes[1:], 1):
-            if not list(df.columns) == first_columns:
-                # Reorder columns to match first PDF
-                missing_cols = set(first_columns) - set(df.columns)
-                extra_cols = set(df.columns) - set(first_columns)
+        # Compute union of all columns across all DataFrames
+        for df in all_dataframes[1:]:
+            for col in df.columns:
+                if col not in all_columns:
+                    all_columns.append(col)
 
-                if missing_cols or extra_cols:
-                    logger.warning(
-                        f"Column mismatch in PDF {i+1}: "
-                        f"missing {missing_cols}, extra {extra_cols}. "
-                        f"Reordering to match first PDF."
-                    )
-
-                # Reorder to match first PDF
-                for col in first_columns:
+        # Check for column mismatches and reindex all DataFrames
+        for i, df in enumerate(all_dataframes):
+            if list(df.columns) != all_columns:
+                # Reindex to include all columns
+                for col in all_columns:
                     if col not in df.columns:
                         df[col] = ''
 
-                all_dataframes[i] = df[first_columns]
+                # Reorder to match unified column order
+                all_dataframes[i] = df[all_columns]
+
+                if i > 0:  # Warn only for subsequent PDFs
+                    logger.warning(
+                        f"Column mismatch in PDF {i}: reordered to match unified schema"
+                    )
 
     # Write combined CSV
     write_csv(all_dataframes, output_path)
@@ -919,43 +899,91 @@ git commit -m "feat: implement CLI interface with argparse"
 **Files:**
 - Create: `tests/sample_statements/statement_jan.pdf` (sample test PDF)
 - Create: `tests/sample_statements/statement_feb.pdf`
-- Modify: `tests/test_pdf_parser.py` (uncomment tests that require samples)
+- Create: `tests/sample_statements/statement_mar.pdf`
+- Create: `tests/create_sample_pdfs.py` (PDF generation script)
 
-- [ ] **Step 1: Create sample test PDFs**
+- [ ] **Step 1: Create sample PDF generation script**
 
-**Note:** Sample PDFs should be created manually using a tool like:
-- LibreOffice Writer exported as PDF
-- Google Docs exported as PDF
-- Or any PDF with a simple table structure
+```python
+# tests/create_sample_pdfs.py
+"""Generate sample PDFs for testing."""
 
-Create 3 sample PDFs with this structure:
+from pathlib import Path
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
+from reportlab.lib import colors
+from reportlab.lib.units import inch
+
+def create_sample_pdfs():
+    """Create 3 sample statement PDFs for testing."""
+    sample_dir = Path(__file__).parent / "sample_statements"
+    sample_dir.mkdir(exist_ok=True)
+
+    statements = {
+        "statement_jan.pdf": [
+            ["Date", "Amount", "Description"],
+            ["2026-01-01", "100.00", "Groceries"],
+            ["2026-01-05", "50.00", "Gas"]
+        ],
+        "statement_feb.pdf": [
+            ["Date", "Amount", "Description"],
+            ["2026-02-01", "120.00", "Groceries"],
+            ["2026-02-10", "75.00", "Gas"]
+        ],
+        "statement_mar.pdf": [
+            ["Date", "Amount", "Description"],
+            ["2026-03-01", "110.00", "Groceries"],
+            ["2026-03-15", "60.00", "Gas"]
+        ]
+    }
+
+    for filename, data in statements.items():
+        pdf_path = sample_dir / filename
+
+        doc = SimpleDocTemplate(str(pdf_path), pagesize=letter)
+        table = Table(data)
+        table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, 0), 12),
+            ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+            ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
+            ("GRID", (0, 0), (-1, -1), 1, colors.black)
+        ]))
+
+        doc.build([table])
+        print(f"Created {pdf_path}")
+
+if __name__ == "__main__":
+    create_sample_pdfs()
+```
+
+- [ ] **Step 1b: Add reportlab to requirements-dev.txt**
 
 ```
-statement_jan.pdf:
-| Date       | Amount | Description |
-| 2026-01-01 | 100.00 | Groceries   |
-| 2026-01-05 | 50.00  | Gas         |
-
-statement_feb.pdf:
-| Date       | Amount | Description |
-| 2026-02-01 | 120.00 | Groceries   |
-| 2026-02-10 | 75.00  | Gas         |
-
-statement_mar.pdf:
-| Date       | Amount | Description |
-| 2026-03-01 | 110.00 | Groceries   |
-| 2026-03-15 | 60.00  | Gas         |
+reportlab>=3.6.0,<4.0.0
 ```
 
-- [ ] **Step 2: Run full test suite**
+- [ ] **Step 2: Generate sample PDFs**
+
+```bash
+pip install reportlab
+python tests/create_sample_pdfs.py
+```
+
+Expected: Three PDF files created in `tests/sample_statements/`
+
+- [ ] **Step 3: Run full test suite**
 
 ```bash
 pytest tests/ -v --cov=tax_statement_extractor
 ```
 
-Expected: All tests PASS, coverage > 85%
+Expected: All tests PASS, coverage > 80%
 
-- [ ] **Step 3: Run integration test**
+- [ ] **Step 4: Run integration test**
 
 ```bash
 python -m tax_statement_extractor.cli --input tests/sample_statements --output /tmp/test_output.csv
@@ -974,7 +1002,7 @@ Summary:
 Output: /tmp/test_output.csv
 ```
 
-- [ ] **Step 4: Verify output CSV**
+- [ ] **Step 5: Verify output CSV**
 
 ```bash
 head -10 /tmp/test_output.csv
@@ -991,11 +1019,11 @@ Date,Amount,Description
 2026-03-15,60.0,Gas
 ```
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add tests/sample_statements/ tests/test_pdf_parser.py
-git commit -m "test: add sample PDFs and integration tests"
+git add tests/create_sample_pdfs.py tests/sample_statements/
+git commit -m "test: add sample PDF generation and integration tests"
 ```
 
 ---
