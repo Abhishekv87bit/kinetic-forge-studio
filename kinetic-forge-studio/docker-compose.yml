@@ -1,0 +1,49 @@
+# ══════════════════════════════════════════════════════════
+# Production Pipeline Template: docker-compose
+# ══════════════════════════════════════════════════════════
+# Placeholders:
+#   kinetic-forge-studio    - Project name (e.g., kinetic-forge-studio)
+#   8000    - Backend port (default: 8000)
+#   3000   - Frontend port (default: 3000)
+#   backend     - Backend directory (default: backend)
+#   frontend    - Frontend directory (default: frontend)
+#   /data         - SQLite database path (default: /data/app.db)
+#   .env        - Environment file path (default: .env)
+
+version: "3.8"
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - app-data:/data
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=sqlite:////data/app.db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        API_URL: http://backend:8000
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  app-data:

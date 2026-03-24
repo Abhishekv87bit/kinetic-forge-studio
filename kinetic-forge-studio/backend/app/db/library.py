@@ -6,10 +6,14 @@ and design patterns. Uses SQLite FTS5 for fast keyword matching
 across mechanism types, keywords, and names.
 """
 
+import logging
 import uuid
 from typing import Any
 
 from app.db.database import Database
+from app.middleware.cache import search_cache, make_hash_key
+
+logger = logging.getLogger(__name__)
 
 
 class LibraryManager:
@@ -130,12 +134,22 @@ class LibraryManager:
         Uses SQLite FTS5 match syntax. Simple terms are auto-wrapped
         with wildcards for prefix matching.
 
+        Results are cached in search_cache (TTL 1 hour) keyed by the
+        query string to avoid redundant FTS5 queries.
+
         Args:
             query: Search query string (e.g., "four-bar", "oscillating gear").
 
         Returns:
             List of matching entries, ranked by relevance.
         """
+        # Check cache first
+        cache_key = make_hash_key("library_search", query)
+        cached = await search_cache.aget(cache_key)
+        if cached is not None:
+            logger.debug("search_cache HIT for query=%r", query)
+            return cached
+
         await self._ensure_fts()
 
         if not query or not query.strip():
@@ -144,7 +158,9 @@ class LibraryManager:
                 "SELECT * FROM library ORDER BY created_at DESC"
             )
             rows = await cursor.fetchall()
-            return [self._row_to_dict(r) for r in rows]
+            results = [self._row_to_dict(r) for r in rows]
+            await search_cache.aset(cache_key, results)
+            return results
 
         # Prepare FTS query: add * for prefix matching to each term
         terms = query.strip().split()
@@ -159,7 +175,7 @@ class LibraryManager:
                 (fts_query,),
             )
             rows = await cursor.fetchall()
-            return [self._row_to_dict(r) for r in rows]
+            results = [self._row_to_dict(r) for r in rows]
         except Exception:
             # Fallback to LIKE search if FTS query fails
             like_pattern = f"%{query}%"
@@ -170,7 +186,11 @@ class LibraryManager:
                 (like_pattern, like_pattern, like_pattern),
             )
             rows = await cursor.fetchall()
-            return [self._row_to_dict(r) for r in rows]
+            results = [self._row_to_dict(r) for r in rows]
+
+        await search_cache.aset(cache_key, results)
+        logger.debug("search_cache STORE for query=%r (%d results)", query, len(results))
+        return results
 
     async def list_all(self) -> list[dict[str, Any]]:
         """List all library entries."""

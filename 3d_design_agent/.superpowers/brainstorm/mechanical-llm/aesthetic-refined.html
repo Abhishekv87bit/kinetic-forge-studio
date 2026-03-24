@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mechanical LLM — Refined Concepts (C+D Hybrids)</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0a0f; color: #e0e0e0; font-family: 'Segoe UI', system-ui, sans-serif; padding: 30px; }
+  h1 { text-align: center; font-size: 1.8em; margin-bottom: 6px; color: #fff; }
+  .subtitle { text-align: center; color: #888; margin-bottom: 30px; font-size: 1em; }
+  .concepts { display: flex; flex-direction: column; gap: 40px; max-width: 1200px; margin: 0 auto; }
+  .concept { background: #12121c; border: 2px solid #2a2a3a; border-radius: 16px; overflow: hidden; display: flex; cursor: pointer; transition: all 0.3s; }
+  .concept:hover { border-color: #5588ff; box-shadow: 0 4px 20px rgba(85,136,255,0.12); }
+  .concept.selected { border-color: #ff8844; box-shadow: 0 0 25px rgba(255,136,68,0.25); }
+  .concept-visual { width: 55%; min-height: 420px; position: relative; flex-shrink: 0; }
+  .concept-info { padding: 28px; width: 45%; display: flex; flex-direction: column; justify-content: center; }
+  .concept-info h2 { font-size: 1.3em; margin-bottom: 6px; color: #fff; }
+  .concept-info .tagline { color: #ff8844; font-style: italic; margin-bottom: 14px; font-size: 0.95em; }
+  .concept-info p { color: #aaa; line-height: 1.65; margin-bottom: 12px; font-size: 0.92em; }
+  .concept-info .hl { color: #ff8844; font-weight: 600; }
+  .concept-info .hl2 { color: #44ddaa; font-weight: 600; }
+  .concept-info .hl3 { color: #8866ff; font-weight: 600; }
+  .letter-badge { position: absolute; top: 14px; left: 14px; background: rgba(0,0,0,0.75); color: #fff; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.1em; z-index: 10; }
+  .features { margin-top: 10px; padding: 0; list-style: none; }
+  .features li { color: #999; font-size: 0.85em; margin-bottom: 5px; padding-left: 14px; position: relative; }
+  .features li::before { content: ''; position: absolute; left: 0; top: 7px; width: 5px; height: 5px; border-radius: 50%; }
+  .features li.pro::before { background: #44ddaa; }
+  .features li.con::before { background: #ff6644; }
+  .features li.note::before { background: #5588ff; }
+  svg { width: 100%; height: 100%; }
+
+  @keyframes pulse { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }
+  @keyframes flow { 0% { stroke-dashoffset: 40; } 100% { stroke-dashoffset: 0; } }
+  @keyframes flowBack { 0% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: 40; } }
+  .signal-fwd { stroke-dasharray: 8 12; animation: flow 2s linear infinite; }
+  .signal-back { stroke-dasharray: 6 10; animation: flowBack 2.5s linear infinite; }
+  .pulse-node { animation: pulse 3s ease-in-out infinite; }
+  @keyframes sway { 0%,100% { transform: rotate(-1deg); } 50% { transform: rotate(1deg); } }
+  @keyframes breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+  .breathe { animation: breathe 4s ease-in-out infinite; transform-origin: center; }
+
+  .divider { border: none; border-top: 1px solid #222; margin: 10px 0; }
+  .section-label { text-align: center; color: #555; font-size: 0.85em; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 20px; }
+</style>
+</head>
+<body>
+
+<h1>Refined Form Factors — C+D Hybrids</h1>
+<p class="subtitle">Combining organic constellation topology with bilateral two-act narrative. Click to select.</p>
+
+<div class="concepts">
+
+  <!-- CONCEPT E: The Neural Archipelago -->
+  <div class="concept" onclick="this.classList.toggle('selected')">
+    <div class="concept-visual">
+      <div class="letter-badge">E</div>
+      <svg viewBox="0 0 660 420">
+        <defs>
+          <radialGradient id="gE1" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#ff8844" stop-opacity="0.6"/><stop offset="100%" stop-color="#ff8844" stop-opacity="0"/></radialGradient>
+          <radialGradient id="gE2" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#44ddaa" stop-opacity="0.6"/><stop offset="100%" stop-color="#44ddaa" stop-opacity="0"/></radialGradient>
+          <radialGradient id="gE3" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#8866ff" stop-opacity="0.6"/><stop offset="100%" stop-color="#8866ff" stop-opacity="0"/></radialGradient>
+          <filter id="glow"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <rect width="660" height="420" fill="#08080e"/>
+
+        <!-- Subtle hemisphere divider line -->
+        <line x1="330" y1="20" x2="330" y2="400" stroke="#1a1a2a" stroke-width="1" stroke-dasharray="6 8"/>
+        <text x="170" y="16" text-anchor="middle" fill="#ff8844" font-size="10" opacity="0.5">LEFT: TRAINING (Act 1)</text>
+        <text x="490" y="16" text-anchor="middle" fill="#8866ff" font-size="10" opacity="0.5">RIGHT: INFERENCE (Act 2)</text>
+
+        <!-- ===== CENTRAL SPINE (Galton board) ===== -->
+        <rect x="315" y="120" width="30" height="200" rx="6" fill="#141420" stroke="#334" stroke-width="1.5"/>
+        <!-- Galton pegs -->
+        <circle cx="325" cy="150" r="2.5" fill="#557"/><circle cx="335" cy="165" r="2.5" fill="#557"/>
+        <circle cx="322" cy="180" r="2.5" fill="#557"/><circle cx="338" cy="195" r="2.5" fill="#557"/>
+        <circle cx="326" cy="210" r="2.5" fill="#557"/><circle cx="334" cy="225" r="2.5" fill="#557"/>
+        <circle cx="322" cy="240" r="2.5" fill="#557"/><circle cx="338" cy="255" r="2.5" fill="#557"/>
+        <circle cx="330" cy="270" r="2.5" fill="#557"/>
+        <!-- Histogram bins -->
+        <rect x="318" y="295" width="6" height="8" fill="#ddaa44" opacity="0.3"/>
+        <rect x="326" y="290" width="6" height="13" fill="#ddaa44" opacity="0.5"/>
+        <rect x="334" y="292" width="6" height="11" fill="#ddaa44" opacity="0.4"/>
+        <text x="330" y="330" text-anchor="middle" fill="#668" font-size="8">PROBABILITY</text>
+        <text x="330" y="340" text-anchor="middle" fill="#668" font-size="8">SPINE</text>
+
+        <!-- ===== LEFT HEMISPHERE — TRAINING CONSTELLATION ===== -->
+
+        <!-- L1: Weight Memory Cluster -->
+        <g class="breathe" style="animation-delay: 0s;">
+          <circle cx="120" cy="130" r="38" fill="url(#gE1)" class="pulse-node"/>
+          <circle cx="120" cy="130" r="24" fill="#141420" stroke="#ff8844" stroke-width="2"/>
+          <!-- Mini gear icon -->
+          <circle cx="120" cy="130" r="8" fill="none" stroke="#ff8844" stroke-width="1.5"/>
+          <line x1="120" y1="119" x2="120" y2="125" stroke="#ff8844" stroke-width="1.5"/>
+          <line x1="120" y1="135" x2="120" y2="141" stroke="#ff8844" stroke-width="1.5"/>
+          <line x1="109" y1="130" x2="115" y2="130" stroke="#ff8844" stroke-width="1.5"/>
+          <line x1="125" y1="130" x2="131" y2="130" stroke="#ff8844" stroke-width="1.5"/>
+          <text x="120" y="165" text-anchor="middle" fill="#ff8844" font-size="9">WEIGHTS</text>
+          <text x="120" y="175" text-anchor="middle" fill="#886644" font-size="7">cam cassettes</text>
+        </g>
+
+        <!-- L2: Gradient Computer Cluster -->
+        <g class="breathe" style="animation-delay: -1s;">
+          <circle cx="200" cy="250" r="34" fill="url(#gE1)" class="pulse-node" style="animation-delay:-1s"/>
+          <circle cx="200" cy="250" r="22" fill="#141420" stroke="#ff8844" stroke-width="1.8"/>
+          <!-- Spiral icon -->
+          <path d="M192,250 Q196,242 200,246 Q204,250 200,254 Q196,258 192,250" stroke="#ff8844" stroke-width="1.5" fill="none"/>
+          <text x="200" y="282" text-anchor="middle" fill="#ff8844" font-size="9">GRADIENT</text>
+          <text x="200" y="292" text-anchor="middle" fill="#886644" font-size="7">spiral cams</text>
+        </g>
+
+        <!-- L3: Summation / Pantograph -->
+        <g class="breathe" style="animation-delay: -2s;">
+          <circle cx="90" cy="270" r="28" fill="url(#gE2)" class="pulse-node" style="animation-delay:-2s"/>
+          <circle cx="90" cy="270" r="18" fill="#141420" stroke="#44ddaa" stroke-width="1.8"/>
+          <!-- Diamond icon -->
+          <polygon points="90,258 98,270 90,282 82,270" fill="none" stroke="#44ddaa" stroke-width="1.5"/>
+          <text x="90" y="298" text-anchor="middle" fill="#44ddaa" font-size="9">SUM</text>
+          <text x="90" y="308" text-anchor="middle" fill="#448866" font-size="7">pantograph</text>
+        </g>
+
+        <!-- L4: Loss / Error -->
+        <g class="breathe" style="animation-delay: -0.5s;">
+          <circle cx="160" cy="360" r="22" fill="url(#gE1)" class="pulse-node" style="animation-delay:-0.5s"/>
+          <circle cx="160" cy="360" r="14" fill="#141420" stroke="#ff6644" stroke-width="1.8"/>
+          <line x1="152" y1="352" x2="168" y2="368" stroke="#ff6644" stroke-width="1.5"/>
+          <line x1="168" y1="352" x2="152" y2="368" stroke="#ff6644" stroke-width="1.5"/>
+          <text x="160" y="385" text-anchor="middle" fill="#ff6644" font-size="9">ERROR</text>
+        </g>
+
+        <!-- L5: Reward / Chime -->
+        <g class="breathe" style="animation-delay: -1.5s;">
+          <circle cx="60" cy="170" r="18" fill="url(#gE2)" class="pulse-node" style="animation-delay:-1.5s"/>
+          <circle cx="60" cy="170" r="12" fill="#141420" stroke="#ddaa44" stroke-width="1.5"/>
+          <text x="60" y="174" text-anchor="middle" fill="#ddaa44" font-size="10">♪</text>
+          <text x="60" y="194" text-anchor="middle" fill="#aa8833" font-size="8">CHIME</text>
+        </g>
+
+        <!-- Left connections (organic curves) -->
+        <path d="M144,130 Q220,100 315,140" stroke="#ff8844" stroke-width="1.8" fill="none" class="signal-fwd" opacity="0.5"/>
+        <path d="M120,154 Q150,200 200,228" stroke="#ff8844" stroke-width="1.5" fill="none" class="signal-fwd" opacity="0.4" style="animation-delay:-0.3s"/>
+        <path d="M200,272 Q150,290 108,270" stroke="#44ddaa" stroke-width="1.5" fill="none" class="signal-fwd" opacity="0.4" style="animation-delay:-0.6s"/>
+        <path d="M90,288 Q120,330 160,346" stroke="#ff6644" stroke-width="1.5" fill="none" class="signal-fwd" opacity="0.4" style="animation-delay:-0.9s"/>
+        <path d="M175,355 Q250,340 315,280" stroke="#ff6644" stroke-width="1.2" fill="none" class="signal-back" opacity="0.3"/>
+        <!-- Backprop path (dashed, flowing backward) -->
+        <path d="M315,200 Q250,220 200,250" stroke="#ff4444" stroke-width="1" fill="none" class="signal-back" opacity="0.35" style="animation-delay:-1s"/>
+        <path d="M200,250 Q150,210 120,154" stroke="#ff4444" stroke-width="1" fill="none" class="signal-back" opacity="0.3" style="animation-delay:-1.3s"/>
+
+        <!-- Tendrils (decorative dendrites) -->
+        <path d="M120,106 Q100,70 80,50" stroke="#2a2a3a" stroke-width="1" fill="none"/>
+        <path d="M120,106 Q140,75 160,55" stroke="#2a2a3a" stroke-width="1" fill="none"/>
+        <path d="M60,158 Q40,130 30,100" stroke="#2a2a3a" stroke-width="0.8" fill="none"/>
+        <path d="M72,270 Q50,300 30,320" stroke="#2a2a3a" stroke-width="0.8" fill="none"/>
+
+        <!-- ===== RIGHT HEMISPHERE — INFERENCE CONSTELLATION ===== -->
+
+        <!-- R1: Token Input -->
+        <g class="breathe" style="animation-delay: -0.7s;">
+          <circle cx="530" cy="90" r="28" fill="url(#gE3)" class="pulse-node" style="animation-delay:-0.7s"/>
+          <circle cx="530" cy="90" r="18" fill="#141420" stroke="#8866ff" stroke-width="1.8"/>
+          <!-- Marble icon -->
+          <circle cx="530" cy="86" r="5" fill="#8866ff" opacity="0.6"/>
+          <circle cx="530" cy="86" r="3" fill="#ccbbff"/>
+          <text x="530" y="120" text-anchor="middle" fill="#8866ff" font-size="9">TOKENS</text>
+          <text x="530" y="130" text-anchor="middle" fill="#664488" font-size="7">marble input</text>
+        </g>
+
+        <!-- R2: Attention -->
+        <g class="breathe" style="animation-delay: -1.3s;">
+          <circle cx="480" cy="200" r="36" fill="url(#gE3)" class="pulse-node" style="animation-delay:-1.3s"/>
+          <circle cx="480" cy="200" r="24" fill="#141420" stroke="#8866ff" stroke-width="2"/>
+          <!-- Hoberman expand icon -->
+          <line x1="468" y1="188" x2="492" y2="212" stroke="#8866ff" stroke-width="1.2"/>
+          <line x1="492" y1="188" x2="468" y2="212" stroke="#8866ff" stroke-width="1.2"/>
+          <circle cx="480" cy="200" r="10" fill="none" stroke="#8866ff" stroke-width="1" stroke-dasharray="3 3"/>
+          <text x="480" y="234" text-anchor="middle" fill="#8866ff" font-size="9">ATTENTION</text>
+          <text x="480" y="244" text-anchor="middle" fill="#664488" font-size="7">Hoberman</text>
+        </g>
+
+        <!-- R3: Hidden State / Wave -->
+        <g class="breathe" style="animation-delay: -2.3s;">
+          <circle cx="560" cy="280" r="32" fill="url(#gE2)" class="pulse-node" style="animation-delay:-2.3s"/>
+          <circle cx="560" cy="280" r="20" fill="#141420" stroke="#44ddaa" stroke-width="1.8"/>
+          <!-- Wave icon -->
+          <path d="M548,280 Q554,272 560,280 Q566,288 572,280" stroke="#44ddaa" stroke-width="1.5" fill="none"/>
+          <text x="560" y="310" text-anchor="middle" fill="#44ddaa" font-size="9">HIDDEN</text>
+          <text x="560" y="320" text-anchor="middle" fill="#448866" font-size="7">wave field</text>
+        </g>
+
+        <!-- R4: Confidence / Output -->
+        <g class="breathe" style="animation-delay: -0.3s;">
+          <circle cx="440" cy="350" r="30" fill="url(#gE3)" class="pulse-node" style="animation-delay:-0.3s"/>
+          <circle cx="440" cy="350" r="20" fill="#141420" stroke="#ddaa44" stroke-width="2"/>
+          <!-- Iris/shutter icon -->
+          <circle cx="440" cy="350" r="8" fill="none" stroke="#ddaa44" stroke-width="1.5"/>
+          <circle cx="440" cy="350" r="4" fill="#ddaa44" opacity="0.5"/>
+          <text x="440" y="380" text-anchor="middle" fill="#ddaa44" font-size="9">OUTPUT</text>
+          <text x="440" y="390" text-anchor="middle" fill="#aa8833" font-size="7">confidence iris</text>
+        </g>
+
+        <!-- R5: ALU / Logic -->
+        <g class="breathe" style="animation-delay: -1.8s;">
+          <circle cx="580" cy="170" r="22" fill="url(#gE3)" class="pulse-node" style="animation-delay:-1.8s"/>
+          <circle cx="580" cy="170" r="14" fill="#141420" stroke="#8866ff" stroke-width="1.5"/>
+          <text x="580" y="174" text-anchor="middle" fill="#8866ff" font-size="8" font-weight="bold">ALU</text>
+          <text x="580" y="196" text-anchor="middle" fill="#664488" font-size="7">logic gates</text>
+        </g>
+
+        <!-- Right connections -->
+        <path d="M530,108 Q510,150 480,176" stroke="#8866ff" stroke-width="1.8" fill="none" class="signal-fwd" opacity="0.5"/>
+        <path d="M504,200 Q540,230 560,258" stroke="#44ddaa" stroke-width="1.5" fill="none" class="signal-fwd" opacity="0.4" style="animation-delay:-0.4s"/>
+        <path d="M560,300 Q500,330 460,350" stroke="#ddaa44" stroke-width="1.5" fill="none" class="signal-fwd" opacity="0.4" style="animation-delay:-0.7s"/>
+        <path d="M345,200 Q410,190 456,200" stroke="#5588ff" stroke-width="1.5" fill="none" class="signal-fwd" opacity="0.4" style="animation-delay:-1s"/>
+        <path d="M580,184 Q580,230 560,258" stroke="#44ddaa" stroke-width="1" fill="none" class="signal-fwd" opacity="0.3" style="animation-delay:-1.3s"/>
+        <path d="M440,370 Q390,390 345,310" stroke="#ddaa44" stroke-width="1.2" fill="none" class="signal-fwd" opacity="0.3" style="animation-delay:-1.6s"/>
+
+        <!-- Corpus callosum (cross-hemisphere connections) -->
+        <path d="M144,130 Q330,60 530,90" stroke="#5588ff" stroke-width="1.5" fill="none" opacity="0.2" stroke-dasharray="4 6"/>
+        <path d="M200,250 Q330,300 440,350" stroke="#5588ff" stroke-width="1" fill="none" opacity="0.15" stroke-dasharray="4 6"/>
+        <text x="330" y="58" text-anchor="middle" fill="#335" font-size="8">CORPUS CALLOSUM</text>
+
+        <!-- Right tendrils -->
+        <path d="M530,72 Q545,45 560,30" stroke="#2a2a3a" stroke-width="1" fill="none"/>
+        <path d="M602,170 Q625,160 640,140" stroke="#2a2a3a" stroke-width="0.8" fill="none"/>
+        <path d="M580,280 Q600,310 620,330" stroke="#2a2a3a" stroke-width="0.8" fill="none"/>
+        <path d="M440,370 Q420,400 400,410" stroke="#2a2a3a" stroke-width="0.8" fill="none"/>
+      </svg>
+    </div>
+    <div class="concept-info">
+      <h2>E — The Neural Archipelago</h2>
+      <p class="tagline">"Islands of intelligence connected by rivers of signal"</p>
+      <p>Mechanism clusters float as <span class="hl">organic nodes</span> in two hemispheres — left for training, right for inference. A central <span class="hl2">Galton board spine</span> connects them, probability cascading down the center. <span class="hl3">Corpus callosum</span> bridges cross weight-sharing between hemispheres.</p>
+      <p>Each node is a self-contained module (gears, cams, logic gates inside) mounted on curved brass arms extending from the spine. Dendrite tendrils extend outward — some structural, some carry secondary signals. The whole structure reads as a neural network diagram made physical.</p>
+      <p>During <span class="hl">Act 1 (Training)</span>, the left hemisphere is alive — weights updating, gradients flowing, error converging, chime ringing. During <span class="hl3">Act 2 (Inference)</span>, activity shifts right — tokens enter, attention expands, hidden state forms, confidence iris opens.</p>
+      <ul class="features">
+        <li class="pro">Clearest two-act narrative (left active → right active)</li>
+        <li class="pro">Each node independently designable and serviceable</li>
+        <li class="pro">Galton board spine is the visual anchor</li>
+        <li class="pro">Organic shape reads as "brain" from any angle</li>
+        <li class="note">~1.5m wide, ~1.2m tall, ~0.5m deep</li>
+        <li class="con">Many curved support arms needed (fabrication complexity)</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- CONCEPT F: The Thinking Machine -->
+  <div class="concept" onclick="this.classList.toggle('selected')">
+    <div class="concept-visual">
+      <div class="letter-badge">F</div>
+      <svg viewBox="0 0 660 420">
+        <rect width="660" height="420" fill="#08080e"/>
+
+        <!-- Outer brain silhouette (organic, asymmetric) -->
+        <path d="M330,40 Q480,30 560,100 Q620,160 600,250 Q580,330 500,370 Q420,400 330,390 Q240,400 160,370 Q80,330 60,250 Q40,160 100,100 Q180,30 330,40 Z"
+              fill="none" stroke="#2a2a3a" stroke-width="2" stroke-dasharray="6 4"/>
+
+        <!-- Sulci / folds (organic dividing lines) -->
+        <path d="M330,40 Q340,180 330,390" stroke="#1a1a2a" stroke-width="1.5"/>
+        <path d="M160,140 Q250,180 330,170" stroke="#1a1a2a" stroke-width="1"/>
+        <path d="M330,170 Q410,180 500,140" stroke="#1a1a2a" stroke-width="1"/>
+        <path d="M130,260 Q230,280 330,270" stroke="#1a1a2a" stroke-width="1"/>
+        <path d="M330,270 Q430,280 530,260" stroke="#1a1a2a" stroke-width="1"/>
+
+        <!-- LEFT HEMISPHERE: Training mechanisms in the folds -->
+
+        <!-- Frontal lobe: Weight Storage -->
+        <circle cx="200" cy="100" r="30" fill="#141420" stroke="#ff8844" stroke-width="2"/>
+        <circle cx="200" cy="100" r="12" fill="none" stroke="#ff8844" stroke-width="1.2"/>
+        <text x="200" y="90" text-anchor="middle" fill="#ff8844" font-size="8" font-weight="bold">WEIGHT</text>
+        <text x="200" y="102" text-anchor="middle" fill="#ff8844" font-size="8" font-weight="bold">MEMORY</text>
+        <text x="200" y="140" text-anchor="middle" fill="#886644" font-size="7">cam cassettes</text>
+
+        <!-- Parietal: Gradient Computation -->
+        <circle cx="160" cy="210" r="26" fill="#141420" stroke="#44ddaa" stroke-width="1.8"/>
+        <path d="M150,210 Q155,200 160,206 Q165,212 160,216 Q155,220 150,210" stroke="#44ddaa" stroke-width="1.3" fill="none"/>
+        <text x="160" y="245" text-anchor="middle" fill="#44ddaa" font-size="8">GRADIENT</text>
+
+        <!-- Temporal: Summation -->
+        <circle cx="120" cy="310" r="22" fill="#141420" stroke="#44ddaa" stroke-width="1.5"/>
+        <polygon points="120,298 128,310 120,322 112,310" fill="none" stroke="#44ddaa" stroke-width="1.2"/>
+        <text x="120" y="342" text-anchor="middle" fill="#448866" font-size="7">SUMMATION</text>
+
+        <!-- Occipital: Error/Loss -->
+        <circle cx="230" cy="330" r="20" fill="#141420" stroke="#ff6644" stroke-width="1.5"/>
+        <line x1="223" y1="323" x2="237" y2="337" stroke="#ff6644" stroke-width="1.3"/>
+        <line x1="237" y1="323" x2="223" y2="337" stroke="#ff6644" stroke-width="1.3"/>
+        <text x="230" y="358" text-anchor="middle" fill="#ff6644" font-size="7">ERROR</text>
+
+        <!-- RIGHT HEMISPHERE: Inference mechanisms -->
+
+        <!-- Frontal: Token Processing -->
+        <circle cx="460" cy="100" r="28" fill="#141420" stroke="#8866ff" stroke-width="2"/>
+        <circle cx="460" cy="96" r="5" fill="#8866ff" opacity="0.5"/>
+        <circle cx="460" cy="96" r="3" fill="#ccbbff"/>
+        <text x="460" y="112" text-anchor="middle" fill="#8866ff" font-size="8">TOKENS</text>
+        <text x="460" y="140" text-anchor="middle" fill="#664488" font-size="7">marble sequencer</text>
+
+        <!-- Parietal: Attention -->
+        <circle cx="500" cy="200" r="30" fill="#141420" stroke="#8866ff" stroke-width="1.8"/>
+        <line x1="488" y1="188" x2="512" y2="212" stroke="#8866ff" stroke-width="1.2"/>
+        <line x1="512" y1="188" x2="488" y2="212" stroke="#8866ff" stroke-width="1.2"/>
+        <circle cx="500" cy="200" r="11" fill="none" stroke="#8866ff" stroke-width="1" stroke-dasharray="3 3"/>
+        <text x="500" y="240" text-anchor="middle" fill="#8866ff" font-size="8">ATTENTION</text>
+
+        <!-- Temporal: Hidden State -->
+        <circle cx="530" cy="310" r="24" fill="#141420" stroke="#44ddaa" stroke-width="1.5"/>
+        <path d="M518,310 Q524,302 530,310 Q536,318 542,310" stroke="#44ddaa" stroke-width="1.3" fill="none"/>
+        <text x="530" y="342" text-anchor="middle" fill="#44ddaa" font-size="7">HIDDEN STATE</text>
+
+        <!-- Occipital: Output -->
+        <circle cx="420" cy="340" r="24" fill="#141420" stroke="#ddaa44" stroke-width="2"/>
+        <circle cx="420" cy="340" r="9" fill="none" stroke="#ddaa44" stroke-width="1.5"/>
+        <circle cx="420" cy="340" r="4" fill="#ddaa44" opacity="0.5"/>
+        <text x="420" y="374" text-anchor="middle" fill="#ddaa44" font-size="8">OUTPUT IRIS</text>
+
+        <!-- CENTRAL: Galton board (brainstem, drops below brain) -->
+        <rect x="318" y="350" width="24" height="65" rx="4" fill="#141420" stroke="#557" stroke-width="1.5"/>
+        <circle cx="326" cy="365" r="2" fill="#668"/><circle cx="336" cy="375" r="2" fill="#668"/>
+        <circle cx="328" cy="385" r="2" fill="#668"/><circle cx="334" cy="395" r="2" fill="#668"/>
+        <circle cx="330" cy="405" r="2" fill="#668"/>
+        <text x="330" y="418" text-anchor="middle" fill="#668" font-size="7">BRAINSTEM</text>
+
+        <!-- Signal flows -->
+        <path d="M230,100 Q280,80 318,100" stroke="#ff8844" stroke-width="1.5" fill="none" class="signal-fwd" opacity="0.4"/>
+        <path d="M200,130 Q180,170 160,184" stroke="#ff8844" stroke-width="1.2" fill="none" class="signal-fwd" opacity="0.35" style="animation-delay:-0.3s"/>
+        <path d="M160,236 Q140,270 120,288" stroke="#44ddaa" stroke-width="1.2" fill="none" class="signal-fwd" opacity="0.35" style="animation-delay:-0.6s"/>
+        <path d="M136,320 Q180,330 210,330" stroke="#ff6644" stroke-width="1" fill="none" class="signal-fwd" opacity="0.3" style="animation-delay:-0.9s"/>
+
+        <path d="M342,100 Q400,80 432,100" stroke="#8866ff" stroke-width="1.5" fill="none" class="signal-fwd" opacity="0.4" style="animation-delay:-0.5s"/>
+        <path d="M460,128 Q480,160 500,170" stroke="#8866ff" stroke-width="1.2" fill="none" class="signal-fwd" opacity="0.35" style="animation-delay:-0.8s"/>
+        <path d="M520,220 Q530,260 530,286" stroke="#44ddaa" stroke-width="1.2" fill="none" class="signal-fwd" opacity="0.35" style="animation-delay:-1.1s"/>
+        <path d="M518,325 Q470,340 444,340" stroke="#ddaa44" stroke-width="1.2" fill="none" class="signal-fwd" opacity="0.35" style="animation-delay:-1.4s"/>
+
+        <!-- Corpus callosum (thick band across top) -->
+        <path d="M230,100 Q330,65 460,100" stroke="#5588ff" stroke-width="2" fill="none" opacity="0.2" stroke-dasharray="5 5"/>
+        <path d="M160,210 Q330,190 500,200" stroke="#5588ff" stroke-width="1.5" fill="none" opacity="0.15" stroke-dasharray="4 5"/>
+        <text x="330" y="75" text-anchor="middle" fill="#335" font-size="8">SHARED WEIGHTS</text>
+
+        <!-- Brain region labels (very subtle) -->
+        <text x="170" y="60" fill="#222" font-size="8">FRONTAL</text>
+        <text x="110" y="190" fill="#222" font-size="8">PARIETAL</text>
+        <text x="90" y="290" fill="#222" font-size="8">TEMPORAL</text>
+        <text x="490" y="60" fill="#222" font-size="8">FRONTAL</text>
+        <text x="540" y="190" fill="#222" font-size="8">PARIETAL</text>
+        <text x="560" y="290" fill="#222" font-size="8">TEMPORAL</text>
+      </svg>
+    </div>
+    <div class="concept-info">
+      <h2>F — The Thinking Machine</h2>
+      <p class="tagline">"A brain you can see thinking"</p>
+      <p>The outer silhouette IS a brain — an organic, <span class="hl">asymmetric outline</span> with sulci (folds) dividing regions. Mechanism clusters sit <span class="hl2">inside the brain regions</span> like functional areas of a real cortex. Frontal lobe = memory/planning. Parietal = computation. Temporal = processing. Occipital = output.</p>
+      <p>The brain silhouette is formed by a <span class="hl3">thin organic frame</span> (bent brass tubing or 3D-printed organic lattice). Interior is open — you see through the "skull" to the mechanisms inside. The Galton board drops below as the <span class="hl2">brainstem</span>.</p>
+      <p>Two hemispheres map to two acts. The organic frame gives it personality — it's not a machine, it's a <span class="hl">thinking being</span>.</p>
+      <ul class="features">
+        <li class="pro">Instantly recognizable as "brain" — no explanation needed</li>
+        <li class="pro">Brain region mapping is scientifically resonant</li>
+        <li class="pro">Organic frame = dramatic visual signature</li>
+        <li class="pro">Brainstem Galton board is anatomically correct</li>
+        <li class="note">~1.2m wide, ~1.0m tall brain + 0.4m brainstem</li>
+        <li class="con">Organic frame harder to fabricate than straight supports</li>
+        <li class="con">Brain shape constrains mechanism placement</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- CONCEPT G: The Synaptic Web -->
+  <div class="concept" onclick="this.classList.toggle('selected')">
+    <div class="concept-visual">
+      <div class="letter-badge">G</div>
+      <svg viewBox="0 0 660 420">
+        <rect width="660" height="420" fill="#08080e"/>
+
+        <!-- Central hub -->
+        <circle cx="330" cy="210" r="55" fill="#141420" stroke="#fff" stroke-width="2"/>
+        <circle cx="330" cy="210" r="40" fill="#0e0e18" stroke="#5588ff" stroke-width="1" stroke-dasharray="4 4"/>
+        <text x="330" y="200" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">CORE</text>
+        <text x="330" y="215" text-anchor="middle" fill="#5588ff" font-size="9">ALU + Logic</text>
+        <text x="330" y="228" text-anchor="middle" fill="#446" font-size="8">Galton Board</text>
+
+        <!-- Radial spokes — 8 major pathways extending outward -->
+        <!-- Each spoke is a curved arm with a mechanism node at the end -->
+
+        <!-- Spoke 1: Weights (top-left) -->
+        <path d="M290,170 Q220,100 140,70" stroke="#ff8844" stroke-width="2.5" fill="none"/>
+        <circle cx="140" cy="70" r="28" fill="#141420" stroke="#ff8844" stroke-width="2"/>
+        <circle cx="140" cy="70" r="10" fill="none" stroke="#ff8844" stroke-width="1.2"/>
+        <text x="140" y="74" text-anchor="middle" fill="#ff8844" font-size="8">WEIGHT</text>
+        <text x="140" y="108" text-anchor="middle" fill="#886644" font-size="7">cassettes</text>
+        <path d="M140,70 Q100,50 70,30" stroke="#2a2a3a" stroke-width="1" fill="none"/>
+        <path d="M140,70 Q120,40 110,20" stroke="#2a2a3a" stroke-width="0.8" fill="none"/>
+
+        <!-- Spoke 2: Tokens (top-right) -->
+        <path d="M370,170 Q440,100 520,70" stroke="#8866ff" stroke-width="2.5" fill="none"/>
+        <circle cx="520" cy="70" r="28" fill="#141420" stroke="#8866ff" stroke-width="2"/>
+        <circle cx="520" cy="66" r="5" fill="#8866ff" opacity="0.5"/><circle cx="520" cy="66" r="3" fill="#ccbbff"/>
+        <text x="520" y="80" text-anchor="middle" fill="#8866ff" font-size="8">TOKENS</text>
+        <text x="520" y="108" text-anchor="middle" fill="#664488" font-size="7">marbles</text>
+        <path d="M520,70 Q560,50 590,30" stroke="#2a2a3a" stroke-width="1" fill="none"/>
+
+        <!-- Spoke 3: Attention (right) -->
+        <path d="M385,210 Q470,210 560,200" stroke="#8866ff" stroke-width="2" fill="none"/>
+        <circle cx="560" cy="200" r="26" fill="#141420" stroke="#8866ff" stroke-width="1.8"/>
+        <circle cx="560" cy="200" r="10" fill="none" stroke="#8866ff" stroke-width="1" stroke-dasharray="3 3"/>
+        <text x="560" y="204" text-anchor="middle" fill="#8866ff" font-size="8">ATTN</text>
+        <path d="M560,200 Q600,190 630,175" stroke="#2a2a3a" stroke-width="0.8" fill="none"/>
+        <path d="M560,200 Q595,215 625,220" stroke="#2a2a3a" stroke-width="0.8" fill="none"/>
+
+        <!-- Spoke 4: Hidden State (bottom-right) -->
+        <path d="M360,250 Q430,310 510,340" stroke="#44ddaa" stroke-width="2" fill="none"/>
+        <circle cx="510" cy="340" r="28" fill="#141420" stroke="#44ddaa" stroke-width="1.8"/>
+        <path d="M498,340 Q504,332 510,340 Q516,348 522,340" stroke="#44ddaa" stroke-width="1.3" fill="none"/>
+        <text x="510" y="376" text-anchor="middle" fill="#44ddaa" font-size="8">HIDDEN</text>
+        <path d="M510,340 Q545,365 575,380" stroke="#2a2a3a" stroke-width="0.8" fill="none"/>
+
+        <!-- Spoke 5: Output (bottom) -->
+        <path d="M330,265 Q330,330 330,370" stroke="#ddaa44" stroke-width="2.5" fill="none"/>
+        <circle cx="330" cy="370" r="26" fill="#141420" stroke="#ddaa44" stroke-width="2"/>
+        <circle cx="330" cy="370" r="10" fill="none" stroke="#ddaa44" stroke-width="1.5"/>
+        <circle cx="330" cy="370" r="4" fill="#ddaa44" opacity="0.5"/>
+        <text x="330" y="404" text-anchor="middle" fill="#ddaa44" font-size="8">OUTPUT IRIS</text>
+
+        <!-- Spoke 6: Gradient (bottom-left) -->
+        <path d="M300,250 Q230,310 150,340" stroke="#ff8844" stroke-width="2" fill="none"/>
+        <circle cx="150" cy="340" r="24" fill="#141420" stroke="#ff8844" stroke-width="1.8"/>
+        <path d="M142,340 Q147,332 152,338 Q157,344 152,348" stroke="#ff8844" stroke-width="1.2" fill="none"/>
+        <text x="150" y="374" text-anchor="middle" fill="#ff8844" font-size="8">GRADIENT</text>
+        <path d="M150,340 Q115,365 85,380" stroke="#2a2a3a" stroke-width="0.8" fill="none"/>
+
+        <!-- Spoke 7: Summation (left) -->
+        <path d="M275,210 Q190,210 100,200" stroke="#44ddaa" stroke-width="2" fill="none"/>
+        <circle cx="100" cy="200" r="24" fill="#141420" stroke="#44ddaa" stroke-width="1.8"/>
+        <polygon points="100,188 108,200 100,212 92,200" fill="none" stroke="#44ddaa" stroke-width="1.2"/>
+        <text x="100" y="232" text-anchor="middle" fill="#44ddaa" font-size="8">SUM</text>
+        <path d="M100,200 Q65,185 35,175" stroke="#2a2a3a" stroke-width="0.8" fill="none"/>
+
+        <!-- Spoke 8: Error (top, small) -->
+        <path d="M330,155 Q330,100 330,60" stroke="#ff6644" stroke-width="1.5" fill="none"/>
+        <circle cx="330" cy="50" r="18" fill="#141420" stroke="#ff6644" stroke-width="1.5"/>
+        <line x1="324" y1="44" x2="336" y2="56" stroke="#ff6644" stroke-width="1.2"/>
+        <line x1="336" y1="44" x2="324" y2="56" stroke="#ff6644" stroke-width="1.2"/>
+        <text x="330" y="30" text-anchor="middle" fill="#ff6644" font-size="8">ERROR</text>
+
+        <!-- Signal flows on spokes -->
+        <path d="M140,98 Q200,130 285,170" stroke="#ff8844" stroke-width="1" fill="none" class="signal-fwd" opacity="0.4"/>
+        <path d="M520,98 Q460,130 375,170" stroke="#8866ff" stroke-width="1" fill="none" class="signal-fwd" opacity="0.4" style="animation-delay:-0.5s"/>
+        <path d="M375,225 Q430,270 510,312" stroke="#44ddaa" stroke-width="1" fill="none" class="signal-fwd" opacity="0.35" style="animation-delay:-1s"/>
+        <path d="M330,265 Q330,310 330,344" stroke="#ddaa44" stroke-width="1" fill="none" class="signal-fwd" opacity="0.4" style="animation-delay:-1.5s"/>
+        <!-- Backprop -->
+        <path d="M330,60 Q330,100 330,155" stroke="#ff4444" stroke-width="0.8" fill="none" class="signal-back" opacity="0.3"/>
+        <path d="M285,235 Q230,290 165,325" stroke="#ff4444" stroke-width="0.8" fill="none" class="signal-back" opacity="0.25" style="animation-delay:-0.5s"/>
+
+        <!-- Hemisphere shading -->
+        <text x="170" y="155" fill="#ff8844" font-size="9" opacity="0.25">TRAINING</text>
+        <text x="455" y="155" fill="#8866ff" font-size="9" opacity="0.25">INFERENCE</text>
+      </svg>
+    </div>
+    <div class="concept-info">
+      <h2>G — The Synaptic Web</h2>
+      <p class="tagline">"A neuron's-eye view — you ARE inside the network"</p>
+      <p>A large <span class="hl2">central hub</span> (the core computation: ALU, logic gates, Galton board) with <span class="hl">8 radial arms</span> extending outward like axons. Each arm terminates in a mechanism node. Secondary tendrils branch off each node like dendrites.</p>
+      <p>The topology is a <span class="hl3">star graph</span> — everything connects through the center. This mirrors how a single neuron connects: inputs arrive on dendrites (left arms), outputs leave on axons (right arms). The viewer stands at the center of a neuron's perspective.</p>
+      <p>Training mechanisms cluster on left arms, inference on right. The <span class="hl2">Galton board sits inside the central hub</span> — probability cascading through the heart of the network.</p>
+      <ul class="features">
+        <li class="pro">Radial symmetry is inherently dramatic and balanced</li>
+        <li class="pro">Central hub naturally houses the Galton board + ALU</li>
+        <li class="pro">Arms can be different lengths (hierarchy = importance)</li>
+        <li class="pro">Viewable from 360 degrees — no "back"</li>
+        <li class="pro">Scalable: add arms for new mechanisms</li>
+        <li class="note">~1.5m diameter radial spread, ~1.0m tall</li>
+        <li class="con">Central hub can become crowded</li>
+        <li class="con">Less obviously "brain-shaped" — more abstract</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+
+<p style="text-align:center; color:#555; margin-top:30px; font-size:0.85em;">Click concepts to select. Discuss refinements in terminal.</p>
+
+</body>
+</html>

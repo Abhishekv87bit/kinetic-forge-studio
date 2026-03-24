@@ -1,0 +1,176 @@
+{
+  "model_weights__encoder_bilstm__encoder_bilstm__backward_bilstm__lstm_cell__bias:0": {
+    "shape": [
+      192
+    ],
+    "offset": 0,
+    "length": 192
+  },
+  "model_weights__encoder_bilstm__encoder_bilstm__backward_bilstm__lstm_cell__kernel:0": {
+    "shape": [
+      13,
+      192
+    ],
+    "offset": 768,
+    "length": 2496
+  },
+  "model_weights__encoder_bilstm__encoder_bilstm__backward_bilstm__lstm_cell__recurrent_kernel:0": {
+    "shape": [
+      48,
+      192
+    ],
+    "offset": 10752,
+    "length": 9216
+  },
+  "model_weights__encoder_bilstm__encoder_bilstm__forward_bilstm__lstm_cell__bias:0": {
+    "shape": [
+      192
+    ],
+    "offset": 47616,
+    "length": 192
+  },
+  "model_weights__encoder_bilstm__encoder_bilstm__forward_bilstm__lstm_cell__kernel:0": {
+    "shape": [
+      13,
+      192
+    ],
+    "offset": 48384,
+    "length": 2496
+  },
+  "model_weights__encoder_bilstm__encoder_bilstm__forward_bilstm__lstm_cell__recurrent_kernel:0": {
+    "shape": [
+      48,
+      192
+    ],
+    "offset": 58368,
+    "length": 9216
+  },
+  "model_weights__encoder_lstm__encoder_lstm__lstm_cell__bias:0": {
+    "shape": [
+      192
+    ],
+    "offset": 95232,
+    "length": 192
+  },
+  "model_weights__encoder_lstm__encoder_lstm__lstm_cell__kernel:0": {
+    "shape": [
+      96,
+      192
+    ],
+    "offset": 96000,
+    "length": 18432
+  },
+  "model_weights__encoder_lstm__encoder_lstm__lstm_cell__recurrent_kernel:0": {
+    "shape": [
+      48,
+      192
+    ],
+    "offset": 169728,
+    "length": 9216
+  },
+  "model_weights__energy_dense__energy_dense__bias:0": {
+    "shape": [
+      16
+    ],
+    "offset": 206592,
+    "length": 16
+  },
+  "model_weights__energy_dense__energy_dense__kernel:0": {
+    "shape": [
+      48,
+      16
+    ],
+    "offset": 206656,
+    "length": 768
+  },
+  "model_weights__energy_output__energy_output__bias:0": {
+    "shape": [
+      2
+    ],
+    "offset": 209728,
+    "length": 2
+  },
+  "model_weights__energy_output__energy_output__kernel:0": {
+    "shape": [
+      16,
+      2
+    ],
+    "offset": 209736,
+    "length": 32
+  },
+  "model_weights__melody_dense__melody_dense__bias:0": {
+    "shape": [
+      24
+    ],
+    "offset": 209864,
+    "length": 24
+  },
+  "model_weights__melody_dense__melody_dense__kernel:0": {
+    "shape": [
+      48,
+      24
+    ],
+    "offset": 209960,
+    "length": 1152
+  },
+  "model_weights__melody_output__melody_output__bias:0": {
+    "shape": [
+      4
+    ],
+    "offset": 214568,
+    "length": 4
+  },
+  "model_weights__melody_output__melody_output__kernel:0": {
+    "shape": [
+      24,
+      4
+    ],
+    "offset": 214584,
+    "length": 96
+  },
+  "model_weights__rhythm_dense__rhythm_dense__bias:0": {
+    "shape": [
+      24
+    ],
+    "offset": 214968,
+    "length": 24
+  },
+  "model_weights__rhythm_dense__rhythm_dense__kernel:0": {
+    "shape": [
+      48,
+      24
+    ],
+    "offset": 215064,
+    "length": 1152
+  },
+  "model_weights__rhythm_output__rhythm_output__bias:0": {
+    "shape": [
+      3
+    ],
+    "offset": 219672,
+    "length": 3
+  },
+  "model_weights__rhythm_output__rhythm_output__kernel:0": {
+    "shape": [
+      24,
+      3
+    ],
+    "offset": 219684,
+    "length": 72
+  },
+  "model_weights__shared_dense__shared_dense__bias:0": {
+    "shape": [
+      48
+    ],
+    "offset": 219972,
+    "length": 48
+  },
+  "model_weights__shared_dense__shared_dense__kernel:0": {
+    "shape": [
+      48,
+      48
+    ],
+    "offset": 220164,
+    "length": 2304
+  }
+}

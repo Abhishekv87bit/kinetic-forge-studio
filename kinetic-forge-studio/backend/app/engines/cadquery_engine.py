@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from app.config import settings
+from app.middleware.cache import execution_cache, make_hash_key
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +76,13 @@ class CadQueryEngine:
         Returns:
             GenerationResult with paths to generated files.
         """
+        # Check execution cache before running
+        cache_key = make_hash_key("cadquery_exec", code)
+        cached = await execution_cache.aget(cache_key)
+        if cached is not None:
+            logger.debug("execution_cache HIT for code hash %s", cache_key[:12])
+            return cached
+
         output_dir.mkdir(parents=True, exist_ok=True)
         step_path = output_dir / f"{filename_base}.step"
         stl_path = output_dir / f"{filename_base}.stl"
@@ -129,13 +137,17 @@ class CadQueryEngine:
                     execution_time=elapsed,
                 )
 
-            return GenerationResult(
+            result = GenerationResult(
                 success=True,
                 output_files=output_files,
                 stdout=stdout,
                 stderr=stderr,
                 execution_time=elapsed,
             )
+            # Cache successful results (keyed by code content)
+            await execution_cache.aset(cache_key, result)
+            logger.debug("execution_cache STORE for code hash %s", cache_key[:12])
+            return result
 
         except asyncio.TimeoutError:
             return GenerationResult(

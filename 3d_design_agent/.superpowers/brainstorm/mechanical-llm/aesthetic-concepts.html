@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mechanical LLM — Aesthetic Concepts</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0a0f; color: #e0e0e0; font-family: 'Segoe UI', system-ui, sans-serif; padding: 40px; }
+  h1 { text-align: center; font-size: 2em; margin-bottom: 10px; color: #fff; }
+  .subtitle { text-align: center; color: #888; margin-bottom: 40px; font-size: 1.1em; }
+  .concepts { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; max-width: 1400px; margin: 0 auto; }
+  .concept { background: #14141f; border: 2px solid #2a2a3a; border-radius: 16px; overflow: hidden; cursor: pointer; transition: all 0.3s; }
+  .concept:hover { border-color: #5588ff; transform: translateY(-4px); box-shadow: 0 8px 30px rgba(85,136,255,0.15); }
+  .concept.selected { border-color: #ff8844; box-shadow: 0 0 20px rgba(255,136,68,0.3); }
+  .concept-visual { height: 400px; position: relative; overflow: hidden; }
+  .concept-info { padding: 24px; }
+  .concept-info h2 { font-size: 1.4em; margin-bottom: 8px; color: #fff; }
+  .concept-info .tag { display: inline-block; background: #2a2a4a; color: #8899cc; padding: 3px 10px; border-radius: 12px; font-size: 0.8em; margin-right: 6px; margin-bottom: 8px; }
+  .concept-info p { color: #aaa; line-height: 1.6; margin-bottom: 12px; }
+  .concept-info .highlight { color: #ff8844; font-weight: 600; }
+  .letter-badge { position: absolute; top: 16px; left: 16px; background: rgba(0,0,0,0.7); color: #fff; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2em; z-index: 10; }
+
+  /* --- CONCEPT A: Neural Tree --- */
+  .tree-svg { width: 100%; height: 100%; }
+
+  /* --- CONCEPT B: Cortical Layers --- */
+  .cortical-svg { width: 100%; height: 100%; }
+
+  /* --- CONCEPT C: Synapse Constellation --- */
+  .constellation-svg { width: 100%; height: 100%; }
+
+  /* --- CONCEPT D: Brainstem Cascade --- */
+  .brainstem-svg { width: 100%; height: 100%; }
+
+  .features { margin-top: 16px; }
+  .features li { color: #999; font-size: 0.9em; margin-bottom: 4px; padding-left: 16px; position: relative; }
+  .features li::before { content: ''; position: absolute; left: 0; top: 8px; width: 6px; height: 6px; border-radius: 50%; background: #5588ff; }
+
+  @keyframes pulse { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }
+  @keyframes flow { 0% { stroke-dashoffset: 40; } 100% { stroke-dashoffset: 0; } }
+  .signal-flow { stroke-dasharray: 8 12; animation: flow 2s linear infinite; }
+  .pulse-node { animation: pulse 3s ease-in-out infinite; }
+</style>
+</head>
+<body>
+
+<h1>Mechanical LLM — Form Factor Concepts</h1>
+<p class="subtitle">Neural network topology as physical sculpture. Click to select.</p>
+
+<div class="concepts">
+
+  <!-- CONCEPT A: Neural Dendrite Tree -->
+  <div class="concept" onclick="this.classList.toggle('selected')">
+    <div class="concept-visual">
+      <div class="letter-badge">A</div>
+      <svg class="tree-svg" viewBox="0 0 600 400">
+        <defs>
+          <radialGradient id="nodeGlow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#ff8844" stop-opacity="0.8"/>
+            <stop offset="100%" stop-color="#ff8844" stop-opacity="0"/>
+          </radialGradient>
+          <linearGradient id="axonGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#5588ff" stop-opacity="0.8"/>
+            <stop offset="100%" stop-color="#44ddaa" stop-opacity="0.4"/>
+          </linearGradient>
+        </defs>
+        <!-- Background subtle grid -->
+        <rect width="600" height="400" fill="#0a0a15"/>
+
+        <!-- Central trunk (brainstem/spinal column) -->
+        <line x1="300" y1="380" x2="300" y2="180" stroke="#334" stroke-width="8" stroke-linecap="round"/>
+        <line x1="300" y1="380" x2="300" y2="180" stroke="#5588ff" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+
+        <!-- Layer 1 branches (input) - bottom -->
+        <path d="M300,340 Q240,330 180,310" stroke="#446" stroke-width="3" fill="none"/>
+        <path d="M300,340 Q360,330 420,310" stroke="#446" stroke-width="3" fill="none"/>
+        <path d="M300,340 Q220,320 140,340" stroke="#446" stroke-width="2" fill="none"/>
+        <path d="M300,340 Q380,320 460,340" stroke="#446" stroke-width="2" fill="none"/>
+
+        <!-- Layer 2 branches (hidden) - middle -->
+        <path d="M300,270 Q230,250 160,220" stroke="#558" stroke-width="3" fill="none"/>
+        <path d="M300,270 Q370,250 440,220" stroke="#558" stroke-width="3" fill="none"/>
+        <path d="M300,270 Q200,240 120,260" stroke="#558" stroke-width="2" fill="none"/>
+        <path d="M300,270 Q400,240 480,260" stroke="#558" stroke-width="2" fill="none"/>
+
+        <!-- Layer 3 branches (output) - top canopy -->
+        <path d="M300,200 Q220,160 140,120" stroke="#668" stroke-width="3" fill="none"/>
+        <path d="M300,200 Q380,160 460,120" stroke="#668" stroke-width="3" fill="none"/>
+        <path d="M300,200 Q260,140 200,80" stroke="#668" stroke-width="2" fill="none"/>
+        <path d="M300,200 Q340,140 400,80" stroke="#668" stroke-width="2" fill="none"/>
+        <path d="M300,200 Q300,130 300,60" stroke="#668" stroke-width="2" fill="none"/>
+
+        <!-- Signal flow lines -->
+        <path d="M180,310 Q240,280 300,270" stroke="#5588ff" stroke-width="1.5" fill="none" class="signal-flow" opacity="0.6"/>
+        <path d="M420,310 Q360,280 300,270" stroke="#5588ff" stroke-width="1.5" fill="none" class="signal-flow" opacity="0.6" style="animation-delay:-0.5s"/>
+        <path d="M160,220 Q230,240 300,200" stroke="#44ddaa" stroke-width="1.5" fill="none" class="signal-flow" opacity="0.6" style="animation-delay:-1s"/>
+        <path d="M440,220 Q370,240 300,200" stroke="#44ddaa" stroke-width="1.5" fill="none" class="signal-flow" opacity="0.6" style="animation-delay:-1.5s"/>
+
+        <!-- Mechanism clusters (nodes) -->
+        <circle cx="180" cy="310" r="15" fill="url(#nodeGlow)" class="pulse-node"/>
+        <circle cx="180" cy="310" r="8" fill="#ff8844" opacity="0.9"/>
+        <circle cx="420" cy="310" r="15" fill="url(#nodeGlow)" class="pulse-node" style="animation-delay:-1s"/>
+        <circle cx="420" cy="310" r="8" fill="#ff8844" opacity="0.9"/>
+        <circle cx="140" cy="340" r="12" fill="url(#nodeGlow)" class="pulse-node" style="animation-delay:-0.5s"/>
+        <circle cx="140" cy="340" r="6" fill="#ff8844" opacity="0.7"/>
+        <circle cx="460" cy="340" r="12" fill="url(#nodeGlow)" class="pulse-node" style="animation-delay:-1.5s"/>
+        <circle cx="460" cy="340" r="6" fill="#ff8844" opacity="0.7"/>
+
+        <circle cx="160" cy="220" r="15" fill="url(#nodeGlow)" class="pulse-node" style="animation-delay:-2s"/>
+        <circle cx="160" cy="220" r="8" fill="#44ddaa" opacity="0.9"/>
+        <circle cx="440" cy="220" r="15" fill="url(#nodeGlow)" class="pulse-node" style="animation-delay:-0.7s"/>
+        <circle cx="440" cy="220" r="8" fill="#44ddaa" opacity="0.9"/>
+
+        <circle cx="140" cy="120" r="18" fill="url(#nodeGlow)" class="pulse-node" style="animation-delay:-1.2s"/>
+        <circle cx="140" cy="120" r="9" fill="#8866ff" opacity="0.9"/>
+        <circle cx="460" cy="120" r="18" fill="url(#nodeGlow)" class="pulse-node" style="animation-delay:-0.3s"/>
+        <circle cx="460" cy="120" r="9" fill="#8866ff" opacity="0.9"/>
+        <circle cx="300" cy="60" r="20" fill="url(#nodeGlow)" class="pulse-node"/>
+        <circle cx="300" cy="60" r="10" fill="#fff" opacity="0.9"/>
+
+        <!-- Galton board suggestion at base -->
+        <rect x="270" y="360" width="60" height="30" rx="4" fill="#1a1a2a" stroke="#446" stroke-width="1"/>
+        <text x="300" y="380" text-anchor="middle" fill="#668" font-size="9">GALTON</text>
+
+        <!-- Labels -->
+        <text x="60" y="340" fill="#ff8844" font-size="11" opacity="0.7">INPUT LAYER</text>
+        <text x="60" y="225" fill="#44ddaa" font-size="11" opacity="0.7">HIDDEN LAYER</text>
+        <text x="60" y="120" fill="#8866ff" font-size="11" opacity="0.7">OUTPUT LAYER</text>
+      </svg>
+    </div>
+    <div class="concept-info">
+      <span class="tag">organic</span><span class="tag">vertical</span><span class="tag">tree-like</span>
+      <h2>The Neural Dendrite Tree</h2>
+      <p>The sculpture grows upward like an inverted neural tree. A central <span class="highlight">trunk (brainstem)</span> carries power and signals. Branches spread outward at each layer — input dendrites at the bottom, hidden processing in the middle canopy, output axons reaching up top.</p>
+      <p>Each branch terminus is a <span class="highlight">mechanism cluster</span> (gears, cams, logic gates). Signals flow as marbles/balls rolling along the branches. The Galton board sits at the base (brainstem), probability cascading down into the root system.</p>
+      <ul class="features">
+        <li>Natural metaphor: growth, branching, reaching</li>
+        <li>Gravity assists signal flow downward (backprop)</li>
+        <li>Each branch is an independent subsystem</li>
+        <li>Galton board in the trunk/root system</li>
+        <li>~1.5m tall, ~1.2m spread</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- CONCEPT B: Cortical Column Stack -->
+  <div class="concept" onclick="this.classList.toggle('selected')">
+    <div class="concept-visual">
+      <div class="letter-badge">B</div>
+      <svg class="cortical-svg" viewBox="0 0 600 400">
+        <rect width="600" height="400" fill="#0a0a15"/>
+
+        <!-- Horizontal layer plates -->
+        <rect x="80" y="50" width="440" height="60" rx="30" fill="#1a1a2a" stroke="#446" stroke-width="1.5"/>
+        <rect x="100" y="140" width="400" height="70" rx="35" fill="#1a1a2a" stroke="#558" stroke-width="1.5"/>
+        <rect x="120" y="250" width="360" height="60" rx="30" fill="#1a1a2a" stroke="#668" stroke-width="1.5"/>
+        <rect x="180" y="340" width="240" height="50" rx="25" fill="#1a1a2a" stroke="#886" stroke-width="1.5"/>
+
+        <!-- Layer labels -->
+        <text x="300" y="35" text-anchor="middle" fill="#ff8844" font-size="12">INPUT / TOKENIZATION</text>
+        <text x="300" y="130" text-anchor="middle" fill="#44ddaa" font-size="12">ATTENTION + HIDDEN STATE</text>
+        <text x="300" y="240" text-anchor="middle" fill="#8866ff" font-size="12">COMPUTATION + LOGIC</text>
+        <text x="300" y="332" text-anchor="middle" fill="#ddaa44" font-size="12">OUTPUT + PROBABILITY</text>
+
+        <!-- Mechanism blobs in each layer -->
+        <!-- Input layer -->
+        <circle cx="160" cy="80" r="16" fill="#ff8844" opacity="0.3"/><circle cx="160" cy="80" r="8" fill="#ff8844"/>
+        <circle cx="230" cy="75" r="14" fill="#ff8844" opacity="0.3"/><circle cx="230" cy="75" r="7" fill="#ff8844"/>
+        <circle cx="300" cy="80" r="16" fill="#ff8844" opacity="0.3"/><circle cx="300" cy="80" r="8" fill="#ff8844"/>
+        <circle cx="370" cy="75" r="14" fill="#ff8844" opacity="0.3"/><circle cx="370" cy="75" r="7" fill="#ff8844"/>
+        <circle cx="440" cy="80" r="16" fill="#ff8844" opacity="0.3"/><circle cx="440" cy="80" r="8" fill="#ff8844"/>
+
+        <!-- Hidden layer (bigger, more complex) -->
+        <circle cx="170" cy="175" r="22" fill="#44ddaa" opacity="0.2"/><circle cx="170" cy="175" r="12" fill="#44ddaa"/>
+        <circle cx="260" cy="170" r="25" fill="#44ddaa" opacity="0.2"/><circle cx="260" cy="170" r="13" fill="#44ddaa"/>
+        <circle cx="350" cy="178" r="22" fill="#44ddaa" opacity="0.2"/><circle cx="350" cy="178" r="12" fill="#44ddaa"/>
+        <circle cx="430" cy="172" r="20" fill="#44ddaa" opacity="0.2"/><circle cx="430" cy="172" r="11" fill="#44ddaa"/>
+
+        <!-- Computation layer -->
+        <rect x="160" y="260" width="40" height="30" rx="4" fill="#8866ff" opacity="0.4"/>
+        <text x="180" y="280" text-anchor="middle" fill="#fff" font-size="9">ALU</text>
+        <rect x="240" y="258" width="50" height="34" rx="4" fill="#8866ff" opacity="0.4"/>
+        <text x="265" y="280" text-anchor="middle" fill="#fff" font-size="9">LOGIC</text>
+        <rect x="330" y="260" width="40" height="30" rx="4" fill="#8866ff" opacity="0.4"/>
+        <text x="350" y="280" text-anchor="middle" fill="#fff" font-size="9">CAM</text>
+        <rect x="410" y="262" width="40" height="28" rx="4" fill="#8866ff" opacity="0.4"/>
+        <text x="430" y="280" text-anchor="middle" fill="#fff" font-size="9">MEM</text>
+
+        <!-- Vertical connections -->
+        <line x1="160" y1="96" x2="170" y2="153" stroke="#5588ff" stroke-width="1.5" class="signal-flow" opacity="0.5"/>
+        <line x1="300" y1="96" x2="260" y2="153" stroke="#5588ff" stroke-width="1.5" class="signal-flow" opacity="0.5" style="animation-delay:-0.3s"/>
+        <line x1="440" y1="96" x2="430" y2="153" stroke="#5588ff" stroke-width="1.5" class="signal-flow" opacity="0.5" style="animation-delay:-0.6s"/>
+        <line x1="170" y1="197" x2="180" y2="258" stroke="#44ddaa" stroke-width="1.5" class="signal-flow" opacity="0.5" style="animation-delay:-0.9s"/>
+        <line x1="350" y1="200" x2="350" y2="258" stroke="#44ddaa" stroke-width="1.5" class="signal-flow" opacity="0.5" style="animation-delay:-1.2s"/>
+        <line x1="265" y1="292" x2="280" y2="340" stroke="#8866ff" stroke-width="1.5" class="signal-flow" opacity="0.5" style="animation-delay:-1.5s"/>
+        <line x1="350" y1="290" x2="340" y2="340" stroke="#8866ff" stroke-width="1.5" class="signal-flow" opacity="0.5" style="animation-delay:-1.8s"/>
+
+        <!-- Output -->
+        <circle cx="300" cy="365" r="16" fill="#ddaa44" opacity="0.3" class="pulse-node"/>
+        <circle cx="300" cy="365" r="9" fill="#ddaa44"/>
+        <text x="300" y="395" text-anchor="middle" fill="#886" font-size="10">ANSWER</text>
+      </svg>
+    </div>
+    <div class="concept-info">
+      <span class="tag">layered</span><span class="tag">horizontal</span><span class="tag">cortical</span>
+      <h2>The Cortical Layer Stack</h2>
+      <p>Horizontal <span class="highlight">floating platforms</span> stacked vertically, each representing a network layer. Input tokens enter at the top, signals cascade downward through attention, hidden state, computation, to output at the bottom.</p>
+      <p>Each platform is an organic, rounded slab (like a brain cross-section) with mechanisms mounted on top. Platforms connected by <span class="highlight">vertical signal pathways</span> — strings, rods, marble tracks running between layers.</p>
+      <ul class="features">
+        <li>Clear layer separation = easy to understand</li>
+        <li>Gravity drives forward pass (top to bottom)</li>
+        <li>Each platform independently removable/serviceable</li>
+        <li>Galton board spans multiple layers vertically</li>
+        <li>~1.5m tall, ~1.2m wide platforms</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- CONCEPT C: Synapse Constellation -->
+  <div class="concept" onclick="this.classList.toggle('selected')">
+    <div class="concept-visual">
+      <div class="letter-badge">C</div>
+      <svg class="constellation-svg" viewBox="0 0 600 400">
+        <rect width="600" height="400" fill="#0a0a15"/>
+
+        <!-- Organic web of connections -->
+        <!-- Primary nodes -->
+        <circle cx="120" cy="200" r="30" fill="#1a1a2a" stroke="#ff8844" stroke-width="2"/>
+        <circle cx="250" cy="100" r="35" fill="#1a1a2a" stroke="#44ddaa" stroke-width="2"/>
+        <circle cx="350" cy="280" r="40" fill="#1a1a2a" stroke="#44ddaa" stroke-width="2"/>
+        <circle cx="480" cy="150" r="35" fill="#1a1a2a" stroke="#8866ff" stroke-width="2"/>
+        <circle cx="450" cy="320" r="28" fill="#1a1a2a" stroke="#ddaa44" stroke-width="2"/>
+        <circle cx="200" cy="330" r="25" fill="#1a1a2a" stroke="#ff8844" stroke-width="2"/>
+        <circle cx="300" cy="180" r="45" fill="#1a1a2a" stroke="#fff" stroke-width="2"/>
+
+        <!-- Connection paths (organic curves) -->
+        <path d="M120,200 Q180,140 250,100" stroke="#5588ff" stroke-width="2" fill="none" class="signal-flow"/>
+        <path d="M250,100 Q280,140 300,180" stroke="#5588ff" stroke-width="2.5" fill="none" class="signal-flow" style="animation-delay:-0.3s"/>
+        <path d="M300,180 Q330,230 350,280" stroke="#44ddaa" stroke-width="2.5" fill="none" class="signal-flow" style="animation-delay:-0.6s"/>
+        <path d="M300,180 Q400,160 480,150" stroke="#8866ff" stroke-width="2" fill="none" class="signal-flow" style="animation-delay:-0.9s"/>
+        <path d="M350,280 Q400,300 450,320" stroke="#ddaa44" stroke-width="2" fill="none" class="signal-flow" style="animation-delay:-1.2s"/>
+        <path d="M120,200 Q160,270 200,330" stroke="#ff8844" stroke-width="1.5" fill="none" class="signal-flow" style="animation-delay:-1.5s"/>
+        <path d="M200,330 Q270,310 350,280" stroke="#44ddaa" stroke-width="1.5" fill="none" class="signal-flow" style="animation-delay:-1.8s"/>
+        <path d="M480,150 Q470,240 450,320" stroke="#8866ff" stroke-width="1.5" fill="none" class="signal-flow" style="animation-delay:-2.1s"/>
+        <path d="M250,100 Q370,80 480,150" stroke="#668" stroke-width="1.5" fill="none" class="signal-flow" style="animation-delay:-0.5s"/>
+
+        <!-- Secondary tendrils -->
+        <path d="M120,200 Q80,150 60,90" stroke="#334" stroke-width="1" fill="none"/>
+        <path d="M120,200 Q70,220 40,260" stroke="#334" stroke-width="1" fill="none"/>
+        <path d="M250,100 Q230,50 250,20" stroke="#334" stroke-width="1" fill="none"/>
+        <path d="M480,150 Q530,120 560,80" stroke="#334" stroke-width="1" fill="none"/>
+        <path d="M480,150 Q540,170 580,160" stroke="#334" stroke-width="1" fill="none"/>
+        <path d="M450,320 Q490,350 530,370" stroke="#334" stroke-width="1" fill="none"/>
+        <path d="M200,330 Q170,370 160,390" stroke="#334" stroke-width="1" fill="none"/>
+
+        <!-- Node labels -->
+        <text x="120" y="204" text-anchor="middle" fill="#ff8844" font-size="9">TOKEN</text>
+        <text x="250" y="104" text-anchor="middle" fill="#44ddaa" font-size="9">ATTN</text>
+        <text x="300" y="176" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">CORE</text>
+        <text x="300" y="190" text-anchor="middle" fill="#aaa" font-size="8">ALU+LOGIC</text>
+        <text x="350" y="284" text-anchor="middle" fill="#44ddaa" font-size="9">HIDDEN</text>
+        <text x="480" y="154" text-anchor="middle" fill="#8866ff" font-size="9">MEMORY</text>
+        <text x="450" y="324" text-anchor="middle" fill="#ddaa44" font-size="9">OUTPUT</text>
+        <text x="200" y="334" text-anchor="middle" fill="#ff8844" font-size="9">INPUT</text>
+
+        <!-- Mechanism icons inside nodes -->
+        <circle cx="300" cy="180" r="8" fill="#fff" opacity="0.15" class="pulse-node"/>
+        <circle cx="250" cy="100" r="6" fill="#44ddaa" opacity="0.3" class="pulse-node" style="animation-delay:-1s"/>
+        <circle cx="350" cy="280" r="7" fill="#44ddaa" opacity="0.3" class="pulse-node" style="animation-delay:-2s"/>
+      </svg>
+    </div>
+    <div class="concept-info">
+      <span class="tag">organic</span><span class="tag">spread</span><span class="tag">constellation</span>
+      <h2>The Synapse Constellation</h2>
+      <p>No box, no layers — mechanism clusters float in space like neurons, connected by <span class="highlight">organic curved pathways</span> (rods, tubes, marble tracks, strings). The topology IS the sculpture. A large central node houses the core computation (ALU, logic gates). Satellite nodes handle specialized functions.</p>
+      <p>Tendrils extend outward like dendrites — some carry signals, others are purely sculptural. The whole structure hangs from a <span class="highlight">minimal armature</span> or mounts to a wall, giving a floating, neural appearance.</p>
+      <ul class="features">
+        <li>Most organic and brain-like of all options</li>
+        <li>Each node is a self-contained mechanism module</li>
+        <li>Connections ARE the visual drama (marbles rolling along curved tracks)</li>
+        <li>Galton board as a vertical cascade between two nodes</li>
+        <li>~1.5m spread, irregular organic footprint</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- CONCEPT D: Brainstem Cascade (Hybrid) -->
+  <div class="concept" onclick="this.classList.toggle('selected')">
+    <div class="concept-visual">
+      <div class="letter-badge">D</div>
+      <svg class="brainstem-svg" viewBox="0 0 600 400">
+        <rect width="600" height="400" fill="#0a0a15"/>
+
+        <!-- Central spinal column -->
+        <rect x="280" y="30" width="40" height="360" rx="6" fill="#1a1a2a" stroke="#446" stroke-width="2"/>
+
+        <!-- Galton board pegs inside spine -->
+        <circle cx="292" cy="200" r="3" fill="#668"/><circle cx="308" cy="215" r="3" fill="#668"/>
+        <circle cx="295" cy="230" r="3" fill="#668"/><circle cx="305" cy="245" r="3" fill="#668"/>
+        <circle cx="290" cy="260" r="3" fill="#668"/><circle cx="310" cy="275" r="3" fill="#668"/>
+        <circle cx="295" cy="290" r="3" fill="#668"/><circle cx="305" cy="305" r="3" fill="#668"/>
+        <circle cx="300" cy="320" r="3" fill="#668"/>
+        <!-- Galton label -->
+        <text x="340" y="260" fill="#668" font-size="9" transform="rotate(90,340,260)">GALTON BOARD</text>
+
+        <!-- Brain hemisphere - left -->
+        <ellipse cx="200" cy="100" rx="140" ry="80" fill="none" stroke="#446" stroke-width="1.5" stroke-dasharray="4 4"/>
+        <!-- Brain hemisphere - right -->
+        <ellipse cx="400" cy="100" rx="140" ry="80" fill="none" stroke="#446" stroke-width="1.5" stroke-dasharray="4 4"/>
+
+        <!-- Left hemisphere mechanisms (Act 1: Training) -->
+        <circle cx="120" cy="80" r="20" fill="#1a1a2a" stroke="#ff8844" stroke-width="2"/>
+        <text x="120" y="84" text-anchor="middle" fill="#ff8844" font-size="8">LEARN</text>
+        <circle cx="180" cy="50" r="18" fill="#1a1a2a" stroke="#ff8844" stroke-width="1.5"/>
+        <text x="180" y="54" text-anchor="middle" fill="#ff8844" font-size="7">WEIGHT</text>
+        <circle cx="220" cy="110" r="22" fill="#1a1a2a" stroke="#44ddaa" stroke-width="2"/>
+        <text x="220" y="114" text-anchor="middle" fill="#44ddaa" font-size="8">GRAD</text>
+        <circle cx="140" cy="140" r="16" fill="#1a1a2a" stroke="#44ddaa" stroke-width="1.5"/>
+        <text x="140" y="144" text-anchor="middle" fill="#44ddaa" font-size="7">LOSS</text>
+
+        <!-- Right hemisphere mechanisms (Act 2: Inference) -->
+        <circle cx="480" cy="80" r="20" fill="#1a1a2a" stroke="#8866ff" stroke-width="2"/>
+        <text x="480" y="84" text-anchor="middle" fill="#8866ff" font-size="8">ATTN</text>
+        <circle cx="420" cy="50" r="18" fill="#1a1a2a" stroke="#8866ff" stroke-width="1.5"/>
+        <text x="420" y="54" text-anchor="middle" fill="#8866ff" font-size="7">TOKEN</text>
+        <circle cx="380" cy="110" r="22" fill="#1a1a2a" stroke="#ddaa44" stroke-width="2"/>
+        <text x="380" y="114" text-anchor="middle" fill="#ddaa44" font-size="8">THINK</text>
+        <circle cx="460" cy="140" r="16" fill="#1a1a2a" stroke="#ddaa44" stroke-width="1.5"/>
+        <text x="460" y="144" text-anchor="middle" fill="#ddaa44" font-size="7">OUT</text>
+
+        <!-- Cross-connections (corpus callosum) -->
+        <path d="M220,110 Q300,95 380,110" stroke="#5588ff" stroke-width="1.5" fill="none" class="signal-flow" opacity="0.5"/>
+        <path d="M180,50 Q300,30 420,50" stroke="#5588ff" stroke-width="1" fill="none" class="signal-flow" opacity="0.3" style="animation-delay:-0.5s"/>
+
+        <!-- Connections to spine -->
+        <line x1="220" y1="132" x2="280" y2="180" stroke="#44ddaa" stroke-width="1.5" class="signal-flow" opacity="0.5"/>
+        <line x1="380" y1="132" x2="320" y2="180" stroke="#ddaa44" stroke-width="1.5" class="signal-flow" opacity="0.5" style="animation-delay:-1s"/>
+
+        <!-- Base output -->
+        <rect x="260" y="360" width="80" height="30" rx="8" fill="#1a1a2a" stroke="#ddaa44" stroke-width="2"/>
+        <text x="300" y="380" text-anchor="middle" fill="#ddaa44" font-size="10">ANSWER</text>
+
+        <!-- Histogram bins at very bottom -->
+        <rect x="265" y="355" width="10" height="5" fill="#ddaa44" opacity="0.3"/>
+        <rect x="278" y="350" width="10" height="10" fill="#ddaa44" opacity="0.4"/>
+        <rect x="291" y="345" width="10" height="15" fill="#ddaa44" opacity="0.6"/>
+        <rect x="304" y="352" width="10" height="8" fill="#ddaa44" opacity="0.35"/>
+        <rect x="317" y="356" width="10" height="4" fill="#ddaa44" opacity="0.25"/>
+
+        <!-- Labels -->
+        <text x="200" y="190" text-anchor="middle" fill="#ff8844" font-size="11" opacity="0.6">ACT 1: TRAINING</text>
+        <text x="400" y="190" text-anchor="middle" fill="#8866ff" font-size="11" opacity="0.6">ACT 2: INFERENCE</text>
+        <text x="300" y="16" text-anchor="middle" fill="#fff" font-size="12" opacity="0.8">CORPUS CALLOSUM</text>
+      </svg>
+    </div>
+    <div class="concept-info">
+      <span class="tag">bilateral</span><span class="tag">anatomical</span><span class="tag">two-act</span>
+      <h2>The Split-Brain Machine</h2>
+      <p>Two hemispheres — <span class="highlight">left brain = training (Act 1)</span>, <span class="highlight">right brain = inference (Act 2)</span> — connected by a central spine that houses the Galton board. The corpus callosum (cross-connections) carries shared weights between hemispheres.</p>
+      <p>This maps directly to your two-act narrative. During training, the left hemisphere is alive with motion. When training completes, activity shifts to the right. The Galton board in the spine shows probability throughout both acts.</p>
+      <ul class="features">
+        <li>Two-act narrative maps to two physical hemispheres</li>
+        <li>Galton board IS the brainstem (probability flows down the spine)</li>
+        <li>Corpus callosum = weight sharing (visible cross-connections)</li>
+        <li>Bilateral symmetry is instantly brain-like</li>
+        <li>~1.5m wide, ~1.2m tall, bilateral layout</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+
+<p style="text-align:center; color:#666; margin-top:30px; font-size:0.9em;">Click concepts to select. Multiple selections OK. Discuss in terminal.</p>
+
+</body>
+</html>

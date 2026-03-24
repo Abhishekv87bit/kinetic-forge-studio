@@ -6,6 +6,7 @@ from app.models.project import ProjectManager
 from app.models.decision import DecisionManager
 from app.models.component import ComponentManager
 from app.config import settings
+from app.middleware.cache import clear_project_cache
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 
@@ -42,6 +43,7 @@ async def list_projects():
 async def create_project(req: CreateProjectRequest):
     pm = await get_pm()
     project = await pm.create(req.name)
+    clear_project_cache(project.id)
     return {"id": project.id, "name": project.name, "gate": project.gate}
 
 @router.get("/{project_id}")
@@ -65,21 +67,26 @@ async def add_decision(project_id: str, req: AddDecisionRequest):
     dm = DecisionManager(pm.db)
     conflicts = await dm.check_conflicts(project_id, req.parameter, req.value)
     decision = await dm.add(project_id, req.parameter, req.value, req.reason)
+    clear_project_cache(project_id)
     return {"decision": decision, "conflicts": conflicts}
 
 @router.post("/{project_id}/decisions/{decision_id}/lock")
 async def lock_decision(project_id: str, decision_id: int):
     pm = await get_pm()
     dm = DecisionManager(pm.db)
-    return await dm.lock(project_id, decision_id)
+    result = await dm.lock(project_id, decision_id)
+    clear_project_cache(project_id)
+    return result
 
 @router.post("/{project_id}/components")
 async def register_component(project_id: str, req: RegisterComponentRequest):
     pm = await get_pm()
     cm = ComponentManager(pm.db)
     try:
-        return await cm.register(project_id, req.component_id, req.display_name,
-                                 req.component_type, req.parameters)
+        result = await cm.register(project_id, req.component_id, req.display_name,
+                                   req.component_type, req.parameters)
+        clear_project_cache(project_id)
+        return result
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
@@ -99,6 +106,7 @@ async def set_scad_dir(project_id: str, req: SetScadDirRequest):
     """Link an OpenSCAD source directory to a project."""
     pm = await get_pm()
     project = await pm.set_scad_dir(project_id, req.scad_dir)
+    clear_project_cache(project_id)
     return {"id": project.id, "name": project.name, "scad_dir": project.scad_dir}
 
 
@@ -248,6 +256,8 @@ async def rollback_to_snapshot(project_id: str, snapshot_id: int):
         _chat_states[project_id].conversation_history.clear()
         _chat_states[project_id].pipeline.reset()
         _chat_states[project_id].history_loaded = False
+
+    clear_project_cache(project_id)
 
     return {
         "status": "rolled_back",

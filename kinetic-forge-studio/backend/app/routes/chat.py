@@ -25,11 +25,12 @@ from pathlib import Path
 import numpy as np
 import trimesh
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pydantic import BaseModel
 from typing import Any
 
 from app.config import settings
+from app.middleware.rate_limiter import limiter
 from app.orchestrator.pipeline import Pipeline
 from app.orchestrator.chat_agent import ChatAgent
 from app.orchestrator.mechanism_mapper import spec_to_components
@@ -42,6 +43,7 @@ from app.db.library import LibraryManager
 from app.routes.projects import get_pm
 from app.utils.geometry import component_to_geometry
 from app.consultants.rule99_engine import get_engine as get_rule99_engine, ProjectState
+from app.middleware.cache import clear_project_cache
 
 logger = logging.getLogger(__name__)
 
@@ -148,13 +150,16 @@ class AnswerMessage(BaseModel):
 
 
 @router.post("")
-async def send_message(project_id: str, msg: ChatMessage):
+@limiter.limit("10/minute")
+async def send_message(request: Request, project_id: str, msg: ChatMessage):
     """
     Process a user chat message through the AI design agent.
 
     The LLM receives the full methodology system prompt and generates
     structured output (components, spec updates, verification checks)
     that the app processes automatically.
+
+    Rate limited: 10 requests/minute per IP (GAP-PPL-013).
 
     Special commands:
     - "Rule 99" / "Rule 99 [topic]" — run consultant pipeline
@@ -628,7 +633,8 @@ def _send_via_pipeline(state: ProjectChatState, msg: ChatMessage) -> dict:
 
 
 @router.post("/answer")
-async def answer_question(project_id: str, answer: AnswerMessage):
+@limiter.limit("10/minute")
+async def answer_question(request: Request, project_id: str, answer: AnswerMessage):
     """
     Apply a direct answer to a question (e.g., button selection).
 
@@ -771,6 +777,7 @@ async def _register_components_from_llm(
             "Registered %d LLM-designed components for project %s",
             len(components), project_id,
         )
+        clear_project_cache(project_id)
         return None
     except Exception as e:
         logger.error("Failed to register LLM components for %s: %s", project_id, e)
@@ -822,6 +829,7 @@ async def _register_components_from_mapper(
             "Registered %d mapper components for project %s (mechanism=%s)",
             len(components), project_id, spec.get("mechanism_type", "unknown"),
         )
+        clear_project_cache(project_id)
         return None
     except Exception as e:
         logger.error("Failed to register mapper components for %s: %s", project_id, e)
@@ -965,6 +973,7 @@ async def _attempt_gate_transition(project_id: str, target_gate: str) -> dict:
             )
             # Advance the gate
             await pm.update_gate(project_id, target_gate)
+            clear_project_cache(project_id)
             lines.append(f"**APPROVED** — Gate advanced to {target_gate}")
         else:
             lines.append(f"**BLOCKED** — Cannot advance to {target_gate}")

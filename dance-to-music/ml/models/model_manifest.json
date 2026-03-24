@@ -1,0 +1,101 @@
+{
+  "model_weights__bidirectional__sequential__bidirectional__backward_lstm__lstm_cell__bias": {
+    "shape": [
+      128
+    ],
+    "offset": 0,
+    "length": 128
+  },
+  "model_weights__bidirectional__sequential__bidirectional__backward_lstm__lstm_cell__kernel": {
+    "shape": [
+      7,
+      128
+    ],
+    "offset": 512,
+    "length": 896
+  },
+  "model_weights__bidirectional__sequential__bidirectional__backward_lstm__lstm_cell__recurrent_kernel": {
+    "shape": [
+      32,
+      128
+    ],
+    "offset": 4096,
+    "length": 4096
+  },
+  "model_weights__bidirectional__sequential__bidirectional__forward_lstm__lstm_cell__bias": {
+    "shape": [
+      128
+    ],
+    "offset": 20480,
+    "length": 128
+  },
+  "model_weights__bidirectional__sequential__bidirectional__forward_lstm__lstm_cell__kernel": {
+    "shape": [
+      7,
+      128
+    ],
+    "offset": 20992,
+    "length": 896
+  },
+  "model_weights__bidirectional__sequential__bidirectional__forward_lstm__lstm_cell__recurrent_kernel": {
+    "shape": [
+      32,
+      128
+    ],
+    "offset": 24576,
+    "length": 4096
+  },
+  "model_weights__dense__sequential__dense__bias": {
+    "shape": [
+      32
+    ],
+    "offset": 40960,
+    "length": 32
+  },
+  "model_weights__dense__sequential__dense__kernel": {
+    "shape": [
+      32,
+      32
+    ],
+    "offset": 41088,
+    "length": 1024
+  },
+  "model_weights__dense_1__sequential__dense_1__bias": {
+    "shape": [
+      7
+    ],
+    "offset": 45184,
+    "length": 7
+  },
+  "model_weights__dense_1__sequential__dense_1__kernel": {
+    "shape": [
+      32,
+      7
+    ],
+    "offset": 45212,
+    "length": 224
+  },
+  "model_weights__lstm_1__sequential__lstm_1__lstm_cell__bias": {
+    "shape": [
+      128
+    ],
+    "offset": 46108,
+    "length": 128
+  },
+  "model_weights__lstm_1__sequential__lstm_1__lstm_cell__kernel": {
+    "shape": [
+      64,
+      128
+    ],
+    "offset": 46620,
+    "length": 8192
+  },
+  "model_weights__lstm_1__sequential__lstm_1__lstm_cell__recurrent_kernel": {
+    "shape": [
+      32,
+      128
+    ],
+    "offset": 79388,
+    "length": 4096
+  }
+}

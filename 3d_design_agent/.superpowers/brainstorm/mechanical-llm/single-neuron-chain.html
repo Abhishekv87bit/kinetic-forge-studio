@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Single Neuron — Mechanical Chain</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a12;overflow:hidden;font-family:'Segoe UI',sans-serif;color:#aab;user-select:none}
+#title{position:fixed;top:8px;left:12px;font-size:11px;color:#889;z-index:10;pointer-events:none}
+#title span{color:#cc9944;font-weight:600}
+#equation{position:fixed;top:24px;left:12px;font-size:9px;color:#667;z-index:10;pointer-events:none;font-family:'Courier New',monospace}
+#controls{position:fixed;bottom:8px;right:10px;z-index:10;display:flex;align-items:center;gap:6px}
+#controls button{background:#1a1a24;border:1px solid #333;color:#99a;font-size:9px;padding:2px 8px;cursor:pointer;border-radius:2px}
+#controls button:hover{border-color:#cc9944;color:#cc9944}
+#viewport{position:absolute;top:0;left:0;width:100%;height:100%;overflow:hidden}
+#canvas{transform-origin:0 0;position:absolute;top:0;left:0;width:3000px;height:2000px}
+
+.station{
+  position:absolute;
+  width:300px;
+  background:#141420;
+  border:2px solid #2a2a3a;
+  border-radius:12px;
+  box-shadow:0 4px 20px rgba(0,0,0,0.5);
+  overflow:hidden;
+  transition:border-color 0.4s, box-shadow 0.4s;
+  cursor:default;
+}
+.station.active{
+  border-color:#ff8844;
+  box-shadow:0 0 25px rgba(255,136,68,0.3);
+}
+.station .title-bar{
+  padding:10px 14px 6px;
+  border-bottom:1px solid #1e1e2e;
+}
+.station .title-bar h3{
+  color:#cc9944;
+  font-size:13px;
+  font-weight:700;
+  margin:0;
+}
+.station .title-bar .subtitle{
+  color:#667;
+  font-size:10px;
+  font-style:italic;
+  margin-top:2px;
+}
+.station .diagram{
+  padding:8px;
+  display:flex;
+  justify-content:center;
+}
+.station .diagram svg{
+  display:block;
+}
+.station .desc{
+  padding:0 14px 10px;
+  font-size:9px;
+  color:#889;
+  line-height:1.5;
+  max-height:0;
+  overflow:hidden;
+  transition:max-height 0.3s ease, padding 0.3s ease;
+}
+.station:hover .desc{
+  max-height:120px;
+  padding:6px 14px 12px;
+}
+
+/* SVG connection arrows drawn on an overlay */
+#arrows-svg{
+  position:absolute;
+  top:0;left:0;
+  width:3000px;height:2000px;
+  pointer-events:none;
+  z-index:5;
+}
+.arrow-path{
+  fill:none;
+  stroke:#446;
+  stroke-width:2.5;
+  marker-end:url(#arrowHead);
+  transition:stroke 0.4s;
+}
+.arrow-path.dashed{
+  stroke-dasharray:8 5;
+}
+.arrow-path.active{
+  stroke:#ff8844;
+}
+.arrow-label{
+  fill:#556;
+  font-size:10px;
+  font-family:'Segoe UI',sans-serif;
+  transition:fill 0.4s;
+}
+.arrow-label.active{
+  fill:#ff8844;
+}
+.signal-dot{
+  r:5;
+  fill:#ff8844;
+  opacity:0;
+  filter:url(#dotGlow);
+}
+
+/* Stations sit above arrows */
+.station{z-index:6;position:absolute;}
+</style>
+</head>
+<body>
+<div id="title"><span>Single Neuron</span> &mdash; Mechanical Chain</div>
+<div id="equation">output = ReLU(weight &times; input + bias)</div>
+<div id="controls">
+  <button id="playBtn">play</button>
+  <button id="resetBtn">reset</button>
+</div>
+
+<div id="viewport">
+  <div id="canvas">
+    <!-- Arrows SVG layer -->
+    <svg id="arrows-svg" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrowHead" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+          <path d="M0,0 L10,4 L0,8 Z" fill="#446"/>
+        </marker>
+        <marker id="arrowHeadActive" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+          <path d="M0,0 L10,4 L0,8 Z" fill="#ff8844"/>
+        </marker>
+        <marker id="arrowHeadDashed" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+          <path d="M0,0 L10,4 L0,8 Z" fill="#663333"/>
+        </marker>
+        <filter id="dotGlow">
+          <feGaussianBlur stdDeviation="3" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+    </svg>
+  </div>
+</div>
+
+<script>
+// ============ STATION DATA ============
+const STATIONS = [
+  {
+    id: 'input', num: 1, name: 'INPUT', sub: 'Cam Cassette Reader',
+    desc: 'Shaped cam on rotating shaft. Cam edge profile encodes the input value (0-6mm follower travel). Spring-loaded follower lever reads displacement.',
+    x: 100, y: 100
+  },
+  {
+    id: 'weight', num: 2, name: 'WEIGHT', sub: 'Cam Stack Reader',
+    desc: 'Separate shaped cams on weight shaft. Edge profiles encode learned weight values. Follower arm reads displacement from cam edge.',
+    x: 550, y: 100
+  },
+  {
+    id: 'multiply', num: 3, name: 'MULTIPLY', sub: 'Differential Gear',
+    desc: 'Two rack inputs (input + weight) each drive a pinion gear. Both feed into a differential mechanism. Output rotation equals input times weight.',
+    x: 400, y: 400
+  },
+  {
+    id: 'accumulate', num: 4, name: 'ACCUMULATE', sub: 'Adder Chain',
+    desc: 'Multiplication result added to bias (adjustable set screw) and other inputs via Geneva step mechanism. Babbage-style adding wheel with carry propagation.',
+    x: 750, y: 400
+  },
+  {
+    id: 'activate', num: 5, name: 'ACTIVATE', sub: 'Snap-Through ReLU',
+    desc: 'Lever on pivot with mechanical stop blocking negative rotation. One-way clutch (ratchet) passes only positive values. Implements max(0, x).',
+    x: 1100, y: 400
+  },
+  {
+    id: 'output', num: 6, name: 'OUTPUT', sub: 'Indicator + Forward',
+    desc: 'Arc scale with pointer needle displays the computed value. Pulley with string forwards the signal to downstream neurons.',
+    x: 1100, y: 100
+  },
+  {
+    id: 'learn', num: 7, name: 'LEARN', sub: 'Gradient Feedback',
+    desc: 'Error signal drives a ratchet wheel with escapement. Each click adjusts the weight cam by one increment. Dashed feedback loop to WEIGHT station.',
+    x: 550, y: 700
+  }
+];
+
+// Connection definitions: from station id -> to station id
+const CONNECTIONS = [
+  { from: 'input', to: 'multiply', label: 'push rod', fromSide: 'bottom', toSide: 'top' },
+  { from: 'weight', to: 'multiply', label: 'rack position', fromSide: 'bottom', toSide: 'top' },
+  { from: 'multiply', to: 'accumulate', label: 'output shaft', fromSide: 'right', toSide: 'left' },
+  { from: 'accumulate', to: 'activate', label: 'summed rotation', fromSide: 'right', toSide: 'left' },
+  { from: 'activate', to: 'output', label: 'positive value', fromSide: 'top', toSide: 'bottom' },
+  { from: 'output', to: 'learn', label: 'error signal', fromSide: 'bottom', toSide: 'right', curve: 120 },
+  { from: 'learn', to: 'weight', label: 'weight update', fromSide: 'top', toSide: 'bottom', dashed: true }
+];
+
+// ============ SVG DIAGRAM GENERATORS ============
+function svgInput() {
+  return `<svg width="270" height="140" viewBox="0 0 270 140">
+    <!-- Shaft -->
+    <line x1="40" y1="60" x2="180" y2="60" stroke="#556" stroke-width="3"/>
+    <!-- Cam (egg shape) -->
+    <ellipse cx="110" cy="60" rx="40" ry="30" fill="none" stroke="#cc9944" stroke-width="2.5" transform="rotate(-10,110,60)"/>
+    <circle cx="110" cy="60" r="4" fill="#cc9944"/>
+    <!-- Follower lever -->
+    <line x1="145" y1="35" x2="145" y2="10" stroke="#8899aa" stroke-width="2.5"/>
+    <circle cx="145" cy="35" r="5" fill="none" stroke="#8899aa" stroke-width="2"/>
+    <!-- Spring below follower -->
+    <polyline points="145,40 140,48 150,56 140,64 150,72 145,78" fill="none" stroke="#667" stroke-width="1.5"/>
+    <!-- Travel arrow -->
+    <line x1="170" y1="10" x2="170" y2="35" stroke="#ff8844" stroke-width="1" marker-end="url(#arrowHead)"/>
+    <text x="178" y="24" fill="#889" font-size="9">6mm</text>
+    <!-- Label -->
+    <text x="30" y="105" fill="#667" font-size="9.5">cam profile = input value</text>
+  </svg>`;
+}
+
+function svgWeight() {
+  return `<svg width="270" height="140" viewBox="0 0 270 140">
+    <!-- Vertical shaft -->
+    <line x1="100" y1="10" x2="100" y2="130" stroke="#556" stroke-width="3"/>
+    <!-- 3 stacked cams (different sizes) -->
+    <ellipse cx="100" cy="30" rx="30" ry="12" fill="none" stroke="#cc9944" stroke-width="2" transform="rotate(-5,100,30)"/>
+    <ellipse cx="100" cy="65" rx="40" ry="14" fill="none" stroke="#cc9944" stroke-width="2.5" transform="rotate(8,100,65)"/>
+    <ellipse cx="100" cy="100" rx="25" ry="10" fill="none" stroke="#cc9944" stroke-width="2" transform="rotate(-3,100,100)"/>
+    <!-- Dots on shaft at each cam -->
+    <circle cx="100" cy="30" r="3" fill="#cc9944"/>
+    <circle cx="100" cy="65" r="3" fill="#cc9944"/>
+    <circle cx="100" cy="100" r="3" fill="#cc9944"/>
+    <!-- Horizontal follower arm touching middle cam -->
+    <line x1="140" y1="65" x2="220" y2="65" stroke="#8899aa" stroke-width="2.5"/>
+    <circle cx="140" cy="65" r="5" fill="none" stroke="#8899aa" stroke-width="2"/>
+    <polygon points="220,60 230,65 220,70" fill="#8899aa"/>
+    <!-- Label -->
+    <text x="30" y="135" fill="#667" font-size="9.5">cam edge = learned weight</text>
+  </svg>`;
+}
+
+function svgMultiply() {
+  return `<svg width="270" height="140" viewBox="0 0 270 140">
+    <!-- Input rack (top-left) -->
+    <rect x="10" y="20" width="60" height="10" rx="2" fill="none" stroke="#8899aa" stroke-width="1.5"/>
+    <line x1="15" y1="30" x2="15" y2="35" stroke="#8899aa" stroke-width="1"/>
+    <line x1="25" y1="30" x2="25" y2="35" stroke="#8899aa" stroke-width="1"/>
+    <line x1="35" y1="30" x2="35" y2="35" stroke="#8899aa" stroke-width="1"/>
+    <line x1="45" y1="30" x2="45" y2="35" stroke="#8899aa" stroke-width="1"/>
+    <line x1="55" y1="30" x2="55" y2="35" stroke="#8899aa" stroke-width="1"/>
+    <line x1="65" y1="30" x2="65" y2="35" stroke="#8899aa" stroke-width="1"/>
+    <text x="15" y="16" fill="#889" font-size="8">input</text>
+    <!-- Weight rack (bottom-left) -->
+    <rect x="10" y="85" width="60" height="10" rx="2" fill="none" stroke="#8899aa" stroke-width="1.5"/>
+    <line x1="15" y1="85" x2="15" y2="80" stroke="#8899aa" stroke-width="1"/>
+    <line x1="25" y1="85" x2="25" y2="80" stroke="#8899aa" stroke-width="1"/>
+    <line x1="35" y1="85" x2="35" y2="80" stroke="#8899aa" stroke-width="1"/>
+    <line x1="45" y1="85" x2="45" y2="80" stroke="#8899aa" stroke-width="1"/>
+    <line x1="55" y1="85" x2="55" y2="80" stroke="#8899aa" stroke-width="1"/>
+    <line x1="65" y1="85" x2="65" y2="80" stroke="#8899aa" stroke-width="1"/>
+    <text x="15" y="108" fill="#889" font-size="8">weight</text>
+    <!-- Top pinion gear -->
+    <circle cx="90" cy="45" r="14" fill="none" stroke="#cc9944" stroke-width="2"/>
+    <circle cx="90" cy="45" r="3" fill="#cc9944"/>
+    <!-- Bottom pinion gear -->
+    <circle cx="90" cy="75" r="14" fill="none" stroke="#cc9944" stroke-width="2"/>
+    <circle cx="90" cy="75" r="3" fill="#cc9944"/>
+    <!-- Central differential -->
+    <circle cx="150" cy="60" r="22" fill="none" stroke="#cc9944" stroke-width="2.5"/>
+    <circle cx="150" cy="60" r="8" fill="none" stroke="#cc9944" stroke-width="1.5"/>
+    <circle cx="150" cy="60" r="3" fill="#cc9944"/>
+    <!-- Connecting lines -->
+    <line x1="104" y1="45" x2="128" y2="55" stroke="#556" stroke-width="1.5"/>
+    <line x1="104" y1="75" x2="128" y2="65" stroke="#556" stroke-width="1.5"/>
+    <!-- Output shaft -->
+    <line x1="172" y1="60" x2="240" y2="60" stroke="#556" stroke-width="3"/>
+    <polygon points="240,55 255,60 240,65" fill="#cc9944"/>
+    <!-- Label -->
+    <text x="20" y="135" fill="#667" font-size="9.5">output rotation = input x weight</text>
+  </svg>`;
+}
+
+function svgAccumulate() {
+  return `<svg width="270" height="140" viewBox="0 0 270 140">
+    <!-- Large gear wheel -->
+    <circle cx="90" cy="65" r="40" fill="none" stroke="#cc9944" stroke-width="2.5"/>
+    <circle cx="90" cy="65" r="6" fill="#cc9944"/>
+    <!-- Number marks around edge -->
+    ${[0,1,2,3,4,5,6,7].map(i => {
+      const a = i * Math.PI / 4;
+      const x1 = 90 + 32 * Math.cos(a), y1 = 65 + 32 * Math.sin(a);
+      const x2 = 90 + 40 * Math.cos(a), y2 = 65 + 40 * Math.sin(a);
+      return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#cc9944" stroke-width="1.5"/>`;
+    }).join('')}
+    <!-- Geneva cross mechanism -->
+    <circle cx="175" cy="65" r="18" fill="none" stroke="#8899aa" stroke-width="1.5"/>
+    <line x1="175" y1="47" x2="175" y2="83" stroke="#8899aa" stroke-width="1.5"/>
+    <line x1="157" y1="65" x2="193" y2="65" stroke="#8899aa" stroke-width="1.5"/>
+    <circle cx="175" cy="65" r="4" fill="#8899aa"/>
+    <!-- Connecting line -->
+    <line x1="130" y1="65" x2="157" y2="65" stroke="#556" stroke-width="1.5"/>
+    <!-- Bias set screw -->
+    <rect x="210" y="55" width="30" height="20" rx="3" fill="none" stroke="#667" stroke-width="1.5"/>
+    <line x1="225" y1="55" x2="225" y2="45" stroke="#667" stroke-width="2"/>
+    <text x="215" y="69" fill="#889" font-size="7">bias</text>
+    <!-- Label -->
+    <text x="20" y="130" fill="#667" font-size="9.5">sum of products + bias</text>
+  </svg>`;
+}
+
+function svgActivate() {
+  return `<svg width="270" height="140" viewBox="0 0 270 140">
+    <!-- Pivot point -->
+    <circle cx="135" cy="75" r="6" fill="none" stroke="#cc9944" stroke-width="2"/>
+    <circle cx="135" cy="75" r="2" fill="#cc9944"/>
+    <!-- Lever -->
+    <line x1="50" y1="75" x2="220" y2="75" stroke="#8899aa" stroke-width="3"/>
+    <!-- Mechanical stop (left/red) -->
+    <rect x="40" y="60" width="12" height="30" rx="2" fill="#883333" stroke="#aa4444" stroke-width="1.5"/>
+    <text x="30" y="55" fill="#aa4444" font-size="8">STOP</text>
+    <!-- Ratchet teeth (one-way clutch) -->
+    <polygon points="155,68 165,68 160,60" fill="#556"/>
+    <polygon points="170,68 180,68 175,60" fill="#556"/>
+    <polygon points="185,68 195,68 190,60" fill="#556"/>
+    <!-- Green arrow (positive passes) -->
+    <line x1="205" y1="75" x2="250" y2="75" stroke="#449944" stroke-width="2.5"/>
+    <polygon points="250,70 265,75 250,80" fill="#449944"/>
+    <text x="230" y="65" fill="#449944" font-size="8">pass</text>
+    <!-- Red arrow (negative blocked) -->
+    <line x1="65" y1="75" x2="40" y2="75" stroke="#883333" stroke-width="1.5" stroke-dasharray="3 2"/>
+    <!-- Label -->
+    <text x="90" y="125" fill="#667" font-size="9.5">max(0, x)</text>
+  </svg>`;
+}
+
+function svgOutput() {
+  return `<svg width="270" height="140" viewBox="0 0 270 140">
+    <!-- Arc scale -->
+    <path d="M 60 100 A 70 70 0 0 1 210 100" fill="none" stroke="#556" stroke-width="2"/>
+    <!-- Tick marks on arc -->
+    ${[0,1,2,3,4,5,6].map(i => {
+      const a = Math.PI + (i / 6) * Math.PI;
+      const x1 = 135 + 60 * Math.cos(a), y1 = 100 + 60 * Math.sin(a);
+      const x2 = 135 + 70 * Math.cos(a), y2 = 100 + 70 * Math.sin(a);
+      return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#556" stroke-width="1.5"/>`;
+    }).join('')}
+    <!-- Pointer needle -->
+    <line x1="135" y1="100" x2="95" y2="50" stroke="#cc9944" stroke-width="2.5"/>
+    <circle cx="135" cy="100" r="5" fill="#cc9944"/>
+    <!-- Small pulley -->
+    <circle cx="220" cy="50" r="12" fill="none" stroke="#8899aa" stroke-width="2"/>
+    <circle cx="220" cy="50" r="3" fill="#8899aa"/>
+    <!-- String going out -->
+    <line x1="232" y1="50" x2="260" y2="30" stroke="#667" stroke-width="1.5"/>
+    <text x="240" y="26" fill="#889" font-size="8">string</text>
+    <!-- Label -->
+    <text x="30" y="130" fill="#667" font-size="9.5">displays value + forwards signal</text>
+  </svg>`;
+}
+
+function svgLearn() {
+  return `<svg width="270" height="140" viewBox="0 0 270 140">
+    <!-- Ratchet wheel -->
+    <circle cx="90" cy="65" r="30" fill="none" stroke="#cc9944" stroke-width="2"/>
+    <circle cx="90" cy="65" r="5" fill="#cc9944"/>
+    <!-- Ratchet teeth -->
+    ${[0,1,2,3,4,5,6,7,8,9,10,11].map(i => {
+      const a = i * Math.PI / 6;
+      const x1 = 90 + 25 * Math.cos(a), y1 = 65 + 25 * Math.sin(a);
+      const x2 = 90 + 30 * Math.cos(a + 0.15), y2 = 65 + 30 * Math.sin(a + 0.15);
+      return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#cc9944" stroke-width="1.5"/>`;
+    }).join('')}
+    <!-- Pawl mechanism -->
+    <line x1="120" y1="45" x2="108" y2="40" stroke="#8899aa" stroke-width="2.5"/>
+    <polygon points="105,36 112,42 104,44" fill="#8899aa"/>
+    <!-- Escapement -->
+    <circle cx="180" cy="65" r="16" fill="none" stroke="#8899aa" stroke-width="1.5"/>
+    <line x1="180" y1="49" x2="180" y2="81" stroke="#8899aa" stroke-width="1.5"/>
+    <line x1="170" y1="55" x2="190" y2="75" stroke="#8899aa" stroke-width="1.5"/>
+    <circle cx="180" cy="65" r="3" fill="#8899aa"/>
+    <!-- Connecting line -->
+    <line x1="120" y1="65" x2="164" y2="65" stroke="#556" stroke-width="1.5"/>
+    <!-- Dashed red arrow going up (to WEIGHT) -->
+    <line x1="90" y1="35" x2="90" y2="12" stroke="#883333" stroke-width="2" stroke-dasharray="5 3"/>
+    <polygon points="85,14 90,4 95,14" fill="#883333"/>
+    <text x="100" y="15" fill="#aa4444" font-size="8">to WEIGHT</text>
+    <!-- Label -->
+    <text x="15" y="130" fill="#667" font-size="9.5">error ratchets weight +/-1 click</text>
+  </svg>`;
+}
+
+const SVG_GENERATORS = {
+  input: svgInput,
+  weight: svgWeight,
+  multiply: svgMultiply,
+  accumulate: svgAccumulate,
+  activate: svgActivate,
+  output: svgOutput,
+  learn: svgLearn
+};
+
+// ============ BUILD STATION NODES ============
+const canvas = document.getElementById('canvas');
+const stationEls = {};
+
+STATIONS.forEach(s => {
+  const div = document.createElement('div');
+  div.className = 'station';
+  div.id = 'station-' + s.id;
+  div.style.left = s.x + 'px';
+  div.style.top = s.y + 'px';
+  div.innerHTML = `
+    <div class="title-bar">
+      <h3>${s.num}. ${s.name}</h3>
+      <div class="subtitle">${s.sub}</div>
+    </div>
+    <div class="diagram">${SVG_GENERATORS[s.id]()}</div>
+    <div class="desc">${s.desc}</div>
+  `;
+  canvas.appendChild(div);
+  stationEls[s.id] = div;
+});
+
+// ============ DRAW ARROWS ============
+const arrowsSvg = document.getElementById('arrows-svg');
+const arrowEls = [];
+const dotEls = [];
+
+function getStationPort(stationId, side) {
+  const el = stationEls[stationId];
+  const rect = {
+    x: parseInt(el.style.left),
+    y: parseInt(el.style.top),
+    w: el.offsetWidth || 300,
+    h: el.offsetHeight || 220
+  };
+  switch (side) {
+    case 'top':    return { x: rect.x + rect.w / 2, y: rect.y };
+    case 'bottom': return { x: rect.x + rect.w / 2, y: rect.y + rect.h };
+    case 'left':   return { x: rect.x, y: rect.y + rect.h / 2 };
+    case 'right':  return { x: rect.x + rect.w, y: rect.y + rect.h / 2 };
+  }
+}
+
+// Delay arrow drawing until station elements have rendered
+requestAnimationFrame(() => {
+  requestAnimationFrame(() => {
+    drawAllArrows();
+  });
+});
+
+function drawAllArrows() {
+  // Clear existing
+  arrowsSvg.querySelectorAll('.arrow-group').forEach(g => g.remove());
+  arrowEls.length = 0;
+  dotEls.length = 0;
+
+  CONNECTIONS.forEach((conn, idx) => {
+    const from = getStationPort(conn.from, conn.fromSide);
+    const to = getStationPort(conn.to, conn.toSide);
+
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.classList.add('arrow-group');
+
+    // Calculate control points for a curve
+    let path;
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+
+    if (conn.curve) {
+      // Special curved path (for output -> learn which spans far)
+      const mx = (from.x + to.x) / 2 + conn.curve;
+      const my = (from.y + to.y) / 2;
+      path = `M ${from.x} ${from.y} Q ${mx} ${my} ${to.x} ${to.y}`;
+    } else if (conn.fromSide === 'bottom' && conn.toSide === 'top') {
+      // Vertical connection with smooth curve
+      const my = (from.y + to.y) / 2;
+      path = `M ${from.x} ${from.y} C ${from.x} ${my} ${to.x} ${my} ${to.x} ${to.y}`;
+    } else if (conn.fromSide === 'right' && conn.toSide === 'left') {
+      // Horizontal connection
+      const mx = (from.x + to.x) / 2;
+      path = `M ${from.x} ${from.y} C ${mx} ${from.y} ${mx} ${to.y} ${to.x} ${to.y}`;
+    } else if (conn.fromSide === 'top' && conn.toSide === 'bottom') {
+      // Upward vertical
+      const my = (from.y + to.y) / 2;
+      path = `M ${from.x} ${from.y} C ${from.x} ${my} ${to.x} ${my} ${to.x} ${to.y}`;
+    } else {
+      path = `M ${from.x} ${from.y} L ${to.x} ${to.y}`;
+    }
+
+    const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    pathEl.setAttribute('d', path);
+    pathEl.classList.add('arrow-path');
+    if (conn.dashed) pathEl.classList.add('dashed');
+    pathEl.dataset.idx = idx;
+    g.appendChild(pathEl);
+
+    // Label at midpoint
+    const labelX = (from.x + to.x) / 2 + (conn.curve ? conn.curve / 2 : 0);
+    const labelY = (from.y + to.y) / 2 - 8;
+    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    label.setAttribute('x', labelX);
+    label.setAttribute('y', labelY);
+    label.classList.add('arrow-label');
+    label.textContent = conn.label;
+    label.dataset.idx = idx;
+    g.appendChild(label);
+
+    // Signal dot (hidden by default)
+    const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    dot.classList.add('signal-dot');
+    dot.setAttribute('cx', from.x);
+    dot.setAttribute('cy', from.y);
+    g.appendChild(dot);
+
+    arrowsSvg.appendChild(g);
+    arrowEls.push(pathEl);
+    dotEls.push({ dot, path: pathEl });
+  });
+}
+
+// ============ PAN & ZOOM ============
+let scale = 1;
+let panX = 0, panY = 0;
+let isPanning = false;
+let panStartX, panStartY;
+const viewport = document.getElementById('viewport');
+
+function applyTransform() {
+  canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+}
+
+// Center the diagram initially
+function centerView() {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  // The diagram spans roughly from 100 to 1400 x, 100 to 900 y
+  const contentW = 1500;
+  const contentH = 950;
+  scale = Math.min(vw / contentW, vh / contentH) * 0.9;
+  panX = (vw - contentW * scale) / 2;
+  panY = (vh - contentH * scale) / 2;
+  applyTransform();
+}
+
+viewport.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const zoomFactor = e.deltaY > 0 ? 0.92 : 1.08;
+  const rect = viewport.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+
+  // Zoom towards mouse position
+  const newScale = Math.max(0.2, Math.min(3, scale * zoomFactor));
+  panX = mx - (mx - panX) * (newScale / scale);
+  panY = my - (my - panY) * (newScale / scale);
+  scale = newScale;
+  applyTransform();
+}, { passive: false });
+
+viewport.addEventListener('mousedown', (e) => {
+  // Only pan on background clicks (not on stations)
+  if (e.target === viewport || e.target === canvas || e.target.tagName === 'svg' || e.target.id === 'arrows-svg') {
+    isPanning = true;
+    panStartX = e.clientX - panX;
+    panStartY = e.clientY - panY;
+    viewport.style.cursor = 'grabbing';
+    e.preventDefault();
+  }
+});
+
+window.addEventListener('mousemove', (e) => {
+  if (isPanning) {
+    panX = e.clientX - panStartX;
+    panY = e.clientY - panStartY;
+    applyTransform();
+  }
+});
+
+window.addEventListener('mouseup', () => {
+  isPanning = false;
+  viewport.style.cursor = 'default';
+});
+
+window.addEventListener('resize', () => {
+  // Don't auto-recenter on resize, just keep current view
+});
+
+// ============ ANIMATION ============
+let playing = false;
+let animStep = 0; // which connection is being animated
+let animTimer = null;
+const ANIM_STATION_DURATION = 2000; // ms per station
+
+// The animation sequence: station activations and arrow traversals
+// Flow: input(0) -> multiply(2) [via conn 0], weight(1) -> multiply(2) [via conn 1],
+//       multiply(2) -> accumulate(3) [via conn 2], accumulate(3) -> activate(4) [via conn 3],
+//       activate(4) -> output(5) [via conn 4], output(5) -> learn(6) [via conn 5],
+//       learn(6) -> weight(1) [via conn 6, dashed]
+const ANIM_SEQUENCE = [
+  { station: 'input', arrow: null },       // light up INPUT
+  { station: 'input', arrow: 0 },          // signal flows input -> multiply
+  { station: 'weight', arrow: 1 },         // weight also sends signal -> multiply
+  { station: 'multiply', arrow: null },     // MULTIPLY active
+  { station: 'multiply', arrow: 2 },       // signal flows multiply -> accumulate
+  { station: 'accumulate', arrow: null },   // ACCUMULATE active
+  { station: 'accumulate', arrow: 3 },      // signal flows accumulate -> activate
+  { station: 'activate', arrow: null },     // ACTIVATE active
+  { station: 'activate', arrow: 4 },        // signal flows activate -> output
+  { station: 'output', arrow: null },       // OUTPUT active
+  { station: 'output', arrow: 5 },          // signal flows output -> learn
+  { station: 'learn', arrow: null },        // LEARN active
+  { station: 'learn', arrow: 6 },           // feedback to weight (dashed)
+];
+
+function clearAllActive() {
+  document.querySelectorAll('.station').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.arrow-path').forEach(p => {
+    p.classList.remove('active');
+    p.setAttribute('marker-end', 'url(#arrowHead)');
+  });
+  document.querySelectorAll('.arrow-label').forEach(l => l.classList.remove('active'));
+  dotEls.forEach(d => d.dot.setAttribute('opacity', '0'));
+}
+
+function animateStep() {
+  if (!playing) return;
+  if (animStep >= ANIM_SEQUENCE.length) {
+    animStep = 0; // loop
+  }
+
+  const step = ANIM_SEQUENCE[animStep];
+
+  // Activate station
+  clearAllActive();
+  const stEl = stationEls[step.station];
+  if (stEl) stEl.classList.add('active');
+
+  // Activate arrow if specified
+  if (step.arrow !== null && arrowEls[step.arrow]) {
+    const pathEl = arrowEls[step.arrow];
+    pathEl.classList.add('active');
+    pathEl.setAttribute('marker-end', 'url(#arrowHeadActive)');
+
+    // Activate label too
+    const label = arrowsSvg.querySelector(`.arrow-label[data-idx="${step.arrow}"]`);
+    if (label) label.classList.add('active');
+
+    // Animate dot along path
+    animateDot(step.arrow);
+  }
+
+  animStep++;
+  animTimer = setTimeout(animateStep, ANIM_STATION_DURATION);
+}
+
+function animateDot(arrowIdx) {
+  const { dot, path } = dotEls[arrowIdx];
+  const len = path.getTotalLength();
+  dot.setAttribute('opacity', '1');
+
+  let start = null;
+  const duration = ANIM_STATION_DURATION * 0.8;
+
+  function step(ts) {
+    if (!start) start = ts;
+    const progress = Math.min((ts - start) / duration, 1);
+    const pt = path.getPointAtLength(progress * len);
+    dot.setAttribute('cx', pt.x);
+    dot.setAttribute('cy', pt.y);
+    if (progress < 1 && playing) {
+      requestAnimationFrame(step);
+    } else {
+      dot.setAttribute('opacity', '0');
+    }
+  }
+  requestAnimationFrame(step);
+}
+
+// Controls
+const playBtn = document.getElementById('playBtn');
+const resetBtn = document.getElementById('resetBtn');
+
+playBtn.addEventListener('click', () => {
+  playing = !playing;
+  playBtn.textContent = playing ? 'pause' : 'play';
+  if (playing) {
+    animateStep();
+  } else {
+    clearTimeout(animTimer);
+  }
+});
+
+resetBtn.addEventListener('click', () => {
+  playing = false;
+  playBtn.textContent = 'play';
+  clearTimeout(animTimer);
+  animStep = 0;
+  clearAllActive();
+});
+
+// ============ INIT ============
+centerView();
+</script>
+</body>
+</html>

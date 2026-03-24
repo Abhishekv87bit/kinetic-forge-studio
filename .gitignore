@@ -101,6 +101,8 @@ report.log
 # ── Separate projects (have their own repos or are standalone) ──
 Jeff/
 alpha-pulse/
+career/
+ai-agent-mastery-plan/
 tools/aidl/
 tools/aws-workstation/
 

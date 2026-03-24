@@ -8,10 +8,13 @@ If no API key is configured, returns a placeholder analysis.
 """
 
 import base64
+import time
 from pathlib import Path
 from typing import Any
 
 import httpx
+
+from app.middleware.observability import log_llm_call
 
 
 # Supported image extensions
@@ -171,6 +174,7 @@ class PhotoAnalyzer:
         image_data = _encode_image_base64(file_path)
         media_type = _get_media_type(file_path)
 
+        call_start = time.time()
         response = httpx.post(
             "https://api.anthropic.com/v1/messages",
             headers={
@@ -203,8 +207,16 @@ class PhotoAnalyzer:
             },
             timeout=30.0,
         )
+        latency_ms = (time.time() - call_start) * 1000
 
         if response.status_code != 200:
+            log_llm_call(
+                name="vision_photo_analyze",
+                model="claude-sonnet-4-20250514",
+                latency_ms=latency_ms,
+                success=False,
+                error=f"HTTP {response.status_code}",
+            )
             return {
                 "file_path": str(file_path),
                 "mechanism_type": "analysis_failed",
@@ -217,6 +229,16 @@ class PhotoAnalyzer:
             }
 
         data = response.json()
+        usage = data.get("usage", {})
+        log_llm_call(
+            name="vision_photo_analyze",
+            model=data.get("model", "claude-sonnet-4-20250514"),
+            input_tokens=usage.get("input_tokens", 0),
+            output_tokens=usage.get("output_tokens", 0),
+            latency_ms=latency_ms,
+            success=True,
+        )
+
         text_content = data.get("content", [{}])[0].get("text", "")
         parsed = _parse_vision_response(text_content)
 

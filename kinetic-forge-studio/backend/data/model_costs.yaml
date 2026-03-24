@@ -1,0 +1,56 @@
+# Model Cost Configuration
+# ========================
+# Approximate cost per 1,000,000 tokens (USD).
+# Used by the observability module for cost tracking.
+#
+# To add a new model: add an entry with input and output costs.
+# To remove a model: delete its entry or comment it out.
+# To update pricing: change the input/output values.
+#
+# Unknown models fall back to {"input": 1.0, "output": 3.0} (safe overestimate).
+#
+# Format:
+#   model-name:
+#     input: <cost per 1M input tokens>
+#     output: <cost per 1M output tokens>
+
+# ── Anthropic ──
+claude-sonnet-4-20250514:
+  input: 3.00
+  output: 15.00
+
+claude-sonnet-4:
+  input: 3.00
+  output: 15.00
+
+claude-opus-4:
+  input: 15.00
+  output: 75.00
+
+# ── Google ──
+gemini-2.5-flash:
+  input: 0.075
+  output: 0.30
+
+gemini-2.5-pro:
+  input: 1.25
+  output: 10.00
+
+# ── Groq (hosted Llama) ──
+llama-3.3-70b-versatile:
+  input: 0.59
+  output: 0.79
+
+# ── xAI ──
+grok-3-mini:
+  input: 0.30
+  output: 0.50
+
+# ── OpenAI ──
+gpt-4o:
+  input: 2.50
+  output: 10.00
+
+gpt-4o-mini:
+  input: 0.15
+  output: 0.60

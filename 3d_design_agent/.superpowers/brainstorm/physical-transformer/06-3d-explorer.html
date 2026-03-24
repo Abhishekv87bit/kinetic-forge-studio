@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The Physical Transformer — 3D Explorer</title>
+<title>The Physical Transformer — 3D Explorer v2</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: #0a0a0f; color: #e0e0e0; font-family: 'Segoe UI', system-ui, sans-serif; overflow: hidden; }
@@ -26,7 +26,7 @@
   .face-label {
     position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%);
     background: rgba(10,10,15,0.85); border: 1px solid #c9a84c; border-radius: 8px;
-    padding: 12px 24px; max-width: 500px; text-align: center;
+    padding: 12px 24px; max-width: 560px; text-align: center;
     font-size: 0.9em; color: #ccc; pointer-events: auto;
     transition: opacity 0.4s;
   }
@@ -41,35 +41,39 @@
 
   /* Info panel */
   .info-panel {
-    position: absolute; top: 80px; right: 20px; width: 260px;
+    position: absolute; top: 80px; right: 10px; width: 360px;
     background: rgba(10,10,15,0.9); border: 1px solid #1a1a2e; border-radius: 8px;
-    padding: 16px; pointer-events: auto; font-size: 0.8em;
+    padding: 16px; pointer-events: auto; font-size: 0.75em;
   }
   .info-panel h4 { color: #c9a84c; font-weight: 400; margin-bottom: 8px; letter-spacing: 0.06em; }
   .info-panel .stat { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #111; }
   .info-panel .stat span:first-child { color: #888; }
-  .info-panel .stat span:last-child { color: #e0e0e0; }
+  .info-panel .stat span:last-child { color: #e0e0e0; text-align: right; overflow: hidden; white-space: nowrap; }
 
   /* Mode buttons */
   .mode-buttons {
     position: absolute; top: 80px; left: 20px;
-    display: flex; flex-direction: column; gap: 8px; pointer-events: auto;
+    display: flex; flex-direction: column; gap: 6px; pointer-events: auto;
   }
   .mode-btn {
     background: rgba(10,10,15,0.9); border: 1px solid #1a1a2e; border-radius: 6px;
-    color: #888; padding: 8px 14px; font-size: 0.75em; cursor: pointer;
+    color: #888; padding: 7px 12px; font-size: 0.72em; cursor: pointer;
     letter-spacing: 0.05em; transition: all 0.3s; font-family: inherit;
+    white-space: nowrap;
   }
   .mode-btn:hover, .mode-btn.active { color: #c9a84c; border-color: #c9a84c; }
+  .mode-btn.highlight-fwd { color: #66aaff; border-color: #66aaff; }
+  .mode-btn.highlight-adj { color: #ff66aa; border-color: #ff66aa; }
 
-  /* Interaction spotlight */
-  .interaction-spot {
-    position: absolute; padding: 6px 12px; background: rgba(201,168,76,0.15);
-    border: 1px solid rgba(201,168,76,0.4); border-radius: 20px;
-    color: #c9a84c; font-size: 0.7em; pointer-events: auto; cursor: pointer;
-    transition: all 0.3s; white-space: nowrap;
+  /* Explode slider */
+  .explode-controls {
+    position: absolute; bottom: 140px; left: 20px;
+    background: rgba(10,10,15,0.9); border: 1px solid #1a1a2e; border-radius: 8px;
+    padding: 10px 14px; pointer-events: auto; font-size: 0.75em;
   }
-  .interaction-spot:hover { background: rgba(201,168,76,0.3); }
+  .explode-controls label { color: #888; display: block; margin-bottom: 4px; }
+  .explode-controls input[type=range] { width: 160px; accent-color: #c9a84c; }
+  .explode-controls span { color: #c9a84c; }
 
   /* Nav link */
   .nav-back {
@@ -83,51 +87,57 @@
     position: absolute; top: 20px; right: 20px;
     font-size: 0.7em; color: #555; letter-spacing: 0.06em;
   }
-
-  /* String glow */
-  @keyframes stringPulse {
-    0%, 100% { opacity: 0.4; }
-    50% { opacity: 1; }
-  }
 </style>
 </head>
 <body>
 <div id="canvas-container">
   <div class="hud">
-    <a href="index.html" class="nav-back">< Back to Overview</a>
+    <a href="index.html" class="nav-back">&#60; Back to Overview</a>
     <div class="hud-title">The Physical Transformer</div>
-    <div class="hud-subtitle">Interactive 3D Explorer — Orbit to explore all six faces</div>
+    <div class="hud-subtitle">v2 Design Spec -- Interactive 3D Explorer -- Orbit to explore all six faces</div>
     <div class="anim-state" id="animState">IDLE</div>
 
     <div class="mode-buttons">
       <button class="mode-btn active" onclick="setView('free')">Free Orbit</button>
-      <button class="mode-btn" onclick="setView('front')">Front — Weights</button>
-      <button class="mode-btn" onclick="setView('back')">Back — Motor</button>
-      <button class="mode-btn" onclick="setView('left')">Left — I/O Panel</button>
-      <button class="mode-btn" onclick="setView('right')">Right — Compute</button>
-      <button class="mode-btn" onclick="setView('top')">Top — Pin Drum</button>
+      <button class="mode-btn" onclick="setView('front')">Front -- Weights</button>
+      <button class="mode-btn" onclick="setView('back')">Back -- Motor</button>
+      <button class="mode-btn" onclick="setView('left')">Left -- I/O Prisms</button>
+      <button class="mode-btn" onclick="setView('right')">Right -- Compute</button>
+      <button class="mode-btn" onclick="setView('top')">Top -- Pin Drum</button>
       <button class="mode-btn" onclick="setView('human')">Human POV</button>
+      <hr style="border-color:#222; width:100%">
       <button class="mode-btn" onclick="toggleAnimation()">Play / Pause</button>
+      <button class="mode-btn" onclick="toggleExplode()">Explode / Collapse</button>
+      <button class="mode-btn" onclick="toggleFrame()">Toggle Frame</button>
+      <button class="mode-btn" onclick="toggleStrings()">Toggle Strings</button>
+      <button class="mode-btn" id="btnFwd" onclick="highlightForward()">Forward Pass</button>
+      <button class="mode-btn" id="btnAdj" onclick="highlightAdjoint()">Adjoint Pass</button>
+      <button class="mode-btn" onclick="showAll()">Show All</button>
     </div>
 
     <div class="info-panel">
-      <h4>Specifications</h4>
-      <div class="stat"><span>Envelope</span><span>600 x 400 x 300 mm</span></div>
-      <div class="stat"><span>Weight (est.)</span><span>4-6 kg</span></div>
+      <h4>Specifications (v2)</h4>
+      <div class="stat"><span>Envelope</span><span>900 x 600 x 450 mm</span></div>
+      <div class="stat"><span>Weight (est.)</span><span>8-12 kg</span></div>
       <div class="stat"><span>Neurons</span><span>6 (3 hidden + 3 output)</span></div>
       <div class="stat"><span>Weights</span><span>42 (worm gears)</span></div>
-      <div class="stat"><span>Signal Lines</span><span>~21 strings</span></div>
+      <div class="stat"><span>Signal Lines</span><span>42 strings (SS wire)</span></div>
       <div class="stat"><span>Summation</span><span>Pantograph diamonds</span></div>
-      <div class="stat"><span>Routing</span><span>Brass pulleys + strings</span></div>
-      <div class="stat"><span>Motor</span><span>Single NEMA 17</span></div>
-      <div class="stat"><span>Training</span><span>~40 min / 20 epochs</span></div>
-      <div class="stat"><span>Aesthetic</span><span>Margolin (string + cam)</span></div>
+      <div class="stat"><span>Routing</span><span>SS wire + pulleys</span></div>
+      <div class="stat"><span>Motor</span><span>Single NEMA 23</span></div>
+      <div class="stat"><span>Training</span><span>~26 min / 15 epochs</span></div>
+      <div class="stat"><span>Aesthetic</span><span>Maker Machine (brass + black)</span></div>
+    </div>
+
+    <div class="explode-controls" id="explodeControls" style="display:none;">
+      <label>Explode Distance: <span id="explodeLbl">0</span> mm</label>
+      <input type="range" id="explodeSlider" min="0" max="500" value="0" oninput="setExplodeDistance(this.value)">
     </div>
 
     <div class="face-label" id="faceLabel">
-      <h3>Drag to orbit — Scroll to zoom</h3>
+      <h3>Drag to orbit -- Scroll to zoom</h3>
       <p>Click the view buttons to jump to each face, or orbit freely to discover the machine.</p>
-      <div class="mechanisms">Pantograph diamonds + String routing + Margolin aesthetic</div>
+      <div class="mechanisms">42 worm gears + 42 spiral cams + pantograph diamonds + Margolin string aesthetic</div>
     </div>
 
     <div class="controls-hint">
@@ -148,14 +158,16 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-// ─── Scene Setup ──────────────────────────────────────────
+// =====================================================================
+// SCENE SETUP
+// =====================================================================
 const container = document.getElementById('canvas-container');
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0a0a0f);
-scene.fog = new THREE.FogExp2(0x0a0a0f, 0.0008);
+scene.fog = new THREE.FogExp2(0x0a0a0f, 0.0004);
 
-const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 5000);
-camera.position.set(500, 350, 600);
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 8000);
+camera.position.set(800, 500, 900);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -169,12 +181,14 @@ container.insertBefore(renderer.domElement, container.firstChild);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
-controls.target.set(0, 150, 0);
-controls.minDistance = 200;
-controls.maxDistance = 2000;
+controls.target.set(0, 300, 0);
+controls.minDistance = 300;
+controls.maxDistance = 3000;
 controls.maxPolarAngle = Math.PI * 0.85;
 
-// ─── Materials ────────────────────────────────────────────
+// =====================================================================
+// MATERIALS
+// =====================================================================
 const brass = new THREE.MeshStandardMaterial({
   color: 0xc9a84c, metalness: 0.85, roughness: 0.25,
   emissive: 0x1a1508, emissiveIntensity: 0.1
@@ -182,13 +196,14 @@ const brass = new THREE.MeshStandardMaterial({
 const darkBrass = new THREE.MeshStandardMaterial({
   color: 0x8a7030, metalness: 0.8, roughness: 0.35
 });
+const blackFrame = new THREE.MeshStandardMaterial({
+  color: 0x1a1a1a, metalness: 0.6, roughness: 0.3
+});
 const blackPLA = new THREE.MeshStandardMaterial({
   color: 0x1a1a1a, metalness: 0.05, roughness: 0.7
 });
-const clearAcrylic = new THREE.MeshPhysicalMaterial({
-  color: 0xffffff, metalness: 0, roughness: 0.05,
-  transmission: 0.92, thickness: 3, ior: 1.49,
-  transparent: true, opacity: 0.15
+const slaResin = new THREE.MeshStandardMaterial({
+  color: 0x7788aa, metalness: 0.15, roughness: 0.3
 });
 const steel = new THREE.MeshStandardMaterial({
   color: 0xcccccc, metalness: 0.9, roughness: 0.15
@@ -197,673 +212,1383 @@ const redAccent = new THREE.MeshStandardMaterial({
   color: 0xcc3333, metalness: 0.3, roughness: 0.4,
   emissive: 0x330000, emissiveIntensity: 0.2
 });
-const stringMat = new THREE.LineBasicMaterial({ color: 0xc9a84c, linewidth: 1, transparent: true, opacity: 0.7 });
-const stringGlowMat = new THREE.LineBasicMaterial({ color: 0xffe0a0, linewidth: 2, transparent: true, opacity: 0.4 });
+const stringMat = new THREE.LineBasicMaterial({ color: 0xffcc66, linewidth: 1, transparent: true, opacity: 0.9 });
+const stringGlowMat = new THREE.LineBasicMaterial({ color: 0xffe0a0, linewidth: 2, transparent: true, opacity: 0.7 });
+const fwdHighlight = new THREE.LineBasicMaterial({ color: 0x66aaff, linewidth: 2, transparent: true, opacity: 0.9 });
+const adjHighlight = new THREE.LineBasicMaterial({ color: 0xff66aa, linewidth: 2, transparent: true, opacity: 0.9 });
 const floorMat = new THREE.MeshStandardMaterial({ color: 0x111118, metalness: 0.1, roughness: 0.9 });
 
-// ─── Lights ───────────────────────────────────────────────
-const ambientLight = new THREE.AmbientLight(0x222240, 0.6);
-scene.add(ambientLight);
+const indicatorBlue = new THREE.MeshStandardMaterial({
+  color: 0x3388ff, metalness: 0.3, roughness: 0.4,
+  emissive: 0x1144aa, emissiveIntensity: 0.8
+});
+const indicatorPurple = new THREE.MeshStandardMaterial({
+  color: 0x9944ff, metalness: 0.3, roughness: 0.4,
+  emissive: 0x5522aa, emissiveIntensity: 0.8
+});
+const indicatorGold = new THREE.MeshStandardMaterial({
+  color: 0xffcc00, metalness: 0.5, roughness: 0.3,
+  emissive: 0x886600, emissiveIntensity: 0.8
+});
+
+// =====================================================================
+// LIGHTS
+// =====================================================================
+scene.add(new THREE.AmbientLight(0x222240, 0.6));
 
 const keyLight = new THREE.DirectionalLight(0xfff5e0, 1.2);
-keyLight.position.set(400, 600, 300);
+keyLight.position.set(600, 800, 400);
 keyLight.castShadow = true;
 keyLight.shadow.mapSize.set(2048, 2048);
 keyLight.shadow.camera.near = 100;
-keyLight.shadow.camera.far = 1500;
-keyLight.shadow.camera.left = -500;
-keyLight.shadow.camera.right = 500;
-keyLight.shadow.camera.top = 500;
-keyLight.shadow.camera.bottom = -500;
+keyLight.shadow.camera.far = 2000;
+keyLight.shadow.camera.left = -700;
+keyLight.shadow.camera.right = 700;
+keyLight.shadow.camera.top = 700;
+keyLight.shadow.camera.bottom = -700;
 scene.add(keyLight);
 
 const fillLight = new THREE.DirectionalLight(0xc0d0ff, 0.4);
-fillLight.position.set(-300, 200, -200);
+fillLight.position.set(-400, 300, -300);
 scene.add(fillLight);
 
 const rimLight = new THREE.DirectionalLight(0xffe0a0, 0.3);
-rimLight.position.set(0, 100, -400);
+rimLight.position.set(0, 200, -600);
 scene.add(rimLight);
 
-// Spotlight on the machine (museum lighting)
-const spotLight = new THREE.SpotLight(0xfff0d0, 0.8, 1200, Math.PI / 6, 0.5, 1);
-spotLight.position.set(0, 700, 0);
-spotLight.target.position.set(0, 150, 0);
+const spotLight = new THREE.SpotLight(0xfff0d0, 0.8, 1800, Math.PI / 6, 0.5, 1);
+spotLight.position.set(0, 1000, 0);
+spotLight.target.position.set(0, 300, 0);
 spotLight.castShadow = true;
 scene.add(spotLight);
 scene.add(spotLight.target);
 
-// ─── Floor (museum pedestal) ──────────────────────────────
-const pedestalGeo = new THREE.CylinderGeometry(400, 420, 20, 64);
+// =====================================================================
+// FLOOR & PEDESTAL
+// =====================================================================
+const pedestalGeo = new THREE.CylinderGeometry(550, 580, 20, 64);
 const pedestal = new THREE.Mesh(pedestalGeo, floorMat);
 pedestal.position.y = -10;
 pedestal.receiveShadow = true;
 scene.add(pedestal);
 
-// Subtle floor plane
-const floorGeo = new THREE.PlaneGeometry(3000, 3000);
+const floorGeo = new THREE.PlaneGeometry(4000, 4000);
 const floor = new THREE.Mesh(floorGeo, new THREE.MeshStandardMaterial({ color: 0x080810, roughness: 0.95 }));
 floor.rotation.x = -Math.PI / 2;
 floor.position.y = -20;
 floor.receiveShadow = true;
 scene.add(floor);
 
-// ─── Grid helper (subtle) ────────────────────────────────
-const gridHelper = new THREE.GridHelper(2000, 40, 0x151520, 0x0d0d15);
+const gridHelper = new THREE.GridHelper(3000, 40, 0x151520, 0x0d0d15);
 gridHelper.position.y = -19;
 scene.add(gridHelper);
 
-// ─── Machine Group ────────────────────────────────────────
+// =====================================================================
+// MACHINE GROUP & DIMENSIONS (1 unit = 1mm)
+// =====================================================================
 const machine = new THREE.Group();
 scene.add(machine);
 
-// Dimensions: 600 x 300(depth) x 400(height) — centered at origin, bottom at y=0
-const W = 600, D = 300, H = 400;
+const W = 900, H = 600, D = 450;
+// Machine origin: center at (0, H/2, 0), so bottom at y=0, top at y=H
 
-// ─── Main Frame (black PLA structural frame) ─────────────
-function addFrameEdge(x1,y1,z1, x2,y2,z2, thickness=8) {
-  const dir = new THREE.Vector3(x2-x1, y2-y1, z2-z1);
+// Component groups for explode mode
+const frontGroup = new THREE.Group(); // +Z explode
+const backGroup = new THREE.Group();  // -Z explode
+const leftGroup = new THREE.Group();  // -X explode
+const rightGroup = new THREE.Group(); // +X explode
+const topGroup = new THREE.Group();   // +Y explode
+const bottomGroup = new THREE.Group();// -Y explode
+const frameGroup = new THREE.Group(); // toggle visibility
+const stringsGroup = new THREE.Group();
+const interiorGroup = new THREE.Group(); // no explode direction
+
+machine.add(frontGroup, backGroup, leftGroup, rightGroup, topGroup, bottomGroup);
+machine.add(frameGroup, stringsGroup, interiorGroup);
+
+// =====================================================================
+// FRAME: 2020 Aluminum Extrusion (12 edges of rectangular box)
+// =====================================================================
+function addFrameEdge(x1, y1, z1, x2, y2, z2) {
+  const dir = new THREE.Vector3(x2 - x1, y2 - y1, z2 - z1);
   const len = dir.length();
   dir.normalize();
-  const geo = new THREE.BoxGeometry(thickness, len, thickness);
-  const mesh = new THREE.Mesh(geo, blackPLA);
-  mesh.position.set((x1+x2)/2, (y1+y2)/2, (z1+z2)/2);
-  // align Y axis to direction
-  const up = new THREE.Vector3(0,1,0);
+  const geo = new THREE.BoxGeometry(20, len, 20);
+  const mesh = new THREE.Mesh(geo, blackFrame);
+  mesh.position.set((x1 + x2) / 2, (y1 + y2) / 2, (z1 + z2) / 2);
+  const up = new THREE.Vector3(0, 1, 0);
   const quat = new THREE.Quaternion().setFromUnitVectors(up, dir);
   mesh.quaternion.copy(quat);
   mesh.castShadow = true;
-  machine.add(mesh);
+  frameGroup.add(mesh);
 }
+
 // Bottom rectangle
-addFrameEdge(-W/2,0,-D/2, W/2,0,-D/2);
-addFrameEdge(-W/2,0,D/2, W/2,0,D/2);
-addFrameEdge(-W/2,0,-D/2, -W/2,0,D/2);
-addFrameEdge(W/2,0,-D/2, W/2,0,D/2);
+addFrameEdge(-W/2, 0, -D/2, W/2, 0, -D/2);
+addFrameEdge(-W/2, 0, D/2, W/2, 0, D/2);
+addFrameEdge(-W/2, 0, -D/2, -W/2, 0, D/2);
+addFrameEdge(W/2, 0, -D/2, W/2, 0, D/2);
 // Top rectangle
-addFrameEdge(-W/2,H,-D/2, W/2,H,-D/2);
-addFrameEdge(-W/2,H,D/2, W/2,H,D/2);
-addFrameEdge(-W/2,H,-D/2, -W/2,H,D/2);
-addFrameEdge(W/2,H,-D/2, W/2,H,D/2);
+addFrameEdge(-W/2, H, -D/2, W/2, H, -D/2);
+addFrameEdge(-W/2, H, D/2, W/2, H, D/2);
+addFrameEdge(-W/2, H, -D/2, -W/2, H, D/2);
+addFrameEdge(W/2, H, -D/2, W/2, H, D/2);
 // Verticals
-addFrameEdge(-W/2,0,-D/2, -W/2,H,-D/2);
-addFrameEdge(W/2,0,-D/2, W/2,H,-D/2);
-addFrameEdge(-W/2,0,D/2, -W/2,H,D/2);
-addFrameEdge(W/2,0,D/2, W/2,H,D/2);
+addFrameEdge(-W/2, 0, -D/2, -W/2, H, -D/2);
+addFrameEdge(W/2, 0, -D/2, W/2, H, -D/2);
+addFrameEdge(-W/2, 0, D/2, -W/2, H, D/2);
+addFrameEdge(W/2, 0, D/2, W/2, H, D/2);
 
-// ─── Clear Acrylic Side Panels ────────────────────────────
-// Front panel (weight matrix visible)
-const frontPanelGeo = new THREE.PlaneGeometry(W - 20, H - 20);
-const frontPanel = new THREE.Mesh(frontPanelGeo, clearAcrylic);
-frontPanel.position.set(0, H/2, D/2 - 2);
-machine.add(frontPanel);
-
-// Right panel (computation visible)
-const rightPanelGeo = new THREE.PlaneGeometry(D - 20, H - 20);
-const rightPanel = new THREE.Mesh(rightPanelGeo, clearAcrylic);
-rightPanel.position.set(W/2 - 2, H/2, 0);
-rightPanel.rotation.y = Math.PI / 2;
-machine.add(rightPanel);
-
-// Left panel (I/O panel — partially open)
-const leftPanelGeo = new THREE.PlaneGeometry(D - 20, H * 0.5);
-const leftPanel = new THREE.Mesh(leftPanelGeo, clearAcrylic);
-leftPanel.position.set(-W/2 + 2, H * 0.75, 0);
-leftPanel.rotation.y = -Math.PI / 2;
-machine.add(leftPanel);
-
-// ─── FRONT FACE: Worm Gear Weight Matrix (7 x 6 grid) ───
+// =====================================================================
+// FRONT FACE: WORM GEAR WEIGHT MATRIX (top third) — 42 gears
+// Layout: Hidden neurons: 3 rows x 10 gears (9 weights + 1 bias)
+//         Output neurons: 3 rows x 4 gears (3 weights + 1 bias)
+// =====================================================================
 const wormGearGroup = new THREE.Group();
-const gearRows = 7, gearCols = 6;
-const gearSpacingX = (W - 100) / (gearCols - 1);
-const gearSpacingY = (H - 120) / (gearRows - 1);
-for (let r = 0; r < gearRows; r++) {
-  for (let c = 0; c < gearCols; c++) {
+const frontZ = D / 2; // flush with front face
+
+// Front face zones: top third = H*2/3 to H, middle third = H/3 to H*2/3, bottom = 0 to H/3
+const frontTopBase = H * 2 / 3 + 20; // start of worm gear zone
+
+// Hidden neurons: 3 rows x 10 gears
+for (let row = 0; row < 3; row++) {
+  for (let col = 0; col < 10; col++) {
+    const xPos = -108 + col * 24; // centered: 10 gears * 24mm spacing, range = 9*24=216mm, offset = -216/2 = -108
+    const yPos = frontTopBase + row * 22;
+
     // Worm gear housing
-    const housingGeo = new THREE.CylinderGeometry(12, 12, 20, 16);
+    const housingGeo = new THREE.CylinderGeometry(12, 12, 20, 24);
     const housing = new THREE.Mesh(housingGeo, darkBrass);
-    const x = -W/2 + 50 + c * gearSpacingX;
-    const y = 60 + r * gearSpacingY;
-    housing.position.set(x, y, D/2 - 15);
+    housing.position.set(xPos, yPos, frontZ - 10);
     housing.rotation.x = Math.PI / 2;
     housing.castShadow = true;
     wormGearGroup.add(housing);
 
-    // Worm shaft (visible brass rod)
-    const shaftGeo = new THREE.CylinderGeometry(2, 2, 30, 8);
+    // Worm shaft
+    const shaftGeo = new THREE.CylinderGeometry(2, 2, 28, 8);
     const shaft = new THREE.Mesh(shaftGeo, brass);
-    shaft.position.set(x, y, D/2 - 15);
+    shaft.position.set(xPos, yPos, frontZ - 10);
     shaft.rotation.x = Math.PI / 2;
     wormGearGroup.add(shaft);
 
-    // Position indicator disc
-    const discGeo = new THREE.CylinderGeometry(8, 8, 1, 16);
-    const isBias = c >= 5;
-    const isHidden = r < 4 && !isBias;
-    const mat = isBias ? new THREE.MeshStandardMaterial({
-      color: 0xc9a84c, metalness: 0.7, roughness: 0.3, emissive: 0x2a1f08, emissiveIntensity: 0.3
-    }) : isHidden ? new THREE.MeshStandardMaterial({
-      color: 0x4466aa, metalness: 0.6, roughness: 0.3, emissive: 0x0a0a22, emissiveIntensity: 0.2
-    }) : new THREE.MeshStandardMaterial({
-      color: 0x7744aa, metalness: 0.6, roughness: 0.3, emissive: 0x150a22, emissiveIntensity: 0.2
-    });
+    // Indicator disc
+    const discGeo = new THREE.CylinderGeometry(11, 11, 2, 16);
+    const isBias = (col === 9);
+    const mat = isBias ? indicatorGold : indicatorBlue;
     const disc = new THREE.Mesh(discGeo, mat);
-    disc.position.set(x, y, D/2 - 3);
+    disc.position.set(xPos, yPos, frontZ);
     disc.rotation.x = Math.PI / 2;
     wormGearGroup.add(disc);
   }
 }
-machine.add(wormGearGroup);
 
-// Weight matrix label (brass plaque)
-const plaqueGeo = new THREE.BoxGeometry(180, 18, 1);
-const plaque = new THREE.Mesh(plaqueGeo, brass);
-plaque.position.set(0, 25, D/2 + 1);
-machine.add(plaque);
+// Output neurons: 3 rows x 4 gears
+for (let row = 0; row < 3; row++) {
+  for (let col = 0; col < 4; col++) {
+    const xPos = -36 + col * 24; // centered: 4 gears * 24mm spacing
+    const yPos = frontTopBase + 66 + row * 22;
 
-// ─── TOP FACE: Pin Drum ──────────────────────────────────
-const drumGroup = new THREE.Group();
-const drumGeo = new THREE.CylinderGeometry(35, 35, W * 0.6, 32);
-const drum = new THREE.Mesh(drumGeo, darkBrass);
-drum.rotation.z = Math.PI / 2;
-drum.position.set(0, H + 30, 0);
-drum.castShadow = true;
-drumGroup.add(drum);
+    const housingGeo = new THREE.CylinderGeometry(12, 12, 20, 24);
+    const housing = new THREE.Mesh(housingGeo, darkBrass);
+    housing.position.set(xPos, yPos, frontZ - 10);
+    housing.rotation.x = Math.PI / 2;
+    housing.castShadow = true;
+    wormGearGroup.add(housing);
 
-// Pin strips on drum
-for (let strip = 0; strip < 8; strip++) {
-  const angle = (strip / 8) * Math.PI * 2;
-  for (let pin = 0; pin < 9; pin++) {
-    const hasPin = Math.random() > 0.4;
-    if (!hasPin) continue;
-    const pinGeo = new THREE.CylinderGeometry(1.5, 1.5, 8, 6);
-    const pinMesh = new THREE.Mesh(pinGeo, brass);
-    const px = -W * 0.3 + pin * (W * 0.6 / 8);
-    const py = H + 30 + Math.cos(angle) * 36;
-    const pz = Math.sin(angle) * 36;
-    pinMesh.position.set(px, py, pz);
-    drumGroup.add(pinMesh);
+    const shaftGeo = new THREE.CylinderGeometry(2, 2, 28, 8);
+    const shaft = new THREE.Mesh(shaftGeo, brass);
+    shaft.position.set(xPos, yPos, frontZ - 10);
+    shaft.rotation.x = Math.PI / 2;
+    wormGearGroup.add(shaft);
+
+    const discGeo = new THREE.CylinderGeometry(11, 11, 2, 16);
+    const isBias = (col === 3);
+    const mat = isBias ? indicatorGold : indicatorPurple;
+    const disc = new THREE.Mesh(discGeo, mat);
+    disc.position.set(xPos, yPos, frontZ);
+    disc.rotation.x = Math.PI / 2;
+    wormGearGroup.add(disc);
   }
 }
 
-// Drum support brackets
-const bracketGeo = new THREE.BoxGeometry(12, 50, 12);
-const bracketL = new THREE.Mesh(bracketGeo, blackPLA);
-bracketL.position.set(-W * 0.32, H + 15, 0);
-bracketL.castShadow = true;
-drumGroup.add(bracketL);
-const bracketR = new THREE.Mesh(bracketGeo, blackPLA);
-bracketR.position.set(W * 0.32, H + 15, 0);
-bracketR.castShadow = true;
-drumGroup.add(bracketR);
+frontGroup.add(wormGearGroup);
 
-machine.add(drumGroup);
+// Label plaque for weight matrix
+const wPlaque = new THREE.Mesh(new THREE.BoxGeometry(180, 14, 1), brass);
+wPlaque.position.set(0, frontTopBase - 15, frontZ + 2);
+frontGroup.add(wPlaque);
 
-// ─── RIGHT FACE: Computation (Pantograph Diamonds) ───────
+// =====================================================================
+// FRONT FACE: 42 SPIRAL CAMS (middle third) — 7x6 grid
+// =====================================================================
+const spiralCamGroup = new THREE.Group();
+const frontMidBase = H / 3 + 20;
+const camPitchX = 55, camPitchY = 40;
+const camGridW = 6 * camPitchX; // 330mm -> need 7 cols
+const camStartX = -(6 * camPitchX) / 2 + camPitchX / 2;
+
+for (let row = 0; row < 6; row++) {
+  for (let col = 0; col < 7; col++) {
+    const cx = camStartX + col * camPitchX;
+    const cy = frontMidBase + row * camPitchY;
+
+    // Spiral cam body
+    const camGeo = new THREE.CylinderGeometry(20, 20, 15, 32);
+    const cam = new THREE.Mesh(camGeo, slaResin);
+    cam.position.set(cx, cy, frontZ - 8);
+    cam.rotation.x = Math.PI / 2;
+    cam.castShadow = true;
+    spiralCamGroup.add(cam);
+
+    // Archimedean spiral line on face
+    const spiralPts = [];
+    const spiralSteps = 80;
+    for (let s = 0; s <= spiralSteps; s++) {
+      const theta = (s / spiralSteps) * (254 * Math.PI / 180);
+      const r = 1.0 + 5.0 * theta / (254 * Math.PI / 180);
+      spiralPts.push(new THREE.Vector3(
+        cx + r * Math.cos(theta),
+        cy + r * Math.sin(theta),
+        frontZ + 0.5
+      ));
+    }
+    const spiralLineGeo = new THREE.BufferGeometry().setFromPoints(spiralPts);
+    const spiralLine = new THREE.Line(spiralLineGeo, new THREE.LineBasicMaterial({ color: 0xaabbcc, transparent: true, opacity: 0.6 }));
+    spiralCamGroup.add(spiralLine);
+
+    // Ratchet ring
+    const ratchetGeo = new THREE.TorusGeometry(21, 0.8, 6, 36);
+    const ratchet = new THREE.Mesh(ratchetGeo, steel);
+    ratchet.position.set(cx, cy, frontZ - 1);
+    ratchet.rotation.x = Math.PI / 2;
+    spiralCamGroup.add(ratchet);
+  }
+}
+
+frontGroup.add(spiralCamGroup);
+
+// Spiral cam label
+const scPlaque = new THREE.Mesh(new THREE.BoxGeometry(200, 14, 1), brass);
+scPlaque.position.set(0, frontMidBase - 15, frontZ + 2);
+frontGroup.add(scPlaque);
+
+// =====================================================================
+// FRONT FACE: 3 ERROR SLIDERS (bottom third) — MGN7 rails
+// =====================================================================
+const errorSliderGroup = new THREE.Group();
+const sliderBaseY = H / 6; // center of bottom third
+const sliderSpacing = 500 / 4; // evenly across center 500mm
+
+for (let i = 0; i < 3; i++) {
+  const sx = -125 + i * 125; // centered in 500mm range
+
+  // MGN7 Rail
+  const railGeo = new THREE.BoxGeometry(120, 5, 12);
+  const rail = new THREE.Mesh(railGeo, steel);
+  rail.position.set(sx, sliderBaseY, frontZ - 5);
+  errorSliderGroup.add(rail);
+
+  // Slider block
+  const sliderGeo = new THREE.BoxGeometry(25, 18, 18);
+  const slider = new THREE.Mesh(sliderGeo, brass);
+  slider.position.set(sx, sliderBaseY, frontZ - 5);
+  slider.userData = { baseX: sx, index: i };
+  errorSliderGroup.add(slider);
+
+  // Leaf spring (zigzag)
+  const springPts = [];
+  const zigzags = 6;
+  for (let z = 0; z <= zigzags; z++) {
+    const t = z / zigzags;
+    const lx = sx - 20 + t * 40;
+    const ly = sliderBaseY - 12 + (z % 2 === 0 ? 0 : -6);
+    springPts.push(new THREE.Vector3(lx, ly, frontZ - 5));
+  }
+  const springGeo = new THREE.BufferGeometry().setFromPoints(springPts);
+  const springLine = new THREE.Line(springGeo, new THREE.LineBasicMaterial({ color: 0x4466aa }));
+  errorSliderGroup.add(springLine);
+
+  // ZERO ERROR marker
+  const markerGeo = new THREE.BoxGeometry(4, 14, 4);
+  const marker = new THREE.Mesh(markerGeo, redAccent);
+  marker.position.set(sx, sliderBaseY + 8, frontZ - 2);
+  errorSliderGroup.add(marker);
+}
+
+frontGroup.add(errorSliderGroup);
+
+// Error slider label
+const esPlaque = new THREE.Mesh(new THREE.BoxGeometry(140, 14, 1), brass);
+esPlaque.position.set(0, sliderBaseY - 25, frontZ + 2);
+frontGroup.add(esPlaque);
+
+// =====================================================================
+// RIGHT FACE: PANTOGRAPH DIAMONDS (3 chains x 3 diamonds)
+// =====================================================================
 const computeGroup = new THREE.Group();
+const rightX = W / 2;
+const pantoArmLen = 45;
+const pantoAlpha = 30 * Math.PI / 180; // 30 degrees at rest
 
-// 3 pantograph diamond chains (one per hidden neuron)
-for (let neuron = 0; neuron < 3; neuron++) {
-  const ny = 100 + neuron * 100;
-  const baseX = W/2 - 20;
+for (let chain = 0; chain < 3; chain++) {
+  const chainZ = -70 + chain * 70; // 3 chains, 70mm spacing, centered in 450mm depth
+  const chainBaseY = H * 0.55 + 50; // upper zone
 
-  // Diamond shape (rhombus made of 4 bars)
   for (let d = 0; d < 3; d++) {
-    const dx = -40 - d * 50;
-    const barLen = 35;
-    const openAmount = 10 + Math.random() * 15; // varying openness
+    const dy = chainBaseY - d * 80; // stacked vertically
+    const L = pantoArmLen;
+    const a = pantoAlpha;
 
-    // Four bars of the diamond
-    const barGeo = new THREE.BoxGeometry(3, barLen, 3);
-    const angles = [0.3, -0.3, Math.PI + 0.3, Math.PI - 0.3];
-    angles.forEach((angle, i) => {
+    // Diamond vertices (in the YZ plane, flush with right face)
+    const leftV = [0, 0];
+    const topV = [L * Math.sin(a), L * Math.cos(a)];
+    const rightV = [2 * L * Math.sin(a), 0];
+    const bottomV = [L * Math.sin(a), -L * Math.cos(a)];
+
+    const verts = [leftV, topV, rightV, bottomV];
+    const edges = [[0, 1], [1, 2], [2, 3], [3, 0]];
+
+    edges.forEach(([ai, bi]) => {
+      const [az, ay] = verts[ai];
+      const [bz, by] = verts[bi];
+      const midZ = chainZ + (az + bz) / 2;
+      const midY = dy + (ay + by) / 2;
+      const len = Math.sqrt((bz - az) ** 2 + (by - ay) ** 2);
+      const angle = Math.atan2(bz - az, by - ay);
+
+      const barGeo = new THREE.BoxGeometry(3, len, 3);
       const bar = new THREE.Mesh(barGeo, brass);
-      bar.position.set(baseX + dx + Math.sin(angle) * openAmount, ny + Math.cos(angle) * openAmount * 0.6, (i < 2 ? -3 : 3));
-      bar.rotation.z = angle * 0.4;
+      bar.position.set(rightX - 15, midY, midZ);
+      bar.rotation.x = angle;
       bar.castShadow = true;
       computeGroup.add(bar);
     });
 
-    // Pivot joints (small spheres)
-    const pivotGeo = new THREE.SphereGeometry(3, 8, 8);
-    const pivotPositions = [
-      [baseX + dx, ny + openAmount * 0.8, 0],
-      [baseX + dx, ny - openAmount * 0.8, 0],
-      [baseX + dx + openAmount, ny, 0],
-      [baseX + dx - openAmount, ny, 0]
-    ];
-    pivotPositions.forEach(pos => {
+    // HK0306 bearings at each joint
+    verts.forEach(([vz, vy]) => {
+      const pivotGeo = new THREE.SphereGeometry(6, 10, 10);
       const pivot = new THREE.Mesh(pivotGeo, steel);
-      pivot.position.set(...pos);
+      pivot.position.set(rightX - 15, dy + vy, chainZ + vz);
       computeGroup.add(pivot);
     });
   }
-
-  // Shaped cam (activation function)
-  const camGeo = new THREE.TorusGeometry(18, 4, 8, 32);
-  const cam = new THREE.Mesh(camGeo, brass);
-  cam.position.set(baseX - 190, ny, 0);
-  cam.rotation.y = Math.PI / 2;
-  cam.castShadow = true;
-  computeGroup.add(cam);
-
-  // Cam follower
-  const followerGeo = new THREE.SphereGeometry(5, 8, 8);
-  const follower = new THREE.Mesh(followerGeo, steel);
-  follower.position.set(baseX - 190, ny + 20, 0);
-  computeGroup.add(follower);
 }
 
-machine.add(computeGroup);
+rightGroup.add(computeGroup);
 
-// ─── LEFT FACE: I/O Panel ─────────────────────────────────
-const ioGroup = new THREE.Group();
-
-// 3 Input dials
+// =====================================================================
+// RIGHT FACE: 3 ReLU CAMS (below pantographs)
+// =====================================================================
+const reluCamGroup = new THREE.Group();
 for (let i = 0; i < 3; i++) {
-  const dialY = 100 + i * 90;
-  const dialX = -W/2;
-  const dialZ = -60 + i * 60;
+  const camZ = -70 + i * 70; // same Z as pantograph chains
+  const camY = H * 0.3;
 
-  // Dial body
-  const dialGeo = new THREE.CylinderGeometry(22, 22, 15, 32);
-  const dial = new THREE.Mesh(dialGeo, brass);
-  dial.position.set(dialX - 10, dialY, dialZ);
-  dial.rotation.z = Math.PI / 2;
-  dial.castShadow = true;
-  ioGroup.add(dial);
+  // ReLU cam profile: use a custom shape
+  // Flat region (180 deg) + linear ramp (180 deg)
+  const camShape = new THREE.Shape();
+  const camR = 25;
+  const steps = 64;
+  for (let s = 0; s <= steps; s++) {
+    const angle = (s / steps) * Math.PI * 2;
+    let r = camR;
+    if (angle > Math.PI) {
+      // Linear ramp from 0 to camR*0.4
+      const t = (angle - Math.PI) / Math.PI;
+      r = camR + t * camR * 0.4;
+    }
+    const px = Math.cos(angle) * r;
+    const py = Math.sin(angle) * r;
+    if (s === 0) camShape.moveTo(px, py);
+    else camShape.lineTo(px, py);
+  }
 
-  // Dial pointer
-  const pointerGeo = new THREE.BoxGeometry(8, 2, 20);
-  const pointer = new THREE.Mesh(pointerGeo, redAccent);
-  pointer.position.set(dialX - 18, dialY, dialZ);
-  pointer.rotation.y = i * 0.8; // different positions
-  ioGroup.add(pointer);
+  const extrudeSettings = { depth: 10, bevelEnabled: false };
+  const camGeo = new THREE.ExtrudeGeometry(camShape, extrudeSettings);
+  const cam = new THREE.Mesh(camGeo, slaResin);
+  cam.position.set(rightX - 25, camY, camZ - 5);
+  cam.rotation.y = Math.PI / 2;
+  cam.castShadow = true;
+  reluCamGroup.add(cam);
 
-  // Dial label ring
-  const ringGeo = new THREE.TorusGeometry(25, 1.5, 8, 32);
-  const ring = new THREE.Mesh(ringGeo, darkBrass);
-  ring.position.set(dialX - 18, dialY, dialZ);
-  ring.rotation.y = Math.PI / 2;
-  ioGroup.add(ring);
+  // Spring follower
+  const followerGeo = new THREE.SphereGeometry(7, 10, 10);
+  const follower = new THREE.Mesh(followerGeo, steel);
+  follower.position.set(rightX - 15, camY + camR + 5, camZ);
+  reluCamGroup.add(follower);
+}
 
-  // Word position markers (3 per dial)
-  for (let w = 0; w < 3; w++) {
-    const angle = (w / 3) * Math.PI * 2 - Math.PI / 2;
-    const markerGeo = new THREE.SphereGeometry(3, 8, 8);
-    const marker = new THREE.Mesh(markerGeo, redAccent);
-    marker.position.set(dialX - 18, dialY + Math.sin(angle) * 28, dialZ + Math.cos(angle) * 28);
-    ioGroup.add(marker);
+rightGroup.add(reluCamGroup);
+
+// Follower linkage: pantographH output -> ReLU cam input
+for (let i = 0; i < 3; i++) {
+  const chainZ = -70 + i * 70;
+  const pantoBottomY = H * 0.55 + 50 - 2 * 80; // bottom diamond of chain
+  const camY = H * 0.3;
+  // Connecting rod from pantograph bottom to ReLU cam top
+  const linkLen = pantoBottomY - camY;
+  const link = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, linkLen, 6), brass);
+  link.position.set(rightX - 20, camY + linkLen / 2, chainZ);
+  link.castShadow = true;
+  rightGroup.add(link);
+}
+
+// =====================================================================
+// LEFT FACE: 3 INPUT PRISMS + 1 ANSWER PRISM
+// =====================================================================
+const ioGroup = new THREE.Group();
+const leftX = -W / 2;
+
+// 3 input prisms — triangular, vertically stacked, 80mm apart
+for (let i = 0; i < 3; i++) {
+  const py = H * 0.25 + i * 80; // hand height, centered around lower half
+
+  // Triangular prism: 3 sides, radius 23mm, length 60mm
+  const prismGeo = new THREE.CylinderGeometry(30, 30, 80, 3);
+  const prism = new THREE.Mesh(prismGeo, brass);
+  prism.position.set(leftX + 10, py, 0);
+  prism.rotation.z = Math.PI / 2; // horizontal axis
+  prism.rotation.y = Math.PI / 6 + i * (2 * Math.PI / 3 / 3); // different detent positions
+  prism.castShadow = true;
+  ioGroup.add(prism);
+
+  // Detent marks (3 small spheres at 120 deg intervals)
+  for (let d = 0; d < 3; d++) {
+    const angle = (d / 3) * Math.PI * 2;
+    const detentGeo = new THREE.SphereGeometry(2, 8, 8);
+    const detent = new THREE.Mesh(detentGeo, redAccent);
+    detent.position.set(leftX + 10, py + Math.cos(angle) * 26, Math.sin(angle) * 26);
+    ioGroup.add(detent);
+  }
+
+  // Prism mount shaft
+  const mountGeo = new THREE.CylinderGeometry(3, 3, 70, 8);
+  const mount = new THREE.Mesh(mountGeo, steel);
+  mount.position.set(leftX + 10, py, 0);
+  mount.rotation.z = Math.PI / 2;
+  ioGroup.add(mount);
+}
+
+// 1 answer prism — above mode lever, at eye level
+const answerPrismGeo = new THREE.CylinderGeometry(30, 30, 80, 3);
+const answerPrism = new THREE.Mesh(answerPrismGeo, brass);
+answerPrism.position.set(leftX + 10, H * 0.72, 0);
+answerPrism.rotation.z = Math.PI / 2;
+answerPrism.castShadow = true;
+ioGroup.add(answerPrism);
+
+// Answer prism mount
+const aMountGeo = new THREE.CylinderGeometry(3, 3, 70, 8);
+const aMount = new THREE.Mesh(aMountGeo, steel);
+aMount.position.set(leftX + 10, H * 0.72, 0);
+aMount.rotation.z = Math.PI / 2;
+ioGroup.add(aMount);
+
+// Answer prism detents
+for (let d = 0; d < 3; d++) {
+  const angle = (d / 3) * Math.PI * 2;
+  const detGeo = new THREE.SphereGeometry(2, 8, 8);
+  const det = new THREE.Mesh(detGeo, redAccent);
+  det.position.set(leftX + 10, H * 0.72 + Math.cos(angle) * 26, Math.sin(angle) * 26);
+  ioGroup.add(det);
+}
+
+// One-hot gates: 3 sets of 3 cam followers per prism (9 total)
+for (let p = 0; p < 3; p++) {
+  const gateY = H * 0.25 + p * 80;
+  for (let g = 0; g < 3; g++) {
+    const gateZ = -25 + g * 25;
+    const gateGeo = new THREE.BoxGeometry(8, 6, 4);
+    const gate = new THREE.Mesh(gateGeo, steel);
+    gate.position.set(leftX + 40, gateY, gateZ);
+    gate.castShadow = true;
+    ioGroup.add(gate);
+    // Small spring
+    const springGeo = new THREE.CylinderGeometry(1, 1, 10, 6);
+    const spring = new THREE.Mesh(springGeo, steel);
+    spring.position.set(leftX + 50, gateY, gateZ);
+    spring.rotation.z = Math.PI / 2;
+    ioGroup.add(spring);
   }
 }
 
-// Mode switch (dog clutch) — prominent lever
+// =====================================================================
+// LEFT FACE: MODE LEVER + DOG CLUTCH
+// =====================================================================
+// Between input prisms and answer prism
+const leverY = H * 0.55;
+
 const leverBaseGeo = new THREE.CylinderGeometry(15, 15, 8, 16);
 const leverBase = new THREE.Mesh(leverBaseGeo, darkBrass);
-leverBase.position.set(-W/2 - 10, 50, 0);
+leverBase.position.set(leftX + 5, leverY, 0);
 leverBase.rotation.z = Math.PI / 2;
 ioGroup.add(leverBase);
 
-const leverArmGeo = new THREE.BoxGeometry(6, 60, 6);
+const leverArmGeo = new THREE.BoxGeometry(6, 80, 6);
 const leverArm = new THREE.Mesh(leverArmGeo, brass);
-leverArm.position.set(-W/2 - 15, 80, 0);
-leverArm.rotation.z = 0.3; // tilted to TRAIN position
+leverArm.position.set(leftX - 5, leverY + 40, 0);
+leverArm.rotation.z = 0.25; // tilted to TRAIN
 leverArm.castShadow = true;
 ioGroup.add(leverArm);
 
-const leverKnobGeo = new THREE.SphereGeometry(8, 12, 12);
+const leverKnobGeo = new THREE.SphereGeometry(10, 12, 12);
 const leverKnob = new THREE.Mesh(leverKnobGeo, redAccent);
-leverKnob.position.set(-W/2 - 30, 105, 0);
+leverKnob.position.set(leftX - 20, leverY + 78, 0);
 ioGroup.add(leverKnob);
 
-machine.add(ioGroup);
+leftGroup.add(ioGroup);
 
-// ─── BACK FACE: Motor + Timing ────────────────────────────
+// =====================================================================
+// BACK FACE: NEMA 23 MOTOR
+// =====================================================================
 const motorGroup = new THREE.Group();
+const backZ = -D / 2;
 
-// NEMA 17 motor body
-const motorBodyGeo = new THREE.BoxGeometry(42, 42, 48);
+// NEMA 23 body: 57x57x56mm
+const motorBodyGeo = new THREE.BoxGeometry(57, 57, 56);
 const motorBody = new THREE.Mesh(motorBodyGeo, blackPLA);
-motorBody.position.set(0, 80, -D/2 - 30);
+motorBody.position.set(0, 100, backZ + 28);
 motorBody.castShadow = true;
 motorGroup.add(motorBody);
 
-// Motor shaft
-const motorShaftGeo = new THREE.CylinderGeometry(2.5, 2.5, 30, 8);
+// Motor shaft: 3.5mm radius, 30mm long
+const motorShaftGeo = new THREE.CylinderGeometry(3.5, 3.5, 30, 8);
 const motorShaft = new THREE.Mesh(motorShaftGeo, steel);
-motorShaft.position.set(0, 80, -D/2 - 5);
+motorShaft.position.set(0, 100, backZ + 56 + 15);
 motorShaft.rotation.x = Math.PI / 2;
 motorGroup.add(motorShaft);
 
-// Main timing cam
-const mainCamGeo = new THREE.CylinderGeometry(30, 30, 10, 32);
-const mainCam = new THREE.Mesh(mainCamGeo, brass);
-mainCam.position.set(0, 80, -D/2 + 10);
-mainCam.rotation.x = Math.PI / 2;
-mainCam.castShadow = true;
-motorGroup.add(mainCam);
+// Motor mounting plate detail
+const motorPlateGeo = new THREE.BoxGeometry(70, 70, 3);
+const motorPlate = new THREE.Mesh(motorPlateGeo, steel);
+motorPlate.position.set(0, 100, backZ + 1.5);
+motorGroup.add(motorPlate);
 
-// Escapement (gravity pendulum)
-const pendulumArmGeo = new THREE.BoxGeometry(3, 120, 3);
-const pendulumArm = new THREE.Mesh(pendulumArmGeo, brass);
-pendulumArm.position.set(80, 200, -D/2 + 10);
-pendulumArm.castShadow = true;
-motorGroup.add(pendulumArm);
+// Motor-to-barrel-cam vertical shaft
+const motorShaftVertGeo = new THREE.CylinderGeometry(3, 3, 150, 8);
+const motorShaftVert = new THREE.Mesh(motorShaftVertGeo, steel);
+motorShaftVert.position.set(0, 175, backZ + 30);
+motorShaftVert.castShadow = true;
+motorGroup.add(motorShaftVert);
+
+// =====================================================================
+// BACK FACE: BARREL CAM (270mm long, horizontal)
+// =====================================================================
+// Barrel cam: use pivot group so rotation is visible
+const barrelCamPivot = new THREE.Group();
+barrelCamPivot.position.set(0, 250, backZ + 30);
+barrelCamPivot.rotation.z = Math.PI / 2; // tilt to horizontal
+
+const barrelCamGeo = new THREE.CylinderGeometry(20, 20, 270, 32);
+const barrelCam = new THREE.Mesh(barrelCamGeo, blackPLA);
+// At pivot origin, no position/rotation offset
+barrelCam.castShadow = true;
+barrelCamPivot.add(barrelCam);
+
+// Spiral groove: in LOCAL coords of pivot (Y = along cam axis)
+const groovePoints = [];
+for (let t = 0; t <= Math.PI * 8; t += 0.08) {
+  const localY = -135 + (t / (Math.PI * 8)) * 270; // along cam length
+  const localX = Math.cos(t) * 21;  // radial
+  const localZ = Math.sin(t) * 21;  // radial
+  groovePoints.push(new THREE.Vector3(localX, localY, localZ));
+}
+const grooveGeo = new THREE.BufferGeometry().setFromPoints(groovePoints);
+barrelCamPivot.add(new THREE.Line(grooveGeo, new THREE.LineBasicMaterial({ color: 0xc9a84c, transparent: true, opacity: 0.5 })));
+
+motorGroup.add(barrelCamPivot);
+
+// Barrel cam support brackets
+for (const side of [-1, 1]) {
+  const bGeo = new THREE.BoxGeometry(15, 40, 15);
+  const bracket = new THREE.Mesh(bGeo, blackPLA);
+  bracket.position.set(side * 140, 230, backZ + 30);
+  bracket.castShadow = true;
+  motorGroup.add(bracket);
+}
+
+// =====================================================================
+// BACK FACE: GRAVITY PENDULUM
+// =====================================================================
+const pendulumPivotY = H - 20; // hangs from top rail
+const pendulumX = 200; // offset to side
+
+// Pivot group positioned at the pendulum pivot point
+const pendulumPivotGrp = new THREE.Group();
+pendulumPivotGrp.position.set(pendulumX, pendulumPivotY, backZ + 30);
+
+const pendulumRodGeo = new THREE.BoxGeometry(3, 250, 3);
+const pendulumRod = new THREE.Mesh(pendulumRodGeo, steel);
+pendulumRod.position.set(0, -125, 0); // local offset: rod center halfway down
+pendulumRod.castShadow = true;
+pendulumPivotGrp.add(pendulumRod);
 
 const pendulumBobGeo = new THREE.SphereGeometry(15, 16, 16);
-const pendulumBob = new THREE.Mesh(pendulumBobGeo, darkBrass);
-pendulumBob.position.set(80, 140, -D/2 + 10);
+const pendulumBob = new THREE.Mesh(pendulumBobGeo, brass);
+pendulumBob.position.set(0, -250, 0); // local offset: bob at bottom
 pendulumBob.castShadow = true;
-motorGroup.add(pendulumBob);
+pendulumPivotGrp.add(pendulumBob);
 
-// Barrel cam for sequencing
-const barrelCamGeo = new THREE.CylinderGeometry(20, 20, 60, 32);
-const barrelCam = new THREE.Mesh(barrelCamGeo, darkBrass);
-barrelCam.position.set(-80, 200, -D/2 + 10);
-barrelCam.rotation.x = Math.PI / 2;
-barrelCam.castShadow = true;
-motorGroup.add(barrelCam);
+motorGroup.add(pendulumPivotGrp);
 
-// Spiral groove on barrel cam
-const spiralCurve = new THREE.Curve();
-const spiralPoints = [];
-for (let t = 0; t < Math.PI * 6; t += 0.1) {
-  spiralPoints.push(new THREE.Vector3(
-    -80 + t * 3 - 28,
-    200 + Math.cos(t) * 21,
-    -D/2 + 10 + Math.sin(t) * 21
-  ));
-}
-const spiralGeo = new THREE.BufferGeometry().setFromPoints(spiralPoints);
-const spiralLine = new THREE.Line(spiralGeo, stringMat);
-motorGroup.add(spiralLine);
+// Pendulum pivot mount
+const pivotMountGeo = new THREE.BoxGeometry(20, 10, 20);
+const pivotMount = new THREE.Mesh(pivotMountGeo, steel);
+pivotMount.position.set(pendulumX, pendulumPivotY, backZ + 30);
+motorGroup.add(pivotMount);
 
-machine.add(motorGroup);
+backGroup.add(motorGroup);
 
-// ─── BOTTOM: Whippletree (Loss Computation) ──────────────
-const whippletreeGroup = new THREE.Group();
+// =====================================================================
+// FRONT FACE: CONVERGENCE DETECTOR (above error sliders)
+// =====================================================================
+const convGroup = new THREE.Group();
 
-// Main balance beam
-const mainBeamGeo = new THREE.BoxGeometry(200, 4, 8);
-const mainBeam = new THREE.Mesh(mainBeamGeo, brass);
-mainBeam.position.set(0, 25, 0);
-mainBeam.castShadow = true;
-whippletreeGroup.add(mainBeam);
-
-// Main pivot
-const mainPivotGeo = new THREE.CylinderGeometry(4, 4, 12, 8);
-const mainPivot = new THREE.Mesh(mainPivotGeo, steel);
-mainPivot.position.set(0, 18, 0);
-mainPivot.castShadow = true;
-whippletreeGroup.add(mainPivot);
-
-// Sub-beams (cascaded)
-for (let side = -1; side <= 1; side += 2) {
-  const subBeamGeo = new THREE.BoxGeometry(80, 3, 6);
-  const subBeam = new THREE.Mesh(subBeamGeo, brass);
-  subBeam.position.set(side * 80, 15, 0);
-  subBeam.rotation.z = side * 0.05;
-  whippletreeGroup.add(subBeam);
-
-  const subPivotGeo = new THREE.CylinderGeometry(3, 3, 8, 8);
-  const subPivot = new THREE.Mesh(subPivotGeo, steel);
-  subPivot.position.set(side * 80, 10, 0);
-  whippletreeGroup.add(subPivot);
+// 3 spring-loaded pins — directly above error sliders
+for (let i = 0; i < 3; i++) {
+  const pinGeo = new THREE.CylinderGeometry(0.75, 0.75, 15, 8);
+  const pin = new THREE.Mesh(pinGeo, steel);
+  pin.position.set(-125 + i * 125, sliderBaseY + 15, frontZ - 5);
+  convGroup.add(pin);
 }
 
-machine.add(whippletreeGroup);
+// Trigger bar
+const triggerBarGeo = new THREE.BoxGeometry(100, 4, 4);
+const triggerBar = new THREE.Mesh(triggerBarGeo, brass);
+triggerBar.position.set(0, sliderBaseY + 25, frontZ - 5);
+convGroup.add(triggerBar);
 
-// ─── Brachistochrone Ball Track ───────────────────────────
+// Rotary damper
+const damperGeo = new THREE.CylinderGeometry(8, 8, 10, 16);
+const damper = new THREE.Mesh(damperGeo, blackPLA);
+damper.position.set(180, sliderBaseY + 25, frontZ - 5);
+damper.rotation.z = Math.PI / 2;
+convGroup.add(damper);
+
+frontGroup.add(convGroup);
+
+// =====================================================================
+// TOP: PIN DRUM
+// =====================================================================
+const drumGroup = new THREE.Group();
+const drumY = H + 35; // above frame
+
+// Pivot group: positioned in world, child rotates at local origin
+const drumPivot = new THREE.Group();
+drumPivot.position.set(0, drumY, 0);
+drumPivot.rotation.z = Math.PI / 2; // tilt to horizontal
+
+const drumGeo = new THREE.CylinderGeometry(35, 35, 360, 32);
+const drum = new THREE.Mesh(drumGeo, darkBrass);
+// drum sits at pivot origin (0,0,0 local) — NO position offset, NO rotation
+drum.castShadow = true;
+drumPivot.add(drum);
+
+// Pin strips: 8 strips x 12 pins — positions RELATIVE to drum pivot (local coords)
+for (let strip = 0; strip < 8; strip++) {
+  const angle = (strip / 8) * Math.PI * 2;
+  for (let pin = 0; pin < 12; pin++) {
+    const hasPin = ((strip * 12 + pin) * 7 + 3) % 5 !== 0;
+    if (!hasPin) continue;
+
+    const pinGeo = new THREE.CylinderGeometry(1.5, 1.5, 10, 6);
+    const pinMesh = new THREE.Mesh(pinGeo, brass);
+    // Local coords: Y = along drum axis, XZ = radial plane
+    const py = -170 + pin * (340 / 11); // along drum length (local Y)
+    const px = Math.cos(angle) * 37;     // radial
+    const pz = Math.sin(angle) * 37;     // radial
+    pinMesh.position.set(px, py, pz);
+    pinMesh.lookAt(0, py, 0); // point toward drum axis
+    drumPivot.add(pinMesh);
+  }
+}
+
+drumGroup.add(drumPivot);
+
+// Drum support brackets
+for (const side of [-1, 1]) {
+  const bGeo = new THREE.BoxGeometry(15, 50, 15);
+  const bracket = new THREE.Mesh(bGeo, blackPLA);
+  bracket.position.set(side * 190, drumY - 20, 0);
+  bracket.castShadow = true;
+  drumGroup.add(bracket);
+}
+
+topGroup.add(drumGroup);
+
+// =====================================================================
+// BOTTOM: WHIPPLETREE (4 beams) + BRACHISTOCHRONE
+// =====================================================================
+const bottomMechGroup = new THREE.Group();
+
+// 3 per-neuron beams (80mm each) + 1 aggregate beam (200mm)
+const whippletreeY = 30;
+
+for (let i = 0; i < 3; i++) {
+  const bx = -80 + i * 80;
+  const beamGeo = new THREE.BoxGeometry(80, 4, 8);
+  const beam = new THREE.Mesh(beamGeo, brass);
+  beam.position.set(bx, whippletreeY, 0);
+  beam.castShadow = true;
+  bottomMechGroup.add(beam);
+
+  // Knife-edge pivot
+  const pivotGeo = new THREE.CylinderGeometry(3, 0.5, 10, 8);
+  const pivot = new THREE.Mesh(pivotGeo, steel);
+  pivot.position.set(bx, whippletreeY - 7, 0);
+  bottomMechGroup.add(pivot);
+}
+
+// Aggregate beam
+const aggBeamGeo = new THREE.BoxGeometry(200, 5, 10);
+const aggBeam = new THREE.Mesh(aggBeamGeo, brass);
+aggBeam.position.set(0, whippletreeY - 20, 0);
+aggBeam.castShadow = true;
+bottomMechGroup.add(aggBeam);
+
+const aggPivotGeo = new THREE.CylinderGeometry(4, 0.5, 12, 8);
+const aggPivot = new THREE.Mesh(aggPivotGeo, steel);
+aggPivot.position.set(0, whippletreeY - 32, 0);
+bottomMechGroup.add(aggPivot);
+
+// Brachistochrone ball track (cycloid: x = r(t - sin(t)), y = r(1 - cos(t)))
+const brR = 40; // cycloid radius
 const trackPoints = [];
 for (let t = 0; t <= Math.PI; t += 0.05) {
-  // Cycloid curve
   trackPoints.push(new THREE.Vector3(
-    -200 + (t - Math.sin(t)) * 60,
-    H - 20 - (1 - Math.cos(t)) * 80,
-    D/2 - 40
+    -150 + brR * (t - Math.sin(t)) * 2.5,
+    80 - brR * (1 - Math.cos(t)),
+    D / 4
   ));
 }
-const trackGeo = new THREE.TubeGeometry(
-  new THREE.CatmullRomCurve3(trackPoints), 64, 3, 8, false
-);
+const trackCurve = new THREE.CatmullRomCurve3(trackPoints);
+const trackGeo = new THREE.TubeGeometry(trackCurve, 64, 3, 8, false);
 const track = new THREE.Mesh(trackGeo, brass);
 track.castShadow = true;
-machine.add(track);
+bottomMechGroup.add(track);
 
 // Ball on track
 const ballGeo = new THREE.SphereGeometry(5, 16, 16);
 const ball = new THREE.Mesh(ballGeo, steel);
 ball.position.copy(trackPoints[0]);
 ball.castShadow = true;
-machine.add(ball);
-const ballRef = ball;
-const trackRef = trackPoints;
+bottomMechGroup.add(ball);
 
-// ─── Answer Prism (output display) ────────────────────────
-const prismGeo = new THREE.CylinderGeometry(25, 25, 40, 3);
-const prism = new THREE.Mesh(prismGeo, redAccent);
-prism.position.set(-W/2 + 60, 350, 80);
-prism.rotation.y = Math.PI / 6;
-prism.castShadow = true;
-machine.add(prism);
+// Scissor amplifier (5x): between whippletree aggregate and brachistochrone
+const scissorGroup = new THREE.Group();
+for (let s = 0; s < 3; s++) {
+  const sx = -30 + s * 30;
+  // Scissor X bars
+  const bar1 = new THREE.Mesh(new THREE.BoxGeometry(3, 40, 3), brass);
+  bar1.position.set(sx, whippletreeY - 50, D / 4 - 30);
+  bar1.rotation.z = 0.3;
+  scissorGroup.add(bar1);
+  const bar2 = new THREE.Mesh(new THREE.BoxGeometry(3, 40, 3), brass);
+  bar2.position.set(sx, whippletreeY - 50, D / 4 - 30);
+  bar2.rotation.z = -0.3;
+  scissorGroup.add(bar2);
+  // Pivot at crossing point
+  const pivot = new THREE.Mesh(new THREE.SphereGeometry(3, 8, 8), steel);
+  pivot.position.set(sx, whippletreeY - 50, D / 4 - 30);
+  scissorGroup.add(pivot);
+}
+bottomMechGroup.add(scissorGroup);
 
-// Prism mount
-const prismMountGeo = new THREE.CylinderGeometry(4, 4, 15, 8);
-const prismMount = new THREE.Mesh(prismMountGeo, steel);
-prismMount.position.set(-W/2 + 60, 330, 80);
-machine.add(prismMount);
+bottomGroup.add(bottomMechGroup);
 
-// ─── STRINGS (Margolin aesthetic) ─────────────────────────
-const stringsGroup = new THREE.Group();
-
-// String paths from worm gears to pantograph diamonds
+// Connection rods: output rods (interior) to whippletree beams (bottom)
 for (let n = 0; n < 3; n++) {
-  const ny = 100 + n * 100;
-  // Strings from front face worm gears to right face pantographs
-  for (let g = 0; g < 3; g++) {
-    const startX = -W/2 + 50 + g * gearSpacingX;
-    const startY = 60 + (n * 2 + g % 2) * gearSpacingY;
-    const startZ = D/2 - 20;
-    const endX = W/2 - 60 - g * 50;
-    const endY = ny;
-    const endZ = 0;
+  const rodY_top = H * 0.12 + n * 50; // output rod Y
+  const rodZ = -70 + n * 70; // output rod Z
+  const beamX = -80 + n * 80; // whippletree beam X
+  const beamY = whippletreeY; // whippletree Y
 
-    // String with slight catenary sag
-    const stringPoints = [];
-    const steps = 20;
-    for (let s = 0; s <= steps; s++) {
-      const t = s / steps;
-      const sag = Math.sin(t * Math.PI) * 15; // catenary sag
-      stringPoints.push(new THREE.Vector3(
-        startX + (endX - startX) * t,
-        startY + (endY - startY) * t - sag,
-        startZ + (endZ - startZ) * t
-      ));
+  const pts = [
+    new THREE.Vector3(beamX, rodY_top, rodZ),
+    new THREE.Vector3(beamX, beamY + 20, rodZ * 0.3),
+    new THREE.Vector3(beamX, beamY, 0)
+  ];
+  const curve = new THREE.CatmullRomCurve3(pts);
+  const tubeGeo = new THREE.TubeGeometry(curve, 16, 1.5, 6, false);
+  const tube = new THREE.Mesh(tubeGeo, steel);
+  interiorGroup.add(tube);
+}
+
+// =====================================================================
+// INTERIOR: 2 CLAMP BARS
+// =====================================================================
+// Input clamp bar: near front face, perpendicular to strings
+const inputClampGeo = new THREE.BoxGeometry(300, 12, 8);
+const inputClamp = new THREE.Mesh(inputClampGeo, brass);
+inputClamp.position.set(0, H * 0.5, D / 2 - 40);
+interiorGroup.add(inputClamp);
+
+// Fixed jaw (thin rectangle)
+const fixedJaw1Geo = new THREE.BoxGeometry(300, 2, 10);
+const fixedJaw1 = new THREE.Mesh(fixedJaw1Geo, darkBrass);
+fixedJaw1.position.set(0, H * 0.5 + 7, D / 2 - 40);
+interiorGroup.add(fixedJaw1);
+
+// Moving jaw
+const movingJaw1Geo = new THREE.BoxGeometry(300, 2, 10);
+const movingJaw1 = new THREE.Mesh(movingJaw1Geo, brass);
+movingJaw1.position.set(0, H * 0.5 - 7, D / 2 - 40);
+interiorGroup.add(movingJaw1);
+
+// Output clamp bar: near back face
+const outputClampGeo = new THREE.BoxGeometry(300, 12, 8);
+const outputClamp = new THREE.Mesh(outputClampGeo, brass);
+outputClamp.position.set(0, H * 0.5, -D / 2 + 40);
+interiorGroup.add(outputClamp);
+
+const fixedJaw2Geo = new THREE.BoxGeometry(300, 2, 10);
+const fixedJaw2 = new THREE.Mesh(fixedJaw2Geo, darkBrass);
+fixedJaw2.position.set(0, H * 0.5 + 7, -D / 2 + 40);
+interiorGroup.add(fixedJaw2);
+
+const movingJaw2Geo = new THREE.BoxGeometry(300, 2, 10);
+const movingJaw2 = new THREE.Mesh(movingJaw2Geo, brass);
+movingJaw2.position.set(0, H * 0.5 - 7, -D / 2 + 40);
+interiorGroup.add(movingJaw2);
+
+// Reset bar: lifts all 42 ratchet pawls at tick 13
+const resetBarGeo = new THREE.BoxGeometry(400, 6, 6);
+const resetBar = new THREE.Mesh(resetBarGeo, steel);
+resetBar.position.set(0, frontMidBase + 120, frontZ - 25); // spans across spiral cam zone
+resetBar.castShadow = true;
+interiorGroup.add(resetBar);
+// Reset bar actuator rod (from barrel cam)
+const resetRodGeo = new THREE.CylinderGeometry(2, 2, 300, 6);
+const resetRod = new THREE.Mesh(resetRodGeo, steel);
+resetRod.position.set(0, frontMidBase + 120, frontZ / 2);
+resetRod.rotation.x = Math.PI / 2;
+interiorGroup.add(resetRod);
+
+// =====================================================================
+// MISSING COMPONENTS (added from review findings)
+// =====================================================================
+
+// --- 3 Output Pantographs (single diamond each, right face lower zone) ---
+const outputPantoGroup = new THREE.Group();
+for (let n = 0; n < 3; n++) {
+  const opY = H * 0.12 + n * 50;
+  const opZ = -70 + n * 70;
+  const opX = rightX - 15;
+  const oL = 45, oA = 30 * Math.PI / 180;
+  const verts = [
+    [opX, opY, opZ - oL * Math.cos(oA)],  // left (negative Z)
+    [opX, opY + oL * Math.sin(oA), opZ],    // top
+    [opX, opY, opZ + oL * Math.cos(oA)],    // right (positive Z)
+    [opX, opY - oL * Math.sin(oA), opZ],    // bottom
+  ];
+  // 4 bars
+  for (let b = 0; b < 4; b++) {
+    const v1 = verts[b], v2 = verts[(b + 1) % 4];
+    const dx = v2[0]-v1[0], dy = v2[1]-v1[1], dz = v2[2]-v1[2];
+    const bLen = Math.sqrt(dy*dy + dz*dz);
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(5, bLen, 5), brass);
+    bar.position.set((v1[0]+v2[0])/2, (v1[1]+v2[1])/2, (v1[2]+v2[2])/2);
+    // Align bar along the v1->v2 direction in YZ plane
+    const ang = Math.atan2(dz, dy);
+    bar.rotation.x = ang;
+    bar.castShadow = true;
+    outputPantoGroup.add(bar);
+  }
+  // 4 HK0306 bearings
+  verts.forEach(v => {
+    const bearing = new THREE.Mesh(new THREE.SphereGeometry(6, 10, 10), steel);
+    bearing.position.set(...v);
+    outputPantoGroup.add(bearing);
+  });
+}
+rightGroup.add(outputPantoGroup);
+
+// --- 3 Output Rods (brass, extending from output pantographs toward left face) ---
+for (let n = 0; n < 3; n++) {
+  const rodY = H * 0.12 + n * 50;
+  const rodGeo = new THREE.CylinderGeometry(4, 4, 500, 8);
+  const rodMat = new THREE.MeshStandardMaterial({ color: 0xc9a84c, metalness: 0.85, roughness: 0.25, emissive: 0x2a1f08, emissiveIntensity: 0.3 });
+  const rod = new THREE.Mesh(rodGeo, rodMat);
+  rod.position.set(0, rodY, -70 + n * 70);
+  rod.rotation.z = Math.PI / 2; // horizontal along X
+  rod.castShadow = true;
+  interiorGroup.add(rod);
+}
+
+// --- Main Drive Shaft (steel, from motor to front face) ---
+// Main shaft runs from motor forward to front face mechanisms
+const mainShaftGeo = new THREE.CylinderGeometry(6, 6, D + 40, 12);
+const mainShaftMesh = new THREE.Mesh(mainShaftGeo, steel);
+mainShaftMesh.position.set(0, 100, 0);
+mainShaftMesh.rotation.x = Math.PI / 2; // along Z axis
+interiorGroup.add(mainShaftMesh);
+
+// --- Shishi-odoshi (dry cam striker, back face) ---
+const shishiArm = new THREE.Mesh(new THREE.BoxGeometry(4, 50, 4), brass);
+shishiArm.position.set(-120, 60, -D/2 + 20);
+shishiArm.castShadow = true;
+backGroup.add(shishiArm);
+const shishiAnvil = new THREE.Mesh(new THREE.BoxGeometry(20, 3, 15), brass);
+shishiAnvil.position.set(-120, 35, -D/2 + 20);
+backGroup.add(shishiAnvil);
+
+// --- Comparison Beam + Geneva Drive (left face, PREDICT chain) ---
+// Horizontal beam in XZ plane, tilting on central pivot atop output rods
+const compBeam = new THREE.Mesh(new THREE.BoxGeometry(120, 4, 8), brass);
+compBeam.position.set(-W/2 + 60, H * 0.15, 0);
+leftGroup.add(compBeam);
+// Pivot cylinder beneath beam
+const compPivotGeo = new THREE.CylinderGeometry(3, 1, 10, 8);
+const compPivot = new THREE.Mesh(compPivotGeo, steel);
+compPivot.position.set(-W/2 + 60, H * 0.15 - 8, 0);
+leftGroup.add(compPivot);
+
+// Geneva drive (3-slot)
+const genevaGeo = new THREE.CylinderGeometry(15, 15, 8, 3); // 3 slots
+const genevaDrive = new THREE.Mesh(genevaGeo, darkBrass);
+genevaDrive.position.set(-W/2 + 5, H * 0.72 + 50, 0);
+genevaDrive.rotation.z = Math.PI / 2;
+leftGroup.add(genevaDrive);
+
+// Connecting rod: Geneva drive to answer prism
+const genevaRod = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 45, 6), steel);
+genevaRod.position.set(-W/2 + 8, H * 0.72 + 25, 0);
+leftGroup.add(genevaRod);
+
+// --- 42 Rack-and-Pinion Weight Updaters (between spiral cams and worm gears) ---
+// Represented as a connection zone: thin rods from spiral cam grid up to worm gear grid
+// Rack-and-pinion rods: map each spiral cam (7x6) to its worm gear (30 hidden + 12 output)
+// Cam index 0-41 maps to weight index 0-41
+// Weights 0-29: hidden layer (3 rows x 10, at -108 + col*24, frontTopBase + row*22)
+// Weights 30-41: output layer (3 rows x 4, at -36 + col*24, frontTopBase + 66 + row*22)
+for (let camRow = 0; camRow < 6; camRow++) {
+  for (let camCol = 0; camCol < 7; camCol++) {
+    const weightIdx = camRow * 7 + camCol;
+    if (weightIdx >= 42) continue;
+
+    const camX = camStartX + camCol * camPitchX;
+    const camY = frontMidBase + camRow * camPitchY;
+
+    let gearX, gearY;
+    if (weightIdx < 30) {
+      // Hidden layer: weight 0-29 -> row = floor(idx/10), col = idx%10
+      const gRow = Math.floor(weightIdx / 10);
+      const gCol = weightIdx % 10;
+      gearX = -108 + gCol * 24;
+      gearY = frontTopBase + gRow * 22;
+    } else {
+      // Output layer: weight 30-41 -> row = floor((idx-30)/4), col = (idx-30)%4
+      const oIdx = weightIdx - 30;
+      const gRow = Math.floor(oIdx / 4);
+      const gCol = oIdx % 4;
+      gearX = -36 + gCol * 24;
+      gearY = frontTopBase + 66 + gRow * 22;
     }
-    const sGeo = new THREE.BufferGeometry().setFromPoints(stringPoints);
-    const sLine = new THREE.Line(sGeo, stringMat);
-    stringsGroup.add(sLine);
 
-    // Glow duplicate
-    const sGlow = new THREE.Line(sGeo.clone(), stringGlowMat);
-    stringsGroup.add(sGlow);
+    // Draw angled rod from cam to its gear
+    const dx = gearX - camX;
+    const dy = gearY - camY;
+    const rodLen = Math.sqrt(dx * dx + dy * dy);
+    const angle = Math.atan2(dx, dy);
+
+    if (rodLen > 5) {
+      const rpRod = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, rodLen, 6), brass);
+      rpRod.position.set((camX + gearX) / 2, (camY + gearY) / 2, frontZ - 15);
+      rpRod.rotation.z = -angle;
+      rpRod.castShadow = true;
+      frontGroup.add(rpRod);
+    }
   }
 }
 
-// Vertical strings from pantographs down to whippletree
-for (let n = 0; n < 3; n++) {
-  const ny = 100 + n * 100;
-  const points = [
-    new THREE.Vector3(W/2 - 100, ny - 30, 0),
-    new THREE.Vector3(W/2 - 100 - n * 30, 30, 0)
-  ];
-  const vGeo = new THREE.BufferGeometry().setFromPoints(points);
-  stringsGroup.add(new THREE.Line(vGeo, stringMat));
+// =====================================================================
+// 42 STRINGS: Calculated positions with catenary sag
+// =====================================================================
+// String depth planes: plane 1 at z = D/2 - 20 (input->hidden), plane 2 at z = D/2 - 45 (hidden->output)
+const stringLines = [];
+
+// --- 30 input->hidden strings ---
+// Each hidden neuron has 10 inputs (9 weights + 1 bias), but only show 10 per neuron
+// Worm gear positions (from above): hidden gears at rows 0-2, cols 0-9
+// Pantograph chains on the right face at chainZ = -70, 0, 70
+for (let neuron = 0; neuron < 3; neuron++) {
+  const chainZ = -70 + neuron * 70;
+  const pantoY = H * 0.55 + 50; // pantograph base
+
+  for (let w = 0; w < 10; w++) {
+    const gearX = -108 + w * 24;
+    const gearY = frontTopBase + neuron * 22;
+    const startZ = D / 2 - 20; // depth plane 1
+
+    // String goes from worm gear on front face, turns 90 deg at pulley, routes to pantograph on right
+    const pulleyX = W / 2 - 40; // near right face
+    const pulleyZ = startZ - w * 2; // slight spread
+
+    const pts = [];
+    const steps = 20;
+    const endX = rightX - 15;
+    const diamondIdx = Math.floor(w / 4); // which diamond in the chain (0, 1, 2)
+    const endY = pantoY - diamondIdx * 70; // match actual diamond Y positions
+    const endZ = chainZ;
+
+    for (let s = 0; s <= steps; s++) {
+      const t = s / steps;
+      // Route: front face -> interior -> right face
+      let x, y, z;
+      if (t < 0.15) {
+        // From worm gear to clamp bar
+        const lt = t / 0.15;
+        x = gearX;
+        y = gearY;
+        z = startZ - lt * (startZ - (D / 2 - 40));
+      } else if (t < 0.4) {
+        // From clamp bar heading right
+        const lt = (t - 0.15) / 0.25;
+        x = gearX + (pulleyX - gearX) * lt;
+        y = gearY + (endY - gearY) * lt * 0.3;
+        z = (D / 2 - 40) - lt * ((D / 2 - 40) - endZ) * 0.5;
+      } else {
+        // Turn toward pantograph
+        const lt = (t - 0.4) / 0.6;
+        x = pulleyX + (endX - pulleyX) * lt;
+        y = gearY + (endY - gearY) * (0.3 + lt * 0.7);
+        z = startZ - (startZ - endZ) * (0.5 + lt * 0.5);
+      }
+      // Add catenary sag
+      const sag = Math.sin(t * Math.PI) * 8;
+      pts.push(new THREE.Vector3(x, y - sag, z));
+    }
+
+    const curve = new THREE.CatmullRomCurve3(pts);
+    const curvePoints = curve.getPoints(30);
+    const sGeo = new THREE.BufferGeometry().setFromPoints(curvePoints);
+    const sLine = new THREE.Line(sGeo, stringMat.clone());
+    sLine.userData = { type: 'ih', neuron: neuron, weight: w };
+    stringsGroup.add(sLine);
+    stringLines.push(sLine);
+  }
 }
 
-// Strings from I/O dials into the machine
-for (let i = 0; i < 3; i++) {
-  const dialY = 100 + i * 90;
-  const dialZ = -60 + i * 60;
-  const points = [
-    new THREE.Vector3(-W/2, dialY, dialZ),
-    new THREE.Vector3(-W/2 + 80, dialY + 10, dialZ * 0.3),
-    new THREE.Vector3(-W/2 + 150, 60 + i * gearSpacingY * 2, 0)
-  ];
-  const curve = new THREE.CatmullRomCurve3(points);
-  const curvePoints = curve.getPoints(20);
-  const cGeo = new THREE.BufferGeometry().setFromPoints(curvePoints);
-  stringsGroup.add(new THREE.Line(cGeo, stringMat));
+// --- 12 hidden->output strings ---
+for (let outNeuron = 0; outNeuron < 3; outNeuron++) {
+  for (let w = 0; w < 4; w++) {
+    const gearX = -36 + w * 24;
+    const gearY = frontTopBase + 66 + outNeuron * 22;
+    const startZ = D / 2 - 45; // depth plane 2
+
+    // Route from output worm gears toward right face pantographs (lower)
+    const pts = [];
+    const steps = 20;
+    const endX = rightX - 15;
+    const endY = H * 0.3 + outNeuron * 40;
+    const endZ = -70 + (w % 3) * 70;
+
+    for (let s = 0; s <= steps; s++) {
+      const t = s / steps;
+      const x = gearX + (endX - gearX) * t;
+      const y = gearY + (endY - gearY) * t;
+      const z = startZ + (endZ - startZ) * t;
+      const sag = Math.sin(t * Math.PI) * 6;
+      pts.push(new THREE.Vector3(x, y - sag, z));
+    }
+
+    const curve = new THREE.CatmullRomCurve3(pts);
+    const curvePoints = curve.getPoints(30);
+    const sGeo = new THREE.BufferGeometry().setFromPoints(curvePoints);
+    const sLine = new THREE.Line(sGeo, stringMat.clone());
+    sLine.userData = { type: 'ho', neuron: outNeuron, weight: w };
+    stringsGroup.add(sLine);
+    stringLines.push(sLine);
+  }
 }
 
-machine.add(stringsGroup);
-
-// ─── Pulley Guides (small brass pulleys for string routing) ──
+// =====================================================================
+// PULLEYS: At string routing corners (NOT random)
+// =====================================================================
 const pulleyGroup = new THREE.Group();
-for (let i = 0; i < 12; i++) {
+
+// Pulleys at the front-right turn for input->hidden strings
+for (let neuron = 0; neuron < 3; neuron++) {
+  for (let w = 0; w < 10; w++) {
+    const gearX = -120 + w * 24;
+    const gearY = frontTopBase + neuron * 22;
+    const px = W / 2 - 40;
+    const py = gearY + (H * 0.55 + 50 - (w % 3) * 25 - gearY) * 0.3;
+    const pz = D / 2 - 20 - w * 0.5;
+
+    const pulleyGeo = new THREE.TorusGeometry(6, 1.5, 8, 16);
+    const pulley = new THREE.Mesh(pulleyGeo, brass);
+    pulley.position.set(px, py, pz);
+    pulley.rotation.y = Math.PI / 2;
+    pulleyGroup.add(pulley);
+  }
+}
+
+// Pulleys for hidden->output strings
+for (let outNeuron = 0; outNeuron < 3; outNeuron++) {
+  for (let w = 0; w < 4; w++) {
+    const px = W / 4;
+    const py = frontTopBase + 66 + outNeuron * 22 + (H * 0.3 + outNeuron * 40 - (frontTopBase + 66 + outNeuron * 22)) * 0.5;
+    const pz = D / 2 - 45 + (-70 + (w % 3) * 70 - (D / 2 - 45)) * 0.3;
+
+    const pulleyGeo = new THREE.TorusGeometry(6, 1.5, 8, 16);
+    const pulley = new THREE.Mesh(pulleyGeo, brass);
+    pulley.position.set(px, py, pz);
+    pulley.rotation.x = Math.PI / 4;
+    pulleyGroup.add(pulley);
+  }
+}
+
+// Additional corner pulleys at frame edges
+for (let i = 0; i < 6; i++) {
   const pulleyGeo = new THREE.TorusGeometry(6, 1.5, 8, 16);
   const pulley = new THREE.Mesh(pulleyGeo, brass);
   pulley.position.set(
-    -200 + Math.random() * 400,
-    40 + Math.random() * 320,
-    -100 + Math.random() * 200
+    W / 2 - 30,
+    100 + i * 80,
+    D / 2 - 30
   );
-  pulley.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+  pulley.rotation.y = Math.PI / 4;
   pulleyGroup.add(pulley);
-
-  // Pulley axle
-  const axleGeo = new THREE.CylinderGeometry(1, 1, 8, 6);
-  const axle = new THREE.Mesh(axleGeo, steel);
-  axle.position.copy(pulley.position);
-  axle.rotation.copy(pulley.rotation);
-  pulleyGroup.add(axle);
-}
-machine.add(pulleyGroup);
-
-// ─── Spring Toggle Mechanisms (neuron firing) ─────────────
-for (let n = 0; n < 3; n++) {
-  const ny = 100 + n * 100;
-  // Spring
-  const springPoints = [];
-  for (let t = 0; t < Math.PI * 8; t += 0.2) {
-    springPoints.push(new THREE.Vector3(
-      W/2 - 220 + t * 2,
-      ny + Math.sin(t) * 4,
-      Math.cos(t) * 4
-    ));
-  }
-  const springGeo = new THREE.BufferGeometry().setFromPoints(springPoints);
-  const spring = new THREE.Line(springGeo, new THREE.LineBasicMaterial({ color: 0x999999 }));
-  machine.add(spring);
 }
 
-// ─── HUMAN FIGURE (for scale) ─────────────────────────────
+interiorGroup.add(pulleyGroup);
+
+// =====================================================================
+// HUMAN FIGURE (for scale)
+// =====================================================================
 const humanGroup = new THREE.Group();
 const skinMat = new THREE.MeshStandardMaterial({ color: 0xd4a574, roughness: 0.6 });
 const clothMat = new THREE.MeshStandardMaterial({ color: 0x2a2a3a, roughness: 0.7 });
 
-// Torso
-const torsoGeo = new THREE.CylinderGeometry(18, 15, 55, 8);
-const torso = new THREE.Mesh(torsoGeo, clothMat);
-torso.position.set(-450, 125, 100);
+const torso = new THREE.Mesh(new THREE.CylinderGeometry(18, 15, 55, 8), clothMat);
+torso.position.set(-650, 125, 150);
 humanGroup.add(torso);
 
-// Head
-const headGeo = new THREE.SphereGeometry(14, 12, 12);
-const head = new THREE.Mesh(headGeo, skinMat);
-head.position.set(-450, 165, 100);
+const head = new THREE.Mesh(new THREE.SphereGeometry(14, 12, 12), skinMat);
+head.position.set(-650, 165, 150);
 humanGroup.add(head);
 
-// Legs
-for (let side = -1; side <= 1; side += 2) {
-  const legGeo = new THREE.CylinderGeometry(7, 6, 80, 8);
-  const leg = new THREE.Mesh(legGeo, clothMat);
-  leg.position.set(-450 + side * 10, 55, 100);
+for (const side of [-1, 1]) {
+  const leg = new THREE.Mesh(new THREE.CylinderGeometry(7, 6, 80, 8), clothMat);
+  leg.position.set(-650 + side * 10, 55, 150);
   humanGroup.add(leg);
 }
 
-// Arms
-const armGeoR = new THREE.CylinderGeometry(5, 4, 55, 8);
-const armR = new THREE.Mesh(armGeoR, clothMat);
-armR.position.set(-430, 130, 80);
+const armR = new THREE.Mesh(new THREE.CylinderGeometry(5, 4, 55, 8), clothMat);
+armR.position.set(-620, 135, 130);
 armR.rotation.z = -0.8;
 armR.rotation.x = -0.3;
 humanGroup.add(armR);
 
-const armGeoL = new THREE.CylinderGeometry(5, 4, 55, 8);
-const armL = new THREE.Mesh(armGeoL, clothMat);
-armL.position.set(-470, 120, 100);
+const armL = new THREE.Mesh(new THREE.CylinderGeometry(5, 4, 55, 8), clothMat);
+armL.position.set(-680, 120, 150);
 armL.rotation.z = 0.4;
 humanGroup.add(armL);
 
-// Hand reaching toward dial
-const handGeo = new THREE.SphereGeometry(5, 8, 8);
-const handR = new THREE.Mesh(handGeo, skinMat);
-handR.position.set(-W/2 - 25, 130, 30);
-humanGroup.add(handR);
+// Hand reaching toward prism
+const hand = new THREE.Mesh(new THREE.SphereGeometry(5, 8, 8), skinMat);
+hand.position.set(-W / 2 - 30, H * 0.3, 0);
+humanGroup.add(hand);
 
 scene.add(humanGroup);
 
-// ─── Brass Plaque Labels (3D text substitute) ─────────────
-function addPlaque(text, x, y, z, rotY = 0, width = 80) {
-  const pGeo = new THREE.BoxGeometry(width, 12, 1);
+// =====================================================================
+// BRASS PLAQUES (labels)
+// =====================================================================
+function addPlaque(x, y, z, rotY, width, height) {
+  const pGeo = new THREE.BoxGeometry(width, height || 12, 1);
   const p = new THREE.Mesh(pGeo, brass);
   p.position.set(x, y, z);
   p.rotation.y = rotY;
   machine.add(p);
   // Engraved line
-  const lineGeo = new THREE.BoxGeometry(width - 10, 0.5, 1.5);
-  const line = new THREE.Mesh(lineGeo, new THREE.MeshStandardMaterial({ color: 0x0a0a0f }));
-  line.position.set(x, y - 3, z + (rotY === 0 ? 1 : 0));
-  line.rotation.y = rotY;
-  machine.add(line);
+  const lGeo = new THREE.BoxGeometry(width - 10, 0.5, 1.5);
+  const l = new THREE.Mesh(lGeo, new THREE.MeshStandardMaterial({ color: 0x0a0a0f }));
+  l.position.set(x, y - 3, z + (Math.abs(rotY) < 0.1 ? 1 : 0));
+  l.rotation.y = rotY;
+  machine.add(l);
 }
-addPlaque('42 WEIGHTS', 0, 25, D/2 + 3, 0, 120);
-addPlaque('MOTOR', 0, 50, -D/2 - 55, Math.PI, 60);
-addPlaque('INPUT', -W/2 - 3, 320, 0, -Math.PI/2, 60);
-addPlaque('ANSWER', -W/2 + 60, 315, 80, 0, 70);
 
-// ─── Animation State ──────────────────────────────────────
+addPlaque(0, frontTopBase - 30, D / 2 + 3, 0, 160, 14); // "42 WEIGHTS"
+addPlaque(0, frontMidBase - 30, D / 2 + 3, 0, 180, 14); // "42 SPIRAL CAMS"
+addPlaque(0, sliderBaseY - 40, D / 2 + 3, 0, 140, 14); // "ERROR CONVERGENCE"
+addPlaque(0, 70, backZ - 3, Math.PI, 100, 14); // "NEMA 23"
+addPlaque(leftX - 3, H * 0.45, 0, -Math.PI / 2, 80, 14); // "INPUT"
+addPlaque(leftX - 3, H * 0.75, 0, -Math.PI / 2, 80, 14); // "ANSWER"
+
+// =====================================================================
+// SPRING TOGGLE MECHANISMS (neuron firing)
+// =====================================================================
+for (let n = 0; n < 3; n++) {
+  const ny = H * 0.55 + 50 - n * 70;
+  const springX = W / 2 - 60;
+  const springZ = -70 + n * 70;
+  // Torus as spring coil stand-in (visible, solid geometry)
+  const springGeo = new THREE.TorusGeometry(8, 2, 8, 16);
+  const springMesh = new THREE.Mesh(springGeo, steel);
+  springMesh.position.set(springX, ny, springZ);
+  springMesh.rotation.y = Math.PI / 2; // face along X axis
+  springMesh.castShadow = true;
+  rightGroup.add(springMesh);
+}
+
+// =====================================================================
+// ANIMATION STATE
+// =====================================================================
 let animating = false;
 let animTime = 0;
+let explodeDistance = 0;
+let targetExplodeDistance = 0;
+let frameVisible = true;
+let stringsVisible = true;
+let highlightMode = 'none'; // 'none', 'forward', 'adjoint'
+
 const animStateEl = document.getElementById('animState');
 
-window.toggleAnimation = function() {
+// Explode mode offsets (normalized directions)
+const explodeOffsets = {
+  front: new THREE.Vector3(0, 0, 1),
+  back: new THREE.Vector3(0, 0, -1),
+  left: new THREE.Vector3(-1, 0, 0),
+  right: new THREE.Vector3(1, 0, 0),
+  top: new THREE.Vector3(0, 1, 0),
+  bottom: new THREE.Vector3(0, -1, 0)
+};
+
+// Store references
+const pendulumRef = pendulumPivotGrp;
+const drumRef = drum;
+const barrelCamRef = barrelCam;
+const ballRef = ball;
+const trackRef = trackPoints;
+const leverArmRef = leverArm;
+const answerPrismRef = answerPrism;
+const aggBeamRef = aggBeam;
+let shishiArmRef = shishiArm;
+
+// Error slider references
+const errorSliders = [];
+errorSliderGroup.children.forEach(child => {
+  if (child.userData && child.userData.baseX !== undefined) {
+    errorSliders.push(child);
+  }
+});
+
+// =====================================================================
+// GLOBAL FUNCTIONS
+// =====================================================================
+window.toggleAnimation = function () {
   animating = !animating;
   animStateEl.textContent = animating ? 'TRAINING...' : 'IDLE';
   animStateEl.style.color = animating ? '#c9a84c' : '#555';
 };
 
-// ─── Face Detection & Labels ──────────────────────────────
+window.toggleExplode = function () {
+  const ctrl = document.getElementById('explodeControls');
+  if (ctrl.style.display === 'none') {
+    ctrl.style.display = 'block';
+    targetExplodeDistance = 400;
+    document.getElementById('explodeSlider').value = 200;
+    document.getElementById('explodeLbl').textContent = '200';
+  } else {
+    ctrl.style.display = 'none';
+    targetExplodeDistance = 0;
+    document.getElementById('explodeSlider').value = 0;
+    document.getElementById('explodeLbl').textContent = '0';
+  }
+};
+
+window.setExplodeDistance = function (val) {
+  targetExplodeDistance = parseFloat(val);
+  document.getElementById('explodeLbl').textContent = val;
+};
+
+window.toggleFrame = function () {
+  frameVisible = !frameVisible;
+  frameGroup.visible = frameVisible;
+};
+
+window.toggleStrings = function () {
+  stringsVisible = !stringsVisible;
+  stringsGroup.visible = stringsVisible;
+};
+
+window.highlightForward = function () {
+  highlightMode = highlightMode === 'forward' ? 'none' : 'forward';
+  updateHighlights();
+};
+
+window.highlightAdjoint = function () {
+  highlightMode = highlightMode === 'adjoint' ? 'none' : 'adjoint';
+  updateHighlights();
+};
+
+window.showAll = function () {
+  highlightMode = 'none';
+  frameGroup.visible = true;
+  stringsGroup.visible = true;
+  frameVisible = true;
+  stringsVisible = true;
+  targetExplodeDistance = 0;
+  document.getElementById('explodeControls').style.display = 'none';
+  updateHighlights();
+  document.getElementById('btnFwd').classList.remove('highlight-fwd');
+  document.getElementById('btnAdj').classList.remove('highlight-adj');
+};
+
+function updateHighlights() {
+  const fwdBtn = document.getElementById('btnFwd');
+  const adjBtn = document.getElementById('btnAdj');
+  fwdBtn.classList.toggle('highlight-fwd', highlightMode === 'forward');
+  adjBtn.classList.toggle('highlight-adj', highlightMode === 'adjoint');
+
+  stringLines.forEach(line => {
+    if (highlightMode === 'forward') {
+      line.material.color.set(0x66aaff);
+      line.material.opacity = 0.9;
+    } else if (highlightMode === 'adjoint') {
+      line.material.color.set(0xff66aa);
+      line.material.opacity = 0.9;
+    } else {
+      line.material.color.set(0xcccccc);
+      line.material.opacity = 0.6;
+    }
+  });
+}
+
+// =====================================================================
+// FACE DETECTION & LABELS (v2 text)
+// =====================================================================
 const faceInfo = {
   front: {
-    title: 'FRONT — Weight Matrix',
-    desc: '42 self-locking worm gears arranged in a 7x6 grid. Blue = input-to-hidden weights, Purple = hidden-to-output, Gold = biases. Each gear position encodes one learned weight — visible, tangible memory.',
-    mechanisms: 'Self-locking worm gears (friction angle > lead angle) | Friction-clutch reset shaft'
+    title: 'FRONT -- Weight Matrix Triptych',
+    desc: 'Top-to-bottom story: 42 worm gears (THE MEMORY -- weights settle into final positions), 42 spiral cams (THE LEARNING -- gradient computers oscillate during adjoint pass), 3 error sliders on MGN7 rails (THE ERROR -- converge toward ZERO ERROR as training progresses). Blue discs = input-to-hidden, purple = hidden-to-output, gold = biases.',
+    mechanisms: 'Self-locking worm gears (module 1.0) | Archimedean spiral gradient computers | MGN7 sliding collar differentials'
   },
   back: {
-    title: 'BACK — Motor & Timing',
-    desc: 'Single NEMA 17 stepper drives everything through a barrel cam sequencer. Gravity pendulum provides the heartbeat — each swing is one neural operation. The barrel cam\'s spiral groove orchestrates the entire forward-backward pass.',
-    mechanisms: 'Barrel Cam 2b sequencer | Gravity pendulum escapement | Shishi-odoshi heartbeat'
+    title: 'BACK -- Motor & Timing',
+    desc: 'Single NEMA 23 stepper (1.26 Nm) drives everything through a 270mm barrel cam sequencer. Gravity pendulum (T=1.003s) provides the heartbeat. Dry cam-triggered shishi-odoshi produces a TOCK at each example completion. Convergence detector: 3 spring-loaded V-notch pins form a mechanical AND gate -- when all errors are near zero, trigger bar drops and disengages motor clutch. The ticking stops. The machine has learned.',
+    mechanisms: 'Barrel Cam 2b sequencer | Gravity pendulum escapement | Convergence auto-stop (3-pin AND gate + rotary damper)'
   },
   left: {
-    title: 'LEFT — I/O Panel (Human Interaction)',
-    desc: 'Three brass dials for input words (turn to select Cat, Eats, or Fish). Big red lever switches between TRAIN and PREDICT modes with a satisfying CLUNK. Triangular answer prism rotates to show the prediction.',
-    mechanisms: 'Dog clutch mode switch | Spring-loaded toggle | 3-slot Geneva drive answer prism'
+    title: 'LEFT -- I/O Panel (Human Interaction)',
+    desc: 'Three brass word PRISMS (rotating triangular drums) at hand height -- rotate to select words, read the face pointing at you. Red mode lever switches TRAIN/PREDICT with a satisfying CLUNK (dog clutch). Answer prism at eye level rotates via 3-slot Geneva drive: chunk-chunk-chunk. Input prisms below, answer prism above -- the visual symmetry IS the input-to-output narrative.',
+    mechanisms: 'Triangular prism detent selectors | Dog clutch mode switch | Geneva drive answer indexing'
   },
   right: {
-    title: 'RIGHT — Computation Engine',
-    desc: 'Pantograph diamond chains expand and contract to compute weighted sums — pure mechanical addition. Shaped brass cams trace activation functions (ReLU = flat+ramp, sigmoid = S-curve). The beating heart of the neural network.',
-    mechanisms: 'Pantograph cascade (rhombus diamonds) | Shaped cam activation functions | Spring toggle neuron firing'
+    title: 'RIGHT -- Computation Engine',
+    desc: 'Pantograph diamond chains (3 chains x 3 diamonds) expand and contract to compute weighted sums -- mechanical addition via rhombus geometry. HK0306 needle bearings at all 48 joints (86.6% signal fidelity). SLA resin ReLU cams: flat region (dead) + linear ramp (active). The same cams compute the derivative during the adjoint pass -- geometry IS the chain rule.',
+    mechanisms: 'Pantograph cascade (HK0306 bearings) | SLA ReLU shaped cams | Spring toggle neuron firing'
   },
   top: {
-    title: 'TOP — Pin Drum (Training Data)',
-    desc: 'Removable brass cylinder with pin strips encoding training sentences. Each strip = one training example. The drum rotates automatically during training, feeding examples into the machine. "Here is the training data — answers before questions."',
+    title: 'TOP -- Pin Drum (Training Data)',
+    desc: 'Brass cylinder (70mm dia x 360mm) with 8 removable pin strips encoding training sentences. Each strip = one example (9 input bits + 3 target bits). Drum rotates during training via star-wheel ratchet. Swappable strips = reprogrammable training data. Brass plaque: "HERE IS THE TRAINING DATA -- ANSWERS BEFORE QUESTIONS."',
     mechanisms: 'Barrel cam indexing | Modular pin strips | Star-wheel ratchet advance'
   },
   bottom: {
-    title: 'BOTTOM — Loss & Gradient Descent',
-    desc: 'Whippletree balance beams cascade like a Calder mobile, computing the error between prediction and truth. The brachistochrone ball track (cycloid curve, Bernoulli 1696) visualizes gradient descent — the ball always finds the fastest path down.',
+    title: 'BOTTOM -- Loss & Gradient Descent',
+    desc: 'Whippletree balance beams (3 per-neuron + 1 aggregate) cascade on knife-edge pivots to compute error. Brachistochrone ball track (cycloid curve, Bernoulli 1696) visualizes gradient descent -- the ball always finds the fastest path down. As training progresses, the ball rolls less far -- loss is decreasing. Scissor mechanism amplifies loss 5x for visibility.',
     mechanisms: 'Whippletree / Calder mobile | Brachistochrone cycloid track | Scissor 5x amplifier'
   }
 };
@@ -873,7 +1598,6 @@ function updateFaceLabel() {
   const cameraDir = new THREE.Vector3();
   camera.getWorldDirection(cameraDir);
 
-  // Determine which face the camera is most looking at
   const faces = [
     { name: 'front', dot: cameraDir.dot(new THREE.Vector3(0, 0, -1)) },
     { name: 'back', dot: cameraDir.dot(new THREE.Vector3(0, 0, 1)) },
@@ -883,121 +1607,219 @@ function updateFaceLabel() {
     { name: 'bottom', dot: cameraDir.dot(new THREE.Vector3(0, 1, 0)) },
   ];
   faces.sort((a, b) => b.dot - a.dot);
-  const best = faces[0];
 
-  if (best.dot > 0.3) {
-    const info = faceInfo[best.name];
+  if (faces[0].dot > 0.3) {
+    const info = faceInfo[faces[0].name];
     faceLabelEl.innerHTML = `<h3>${info.title}</h3><p>${info.desc}</p><div class="mechanisms">${info.mechanisms}</div>`;
     faceLabelEl.style.opacity = '1';
   }
 }
 
-// ─── View Presets ─────────────────────────────────────────
-let targetCameraPos = null;
-let targetLookAt = null;
-const lerpSpeed = 0.04;
+// =====================================================================
+// VIEW PRESETS
+// =====================================================================
+// Camera transition: arc path that goes ABOVE machine to avoid clipping through geometry
+let cameraPath = null;   // array of Vector3 waypoints
+let cameraLookPath = null;
+let cameraPathT = 0;
+const cameraTransitionSpeed = 0.02;
 
-window.setView = function(view) {
+function setCameraTarget(endPos, endLook) {
+  const startPos = camera.position.clone();
+  const startLook = controls.target.clone();
+
+  // Midpoint goes HIGH above the machine center to arc over it
+  const midY = Math.max(startPos.y, endPos.y, H + 200); // always above pin drum
+  const midPos = new THREE.Vector3(
+    (startPos.x + endPos.x) / 2,
+    midY + 150,  // extra lift at apex
+    (startPos.z + endPos.z) / 2
+  );
+  const midLook = new THREE.Vector3(
+    (startLook.x + endLook.x) / 2,
+    (startLook.y + endLook.y) / 2,
+    (startLook.z + endLook.z) / 2
+  );
+
+  cameraPath = [startPos, midPos, endPos];
+  cameraLookPath = [startLook, midLook, endLook];
+  cameraPathT = 0;
+}
+
+function samplePath(points, t) {
+  // Quadratic Bezier through 3 points
+  const t1 = 1 - t;
+  return new THREE.Vector3(
+    t1 * t1 * points[0].x + 2 * t1 * t * points[1].x + t * t * points[2].x,
+    t1 * t1 * points[0].y + 2 * t1 * t * points[1].y + t * t * points[2].y,
+    t1 * t1 * points[0].z + 2 * t1 * t * points[1].z + t * t * points[2].z
+  );
+}
+
+window.setView = function (view) {
   document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-  event.target.classList.add('active');
+  if (event && event.target) event.target.classList.add('active');
 
-  const center = new THREE.Vector3(0, 180, 0);
-  switch(view) {
+  let endPos, endLook;
+  switch (view) {
     case 'front':
-      targetCameraPos = new THREE.Vector3(0, 200, 550);
-      targetLookAt = new THREE.Vector3(0, 180, 0);
+      endPos = new THREE.Vector3(0, 350, 800);
+      endLook = new THREE.Vector3(0, 300, 0);
       break;
     case 'back':
-      targetCameraPos = new THREE.Vector3(0, 200, -550);
-      targetLookAt = new THREE.Vector3(0, 180, 0);
+      endPos = new THREE.Vector3(0, 350, -800);
+      endLook = new THREE.Vector3(0, 300, 0);
       break;
     case 'left':
-      targetCameraPos = new THREE.Vector3(-550, 200, 0);
-      targetLookAt = new THREE.Vector3(-W/2, 200, 0);
+      endPos = new THREE.Vector3(-800, 300, 0);
+      endLook = new THREE.Vector3(-W / 2, 300, 0);
       break;
     case 'right':
-      targetCameraPos = new THREE.Vector3(550, 180, 0);
-      targetLookAt = new THREE.Vector3(W/2 - 100, 180, 0);
+      endPos = new THREE.Vector3(800, 350, 0);
+      endLook = new THREE.Vector3(W / 2 - 100, 300, 0);
       break;
     case 'top':
-      targetCameraPos = new THREE.Vector3(0, 600, 100);
-      targetLookAt = new THREE.Vector3(0, H, 0);
+      endPos = new THREE.Vector3(0, 900, 150);
+      endLook = new THREE.Vector3(0, H, 0);
       break;
     case 'human':
-      targetCameraPos = new THREE.Vector3(-380, 165, 120);
-      targetLookAt = new THREE.Vector3(-W/2 + 50, 200, 0);
+      endPos = new THREE.Vector3(-550, 300, 180);
+      endLook = new THREE.Vector3(-W / 2 + 50, 300, 0);
       break;
     case 'free':
     default:
-      targetCameraPos = new THREE.Vector3(500, 350, 600);
-      targetLookAt = new THREE.Vector3(0, 150, 0);
+      endPos = new THREE.Vector3(800, 500, 900);
+      endLook = new THREE.Vector3(0, 300, 0);
       break;
   }
+  setCameraTarget(endPos, endLook);
 };
 
-// ─── Animation Loop ───────────────────────────────────────
+// =====================================================================
+// ANIMATION LOOP
+// =====================================================================
 function animate() {
   requestAnimationFrame(animate);
-  animTime += 0.016;
+  const dt = 0.016;
+  animTime += dt;
 
-  // Smooth camera transitions
-  if (targetCameraPos) {
-    camera.position.lerp(targetCameraPos, lerpSpeed);
-    controls.target.lerp(targetLookAt, lerpSpeed);
-    if (camera.position.distanceTo(targetCameraPos) < 1) {
-      targetCameraPos = null;
-      targetLookAt = null;
+  // ---- Smooth camera transitions (arc path over machine) ----
+  if (cameraPath && cameraPathT < 1) {
+    cameraPathT = Math.min(1, cameraPathT + cameraTransitionSpeed);
+    // Ease in-out for smooth feel
+    const eased = cameraPathT < 0.5
+      ? 2 * cameraPathT * cameraPathT
+      : 1 - Math.pow(-2 * cameraPathT + 2, 2) / 2;
+    const pos = samplePath(cameraPath, eased);
+    const look = samplePath(cameraLookPath, eased);
+    camera.position.copy(pos);
+    controls.target.copy(look);
+    if (cameraPathT >= 1) {
+      cameraPath = null;
+      cameraLookPath = null;
     }
   }
 
-  // Machine animation when training
+  // ---- Explode mode ----
+  explodeDistance += (targetExplodeDistance - explodeDistance) * 0.06;
+
+  frontGroup.position.set(0, 0, explodeOffsets.front.z * explodeDistance);
+  backGroup.position.set(0, 0, explodeOffsets.back.z * explodeDistance);
+  leftGroup.position.set(explodeOffsets.left.x * explodeDistance, 0, 0);
+  rightGroup.position.set(explodeOffsets.right.x * explodeDistance, 0, 0);
+  topGroup.position.set(0, explodeOffsets.top.y * explodeDistance, 0);
+  bottomGroup.position.set(0, explodeOffsets.bottom.y * explodeDistance, 0);
+
+  // ---- Machine animation when training ----
   if (animating) {
-    // Pendulum swing
-    pendulumArm.rotation.z = Math.sin(animTime * 2) * 0.15;
-    pendulumBob.position.x = 80 + Math.sin(animTime * 2) * 18;
+    // Pendulum swing: T ~= 1.003s -> omega = 2*PI/1.003
+    const pendOmega = 2 * Math.PI / 1.003;
+    const swingAngle = Math.sin(animTime * pendOmega) * 0.15;
+    pendulumRef.rotation.z = swingAngle;
 
-    // Pin drum rotation
-    drum.rotation.z = Math.PI / 2 + animTime * 0.1;
+    // Pin drum: pivot group handles orientation, just spin the child mesh around local Y
+    drumRef.rotation.y = animTime * 0.5;
 
-    // Barrel cam rotation
-    barrelCam.rotation.z = animTime * 0.3;
+    // Barrel cam: same — pivot handles tilt, child spins around local Y
+    barrelCamRef.rotation.y = animTime * 0.3;
 
-    // Main timing cam
-    mainCam.rotation.z = animTime * 0.5;
+    // Answer prism: spin around local Y (shaft axis) — prism has rotation.z=PI/2 directly
+    // Use rotateOnWorldAxis for the prism since it doesn't have a pivot group
+    // Answer prism: Geneva-drive 120-degree indexing (3 positions)
+    // Steps every ~4 seconds when animating
+    const prismStep = Math.floor(animTime * 0.25) % 3;
+    const prismTargetAngle = prismStep * (2 * Math.PI / 3);
+    if (answerPrismRef.userData.currentAngle === undefined) answerPrismRef.userData.currentAngle = 0;
+    answerPrismRef.userData.currentAngle += (prismTargetAngle - answerPrismRef.userData.currentAngle) * 0.1;
+    // Apply via euler: keep z=PI/2 (horizontal), add Y rotation for shaft spin
+    answerPrismRef.rotation.set(0, answerPrismRef.userData.currentAngle, Math.PI / 2);
 
-    // Pantograph breathing (diamonds expand/contract)
-    computeGroup.children.forEach((child, i) => {
-      if (child.isMesh && child.material === brass && child.geometry.type === 'BoxGeometry') {
-        const phase = i * 0.3;
-        child.position.y += Math.sin(animTime * 1.5 + phase) * 0.08;
-      }
-    });
+    // Mode lever vibration during training
+    leverArmRef.rotation.z = 0.25 + Math.sin(animTime * 8) * 0.005;
+
+    // Pantograph breathing: scale the computeGroup slightly on Z to simulate expansion/contraction
+    // This preserves diamond topology (all bars move together as a group)
+    const breathe = 1 + Math.sin(animTime * 1.5) * 0.03;
+    computeGroup.scale.set(1, breathe, 1);
 
     // Ball on brachistochrone track
     const trackProgress = (Math.sin(animTime * 0.8) + 1) / 2;
     const idx = Math.floor(trackProgress * (trackRef.length - 1));
-    if (trackRef[idx]) {
-      ballRef.position.copy(trackRef[idx]);
-    }
+    if (trackRef[idx]) ballRef.position.copy(trackRef[idx]);
 
     // Whippletree tilting
-    mainBeam.rotation.z = Math.sin(animTime * 1.2) * 0.08;
+    aggBeamRef.rotation.z = Math.sin(animTime * 1.2) * 0.06;
 
-    // String tension pulse (opacity animation)
-    stringsGroup.children.forEach((child, i) => {
-      if (child.isLine && child.material.opacity !== undefined) {
-        child.material.opacity = 0.4 + Math.sin(animTime * 2 + i * 0.5) * 0.3;
+    // Shishi-odoshi: striker arm oscillates, fires every ~13 seconds (one training example)
+    const shishiPhase = (animTime % 13) / 13; // 0 to 1 over 13 seconds
+    if (shishiArmRef) {
+      if (shishiPhase < 0.9) {
+        // Cam lifts arm slowly
+        shishiArmRef.rotation.z = shishiPhase * 0.4;
+      } else {
+        // Strike! Arm falls rapidly
+        shishiArmRef.rotation.z = (1 - (shishiPhase - 0.9) / 0.1) * 0.4;
+      }
+    }
+
+    // Motor vertical shaft spins
+    if (typeof motorShaftVert !== 'undefined') motorShaftVert.rotation.y = animTime * 2;
+
+    // Motor horizontal shaft spins
+    if (typeof motorShaft !== 'undefined') motorShaft.rotation.y = animTime * 2;
+
+    // String tension pulse
+    if (highlightMode === 'none') {
+      stringLines.forEach((line, i) => {
+        line.material.opacity = 0.4 + Math.sin(animTime * 2 + i * 0.3) * 0.3;
+      });
+    }
+
+    // Error sliders converge toward center over time
+    errorSliders.forEach((slider, i) => {
+      // Training cycle: 26 min = 1560s. Accelerated: cycle every 60s for visualization
+      const cycleTime = animTime % 60;
+      const convergence = Math.min(1, cycleTime / 50); // converge over 50s, hold for 10s
+      const offset = Math.sin(animTime * 0.5 + i * 2) * 20 * (1 - convergence * convergence);
+      slider.position.x = slider.userData.baseX + offset;
+    });
+
+    // Spiral cams: oscillate around their shaft axis (local Y, since built with rotation.x=PI/2)
+    spiralCamGroup.children.forEach((child, i) => {
+      if (child.isMesh && child.geometry.type === 'CylinderGeometry') {
+        if (child.userData.baseRotY === undefined) child.userData.baseRotY = child.rotation.y;
+        const adjointPhase = Math.sin(animTime * 1.0 + i * 0.1);
+        child.rotation.y = (child.userData.baseRotY || 0) + adjointPhase * 0.3;
       }
     });
 
-    // Answer prism rotation (during output phase)
-    prism.rotation.y = Math.PI / 6 + Math.sin(animTime * 0.3) * 0.05;
+    // (answer prism rotation handled above via quaternion)
 
-    // Mode switch lever slight vibration during training
-    leverArm.rotation.z = 0.3 + Math.sin(animTime * 8) * 0.005;
+    // Mode lever vibration during training
+    leverArmRef.rotation.z = 0.25 + Math.sin(animTime * 8) * 0.003;
   }
 
-  // Update face label on orbit
+  // Update face label
   updateFaceLabel();
 
   controls.update();
@@ -1006,14 +1828,16 @@ function animate() {
 
 animate();
 
-// ─── Resize Handler ───────────────────────────────────────
+// =====================================================================
+// RESIZE HANDLER
+// =====================================================================
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// Initial face label
+// Initial face label update
 setTimeout(updateFaceLabel, 500);
 
 </script>

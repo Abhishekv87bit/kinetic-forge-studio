@@ -28,7 +28,8 @@ import httpx
 
 from app.config import settings
 from app.ai.prompt_builder import PromptBuilder
-from app.middleware.observability import log_llm_call
+from app.middleware.cache import prompt_cache, make_hash_key
+from app.middleware.observability import log_llm_call, log_cache_stats
 
 logger = logging.getLogger(__name__)
 
@@ -156,17 +157,33 @@ class ChatAgent:
                 response_type="error",
             )
 
-        # Build the methodology-rich system prompt with full context
-        system_prompt = self.prompt_builder.build_system_prompt(
-            spec=spec,
-            gate_level=gate_level,
-            locked_decisions=locked_decisions,
-            components=components,
-            user_profile=user_profile,
-            library_matches=library_matches,
-            consultant_context=consultant_context,
-            scad_source=scad_source,
+        # Build the methodology-rich system prompt with full context.
+        # Cache by project-specific inputs so identical contexts reuse the prompt.
+        prompt_key = make_hash_key(
+            "system_prompt",
+            spec,
+            gate_level,
+            locked_decisions,
+            components,
+            user_profile,
+            library_matches,
+            consultant_context,
+            scad_source,
         )
+        system_prompt = prompt_cache.get(prompt_key)
+        if system_prompt is None:
+            system_prompt = self.prompt_builder.build_system_prompt(
+                spec=spec,
+                gate_level=gate_level,
+                locked_decisions=locked_decisions,
+                components=components,
+                user_profile=user_profile,
+                library_matches=library_matches,
+                consultant_context=consultant_context,
+                scad_source=scad_source,
+            )
+            prompt_cache.set(prompt_key, system_prompt)
+            logger.debug("prompt_cache STORE (key %s)", prompt_key[:12])
 
         # Build messages array from conversation history
         messages = [
@@ -355,13 +372,29 @@ class ChatAgent:
                 if response.status_code == 200:
                     data = response.json()
                     usage = data.get("usage", {})
+                    input_tokens = usage.get("input_tokens", 0)
+                    output_tokens = usage.get("output_tokens", 0)
+                    cache_creation = usage.get("cache_creation_input_tokens", 0)
+                    cache_read = usage.get("cache_read_input_tokens", 0)
+
                     log_llm_call(
                         name="chat_claude",
                         model=data.get("model", settings.claude_model),
-                        input_tokens=usage.get("input_tokens", 0),
-                        output_tokens=usage.get("output_tokens", 0),
+                        input_tokens=input_tokens,
+                        output_tokens=output_tokens,
                         latency_ms=latency_ms,
                         success=True,
+                    )
+                    logger.info(
+                        "Claude API cache stats: created=%d, read=%d, input=%d, output=%d",
+                        cache_creation, cache_read, input_tokens, output_tokens,
+                    )
+                    log_cache_stats(
+                        model=data.get("model", settings.claude_model),
+                        cache_creation_tokens=cache_creation,
+                        cache_read_tokens=cache_read,
+                        input_tokens=input_tokens,
+                        output_tokens=output_tokens,
                     )
                     return data
 

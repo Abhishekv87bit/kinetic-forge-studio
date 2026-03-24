@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mechanical LLM — Computation Architecture Comparison</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #08080e; color: #e0e0e0; font-family: 'Segoe UI', system-ui, sans-serif; padding: 20px 30px; }
+  h1 { text-align: center; font-size: 1.6em; margin-bottom: 4px; color: #fff; }
+  .subtitle { text-align: center; color: #777; margin-bottom: 24px; font-size: 0.95em; }
+
+  .options { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; max-width: 1400px; margin: 0 auto; }
+
+  .option { background: #0e0e18; border: 2px solid #1e1e2e; border-radius: 14px; overflow: hidden; cursor: pointer; transition: all 0.3s; }
+  .option:hover { border-color: #5588ff; }
+  .option.selected { border-color: #ff8844; box-shadow: 0 0 25px rgba(255,136,68,0.2); }
+
+  .opt-header { padding: 14px 18px; background: #12121e; border-bottom: 1px solid #1e1e2e; display: flex; align-items: center; gap: 12px; }
+  .opt-header .badge { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1em; flex-shrink: 0; }
+  .opt-header h2 { font-size: 1.05em; color: #fff; }
+  .opt-header .tag { font-size: 0.75em; color: #888; font-style: italic; }
+
+  .opt-body { padding: 16px; }
+
+  .section { margin-bottom: 14px; }
+  .section-title { font-size: 0.78em; color: #556; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #1a1a2a; }
+
+  .part-row { display: flex; align-items: flex-start; gap: 8px; padding: 5px 0; border-bottom: 1px solid #0c0c16; }
+  .part-row:last-child { border-bottom: none; }
+  .part-icon { font-size: 1.1em; flex-shrink: 0; width: 20px; text-align: center; }
+  .part-info { flex: 1; }
+  .part-name { font-size: 0.85em; color: #ddd; font-weight: 600; }
+  .part-desc { font-size: 0.75em; color: #888; margin-top: 1px; }
+  .part-count { font-size: 0.7em; color: #5588ff; margin-top: 2px; }
+  .part-drama { font-size: 0.68em; padding: 1px 5px; border-radius: 6px; display: inline-block; margin-top: 2px; }
+  .d-high { background: #2a1a0a; color: #ff8844; }
+  .d-med { background: #1a1a2a; color: #8888cc; }
+  .d-low { background: #1a1a1a; color: #666; }
+
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px; }
+  .stat { background: #0a0a14; border-radius: 8px; padding: 8px 10px; }
+  .stat-label { font-size: 0.68em; color: #556; text-transform: uppercase; }
+  .stat-value { font-size: 1.1em; color: #fff; font-weight: 700; margin-top: 2px; }
+  .stat-note { font-size: 0.68em; color: #666; margin-top: 2px; }
+
+  .sound-row { display: flex; align-items: center; gap: 6px; padding: 4px 0; }
+  .sound-icon { font-size: 0.9em; }
+  .sound-desc { font-size: 0.78em; color: #aaa; }
+
+  .verdict { margin-top: 12px; padding: 10px 14px; border-radius: 8px; }
+  .verdict-a { background: #1a120a; border: 1px solid #3a2a1a; }
+  .verdict-b { background: #0a0a1a; border: 1px solid #1a1a3a; }
+  .verdict-c { background: #0a1a1a; border: 1px solid #1a3a2a; }
+  .verdict-title { font-size: 0.8em; font-weight: 700; margin-bottom: 4px; }
+  .verdict-text { font-size: 0.75em; color: #999; line-height: 1.5; }
+
+  .comparison-table { width: 100%; max-width: 1400px; margin: 30px auto 0; border-collapse: collapse; }
+  .comparison-table th { background: #12121e; padding: 10px 14px; text-align: left; font-size: 0.82em; color: #888; border-bottom: 2px solid #2a2a3a; }
+  .comparison-table td { padding: 8px 14px; font-size: 0.82em; border-bottom: 1px solid #141420; color: #bbb; }
+  .comparison-table tr:hover { background: #0e0e18; }
+  .comparison-table .metric { color: #888; font-weight: 600; }
+  .bar { display: inline-block; height: 8px; border-radius: 4px; vertical-align: middle; margin-right: 6px; }
+  .winner { color: #44ddaa; font-weight: 600; }
+  .mid { color: #ddaa44; }
+  .low { color: #ff6644; }
+
+  @keyframes pulse { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }
+  .pulse { animation: pulse 2s ease-in-out infinite; }
+</style>
+</head>
+<body>
+
+<h1>Computation Architecture — Parts Comparison</h1>
+<p class="subtitle">Same sculpture form (Synaptic Web), three different computing strategies. Click to select.</p>
+
+<div class="options">
+
+<!-- ==================== OPTION A: FULL ANALOG ==================== -->
+<div class="option" onclick="this.classList.toggle('selected')">
+  <div class="opt-header">
+    <div class="badge" style="background:#ff8844;color:#000;">A</div>
+    <div>
+      <h2>Full Analog</h2>
+      <div class="tag">Karanika approach, scaled up</div>
+    </div>
+  </div>
+  <div class="opt-body">
+
+    <div class="section">
+      <div class="section-title">Central Hub</div>
+      <div class="part-row">
+        <div class="part-icon">⚙️</div>
+        <div class="part-info">
+          <div class="part-name">Worm Gear Array</div>
+          <div class="part-desc">Module 1.0 off-shelf, brass-on-steel. Each gear = one weight value stored as angular position.</div>
+          <div class="part-count">Qty: 42-64 (depends on network size)</div>
+          <div class="part-drama d-low">Drama: 2/5 — subtle clicking</div>
+        </div>
+      </div>
+      <div class="part-row">
+        <div class="part-icon">🔄</div>
+        <div class="part-info">
+          <div class="part-name">Rack-and-Pinion Updaters</div>
+          <div class="part-desc">Convert gradient displacement to worm rotation. One per weight.</div>
+          <div class="part-count">Qty: 42-64</div>
+          <div class="part-drama d-low">Drama: 2/5 — hidden, precise</div>
+        </div>
+      </div>
+      <div class="part-row">
+        <div class="part-icon">📏</div>
+        <div class="part-info">
+          <div class="part-name">Sliding Collar Differentials</div>
+          <div class="part-desc">Error measurement via sliding collar on calibrated spring. Converts displacement to force.</div>
+          <div class="part-count">Qty: 3 (one per output)</div>
+          <div class="part-drama d-low">Drama: 1/5 — invisible</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Arm Mechanisms</div>
+      <div class="part-row">
+        <div class="part-icon">🌀</div>
+        <div class="part-info">
+          <div class="part-name">Archimedean Spiral Cams</div>
+          <div class="part-desc">40mm SLA resin. Forward displacement × adjoint force = gradient torque. 36-tooth ratchet.</div>
+          <div class="part-count">Qty: 42-64</div>
+          <div class="part-drama d-med">Drama: 3/5 — oscillating discs</div>
+        </div>
+      </div>
+      <div class="part-row">
+        <div class="part-icon">💎</div>
+        <div class="part-info">
+          <div class="part-name">Pantograph Diamond Linkages</div>
+          <div class="part-desc">Rhombus OA+OB=OC summation. HK0306 needle bearings at 48 joints.</div>
+          <div class="part-count">Qty: 18-24 diamonds (3 per neuron × 6-8 neurons)</div>
+          <div class="part-drama d-high">Drama: 4/5 — breathing expansion</div>
+        </div>
+      </div>
+      <div class="part-row">
+        <div class="part-icon">📐</div>
+        <div class="part-info">
+          <div class="part-name">ReLU Shaped Cams</div>
+          <div class="part-desc">50mm cam with ramp profile. Follower arm traces activation curve.</div>
+          <div class="part-count">Qty: 6-8 (one per hidden+output neuron)</div>
+          <div class="part-drama d-med">Drama: 3/5 — smooth cam following</div>
+        </div>
+      </div>
+      <div class="part-row">
+        <div class="part-icon">🧵</div>
+        <div class="part-info">
+          <div class="part-name">Signal Strings</div>
+          <div class="part-desc">0.5mm stainless steel 7-strand leader wire. Routes signals between all mechanisms.</div>
+          <div class="part-count">Qty: 80-120 individual runs</div>
+          <div class="part-drama d-med">Drama: 3/5 — golden web glinting</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Bearings & Hardware</div>
+      <div class="part-row">
+        <div class="part-icon">⭕</div>
+        <div class="part-info">
+          <div class="part-name">HK0306 Needle Bearings</div>
+          <div class="part-desc">3mm bore, 6.5mm OD. Every pantograph joint needs one. Signal loss: ~13%.</div>
+          <div class="part-count">Qty: ~96 (48 joints × 2 passes)</div>
+        </div>
+      </div>
+      <div class="part-row">
+        <div class="part-icon">🔩</div>
+        <div class="part-info">
+          <div class="part-name">MGN7 Linear Rails</div>
+          <div class="part-desc">For error sliders and weight update travel.</div>
+          <div class="part-count">Qty: 6-10 rails</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Sounds</div>
+      <div class="sound-row"><div class="sound-icon">🔊</div><div class="sound-desc">Quiet clicking (worm gears updating)</div></div>
+      <div class="sound-row"><div class="sound-icon">🔊</div><div class="sound-desc">Soft ratcheting (spiral cam pawls)</div></div>
+      <div class="sound-row"><div class="sound-icon">🔊</div><div class="sound-desc">String tension hum (if resonant)</div></div>
+      <div class="sound-row"><div class="sound-icon">🔔</div><div class="sound-desc">Chime on correct answer</div></div>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat"><div class="stat-label">Total Parts</div><div class="stat-value">350-500</div><div class="stat-note">mostly small gears + bearings</div></div>
+      <div class="stat"><div class="stat-label">Motors</div><div class="stat-value">2-3</div><div class="stat-note">main drive + sequence + wave</div></div>
+      <div class="stat"><div class="stat-label">Est. Cost</div><div class="stat-value">$800-1200</div><div class="stat-note">off-shelf gears + bearings</div></div>
+      <div class="stat"><div class="stat-label">Print Time</div><div class="stat-value">40-60 hrs</div><div class="stat-note">FDM + SLA resin cams</div></div>
+    </div>
+
+    <div class="verdict verdict-a">
+      <div class="verdict-title" style="color:#ff8844;">Verdict: Proven but Quiet</div>
+      <div class="verdict-text">Every mechanism is validated from Karanika. Computation is mathematically exact. But motion is predominantly subtle — small rotations, gentle displacements. The pantographs breathe, the strings glint, but the worm gears and rack-pinions are invisible precision. Gallery visitors need to lean in close to see computation happening.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== OPTION B: FULL BINARY ==================== -->
+<div class="option" onclick="this.classList.toggle('selected')">
+  <div class="opt-header">
+    <div class="badge" style="background:#8866ff;color:#fff;">B</div>
+    <div>
+      <h2>Full Binary ALU</h2>
+      <div class="tag">Early computer inspired, logic gates</div>
+    </div>
+  </div>
+  <div class="opt-body">
+
+    <div class="section">
+      <div class="section-title">Central Hub — ALU Core</div>
+      <div class="part-row">
+        <div class="part-icon">🔲</div>
+        <div class="part-info">
+          <div class="part-name">Mechanical AND Gates</div>
+          <div class="part-desc">Lever-based AND. Two inputs must both be HIGH for output HIGH. Visible lever arms snap up/down.</div>
+          <div class="part-count">Qty: 24-32</div>
+          <div class="part-drama d-high">Drama: 4/5 — binary SNAP</div>
+        </div>
+      </div>
+      <div class="part-row">
+        <div class="part-icon">🔲</div>
+        <div class="part-info">
+          <div class="part-name">Mechanical OR Gates</div>
+          <div class="part-desc">Either input HIGH triggers output. Lever with dual input arms.</div>
+          <div class="part-count">Qty: 16-24</div>
+          <div class="part-drama d-high">Drama: 4/5 — binary SNAP</div>
+        </div>
+      </div>
+      <div class="part-row">
+        <div class="part-icon">🔲</div>
+        <div class="part-info">
+          <div class="part-name">Mechanical NOT Gates</div>
+          <div class="part-desc">Inverter — input HIGH pushes output LOW. Rocker arm with counterweight.</div>
+          <div class="part-count">Qty: 12-16</div>
+          <div class="part-drama d-med">Drama: 3/5 — flip motion</div>
+        </div>
+      </div>
+      <div class="part-row">
+        <div class="part-icon">➕</div>
+        <div class="part-info">
+          <div class="part-name">Full Adder Chains</div>
+          <div class="part-desc">AND + OR + NOT combined into binary addition. Carry propagation visible as cascading snaps.</div>
+          <div class="part-count">Qty: 8 (4-bit × 2 adders)</div>
+          <div class="part-drama d-high">Drama: 5/5 — carry cascade!</div>
+        </div>
+      </div>
+      <div class="part-row">
+        <div class="part-icon">📊</div>
+        <div class="part-info">
+          <div class="part-name">Bit Register (Flip-Flops)</div>
+          <div class="part-desc">Bistable lever pairs storing binary state. Each bit = one physical up/down lever. Weight storage as binary number.</div>
+          <div class="part-count">Qty: 64-128 (4-bit × 16-32 weights)</div>
+          <div class="part-drama d-high">Drama: 4/5 — visible 1s and 0s</div>
+        </div>
+      </div>
+      <div class="part-row">
+        <div class="part-icon">🔀</div>
+        <div class="part-info">
+          <div class="part-name">Multiplexer / Router</div>
+          <div class="part-desc">Cam-driven selector chooses which register feeds the adder. Rotary switching mechanism.</div>
+          <div class="part-count">Qty: 4-6</div>
+          <div class="part-drama d-med">Drama: 3/5 — rotary selection</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Arm Mechanisms</div>
+      <div class="part-row">
+        <div class="part-icon">📏</div>
+        <div class="part-info">
+          <div class="part-name">Binary-to-Analog Converters</div>
+          <div class="part-desc">Weighted lever arms convert 4-bit register to linear displacement. Each bit position has 2× the lever arm of the one below.</div>
+          <div class="part-count">Qty: 6-8 (one per neuron output)</div>
+          <div class="part-drama d-med">Drama: 3/5 — graduated lever steps</div>
+        </div>
+      </div>
+      <div class="part-row">
+        <div class="part-icon">🔲</div>
+        <div class="part-info">
+          <div class="part-name">Threshold Comparators</div>
+          <div class="part-desc">Lever balance determines if sum exceeds threshold (activation function). Binary ReLU: sum > 0 → output = sum, else 0.</div>
+          <div class="part-count">Qty: 6-8</div>
+          <div class="part-drama d-high">Drama: 4/5 — balance tips decisively</div>
+        </div>
+      </div>
+      <div class="part-row">
+        <div class="part-icon">🔗</div>
+        <div class="part-info">
+          <div class="part-name">Push-Pull Rods</div>
+          <div class="part-desc">Binary signals routed as physical rods (pushed = 1, pulled = 0). Rigid, no compliance.</div>
+          <div class="part-count">Qty: 60-100 rods</div>
+          <div class="part-drama d-med">Drama: 3/5 — clicking rod forest</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Bearings & Hardware</div>
+      <div class="part-row">
+        <div class="part-icon">📌</div>
+        <div class="part-info">
+          <div class="part-name">Pivot Pins</div>
+          <div class="part-desc">Steel dowel pins for lever pivots. Every gate needs 2-3 pivot points.</div>
+          <div class="part-count">Qty: 200-300</div>
+        </div>
+      </div>
+      <div class="part-row">
+        <div class="part-icon">🔩</div>
+        <div class="part-info">
+          <div class="part-name">Return Springs</div>
+          <div class="part-desc">Each lever needs a return spring to restore default state. Compression or torsion.</div>
+          <div class="part-count">Qty: 80-120</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Sounds</div>
+      <div class="sound-row"><div class="sound-icon">💥</div><div class="sound-desc">Loud clicking cascade (carry propagation)</div></div>
+      <div class="sound-row"><div class="sound-icon">💥</div><div class="sound-desc">Snap-snap-snap (bit register updates)</div></div>
+      <div class="sound-row"><div class="sound-icon">🔊</div><div class="sound-desc">Rod forest clatter (signal routing)</div></div>
+      <div class="sound-row"><div class="sound-icon">🔔</div><div class="sound-desc">Chime on correct answer</div></div>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat"><div class="stat-label">Total Parts</div><div class="stat-value">600-900</div><div class="stat-note">many levers, springs, pins</div></div>
+      <div class="stat"><div class="stat-label">Motors</div><div class="stat-value">3-5</div><div class="stat-note">drive + sequence + routing + wave + Galton</div></div>
+      <div class="stat"><div class="stat-label">Est. Cost</div><div class="stat-value">$600-1000</div><div class="stat-note">mostly 3D printed + springs</div></div>
+      <div class="stat"><div class="stat-label">Print Time</div><div class="stat-value">80-120 hrs</div><div class="stat-note">many small precision parts</div></div>
+    </div>
+
+    <div class="verdict verdict-b">
+      <div class="verdict-title" style="color:#8866ff;">Verdict: Dramatic but Complex</div>
+      <div class="verdict-text">Every computation is VISIBLE as physical bit-flips. The carry cascade is genuinely theatrical — a ripple of snaps propagating through the adder. But: 4-bit weights mean only 16 possible values per weight (very coarse). Neural networks struggle with <4-bit quantization. Training convergence becomes unreliable. Also: 600-900 precision parts is a fabrication marathon. Each logic gate needs exact lever geometry or the binary state becomes ambiguous.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== OPTION C: HYBRID ==================== -->
+<div class="option" onclick="this.classList.toggle('selected')">
+  <div class="opt-header">
+    <div class="badge" style="background:#44ddaa;color:#000;">C</div>
+    <div>
+      <h2>Hybrid — Digital Brain, Analog Body</h2>
+      <div class="tag">Binary ALU core + analog peripherals</div>
+    </div>
+  </div>
+  <div class="opt-body">
+
+    <div class="section">
+      <div class="section-title">Central Hub — Binary ALU</div>
+      <div class="part-row">
+        <div class="part-icon">➕</div>
+        <div class="part-info">
+          <div class="part-name">Full Adder Chains</div>
+          <div class="part-desc">Core matrix multiply: weight × input = sequential add + shift. Carry cascade is the hero sound.</div>
+          <div class="part-count">Qty: 4-6 (4-bit adders)</div>
+          <div class="part-drama d-high">Drama: 5/5 — carry cascade!</div>
+        </div>
+      </div>
+      <div class="part-row">
+        <div class="part-icon">🔲</div>
+        <div class="part-info">
+          <div class="part-name">Logic Gate Array</div>
+          <div class="part-desc">AND/OR/NOT for comparison, thresholding, routing. Visible lever arms.</div>
+          <div class="part-count">Qty: 16-24 gates</div>
+          <div class="part-drama d-high">Drama: 4/5 — snapping levers</div>
+        </div>
+      </div>
+      <div class="part-row">
+        <div class="part-icon">📊</div>
+        <div class="part-info">
+          <div class="part-name">Accumulator Register</div>
+          <div class="part-desc">Babbage-style number wheels that accumulate partial sums. Carry arms cascade upward.</div>
+          <div class="part-count">Qty: 2-3 columns × 6 digits</div>
+          <div class="part-drama d-high">Drama: 5/5 — Babbage carry!</div>
+        </div>
+      </div>
+      <div class="part-row">
+        <div class="part-icon">🔀</div>
+        <div class="part-info">
+          <div class="part-name">Cam-Driven Sequencer</div>
+          <div class="part-desc">Barrel cam or Geneva cascade sequences ALU operations. Each tick = one multiply-accumulate.</div>
+          <div class="part-count">Qty: 1 barrel cam + 1 Geneva</div>
+          <div class="part-drama d-med">Drama: 4/5 — snap-pause rhythm</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Arms — Analog Mechanisms</div>
+      <div class="part-row">
+        <div class="part-icon">💎</div>
+        <div class="part-info">
+          <div class="part-name">Pantograph Diamonds</div>
+          <div class="part-desc">Analog summation on the arm. Hub sends digital sum → DAC lever → pantograph verifies / displays.</div>
+          <div class="part-count">Qty: 12-18 diamonds</div>
+          <div class="part-drama d-high">Drama: 4/5 — breathing motion</div>
+        </div>
+      </div>
+      <div class="part-row">
+        <div class="part-icon">🌊</div>
+        <div class="part-info">
+          <div class="part-name">Margolin Wave Field</div>
+          <div class="part-desc">Canopy. 36 suspended elements driven by analog outputs of hidden neurons. Pure wave motion.</div>
+          <div class="part-count">Qty: 36 elements + pulley network</div>
+          <div class="part-drama d-high">Drama: 5/5 — mesmerizing waves</div>
+        </div>
+      </div>
+      <div class="part-row">
+        <div class="part-icon">⚡</div>
+        <div class="part-info">
+          <div class="part-name">Bistable Snap Flexures</div>
+          <div class="part-desc">ReLU activation. Below threshold = nothing. Above = violent SNAP to active state.</div>
+          <div class="part-count">Qty: 6-8</div>
+          <div class="part-drama d-high">Drama: 4/5 — startling snap</div>
+        </div>
+      </div>
+      <div class="part-row">
+        <div class="part-icon">🌀</div>
+        <div class="part-info">
+          <div class="part-name">Spiral Cams (Gradient)</div>
+          <div class="part-desc">Analog gradient computation. Hub sends digital error → DAC → spiral cams multiply.</div>
+          <div class="part-count">Qty: 16-24 (reduced from full analog)</div>
+          <div class="part-drama d-med">Drama: 3/5 — oscillating</div>
+        </div>
+      </div>
+      <div class="part-row">
+        <div class="part-icon">🧵</div>
+        <div class="part-info">
+          <div class="part-name">Signal Strings</div>
+          <div class="part-desc">Analog signals on outer arms. Digital signals as push-pull rods in the hub.</div>
+          <div class="part-count">Qty: 40-60 strings + 30-50 rods</div>
+          <div class="part-drama d-med">Drama: 3/5 — mixed media</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Interface Parts (Digital ↔ Analog)</div>
+      <div class="part-row">
+        <div class="part-icon">📏</div>
+        <div class="part-info">
+          <div class="part-name">DAC Lever Arms</div>
+          <div class="part-desc">Binary-to-analog converters. 4-bit register → weighted lever → continuous displacement. Bridge between worlds.</div>
+          <div class="part-count">Qty: 8-12</div>
+          <div class="part-drama d-med">Drama: 3/5 — graduated steps</div>
+        </div>
+      </div>
+      <div class="part-row">
+        <div class="part-icon">📏</div>
+        <div class="part-info">
+          <div class="part-name">ADC Threshold Ladders</div>
+          <div class="part-desc">Analog-to-binary converters. Continuous gradient → stepped thresholds → bit register update. Staircase quantization.</div>
+          <div class="part-count">Qty: 8-12</div>
+          <div class="part-drama d-med">Drama: 3/5 — clicking steps</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Sounds</div>
+      <div class="sound-row"><div class="sound-icon">💥</div><div class="sound-desc">SHARP: Carry cascade in hub (typewriter burst)</div></div>
+      <div class="sound-row"><div class="sound-icon">💥</div><div class="sound-desc">SNAP: Bistable flexures firing</div></div>
+      <div class="sound-row"><div class="sound-icon">🔊</div><div class="sound-desc">SOFT: Pantograph breathing (gentle creak)</div></div>
+      <div class="sound-row"><div class="sound-icon">🔊</div><div class="sound-desc">FLOW: Wave field element suspension (ambient)</div></div>
+      <div class="sound-row"><div class="sound-icon">🎵</div><div class="sound-desc">TICK: Escapement heartbeat (steady rhythm)</div></div>
+      <div class="sound-row"><div class="sound-icon">🔔</div><div class="sound-desc">RING: Chime on correct answer</div></div>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat"><div class="stat-label">Total Parts</div><div class="stat-value">450-650</div><div class="stat-note">balanced complexity</div></div>
+      <div class="stat"><div class="stat-label">Motors</div><div class="stat-value">3-4</div><div class="stat-note">ALU drive + sequence + wave + Galton</div></div>
+      <div class="stat"><div class="stat-label">Est. Cost</div><div class="stat-value">$700-1100</div><div class="stat-note">mixed off-shelf + printed</div></div>
+      <div class="stat"><div class="stat-label">Print Time</div><div class="stat-value">60-90 hrs</div><div class="stat-note">hub printed, arms mixed</div></div>
+    </div>
+
+    <div class="verdict verdict-c">
+      <div class="verdict-title" style="color:#44ddaa;">Verdict: Best of Both Worlds</div>
+      <div class="verdict-text">The hub CLICKS and SNAPS (digital). The arms BREATHE and FLOW (analog). Two contrasting textures of motion in one sculpture. The Babbage carry cascade + logic gates give the center a mechanical typewriter energy. The pantographs + wave field give the periphery an organic, living quality. DAC/ADC converters at the boundary are themselves a teaching moment: "this is where digital becomes analog." The 4-bit limitation is mitigated by the analog arms doing fine-grained gradient work — the ALU handles integer arithmetic, the spiral cams handle continuous multiplication.</div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<!-- ==================== COMPARISON TABLE ==================== -->
+<table class="comparison-table">
+  <thead>
+    <tr>
+      <th style="width:22%">Metric</th>
+      <th style="width:26%">A — Full Analog</th>
+      <th style="width:26%">B — Full Binary</th>
+      <th style="width:26%">C — Hybrid</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="metric">Visual Drama</td>
+      <td><span class="bar" style="width:50px;background:#ddaa44"></span><span class="mid">Medium</span><br><span style="color:#666;font-size:0.8em">Gentle motion, lean-in viewing</span></td>
+      <td><span class="bar" style="width:80px;background:#44ddaa"></span><span class="winner">High</span><br><span style="color:#666;font-size:0.8em">Binary snaps, carry cascade</span></td>
+      <td><span class="bar" style="width:90px;background:#44ddaa"></span><span class="winner">Highest</span><br><span style="color:#666;font-size:0.8em">Digital snap + analog flow contrast</span></td>
+    </tr>
+    <tr>
+      <td class="metric">Acoustic Drama</td>
+      <td><span class="bar" style="width:40px;background:#ff6644"></span><span class="low">Quiet</span><br><span style="color:#666;font-size:0.8em">Soft clicking, string hum</span></td>
+      <td><span class="bar" style="width:80px;background:#44ddaa"></span><span class="winner">Loud</span><br><span style="color:#666;font-size:0.8em">Snap cascade, rod clatter</span></td>
+      <td><span class="bar" style="width:85px;background:#44ddaa"></span><span class="winner">Rich</span><br><span style="color:#666;font-size:0.8em">Sharp center + soft periphery</span></td>
+    </tr>
+    <tr>
+      <td class="metric">Computational Truth</td>
+      <td><span class="bar" style="width:90px;background:#44ddaa"></span><span class="winner">Exact</span><br><span style="color:#666;font-size:0.8em">Continuous weights, proven backprop</span></td>
+      <td><span class="bar" style="width:50px;background:#ddaa44"></span><span class="mid">Approximate</span><br><span style="color:#666;font-size:0.8em">4-bit quantization limits learning</span></td>
+      <td><span class="bar" style="width:75px;background:#44ddaa"></span><span class="winner">Strong</span><br><span style="color:#666;font-size:0.8em">ALU for math, analog for gradients</span></td>
+    </tr>
+    <tr>
+      <td class="metric">Training Convergence</td>
+      <td><span class="bar" style="width:85px;background:#44ddaa"></span><span class="winner">Reliable</span><br><span style="color:#666;font-size:0.8em">Continuous gradients, 15-20% error OK</span></td>
+      <td><span class="bar" style="width:40px;background:#ff6644"></span><span class="low">Risky</span><br><span style="color:#666;font-size:0.8em">4-bit weights may not converge</span></td>
+      <td><span class="bar" style="width:75px;background:#44ddaa"></span><span class="winner">Good</span><br><span style="color:#666;font-size:0.8em">Analog gradients rescue digital limits</span></td>
+    </tr>
+    <tr>
+      <td class="metric">Fabrication Difficulty</td>
+      <td><span class="bar" style="width:60px;background:#ddaa44"></span><span class="mid">Medium</span><br><span style="color:#666;font-size:0.8em">Proven parts, Karanika validated</span></td>
+      <td><span class="bar" style="width:85px;background:#ff6644"></span><span class="low">Hard</span><br><span style="color:#666;font-size:0.8em">900 precision parts, every gate exact</span></td>
+      <td><span class="bar" style="width:65px;background:#ddaa44"></span><span class="mid">Medium-Hard</span><br><span style="color:#666;font-size:0.8em">Hub is complex, arms are proven</span></td>
+    </tr>
+    <tr>
+      <td class="metric">Part Count</td>
+      <td><span class="bar" style="width:60px;background:#44ddaa"></span><span class="winner">350-500</span></td>
+      <td><span class="bar" style="width:85px;background:#ff6644"></span><span class="low">600-900</span></td>
+      <td><span class="bar" style="width:70px;background:#ddaa44"></span><span class="mid">450-650</span></td>
+    </tr>
+    <tr>
+      <td class="metric">Estimated Cost</td>
+      <td>$800-1,200</td>
+      <td>$600-1,000</td>
+      <td>$700-1,100</td>
+    </tr>
+    <tr>
+      <td class="metric">Motors Needed</td>
+      <td>2-3</td>
+      <td>3-5</td>
+      <td>3-4</td>
+    </tr>
+    <tr>
+      <td class="metric">Gallery Readability</td>
+      <td><span class="mid">Needs explanation</span><br><span style="color:#666;font-size:0.8em">Subtle motion, expert audience</span></td>
+      <td><span class="winner">Self-explaining</span><br><span style="color:#666;font-size:0.8em">Bits flip = intuitive computing</span></td>
+      <td><span class="winner">Self-explaining</span><br><span style="color:#666;font-size:0.8em">Center clicks = thinking, arms flow = feeling</span></td>
+    </tr>
+    <tr>
+      <td class="metric">Viewer Takeaway</td>
+      <td><span style="color:#ff8844">"Beautiful precision"</span></td>
+      <td><span style="color:#8866ff">"A real computer!"</span></td>
+      <td><span style="color:#44ddaa">"It THINKS and FEELS"</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<p style="text-align:center; color:#555; margin-top:20px; font-size:0.85em;">Click option headers to select. Compare details and the summary table below.</p>
+
+</body>
+</html>
