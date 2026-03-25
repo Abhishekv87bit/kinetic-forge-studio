@@ -45,3 +45,15 @@ Millimeters. Single motor unless impossible.
 - Skill: `docs/superpowers/skills/pineapple/SKILL.md`
 - Routes: Full Path (new features), Medium Path (clear scope), Lightweight Path (bug fixes)
 - CLI: `python production-pipeline/tools/pineapple_doctor.py` (bootstrap), `python production-pipeline/tools/pineapple_verify.py` (Stage 5)
+
+## Dev Loop (MANDATORY)
+Before ANY implementation work, invoke /dev-loop via Skill tool. This is not optional.
+
+Skill invocations:
+- `Skill("pineapple:dev-loop")` before any implementation
+- `Skill("pineapple:verify-outputs")` after agent claims files written
+- `Skill("pineapple:verify-done")` before marking anything complete
+- `Skill("pineapple:honest-status")` before any progress report
+
+Skills live at: `d:\Claude local\docs\superpowers\skills\pineapple\`
+If Skill tool cannot resolve `pineapple:dev-loop`, read `d:\Claude local\docs\superpowers\skills\pineapple\dev-loop.md` directly.
