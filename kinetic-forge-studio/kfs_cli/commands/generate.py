@@ -24,7 +24,7 @@ def generate(filename: Path, overwrite: bool):
     """
     if filename.exists() and not overwrite:
         click.echo(f"Error: File '{filename}' already exists. Use --overwrite to force overwrite.", err=True)
-        return
+        raise SystemExit(1)
 
     # Strip .kfs suffix from stem (e.g., "my_sculpture.kfs.yaml" -> "my_sculpture")
     raw_stem = filename.stem
@@ -69,5 +69,7 @@ def generate(filename: Path, overwrite: bool):
             loc = "/".join(map(str, error['loc']))
             click.echo(f"  - Path: {loc}, Message: {error['msg']}", err=True)
         click.echo("Please report this issue.", err=True)
+        raise SystemExit(1)
     except Exception as e:
         click.echo(f"An unexpected error occurred: {e}", err=True)
+        raise SystemExit(1)

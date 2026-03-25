@@ -64,7 +64,7 @@ def test_generate_existing_file_no_overwrite(runner, tmp_path):
 
         result = runner.invoke(cli, ["generate", existing_filename])
 
-        assert result.exit_code == 0 # Click returns 0 for user errors by default, stderr indicates error
+        assert result.exit_code == 1  # Error: file exists without --overwrite
         assert f"Error: File '{existing_filename}' already exists. Use --overwrite to force overwrite." in result.stderr
 
         # Verify the file content was NOT changed

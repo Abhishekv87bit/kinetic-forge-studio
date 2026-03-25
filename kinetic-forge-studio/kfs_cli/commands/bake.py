@@ -31,11 +31,16 @@ def get_unique_filename(directory: Path, desired_name: str) -> Path:
     If 'desired_name' already exists, it appends a counter.
     Returns the full Path to the unique file within the directory.
     """
+    max_attempts = 10000
     base, ext = os.path.splitext(desired_name)
     candidate_path = directory / desired_name
     counter = 0
     while candidate_path.exists():
         counter += 1
+        if counter > max_attempts:
+            raise RuntimeError(
+                f"Could not find unique filename for '{desired_name}' after {max_attempts} attempts"
+            )
         unique_name = f"{base}_{counter}{ext}"
         candidate_path = directory / unique_name
     return candidate_path
@@ -83,10 +88,14 @@ def bake(manifest_file: Path, output_dir: Path, name: str):
 
         # 2. Determine baked directory name
         if name:
-            baked_dir_name = name
+            baked_dir_name = _slugify(name)
         else:
             baked_dir_name = _slugify(manifest.name) + "_baked"
-        baked_dir = output_dir / baked_dir_name
+        baked_dir = (output_dir / baked_dir_name).resolve()
+        if not baked_dir.is_relative_to(output_dir.resolve()):
+            raise click.ClickException(
+                "Invalid output name: resolves outside output directory"
+            )
 
         # 3. Collect mesh geometries that need asset resolution
         mesh_geos = {}
@@ -116,7 +125,11 @@ def bake(manifest_file: Path, output_dir: Path, name: str):
                         continue
 
                     # For local relative paths, resolve relative to manifest directory
-                    source_path = manifest_dir / original_uri
+                    source_path = (manifest_dir / original_uri).resolve()
+                    if not source_path.is_relative_to(manifest_dir.resolve()):
+                        raise click.ClickException(
+                            f"Path traversal detected: '{original_uri}' resolves outside manifest directory"
+                        )
                     if source_path.exists():
                         resolved_sources[original_uri] = (
                             source_path,

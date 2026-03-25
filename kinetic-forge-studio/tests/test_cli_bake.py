@@ -176,7 +176,8 @@ def test_bake_custom_name(runner, tmp_path, create_manifest_file, minimal_valid_
 
     output_dir = tmp_path / "baked_output_custom"
     custom_project_name = "MyCustomBakedProject"
-    expected_baked_dir = output_dir / custom_project_name
+    # --name is slugified for filesystem safety
+    expected_baked_dir = output_dir / "mycustombakedproject"
 
     result = runner.invoke(cli, ["bake", str(input_manifest_path), str(output_dir), "--name", custom_project_name])
 
@@ -185,6 +186,7 @@ def test_bake_custom_name(runner, tmp_path, create_manifest_file, minimal_valid_
     assert expected_baked_dir.is_dir()
 
     # Load the baked manifest and verify its 'name' field is updated
+    # manifest.name keeps the original unsanitized value; only dir name is slugified
     baked_manifest = load_kfs_manifest(expected_baked_dir / "kfs.yaml")
     assert baked_manifest.name == custom_project_name
 
