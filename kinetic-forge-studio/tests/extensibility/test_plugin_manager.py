@@ -1,403 +1,340 @@
 
 import pytest
-from pydantic import BaseModel, Field, ValidationError
-from typing import Type, Literal, List, Union, Dict, Any, get_origin, get_args
+import tempfile
 import os
+from pathlib import Path
 import sys
-import inspect
+from typing import List, Dict, Type, Any, Optional
+from pydantic import BaseModel, Field, ValidationError, create_model
 
-# Assume these classes exist in their respective modules.
-# We will mock CustomTypeDefinition and PluginManager for the test.
+# --- Mocks for KFS backend modules ---
+# These mocks simulate the actual backend modules.
+# They are placed in sys.modules to be discoverable by the plugin manager and plugins.
 
-# Mock CustomTypeDefinition
-class CustomTypeDefinition:
-    """A mock for CustomTypeDefinition to simulate plugin definitions."""
-    def __init__(
-        self,
-        name: str,
-        type_model: Type[BaseModel],
-        target_path: str,
-        action: Literal["extend_union", "add_field", "replace_field"],
-        field_name: str | None = None
-    ):
-        self.name = name
-        self.type_model = type_model
-        self.target_path = target_path
-        self.action = action
-        self.field_name = field_name
+# Mock for `backend.kfs_manifest.extensibility.custom_types`
+class MockCustomTypesModule:
+    _CUSTOM_MODELS_REGISTRY: Dict[str, Type[BaseModel]] = {}
 
-# Mock PluginManager
-class PluginManager:
-    """A mock for PluginManager to simulate its behavior for testing."""
-    _instance = None
-    _custom_types: Dict[str, CustomTypeDefinition] = {}
-    _registered_models: Dict[str, Type[BaseModel]] = {}
-    _loaded_plugin_paths: List[str] = []
+    def register_custom_model(self, model_name: str, model_class: Type[BaseModel]):
+        if not issubclass(model_class, BaseModel):
+            raise TypeError(f"Registered model {model_name} must inherit from pydantic.BaseModel")
+        self._CUSTOM_MODELS_REGISTRY[model_name] = model_class
 
-    def __new__(cls, *args, **kwargs):
-        if cls._instance is None:
-            cls._instance = super(PluginManager, cls).__new__(cls, *args, **kwargs)
-        return cls._instance
+    def get_registered_custom_models(self) -> Dict[str, Type[BaseModel]]:
+        return self._CUSTOM_MODELS_REGISTRY.copy()
 
-    def register_custom_type(self, custom_type_def: CustomTypeDefinition):
-        """Registers a single custom type definition."""
-        if custom_type_def.name in self._custom_types:
-            raise ValueError(f"Custom type '{custom_type_def.name}' already registered.")
-        self._custom_types[custom_type_def.name] = custom_type_def
-        self._registered_models[custom_type_def.type_model.__name__] = custom_type_def.type_model
+    def clear_custom_models_registry(self):
+        self._CUSTOM_MODELS_REGISTRY.clear()
 
-    def load_plugins_from_path(self, plugin_paths: List[str]):
-        """
-        Mocks loading plugins. In a real scenario, this would import modules
-        and call their registration functions. For testing, we just record paths.
-        """
-        self._loaded_plugin_paths.extend(plugin_paths)
+mock_custom_types_instance = MockCustomTypesModule() # Instantiate the mock module
 
-    def get_registered_models(self) -> Dict[str, Type[BaseModel]]:
-        return self._registered_models
+# Mock for `backend.kfs_manifest.schema.v1.kinetic_forge_schema`
+class MockAssetModel(BaseModel):
+    id: str
+    type: str = "base_asset"
+    path: str
 
-    def reset(self):
-        """Resets the plugin manager for clean testing."""
-        self._custom_types = {}
-        self._registered_models = {}
-        self._loaded_plugin_paths = []
-
-    def apply_plugins(self, base_schema: Type[BaseModel]) -> Type[BaseModel]:
-        """
-        Mocks the application of plugins to a base schema.
-        This is a simplified implementation for testing purposes, mimicking
-        Pydantic's dynamic model creation or modification.
-        """
-        # Collect current fields and annotations from the base schema
-        current_annotations = base_schema.__annotations__.copy()
-        current_fields = {name: (field.annotation, field.default) for name, field in base_schema.model_fields.items()}
-
-        for custom_type_def in self._custom_types.values():
-            if custom_type_def.target_path == base_schema.__name__:
-                if custom_type_def.action == "add_field" and custom_type_def.field_name:
-                    current_fields[custom_type_def.field_name] = (custom_type_def.type_model, Field(...))
-                    current_annotations[custom_type_def.field_name] = custom_type_def.type_model
-                elif custom_type_def.action == "extend_union" and custom_type_def.field_name:
-                    if custom_type_def.field_name in current_annotations:
-                        original_type = current_annotations[custom_type_def.field_name]
-                        # Handle List[Union[...]] or Union[...] directly
-                        if get_origin(original_type) is List:
-                            inner_type = get_args(original_type)[0]
-                            if get_origin(inner_type) is Union:
-                                current_annotations[custom_type_def.field_name] = List[Union[*get_args(inner_type), custom_type_def.type_model]]
-                            else: # List[SingleType] -> List[Union[SingleType, NewType]]
-                                current_annotations[custom_type_def.field_name] = List[Union[inner_type, custom_type_def.type_model]]
-                        elif get_origin(original_type) is Union:
-                            current_annotations[custom_type_def.field_name] = Union[*get_args(original_type), custom_type_def.type_model]
-                        else: # SingleType -> Union[SingleType, NewType]
-                            current_annotations[custom_type_def.field_name] = Union[original_type, custom_type_def.type_model]
-                    else:
-                        raise ValueError(f"Cannot extend union for non-existent field '{custom_type_def.field_name}' in {base_schema.__name__}")
-                elif custom_type_def.action == "replace_field" and custom_type_def.field_name:
-                    current_fields[custom_type_def.field_name] = (custom_type_def.type_model, Field(...))
-                    current_annotations[custom_type_def.field_name] = custom_type_def.type_model
-            
-            # Handle nested paths like "KineticForgeSchema.assets" for extending inner union types
-            if custom_type_def.target_path == "KineticForgeSchema.assets" and custom_type_def.action == "extend_union":
-                if "assets" in current_annotations and get_origin(current_annotations["assets"]) is List:
-                    asset_union_type = get_args(current_annotations["assets"])[0]
-                    if get_origin(asset_union_type) is Union:
-                        new_asset_union_args = (*get_args(asset_union_type), custom_type_def.type_model)
-                        current_annotations["assets"] = List[Union[new_asset_union_args]]
-                    else: # e.g. List[StandardGeometry] -> List[Union[StandardGeometry, MyCustomAsset]]
-                        current_annotations["assets"] = List[Union[asset_union_type, custom_type_def.type_model]]
-
-        # Create a new Pydantic model class dynamically
-        # This simulates `pydantic.create_model` by creating a new type and setting its attributes.
-        # This is a critical simplification for the mock within the given constraints.
-        
-        # Prepare the namespace for the new model
-        new_model_namespace = {
-            "__annotations__": current_annotations,
-            "__module__": base_schema.__module__, # Important for Pydantic to recognize it
-        }
-
-        # Dynamically create FieldInfo objects for model_fields in Pydantic V2 style
-        new_model_fields = {}
-        for field_name, (field_type, field_default) in current_fields.items():
-            if field_default is Field(...):
-                new_model_fields[field_name] = Field(annotation=field_type) # Required field
-            else:
-                new_model_fields[field_name] = Field(annotation=field_type, default=field_default)
-
-        NewSchema = type(
-            f"Extended{base_schema.__name__}",
-            (base_schema,),
-            new_model_namespace
-        )
-
-        return NewSchema
-
-# --- Dummy KFS Schema for Testing ---
-class BaseAsset(BaseModel):
-    id: str = Field(..., description="Unique identifier for the asset.")
-    name: str = Field(..., description="Human-readable name for the asset.")
-    type: str = Field(..., description="The type of asset.")
-
-class StandardGeometry(BaseAsset):
-    type: Literal["standard_geometry"] = "standard_geometry"
-    shape: str = Field(..., description="Geometric shape, e.g., 'box', 'sphere'.")
+class MockGeometryModel(BaseModel):
+    id: str
+    type: str = "base_geometry"
+    shape: str
 
 class KineticForgeSchema(BaseModel):
-    version: Literal["v1"] = "v1"
-    assets: List[Union[StandardGeometry]] = Field(default_factory=list, description="List of assets in the manifest.")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="General metadata for the manifest.")
+    name: str
+    version: str = "v1"
+    assets: List[MockAssetModel] = Field(default_factory=list)
+    geometries: List[MockGeometryModel] = Field(default_factory=list)
 
-# --- Custom Types for Testing ---
-class MyCustomAsset(BaseAsset):
-    type: Literal["my_custom_asset"] = "my_custom_asset"
-    custom_property: str = Field(..., min_length=5, description="A unique property for MyCustomAsset.")
+class MockKineticForgeSchemaModule:
+    KineticForgeSchema = KineticForgeSchema
+    MockAssetModel = MockAssetModel # Expose internal mocks if needed by other parts
+    MockGeometryModel = MockGeometryModel
 
-class AnotherCustomAsset(BaseAsset):
-    type: Literal["another_custom_asset"] = "another_custom_asset"
-    another_prop: int = Field(..., ge=0, description="Another custom property.")
+mock_kinetic_forge_schema_instance = MockKineticForgeSchemaModule()
 
-class CustomMetadataField(BaseModel):
-    author: str
-    timestamp: str
 
-# --- Tests for PluginManager ---
+# --- Mock PluginManager (this is the component being tested) ---
+# This version uses the mocks defined above and interacts with sys.modules to simulate plugin loading.
+class PluginManager:
+    def __init__(self, plugin_paths: List[Path]):
+        self.plugin_paths = plugin_paths
+        self._loaded_plugin_modules: List[Any] = []
+        self._original_sys_path: List[str] = sys.path[:] # Store original sys.path
+        self._original_sys_modules: Dict[str, Any] = sys.modules.copy() # Store original sys.modules
+
+    def _load_plugin_module(self, plugin_file: Path):
+        module_name = f"kfs_plugin_{plugin_file.stem}" # Create a unique module name
+        plugin_dir = str(plugin_file.parent)
+        if plugin_dir not in sys.path:
+            sys.path.insert(0, plugin_dir) # Add plugin directory to sys.path for imports
+
+        spec = importlib.util.spec_from_file_location(module_name, plugin_file)
+        if spec is None:
+            raise ImportError(f"Could not load spec for plugin: {plugin_file}")
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[module_name] = module # Add module to sys.modules
+        spec.loader.exec_module(module) # Execute plugin code
+        self._loaded_plugin_modules.append(module)
+        return module
+
+    def load_plugins(self):
+        mock_custom_types_instance.clear_custom_models_registry() # Clear registry before loading
+        for plugin_path in self.plugin_paths:
+            if not plugin_path.exists() or not plugin_path.is_dir():
+                print(f"Plugin path does not exist or is not a directory: {plugin_path}")
+                continue
+            for plugin_file in plugin_path.glob("*.py"): # Iterate over Python files
+                if plugin_file.name.startswith("_") or plugin_file.name.startswith("test_"):
+                    continue # Skip __init__.py and test files
+                try:
+                    self._load_plugin_module(plugin_file)
+                except Exception as e:
+                    # In a real system, this would be logged. For tests, we print to debug.
+                    print(f"Error loading plugin {plugin_file.name}: {e}")
+
+    def apply_plugins(self, base_schema: Type[KineticForgeSchema]) -> Type[KineticForgeSchema]:
+        registered_models = mock_custom_types_instance.get_registered_custom_models()
+        if not registered_models:
+            return base_schema # Return original schema if no custom types registered
+
+        new_fields: Dict[str, Any] = {}
+        for model_name, model_class in registered_models.items():
+            # Convention: plugin adds a new top-level list field named after the model, lowercased, pluralized
+            field_name = f"{model_name.lower()}s" # e.g., CustomPart -> customparts
+            new_fields[field_name] = (List[model_class], Field(default_factory=list, description=f"Custom {model_name} components provided by a plugin."))
+
+        extended_schema_name = f"{base_schema.__name__}ExtendedByPlugins"
+        ExtendedSchema = create_model(
+            extended_schema_name,
+            __base__=base_schema,
+            **new_fields,
+            __module__=base_schema.__module__, # Associate new model with base schema's module
+        )
+        return ExtendedSchema
+
+    def __enter__(self):
+        # Temporarily place mock modules into sys.modules to simulate backend environment for plugins
+        sys.modules["backend.kfs_manifest.extensibility.custom_types"] = mock_custom_types_instance
+        sys.modules["backend.kfs_manifest.schema.v1.kinetic_forge_schema"] = mock_kinetic_forge_schema_instance
+        sys.modules["backend.kfs_manifest.schema.v1.kinetic_forge_schema"].KineticForgeSchema = KineticForgeSchema # Ensure direct access to the base class
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        # Restore original sys.path
+        sys.path = self._original_sys_path[:]
+        # Clear custom models registry for test isolation
+        mock_custom_types_instance.clear_custom_models_registry()
+        # Clean up loaded plugin modules and restore modified sys.modules entries
+        for module_name in list(sys.modules.keys()):
+            if module_name.startswith("kfs_plugin_"):
+                del sys.modules[module_name]
+            if module_name in self._original_sys_modules:
+                if sys.modules[module_name] is not self._original_sys_modules[module_name]: # Only restore if it was modified by us
+                    sys.modules[module_name] = self._original_sys_modules[module_name]
+            elif module_name in ["backend.kfs_manifest.extensibility.custom_types", "backend.kfs_manifest.schema.v1.kinetic_forge_schema"]:
+                # If our mock was newly added and wasn't there originally, delete it
+                if module_name not in self._original_sys_modules:
+                    del sys.modules[module_name]
+
+# --- Test Fixtures ---
+@pytest.fixture
+def plugin_dir():
+    """Creates a temporary directory for plugins and cleans it up."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        yield Path(tmpdir)
 
 @pytest.fixture(autouse=True)
-def reset_plugin_manager():
-    """Fixture to ensure a clean PluginManager state before each test."""
-    PluginManager().reset()
-    yield
+def mock_kfs_modules_fixture():
+    """Ensures mock KFS modules are set up in sys.modules for each test and cleaned up."""
+    # This fixture uses the global mock_custom_types_instance and mock_kinetic_forge_schema_instance
+    # The PluginManager's context manager handles injecting and cleaning up these specific mocks in sys.modules.
+    # This fixture mainly serves as a placeholder to ensure the global instances are reset if needed outside PluginManager's scope.
+    yield mock_custom_types_instance # Provide the mock instance for direct assertions in tests
+    mock_custom_types_instance.clear_custom_models_registry()
 
-def test_plugin_manager_registers_custom_type():
-    """Verifies the plugin manager can register a custom type."""
-    manager = PluginManager()
-    
-    custom_def = CustomTypeDefinition(
-        name="my_asset_plugin",
-        type_model=MyCustomAsset,
-        target_path="KineticForgeSchema.assets",
-        action="extend_union"
-    )
-    manager.register_custom_type(custom_def)
-    
-    registered_models = manager.get_registered_models()
-    assert "MyCustomAsset" in registered_models
-    assert registered_models["MyCustomAsset"] is MyCustomAsset
 
-def test_plugin_manager_prevents_duplicate_registration():
-    """Ensures duplicate custom type registration raises an error."""
-    manager = PluginManager()
-    
-    custom_def = CustomTypeDefinition(
-        name="my_asset_plugin",
-        type_model=MyCustomAsset,
-        target_path="KineticForgeSchema.assets",
-        action="extend_union"
-    )
-    manager.register_custom_type(custom_def)
-    
-    with pytest.raises(ValueError, match="already registered"):
-        manager.register_custom_type(custom_def)
+# --- Test Cases ---
+def test_plugin_manager_loads_custom_type(plugin_dir: Path, mock_kfs_modules_fixture: MockCustomTypesModule):
+    """Verify the plugin manager loads a custom type from a plugin file."""
+    plugin_content = """
+from pydantic import BaseModel
+from backend.kfs_manifest.extensibility.custom_types import register_custom_model
 
-def test_plugin_manager_loads_plugins_from_path_mock():
-    """Verifies the plugin manager mock records plugin paths."""
-    manager = PluginManager()
-    mock_plugin_path = "/tmp/my_plugins"
-    manager.load_plugins_from_path([mock_plugin_path])
-    assert mock_plugin_path in manager._loaded_plugin_paths
+class CustomPart(BaseModel):
+    part_id: str
+    material: str
 
-def test_plugin_manager_applies_custom_asset_type_to_schema():
+register_custom_model("CustomPart", CustomPart)
     """
-    Tests that the plugin manager correctly extends the 'assets' union type
-    in KineticForgeSchema with a custom asset.
+    plugin_file = plugin_dir / "my_custom_plugin.py"
+    plugin_file.write_text(plugin_content)
+
+    manager = PluginManager([plugin_dir])
+    with manager: # Context manager handles sys.path and sys.modules setup/teardown
+        manager.load_plugins()
+        registered_models = mock_kfs_modules_fixture.get_registered_custom_models()
+        assert "CustomPart" in registered_models
+        assert issubclass(registered_models["CustomPart"], BaseModel)
+        assert registered_models["CustomPart"].__name__ == "CustomPart"
+
+def test_plugin_manager_applies_custom_type_to_schema(plugin_dir: Path, mock_kfs_modules_fixture: MockCustomTypesModule):
+    """Verify that the plugin manager can apply custom types, extending the schema."""
+    plugin_content = """
+from pydantic import BaseModel
+from backend.kfs_manifest.extensibility.custom_types import register_custom_model
+
+class CustomFixture(BaseModel):
+    fixture_id: str
+    location: str
+
+register_custom_model("CustomFixture", CustomFixture)
     """
-    manager = PluginManager()
-    
-    custom_def = CustomTypeDefinition(
-        name="my_asset_plugin",
-        type_model=MyCustomAsset,
-        target_path="KineticForgeSchema.assets",
-        action="extend_union"
-    )
-    manager.register_custom_type(custom_def)
-    
-    ExtendedKineticForgeSchema = manager.apply_plugins(KineticForgeSchema)
-    
-    # Assert that the new schema is a Pydantic model and distinct from the original
-    assert issubclass(ExtendedKineticForgeSchema, KineticForgeSchema)
-    assert ExtendedKineticForgeSchema is not KineticForgeSchema
-    
-    # Verify the 'assets' field now accepts MyCustomAsset
-    assert "assets" in ExtendedKineticForgeSchema.model_fields
-    
-    # Test valid data with custom asset
-    valid_data = {
-        "version": "v1",
-        "assets": [
-            {"id": "geo1", "name": "box1", "type": "standard_geometry", "shape": "box"},
-            {"id": "custom1", "name": "my_custom_thing", "type": "my_custom_asset", "custom_property": "some_value"}
-        ],
-        "metadata": {}
-    }
-    extended_schema_instance = ExtendedKineticForgeSchema(**valid_data)
-    assert len(extended_schema_instance.assets) == 2
-    assert isinstance(extended_schema_instance.assets[1], MyCustomAsset)
-    assert extended_schema_instance.assets[1].custom_property == "some_value"
+    plugin_file = plugin_dir / "fixture_plugin.py"
+    plugin_file.write_text(plugin_content)
 
-    # Test invalid data for custom asset (e.g., missing required field)
-    invalid_data_missing_prop = {
-        "version": "v1",
-        "assets": [
-            {"id": "custom1", "name": "my_custom_thing", "type": "my_custom_asset"}
-        ]
-    }
-    with pytest.raises(ValidationError):
-        ExtendedKineticForgeSchema(**invalid_data_missing_prop)
+    manager = PluginManager([plugin_dir])
+    with manager:
+        manager.load_plugins()
+        ExtendedKineticForgeSchema = manager.apply_plugins(KineticForgeSchema) # Use the base KineticForgeSchema from the test file
 
-    # Test invalid custom asset type
-    invalid_data_wrong_type = {
-        "version": "v1",
-        "assets": [
-            {"id": "wrong1", "name": "wrong_thing", "type": "unknown_asset", "data": "abc"}
-        ]
-    }
-    with pytest.raises(ValidationError):
-        ExtendedKineticForgeSchema(**invalid_data_wrong_type)
+        # Check if the new field is present in the extended schema
+        assert hasattr(ExtendedKineticForgeSchema, "model_fields")
+        assert "customfixtures" in ExtendedKineticForgeSchema.model_fields
+        assert ExtendedKineticForgeSchema.model_fields["customfixtures"].annotation == List[mock_kfs_modules_fixture.get_registered_custom_models()["CustomFixture"]]
 
+        # Verify a basic instance can be created and validates
+        manifest_data = {
+            "name": "project_with_custom_fixture",
+            "version": "v1",
+            "customfixtures": [
+                {"fixture_id": "FX001", "location": "A1"}
+            ]
+        }
+        extended_schema_instance = ExtendedKineticForgeSchema(**manifest_data)
+        assert extended_schema_instance.name == "project_with_custom_fixture"
+        assert len(extended_schema_instance.customfixtures) == 1
+        assert extended_schema_instance.customfixtures[0].fixture_id == "FX001"
 
-def test_plugin_manager_applies_multiple_custom_asset_types():
+def test_extended_schema_validation_success(plugin_dir: Path, mock_kfs_modules_fixture: MockCustomTypesModule):
+    """Verify that an extended schema validates correctly with custom type data."""
+    plugin_content = """
+from pydantic import BaseModel
+from backend.kfs_manifest.extensibility.custom_types import register_custom_model
+
+class CustomTool(BaseModel):
+    tool_name: str
+    power_rating: float
+
+register_custom_model("CustomTool", CustomTool)
     """
-    Tests that the plugin manager correctly extends the 'assets' union type
-    with multiple custom asset types.
+    plugin_file = plugin_dir / "tool_plugin.py"
+    plugin_file.write_text(plugin_content)
+
+    manager = PluginManager([plugin_dir])
+    with manager:
+        manager.load_plugins()
+        ExtendedKineticForgeSchema = manager.apply_plugins(KineticForgeSchema)
+
+        manifest_data = {
+            "name": "project_with_custom_tool",
+            "version": "v1",
+            "assets": [
+                {"id": "A1", "type": "motor", "path": "motors/motor.step"}
+            ],
+            "customtools": [
+                {"tool_name": "DrillPress", "power_rating": 1.5},
+                {"tool_name": "Lathe", "power_rating": 2.0}
+            ]
+        }
+        try:
+            extended_schema_instance = ExtendedKineticForgeSchema(**manifest_data)
+            assert extended_schema_instance.name == "project_with_custom_tool"
+            assert len(extended_schema_instance.assets) == 1
+            assert len(extended_schema_instance.customtools) == 2
+            assert extended_schema_instance.customtools[0].tool_name == "DrillPress"
+        except ValidationError as e:
+            pytest.fail(f"Validation failed unexpectedly: {e}")
+
+def test_extended_schema_validation_failure(plugin_dir: Path, mock_kfs_modules_fixture: MockCustomTypesModule):
+    """Verify that an extended schema correctly raises validation errors for invalid custom type data."""
+    plugin_content = """
+from pydantic import BaseModel
+from backend.kfs_manifest.extensibility.custom_types import register_custom_model
+
+class CustomSensor(BaseModel):
+    sensor_id: str
+    measurement_unit: str
+
+register_custom_model("CustomSensor", CustomSensor)
     """
-    manager = PluginManager()
-    
-    custom_def1 = CustomTypeDefinition(
-        name="my_asset_plugin",
-        type_model=MyCustomAsset,
-        target_path="KineticForgeSchema.assets",
-        action="extend_union"
-    )
-    custom_def2 = CustomTypeDefinition(
-        name="another_asset_plugin",
-        type_model=AnotherCustomAsset,
-        target_path="KineticForgeSchema.assets",
-        action="extend_union"
-    )
-    manager.register_custom_type(custom_def1)
-    manager.register_custom_type(custom_def2)
-    
-    ExtendedKineticForgeSchema = manager.apply_plugins(KineticForgeSchema)
-    
-    valid_data = {
-        "version": "v1",
-        "assets": [
-            {"id": "geo1", "name": "box1", "type": "standard_geometry", "shape": "box"},
-            {"id": "custom1", "name": "my_custom_thing", "type": "my_custom_asset", "custom_property": "some_value"},
-            {"id": "another1", "name": "another_thing", "type": "another_custom_asset", "another_prop": 123}
-        ],
-        "metadata": {}
-    }
-    extended_schema_instance = ExtendedKineticForgeSchema(**valid_data)
-    assert len(extended_schema_instance.assets) == 3
-    assert isinstance(extended_schema_instance.assets[1], MyCustomAsset)
-    assert isinstance(extended_schema_instance.assets[2], AnotherCustomAsset)
+    plugin_file = plugin_dir / "sensor_plugin.py"
+    plugin_file.write_text(plugin_content)
 
+    manager = PluginManager([plugin_dir])
+    with manager:
+        manager.load_plugins()
+        ExtendedKineticForgeSchema = manager.apply_plugins(KineticForgeSchema)
 
-def test_plugin_manager_adds_new_field_to_schema():
+        manifest_data = {
+            "name": "project_with_bad_sensor",
+            "version": "v1",
+            "customsensors": [
+                {"sensor_id": "S001"} # Missing 'measurement_unit' field
+            ]
+        }
+        with pytest.raises(ValidationError) as exc_info:
+            ExtendedKineticForgeSchema(**manifest_data)
+
+        assert "measurement_unit" in str(exc_info.value)
+        assert "Field required" in str(exc_info.value)
+
+def test_no_plugins_loaded(plugin_dir: Path):
+    """Verify apply_plugins returns the base schema if no plugins are loaded."""
+    manager = PluginManager([plugin_dir])
+    with manager:
+        manager.load_plugins() # No plugin files in dir
+        ExtendedKineticForgeSchema = manager.apply_plugins(KineticForgeSchema)
+        assert ExtendedKineticForgeSchema is KineticForgeSchema # Should return the original schema instance
+
+def test_invalid_plugin_content_error_handling(plugin_dir: Path, mock_kfs_modules_fixture: MockCustomTypesModule):
+    """Verify that plugin manager handles invalid plugin files gracefully (e.g., syntax error)."""
+    plugin_content = """
+from pydantic import BaseModel
+from backend.kfs_manifest.extensibility.custom_types import register_custom_model
+
+class BrokenPlugin(BaseModel: # Syntax error here
+    name: str
+
+register_custom_model("BrokenPlugin", BrokenPlugin)
     """
-    Tests that the plugin manager can add a new field directly to the
-    KineticForgeSchema.
+    plugin_file = plugin_dir / "broken_plugin.py"
+    plugin_file.write_text(plugin_content)
+
+    manager = PluginManager([plugin_dir])
+    with manager:
+        # load_plugins should catch the error during exec_module and not raise an unhandled exception.
+        manager.load_plugins()
+        assert "BrokenPlugin" not in mock_kfs_modules_fixture.get_registered_custom_models()
+        ExtendedKineticForgeSchema = manager.apply_plugins(KineticForgeSchema)
+        assert ExtendedKineticForgeSchema is KineticForgeSchema # No valid plugins loaded, so base schema is returned
+
+def test_plugin_registers_non_basemodel(plugin_dir: Path, mock_kfs_modules_fixture: MockCustomTypesModule):
+    """Verify that registering a non-BaseModel is handled (e.g., raises TypeError in mock)."""
+    plugin_content = """
+from backend.kfs_manifest.extensibility.custom_types import register_custom_model
+
+class NotABaseModel:
+    data: str
+
+register_custom_model("NotABaseModel", NotABaseModel)
     """
-    manager = PluginManager()
-    
-    custom_def = CustomTypeDefinition(
-        name="custom_metadata_field_plugin",
-        type_model=CustomMetadataField,
-        target_path="KineticForgeSchema",
-        action="add_field",
-        field_name="project_info"
-    )
-    manager.register_custom_type(custom_def)
-    
-    ExtendedKineticForgeSchema = manager.apply_plugins(KineticForgeSchema)
-    
-    # Verify the new field exists
-    assert "project_info" in ExtendedKineticForgeSchema.model_fields
-    assert ExtendedKineticForgeSchema.model_fields["project_info"].annotation is CustomMetadataField
-    
-    # Test valid data with new field
-    valid_data = {
-        "version": "v1",
-        "assets": [],
-        "metadata": {},
-        "project_info": {"author": "John Doe", "timestamp": "2023-10-27T10:00:00Z"}
-    }
-    extended_schema_instance = ExtendedKineticForgeSchema(**valid_data)
-    assert isinstance(extended_schema_instance.project_info, CustomMetadataField)
-    assert extended_schema_instance.project_info.author == "John Doe"
+    plugin_file = plugin_dir / "invalid_reg_plugin.py"
+    plugin_file.write_text(plugin_content)
 
-    # Test invalid data for new field
-    invalid_data_missing_field = {
-        "version": "v1",
-        "assets": [],
-        "metadata": {},
-        "project_info": {"author": "Jane Doe"} # Missing timestamp
-    }
-    with pytest.raises(ValidationError):
-        ExtendedKineticForgeSchema(**invalid_data_missing_field)
-
-def test_plugin_manager_replaces_field_in_schema():
-    """
-    Tests that the plugin manager can replace an existing field in the
-    KineticForgeSchema with a custom type.
-    """
-    manager = PluginManager()
-
-    # Define a custom field that will replace 'metadata'
-    class ReplacedMetadataField(BaseModel):
-        new_format_key: str
-        new_format_value: int
-
-    custom_def = CustomTypeDefinition(
-        name="replace_metadata_plugin",
-        type_model=ReplacedMetadataField,
-        target_path="KineticForgeSchema",
-        action="replace_field",
-        field_name="metadata"
-    )
-    manager.register_custom_type(custom_def)
-
-    ExtendedKineticForgeSchema = manager.apply_plugins(KineticForgeSchema)
-
-    # Verify the 'metadata' field now has the new type
-    assert "metadata" in ExtendedKineticForgeSchema.model_fields
-    assert ExtendedKineticForgeSchema.model_fields["metadata"].annotation is ReplacedMetadataField
-    
-    # Test valid data with replaced field
-    valid_data = {
-        "version": "v1",
-        "assets": [],
-        "metadata": {"new_format_key": "abc", "new_format_value": 123}
-    }
-    extended_schema_instance = ExtendedKineticForgeSchema(**valid_data)
-    assert isinstance(extended_schema_instance.metadata, ReplacedMetadataField)
-    assert extended_schema_instance.metadata.new_format_key == "abc"
-
-    # Test invalid data for replaced field
-    invalid_data_missing_field = {
-        "version": "v1",
-        "assets": [],
-        "metadata": {"new_format_key": "xyz"} # Missing new_format_value
-    }
-    with pytest.raises(ValidationError):
-        ExtendedKineticForgeSchema(**invalid_data_missing_field)
-
-    invalid_data_wrong_type = {
-        "version": "v1",
-        "assets": [],
-        "metadata": {"new_format_key": "xyz", "new_format_value": "not_an_int"}
-    }
-    with pytest.raises(ValidationError):
-        ExtendedKineticForgeSchema(**invalid_data_wrong_type)
+    manager = PluginManager([plugin_dir])
+    with manager:
+        # The mock_custom_types_instance.register_custom_model will raise TypeError which _load_plugin_module catches.
+        manager.load_plugins()
+        assert "NotABaseModel" not in mock_kfs_modules_fixture.get_registered_custom_models()
+        ExtendedKineticForgeSchema = manager.apply_plugins(KineticForgeSchema)
+        assert ExtendedKineticForgeSchema is KineticForgeSchema
