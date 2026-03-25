@@ -1,229 +1,250 @@
 import pytest
 from pydantic import ValidationError
+
 from backend.kfs_manifest.schema.v1.motion_models import (
-    CartesianVector,
-    SphericalVector,
-    CylindricalVector,
-    AxisRange,
+    ConstantMotion,
+    PeriodicMotion,
+    LimitConstraint,
+    GearConstraint,
+    KinematicChain,
     MotionConstraint,
-    JointConfig,
-    MotionConfig,
-    KinematicJointType,
+    MotionModel,
 )
 
 
-def test_cartesian_vector_valid_data():
-    """Test CartesianVector with valid data."""
-    vec = CartesianVector(x=1.0, y=2.0, z=3.0)
-    assert vec.x == 1.0
-    assert vec.y == 2.0
-    assert vec.z == 3.0
+def test_constant_motion_valid_data():
+    """Tests ConstantMotion with valid data."""
+    motion = ConstantMotion(speed=10.5)
+    assert motion.type == "constant"
+    assert motion.speed == 10.5
 
-def test_cartesian_vector_defaults():
-    """Test CartesianVector with default values."""
-    vec = CartesianVector()
-    assert vec.x == 0.0
-    assert vec.y == 0.0
-    assert vec.z == 0.0
 
-def test_cartesian_vector_invalid_type():
-    """Test CartesianVector with invalid data types."""
+def test_constant_motion_missing_speed():
+    """Tests ConstantMotion with missing speed, expecting ValidationError."""
     with pytest.raises(ValidationError):
-        CartesianVector(x="not_a_float", y=2.0, z=3.0)
+        ConstantMotion()
+
+
+def test_constant_motion_invalid_speed_type():
+    """Tests ConstantMotion with invalid speed type, expecting ValidationError."""
     with pytest.raises(ValidationError):
-        CartesianVector(x=1, y="not_a_float", z=3.0)
+        ConstantMotion(speed="not_a_float")
 
 
-def test_spherical_vector_valid_data():
-    """Test SphericalVector with valid data."""
-    vec = SphericalVector(radial=10.0, polar=0.5, azimuthal=1.5)
-    assert vec.radial == 10.0
-    assert vec.polar == 0.5
-    assert vec.azimuthal == 1.5
+def test_periodic_motion_valid_data():
+    """Tests PeriodicMotion with valid data."""
+    motion = PeriodicMotion(amplitude=5.0, frequency=0.5, offset=0.1)
+    assert motion.type == "periodic"
+    assert motion.amplitude == 5.0
+    assert motion.frequency == 0.5
+    assert motion.offset == 0.1
 
-def test_spherical_vector_defaults():
-    """Test SphericalVector with default values."""
-    vec = SphericalVector()
-    assert vec.radial == 0.0
-    assert vec.polar == 0.0
-    assert vec.azimuthal == 0.0
 
-def test_spherical_vector_invalid_type():
-    """Test SphericalVector with invalid data types."""
+def test_periodic_motion_valid_data_default_offset():
+    """Tests PeriodicMotion with valid data and default offset."""
+    motion = PeriodicMotion(amplitude=5.0, frequency=0.5)
+    assert motion.type == "periodic"
+    assert motion.amplitude == 5.0
+    assert motion.frequency == 0.5
+    assert motion.offset == 0.0  # Default value
+
+
+def test_periodic_motion_missing_amplitude():
+    """Tests PeriodicMotion with missing amplitude, expecting ValidationError."""
     with pytest.raises(ValidationError):
-        SphericalVector(radial="not_a_float", polar=0.5, azimuthal=1.5)
+        PeriodicMotion(frequency=0.5)
 
-def test_spherical_vector_polar_range_validation():
-    """Test SphericalVector polar angle range validation."""
+
+def test_periodic_motion_missing_frequency():
+    """Tests PeriodicMotion with missing frequency, expecting ValidationError."""
     with pytest.raises(ValidationError):
-        SphericalVector(radial=1.0, polar=-0.1, azimuthal=0.0) # Below 0
+        PeriodicMotion(amplitude=5.0)
+
+
+def test_periodic_motion_invalid_amplitude_type():
+    """Tests PeriodicMotion with invalid amplitude type, expecting ValidationError."""
     with pytest.raises(ValidationError):
-        SphericalVector(radial=1.0, polar=3.14159265359 + 0.1, azimuthal=0.0) # Above pi
-    SphericalVector(radial=1.0, polar=0.0, azimuthal=0.0) # Valid
-    SphericalVector(radial=1.0, polar=3.14159265359, azimuthal=0.0) # Valid
+        PeriodicMotion(amplitude="invalid", frequency=0.5)
 
-def test_spherical_vector_azimuthal_range_validation():
-    """Test SphericalVector azimuthal angle range validation."""
+
+def test_periodic_motion_invalid_frequency_type():
+    """Tests PeriodicMotion with invalid frequency type, expecting ValidationError."""
     with pytest.raises(ValidationError):
-        SphericalVector(radial=1.0, polar=0.0, azimuthal=-0.1) # Below 0
+        PeriodicMotion(amplitude=5.0, frequency="invalid")
+
+
+def test_periodic_motion_invalid_offset_type():
+    """Tests PeriodicMotion with invalid offset type, expecting ValidationError."""
     with pytest.raises(ValidationError):
-        SphericalVector(radial=1.0, polar=0.0, azimuthal=6.28318530718 + 0.1) # Above 2*pi
-    SphericalVector(radial=1.0, polar=0.0, azimuthal=0.0) # Valid
-    SphericalVector(radial=1.0, polar=0.0, azimuthal=6.28318530718) # Valid
+        PeriodicMotion(amplitude=5.0, frequency=0.5, offset="invalid")
 
 
-def test_cylindrical_vector_valid_data():
-    """Test CylindricalVector with valid data."""
-    vec = CylindricalVector(radial=5.0, angle=1.0, z=2.0)
-    assert vec.radial == 5.0
-    assert vec.angle == 1.0
-    assert vec.z == 2.0
+def test_limit_constraint_valid_data():
+    """Tests LimitConstraint with valid data."""
+    constraint = LimitConstraint(min_value=0.0, max_value=10.0)
+    assert constraint.type == "limit"
+    assert constraint.min_value == 0.0
+    assert constraint.max_value == 10.0
 
-def test_cylindrical_vector_defaults():
-    """Test CylindricalVector with default values."""
-    vec = CylindricalVector()
-    assert vec.radial == 0.0
-    assert vec.angle == 0.0
-    assert vec.z == 0.0
 
-def test_cylindrical_vector_invalid_type():
-    """Test CylindricalVector with invalid data types."""
+def test_limit_constraint_missing_min_value():
+    """Tests LimitConstraint with missing min_value, expecting ValidationError."""
     with pytest.raises(ValidationError):
-        CylindricalVector(radial="not_a_float", angle=1.0, z=2.0)
+        LimitConstraint(max_value=10.0)
 
-def test_cylindrical_vector_angle_range_validation():
-    """Test CylindricalVector angle range validation."""
+
+def test_limit_constraint_missing_max_value():
+    """Tests LimitConstraint with missing max_value, expecting ValidationError."""
     with pytest.raises(ValidationError):
-        CylindricalVector(radial=1.0, angle=-0.1, z=0.0) # Below 0
+        LimitConstraint(min_value=0.0)
+
+
+def test_limit_constraint_invalid_value_type():
+    """Tests LimitConstraint with invalid value type, expecting ValidationError."""
     with pytest.raises(ValidationError):
-        CylindricalVector(radial=1.0, angle=6.28318530718 + 0.1, z=0.0) # Above 2*pi
-    CylindricalVector(radial=1.0, angle=0.0, z=0.0) # Valid
-    CylindricalVector(radial=1.0, angle=6.28318530718, z=0.0) # Valid
-
-
-def test_axis_range_valid_data():
-    """Test AxisRange with valid data."""
-    ar = AxisRange(min=-10.0, max=10.0)
-    assert ar.min == -10.0
-    assert ar.max == 10.0
-
-def test_axis_range_defaults():
-    """Test AxisRange with default values."""
-    ar = AxisRange()
-    assert ar.min == 0.0
-    assert ar.max == 0.0
-
-def test_axis_range_invalid_type():
-    """Test AxisRange with invalid data types."""
+        LimitConstraint(min_value="zero", max_value=10.0)
     with pytest.raises(ValidationError):
-        AxisRange(min="not_a_float", max=10.0)
-
-def test_axis_range_min_greater_than_max():
-    """Test AxisRange validation where min > max."""
-    with pytest.raises(ValidationError, match="'min' must be less than or equal to 'max'"):
-        AxisRange(min=10.0, max=5.0)
+        LimitConstraint(min_value=0.0, max_value="ten")
 
 
-def test_motion_constraint_valid_data():
-    """Test MotionConstraint with valid data."""
-    constraint = MotionConstraint(velocity=1.0, acceleration=0.5)
-    assert constraint.velocity == 1.0
-    assert constraint.acceleration == 0.5
+def test_gear_constraint_valid_data():
+    """Tests GearConstraint with valid data."""
+    constraint = GearConstraint(ratio=2.5)
+    assert constraint.type == "gear"
+    assert constraint.ratio == 2.5
 
-def test_motion_constraint_defaults():
-    """Test MotionConstraint with default values."""
-    constraint = MotionConstraint()
-    assert constraint.velocity is None
-    assert constraint.acceleration is None
 
-def test_motion_constraint_invalid_type():
-    """Test MotionConstraint with invalid data types."""
+def test_gear_constraint_missing_ratio():
+    """Tests GearConstraint with missing ratio, expecting ValidationError."""
     with pytest.raises(ValidationError):
-        MotionConstraint(velocity="not_a_float")
-
-def test_motion_constraint_negative_values():
-    """Test MotionConstraint with negative velocity or acceleration."""
-    with pytest.raises(ValidationError, match="'velocity' must be non-negative"):
-        MotionConstraint(velocity=-1.0)
-    with pytest.raises(ValidationError, match="'acceleration' must be non-negative"):
-        MotionConstraint(acceleration=-0.5)
+        GearConstraint()
 
 
-def test_joint_config_valid_data():
-    """Test JointConfig with valid data."""
-    joint = JointConfig(
-        name="rotary_joint_1",
-        type=KinematicJointType.REVOLUTE,
-        axis=CartesianVector(x=1.0),
-        range=AxisRange(min=0.0, max=3.14),
-        constraints=MotionConstraint(velocity=10.0),
-        description="A simple rotary joint"
-    )
-    assert joint.name == "rotary_joint_1"
-    assert joint.type == KinematicJointType.REVOLUTE
-    assert joint.axis.x == 1.0
-    assert joint.range.min == 0.0
-    assert joint.constraints.velocity == 10.0
-    assert joint.description == "A simple rotary joint"
-
-def test_joint_config_required_fields():
-    """Test JointConfig for missing required fields."""
+def test_gear_constraint_invalid_ratio_type():
+    """Tests GearConstraint with invalid ratio type, expecting ValidationError."""
     with pytest.raises(ValidationError):
-        JointConfig(type=KinematicJointType.REVOLUTE, axis=CartesianVector(x=1.0))
+        GearConstraint(ratio="two_point_five")
+
+
+def test_kinematic_chain_valid_data():
+    """Tests KinematicChain with valid data (elements only)."""
+    chain = KinematicChain(elements=["joint_a", "joint_b"])
+    assert chain.type == "kinematic_chain"
+    assert chain.elements == ["joint_a", "joint_b"]
+    assert chain.constraints == []
+
+
+def test_kinematic_chain_valid_data_with_constraints():
+    """Tests KinematicChain with valid data including constraints."""
+    constraints_data = [
+        {"type": "limit", "min_value": 0.0, "max_value": 1.0},
+        {"type": "gear", "ratio": 3.0},
+    ]
+    chain = KinematicChain(elements=["joint_c"], constraints=constraints_data)
+    assert chain.type == "kinematic_chain"
+    assert chain.elements == ["joint_c"]
+    assert len(chain.constraints) == 2
+    assert isinstance(chain.constraints[0], LimitConstraint)
+    assert chain.constraints[0].min_value == 0.0
+    assert isinstance(chain.constraints[1], GearConstraint)
+    assert chain.constraints[1].ratio == 3.0
+
+
+def test_kinematic_chain_missing_elements():
+    """Tests KinematicChain with missing elements, expecting ValidationError."""
     with pytest.raises(ValidationError):
-        JointConfig(name="joint1", axis=CartesianVector(x=1.0))
+        KinematicChain()
+
+
+def test_kinematic_chain_empty_elements():
+    """Tests KinematicChain with empty elements list, expecting ValidationError."""
     with pytest.raises(ValidationError):
-        JointConfig(name="joint1", type=KinematicJointType.REVOLUTE)
+        KinematicChain(elements=[])
 
-def test_joint_config_invalid_type():
-    """Test JointConfig with invalid data types for nested models."""
+
+def test_kinematic_chain_invalid_elements_type():
+    """Tests KinematicChain with invalid elements type, expecting ValidationError."""
     with pytest.raises(ValidationError):
-        JointConfig(name="joint1", type="INVALID_TYPE", axis=CartesianVector(x=1.0))
+        KinematicChain(elements="not_a_list")
     with pytest.raises(ValidationError):
-        JointConfig(name="joint1", type=KinematicJointType.REVOLUTE, axis={"x": "not_a_float"})
+        KinematicChain(elements=[1, 2]) # Elements must be strings
+
+
+def test_kinematic_chain_invalid_constraint_data():
+    """Tests KinematicChain with invalid constraint data, expecting ValidationError."""
+    invalid_constraints = [
+        {"type": "limit", "min_value": "bad", "max_value": 1.0} # Invalid type
+    ]
     with pytest.raises(ValidationError):
-        JointConfig(name="joint1", type=KinematicJointType.REVOLUTE, axis=CartesianVector(x=1.0),
-                    range={"min": "not_a_float"})
+        KinematicChain(elements=["joint_d"], constraints=invalid_constraints)
 
-
-def test_motion_config_valid_data():
-    """Test MotionConfig with valid data."""
-    motion_config = MotionConfig(
-        joints=[
-            JointConfig(name="joint_a", type=KinematicJointType.PRISMATIC, axis=CartesianVector(z=1.0), range=AxisRange(min=0, max=10)),
-            JointConfig(name="joint_b", type=KinematicJointType.REVOLUTE, axis=CartesianVector(x=1.0), constraints=MotionConstraint(acceleration=5.0))
-        ],
-        description="A simple two-joint motion system"
-    )
-    assert len(motion_config.joints) == 2
-    assert motion_config.joints[0].name == "joint_a"
-    assert motion_config.joints[1].type == KinematicJointType.REVOLUTE
-    assert motion_config.description == "A simple two-joint motion system"
-
-def test_motion_config_empty_joints():
-    """Test MotionConfig with an empty list of joints."""
-    motion_config = MotionConfig(joints=[])
-    assert len(motion_config.joints) == 0
-
-def test_motion_config_invalid_joint_entry():
-    """Test MotionConfig with an invalid entry in the joints list."""
+    invalid_constraints_no_type = [
+        {"min_value": 0.0, "max_value": 1.0} # Missing type
+    ]
     with pytest.raises(ValidationError):
-        MotionConfig(joints=[
-            {"name": "invalid_joint", "type": "UNKNOWN"} # Invalid type for KinematicJointType
-        ])
-    with pytest.raises(ValidationError):
-        MotionConfig(joints=[
-            JointConfig(name="joint_a", type=KinematicJointType.PRISMATIC, axis=CartesianVector(z=1.0)),
-            {"name": "joint_b", "type": "REVOLUTE", "axis": {"x": "bad"}} # Invalid axis value
-        ])
+        KinematicChain(elements=["joint_e"], constraints=invalid_constraints_no_type)
 
 
+def test_motion_model_union_constant_motion():
+    """Tests MotionModel union with ConstantMotion data."""
+    data = {"type": "constant", "speed": 15.0}
+    motion = MotionModel.model_validate(data)
+    assert isinstance(motion, ConstantMotion)
+    assert motion.speed == 15.0
 
-def test_motion_config_no_description():
-    """Test MotionConfig with no description provided."""
-    motion_config = MotionConfig(
-        joints=[
-            JointConfig(name="joint_a", type=KinematicJointType.PRISMATIC, axis=CartesianVector(z=1.0), range=AxisRange(min=0, max=10)),
+
+def test_motion_model_union_periodic_motion():
+    """Tests MotionModel union with PeriodicMotion data."""
+    data = {"type": "periodic", "amplitude": 8.0, "frequency": 1.2}
+    motion = MotionModel.model_validate(data)
+    assert isinstance(motion, PeriodicMotion)
+    assert motion.amplitude == 8.0
+    assert motion.frequency == 1.2
+
+
+def test_motion_model_union_kinematic_chain():
+    """Tests MotionModel union with KinematicChain data."""
+    data = {
+        "type": "kinematic_chain",
+        "elements": ["link1", "link2"],
+        "constraints": [
+            {"type": "limit", "min_value": -5.0, "max_value": 5.0}
         ]
-    )
-    assert motion_config.description is None
+    }
+    motion = MotionModel.model_validate(data)
+    assert isinstance(motion, KinematicChain)
+    assert motion.elements == ["link1", "link2"]
+    assert len(motion.constraints) == 1
+    assert isinstance(motion.constraints[0], LimitConstraint)
+
+
+def test_motion_model_union_invalid_type():
+    """Tests MotionModel union with an invalid type, expecting ValidationError."""
+    data = {"type": "unknown_motion", "value": 10}
+    with pytest.raises(ValidationError):
+        MotionModel.model_validate(data)
+
+
+def test_motion_constraint_union_limit_constraint():
+    """Tests MotionConstraint union with LimitConstraint data."""
+    data = {"type": "limit", "min_value": 0.0, "max_value": 360.0}
+    constraint = MotionConstraint.model_validate(data)
+    assert isinstance(constraint, LimitConstraint)
+    assert constraint.min_value == 0.0
+    assert constraint.max_value == 360.0
+
+
+def test_motion_constraint_union_gear_constraint():
+    """Tests MotionConstraint union with GearConstraint data."""
+    data = {"type": "gear", "ratio": 4.0}
+    constraint = MotionConstraint.model_validate(data)
+    assert isinstance(constraint, GearConstraint)
+    assert constraint.ratio == 4.0
+
+
+def test_motion_constraint_union_invalid_type():
+    """Tests MotionConstraint union with an invalid type, expecting ValidationError."""
+    data = {"type": "unknown_constraint", "param": 1}
+    with pytest.raises(ValidationError):
+        MotionConstraint.model_validate(data)
+
