@@ -1,7 +1,7 @@
 import yaml
 import json
 from pathlib import Path
-from typing import Union, Literal, Dict, Any
+from typing import Union, Literal, Dict, Any, Optional
 
 from pydantic import ValidationError as PydanticValidationError
 
@@ -51,100 +51,100 @@ def load_kfs_manifest(file_path: Union[str, Path]) -> KFSManifest:
 
     Raises:
         FileNotFoundError: If the specified file does not exist.
-        InvalidKFSManifestError: If the file content is not valid YAML or JSON, or malformed.
-        ManifestVersionMismatchError: If the manifest's KFS version is incompatible with the parser.
-        KFSManifestValidationError: If the manifest content fails schema validation against KFSManifest model.
-        KFSBaseError: For other unexpected KFS-related errors during loading.
+        InvalidKFSManifestError: If the file content is not valid YAML or JSON,
+                                 or if the 'kfs_version' is malformed or missing.
+        KFSManifestValidationError: If the manifest content does not conform to the KFS schema.
+        ManifestVersionMismatchError: If the manifest's major version is incompatible with the parser.
+        KFSBaseError: For other unexpected KFS-related errors.
+        Exception: For general unexpected errors.
     """
     path = Path(file_path)
-
-    if not path.exists():
-        raise FileNotFoundError(f"KFS manifest file not found: {path}")
     if not path.is_file():
-        raise InvalidKFSManifestError(f"Path '{path}' is not a file.")
+        raise FileNotFoundError(f"Manifest file not found: {path}")
 
-    content = path.read_text(encoding="utf-8")
-    data: Dict[str, Any] = {}
+    file_extension = path.suffix.lower()
+    raw_data: Dict[str, Any] = {}
 
-    # Attempt to parse as YAML first
     try:
-        data = yaml.safe_load(content)
-        if not isinstance(data, dict):
-            # yaml.safe_load returns None for empty string, or other types for non-dict roots
-            raise InvalidKFSManifestError("KFS manifest root must be a dictionary.")
-    except yaml.YAMLError:
-        # If YAML parsing fails, try JSON
-        try:
-            data = json.loads(content)
-            if not isinstance(data, dict):
-                raise InvalidKFSManifestError("KFS manifest root must be a dictionary.")
-        except json.JSONDecodeError as e:
-            raise InvalidKFSManifestError(
-                f"File '{path}' is neither valid YAML nor JSON: {e}"
-            )
+        with open(path, "r", encoding="utf-8") as f:
+            if file_extension in (".yaml", ".yml"):
+                raw_data = yaml.safe_load(f)
+            elif file_extension == ".json":
+                raw_data = json.load(f)
+            else:
+                raise InvalidKFSManifestError(f"Unsupported file extension: {file_extension}. Must be .yaml, .yml, or .json.")
+    except yaml.YAMLError as e:
+        raise InvalidKFSManifestError(f"Malformed YAML content in {path}: {e}") from e
+    except json.JSONDecodeError as e:
+        raise InvalidKFSManifestError(f"Malformed JSON content in {path}: {e}") from e
     except Exception as e:
-        # Catch any other parsing errors not specific to YAML/JSON syntax
-        raise InvalidKFSManifestError(f"Failed to parse manifest '{path}': {e}")
+        raise KFSBaseError(f"An unexpected error occurred while reading {path}: {e}") from e
+
+    if not isinstance(raw_data, dict):
+        raise InvalidKFSManifestError(f"Manifest file {path} content is not a valid dictionary (expected a root object).")
+
+    # Check version compatibility before Pydantic parsing for clearer error messages
+    _check_version_compatibility(raw_data, KFS_MANIFEST_VERSION)
 
     try:
-        _check_version_compatibility(data, KFS_MANIFEST_VERSION)
-    except (InvalidKFSManifestError, ManifestVersionMismatchError) as e:
-        # Re-raise directly, it's already a specific error type
-        raise e
-
-    try:
-        # Pydantic v2's model_validate is preferred for validating raw data
-        manifest = KFSManifest.model_validate(data)
+        # Pydantic will perform the actual schema validation
+        manifest = KFSManifest.model_validate(raw_data)
         return manifest
     except PydanticValidationError as e:
-        # Extract Pydantic errors for a more informative custom exception
+        # Transform Pydantic's ValidationError into a custom KFSManifestValidationError
         errors = e.errors()
-        error_messages = [f"{' -> '.join(str(loc) for loc in err['loc'])}: {err['msg']}" for err in errors]
+        error_messages = [f"{err['loc']}: {err['msg']}" for err in errors]
         raise KFSManifestValidationError(
-            f"KFS manifest validation failed for '{path}': {'; '.join(error_messages)}",
+            f"KFS manifest validation failed for {path}: {'; '.join(error_messages)}",
             errors=errors
-        )
+        ) from e
     except Exception as e:
-        # Catch any other unexpected errors during manifest loading
-        raise KFSBaseError(f"An unexpected error occurred while loading manifest '{path}': {e}")
+        raise KFSBaseError(f"An unexpected error occurred during manifest parsing for {path}: {e}") from e
 
 
-def save_kfs_manifest(
-    manifest: KFSManifest,
-    file_path: Union[str, Path],
-    format: Literal["yaml", "json"] = "yaml",
-    indent: int = 2
-) -> None:
+def save_kfs_manifest(manifest: KFSManifest, file_path: Union[str, Path], format: Optional[Literal["yaml", "json"]] = None):
     """
-    Saves a KFSManifest Pydantic model instance to a YAML or JSON file.
+    Saves a KFSManifest Pydantic model to a YAML or JSON file.
 
     Args:
-        manifest (KFSManifest): The KFSManifest model instance to save.
-        file_path (Union[str, Path]): The path to save the manifest file.
-        format (Literal["yaml", "json"]): The output format ('yaml' or 'json'). Defaults to 'yaml'.
-        indent (int): The indentation level for the output file. Defaults to 2.
+        manifest (KFSManifest): The KFSManifest instance to save.
+        file_path (Union[str, Path]): The path to save the manifest to.
+        format (Optional[Literal["yaml", "json"]]): Explicitly specify the output format.
+                                                   If None, format is inferred from file extension.
 
     Raises:
-        ValueError: If an unsupported format is specified.
-        KFSBaseError: For errors during file writing.
+        ValueError: If format cannot be inferred from file extension and is not explicitly specified.
+        KFSBaseError: For errors during serialization or writing.
     """
     path = Path(file_path)
-    path.parent.mkdir(parents=True, exist_ok=True)  # Ensure parent directory exists
+    file_extension = path.suffix.lower()
 
-    # Convert Pydantic model to a dictionary suitable for serialization.
-    # by_alias=True ensures fields with `alias` are exported with their alias names,
-    # which is important for compatibility with the schema (e.g., 'kfs_version').
-    manifest_data = manifest.model_dump(by_alias=True, exclude_unset=False)
+    if format is None:
+        if file_extension in (".yaml", ".yml"):
+            output_format = "yaml"
+        elif file_extension == ".json":
+            output_format = "json"
+        else:
+            raise ValueError(f"Could not infer output format from file extension '{file_extension}'. "
+                             "Please specify 'format' argument ('yaml' or 'json').")
+    else:
+        output_format = format
 
     try:
-        if format == "yaml":
-            with open(path, "w", encoding="utf-8") as f:
-                # sort_keys=False to preserve definition order for readability
-                yaml.dump(manifest_data, f, indent=indent, sort_keys=False)
-        elif format == "json":
-            with open(path, "w", encoding="utf-8") as f:
-                json.dump(manifest_data, f, indent=indent)
-        else:
-            raise ValueError(f"Unsupported format '{format}'. Must be 'yaml' or 'json'.")
+        # Convert Pydantic model to a dictionary, using aliases and excluding unset/None fields
+        manifest_data = manifest.model_dump(by_alias=True, exclude_none=True)
+
+        # Ensure parent directories exist before writing
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(path, "w", encoding="utf-8") as f:
+            if output_format == "yaml":
+                yaml.dump(manifest_data, f, indent=2, sort_keys=False)
+            elif output_format == "json":
+                json.dump(manifest_data, f, indent=2)
+            else:
+                # This case should ideally not be reached due to type hints and initial checks,
+                # but included for robustness.
+                raise ValueError(f"Unsupported output format specified: {output_format}")
     except Exception as e:
-        raise KFSBaseError(f"Failed to save KFS manifest to '{path}' in {format} format: {e}")
+        raise KFSBaseError(f"An error occurred while saving manifest to {path}: {e}") from e
