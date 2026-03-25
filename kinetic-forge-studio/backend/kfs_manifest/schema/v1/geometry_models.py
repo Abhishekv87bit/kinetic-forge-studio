@@ -1,144 +1,106 @@
-from enum import Enum
-from typing import List, Optional, Union, Annotated
+from typing import Literal, Union, List, Optional
+from pydantic import BaseModel, Field, conlist
 
-from pydantic import BaseModel, Field, Discriminator
-from .asset_models import Asset
+# Import asset models for referencing meshes
+# The problem statement indicates `asset_models.py` was previously completed.
+# Assuming it contains a MeshAsset model.
+from .asset_models import MeshAsset # If HeightmapAsset or a more generic Asset model exists, we might use that instead.
 
-# --- Enums ---
+# --- Common Types ---
+class Vector2D(BaseModel):
+    """Represents a 2D vector or dimension."""
+    x: float = Field(..., description="The X component.")
+    y: float = Field(..., description="The Y component.")
 
-class GeometryType(str, Enum):
-    """Enumeration of supported geometry types."""
-    BOX = "box"
-    SPHERE = "sphere"
-    CYLINDER = "cylinder"
-    CAPSULE = "capsule"
-    CONE = "cone"
-    PLANE = "plane"
-    MESH = "mesh"
+class Vector3D(BaseModel):
+    """Represents a 3D vector or dimension."""
+    x: float = Field(..., description="The X component.")
+    y: float = Field(..., description="The Y component.")
+    z: float = Field(..., description="The Z component.")
 
-# --- Common Models ---
+class Pose(BaseModel):
+    """Represents the position and orientation of an object."""
+    position: Optional[Vector3D] = Field(None, description="Position vector relative to the parent frame.", examples=[{"x": 0.0, "y": 0.0, "z": 0.0}])
+    orientation: Optional[Vector3D] = Field(None, description="Orientation as Euler angles (roll, pitch, yaw) in radians, relative to the parent frame.", examples=[{"x": 0.0, "y": 0.0, "z": 0.0}])
+    # Future: Could add quaternion representation.
 
-class Transform(BaseModel):
-    """
-    Represents a 3D transformation including translation, rotation, and scale.
-    Rotation is specified in Euler angles (X, Y, Z) in degrees.
-    """
-    translation: List[float] = Field(default_factory=lambda: [0.0, 0.0, 0.0],
-                                     min_length=3, max_length=3,
-                                     description="Translation vector [x, y, z].")
-    rotation: List[float] = Field(default_factory=lambda: [0.0, 0.0, 0.0],
-                                  min_length=3, max_length=3,
-                                  description="Rotation vector [rx, ry, rz] in degrees (Euler angles).")
-    scale: List[float] = Field(default_factory=lambda: [1.0, 1.0, 1.0],
-                               min_length=3, max_length=3,
-                               description="Scale vector [sx, sy, sz].")
+# --- Geometry Primitives ---
 
-# --- Base Geometry Model ---
+class BoxGeometry(BaseModel):
+    """Defines a box (cuboid) primitive geometry."""
+    type: Literal["box"] = "box"
+    size: Vector3D = Field(..., description="Dimensions of the box (width, depth, height).", examples=[{"x": 1.0, "y": 1.0, "z": 1.0}])
 
-class BaseGeometry(BaseModel):
-    """Abstract base class for all geometry definitions."""
-    type: GeometryType = Field(..., description="The type of geometry.")
-    name: Optional[str] = Field(None, description="Optional name for the geometry element.")
-    id: Optional[str] = Field(None, description="Optional unique identifier for the geometry element.")
+class SphereGeometry(BaseModel):
+    """Defines a sphere primitive geometry."""
+    type: Literal["sphere"] = "sphere"
+    radius: float = Field(..., gt=0, description="Radius of the sphere.", examples=[0.5])
 
-    model_config = {
-        "extra": "forbid",
-        "json_schema_extra": {
-            "discriminator": "type"
-        }
-    }
+class CylinderGeometry(BaseModel):
+    """Defines a cylinder primitive geometry."""
+    type: Literal["cylinder"] = "cylinder"
+    radius: float = Field(..., gt=0, description="Radius of the cylinder.", examples=[0.25])
+    length: float = Field(..., gt=0, description="Length of the cylinder along its axis.", examples=[1.0])
 
-# --- Primitive Geometry Models ---
+class PlaneGeometry(BaseModel):
+    """Defines a plane primitive geometry."""
+    type: Literal["plane"] = "plane"
+    size: Vector2D = Field(..., description="Dimensions of the plane (width, depth).", examples=[{"x": 10.0, "y": 10.0}])
+    thickness: float = Field(0.01, gt=0, description="Effective thickness of the plane, e.g., for collision detection.", examples=[0.01])
 
-class BoxGeometry(BaseGeometry):
-    """Defines a box geometry."""
-    type: GeometryType = Field(GeometryType.BOX, literal=True, description="The geometry type, must be 'box'.")
-    x: float = Field(..., gt=0.0, description="Length along the X-axis.")
-    y: float = Field(..., gt=0.0, description="Length along the Y-axis.")
-    z: float = Field(..., gt=0.0, description="Length along the Z-axis.")
+class CapsuleGeometry(BaseModel):
+    """Defines a capsule primitive geometry."""
+    type: Literal["capsule"] = "capsule"
+    radius: float = Field(..., gt=0, description="Radius of the capsule's spherical ends.", examples=[0.1])
+    length: float = Field(..., gt=0, description="Length of the cylindrical part of the capsule (excluding the spherical caps).", examples=[0.8])
 
-class SphereGeometry(BaseGeometry):
-    """Defines a sphere geometry."""
-    type: GeometryType = Field(GeometryType.SPHERE, literal=True, description="The geometry type, must be 'sphere'.")
-    radius: float = Field(..., gt=0.0, description="Radius of the sphere.")
+class ConeGeometry(BaseModel):
+    """Defines a cone primitive geometry."""
+    type: Literal["cone"] = "cone"
+    radius: float = Field(..., gt=0, description="Radius of the cone's base.", examples=[0.3])
+    length: float = Field(..., gt=0, description="Length of the cone from base to apex.", examples=[1.0])
 
-class CylinderGeometry(BaseGeometry):
-    """Defines a cylinder geometry."""
-    type: GeometryType = Field(GeometryType.CYLINDER, literal=True, description="The geometry type, must be 'cylinder'.")
-    radius: float = Field(..., gt=0.0, description="Radius of the cylinder.")
-    height: float = Field(..., gt=0.0, description="Height of the cylinder.")
+# --- Mesh References ---
 
-class CapsuleGeometry(BaseGeometry):
-    """Defines a capsule geometry (cylinder with hemispherical caps)."""
-    type: GeometryType = Field(GeometryType.CAPSULE, literal=True, description="The geometry type, must be 'capsule'.")
-    radius: float = Field(..., gt=0.0, description="Radius of the capsule.")
-    height: float = Field(..., gt=0.0, description="Height of the cylindrical part of the capsule.")
+class MeshGeometry(BaseModel):
+    """Defines a geometry based on a referenced mesh asset."""
+    type: Literal["mesh"] = "mesh"
+    asset: MeshAsset = Field(..., description="Reference to a mesh asset (e.g., glTF, OBJ, FBX).")
+    scale: Optional[Vector3D] = Field(None, description="Uniform or non-uniform scaling applied to the mesh.", examples=[{"x": 1.0, "y": 1.0, "z": 1.0}])
+    collision_type: Literal["none", "auto", "convex_hull", "trimesh", "bounding_box"] = Field(
+        "auto", description="Type of collision geometry to generate for the mesh. 'auto' defers to system default."
+    )
 
-class ConeGeometry(BaseGeometry):
-    """Defines a cone geometry."""
-    type: GeometryType = Field(GeometryType.CONE, literal=True, description="The geometry type, must be 'cone'.")
-    radius: float = Field(..., gt=0.0, description="Radius of the cone's base.")
-    height: float = Field(..., gt=0.0, description="Height of the cone.")
+class HeightmapGeometry(BaseModel):
+    """Defines a terrain geometry based on a referenced heightmap image asset."""
+    type: Literal["heightmap"] = "heightmap"
+    asset: MeshAsset = Field(..., description="Reference to a heightmap image asset (e.g., PNG, TIFF). Assumes MeshAsset can also represent image assets used for heightmaps, or a more specific ImageAsset would be defined in asset_models.py.")
+    size: Vector2D = Field(..., description="World dimensions (width, depth) of the heightmap terrain.", examples=[{"x": 100.0, "y": 100.0}])
+    height_range: Vector2D = Field(..., description="Minimum and maximum height values corresponding to the heightmap's grayscale range. (min_height, max_height).", examples=[{"x": 0.0, "y": 10.0}])
+    resolution: Optional[int] = Field(None, gt=0, description="Optional downsampling resolution for the heightmap. If not provided, the original resolution is used.", examples=[256])
 
-class PlaneGeometry(BaseGeometry):
-    """Defines an infinite plane geometry."""
-    type: GeometryType = Field(GeometryType.PLANE, literal=True, description="The geometry type, must be 'plane'.")
-    # For an infinite plane, typically only orientation and position matter,
-    # which would come from the parent transform. No intrinsic dimensions.
+# --- Union Type for all Geometry Definitions ---
 
-# --- Mesh Geometry Model ---
-
-class MeshGeometry(BaseGeometry):
-    """Defines a geometry by referencing an external mesh asset."""
-    type: GeometryType = Field(GeometryType.MESH, literal=True, description="The geometry type, must be 'mesh'.")
-    asset: Asset = Field(..., description="Reference to an external mesh asset.")
-
-# --- Union Type for Geometry Definitions ---
-
-GeometryDefinition = Annotated[
-    Union[
-        BoxGeometry,
-        SphereGeometry,
-        CylinderGeometry,
-        CapsuleGeometry,
-        ConeGeometry,
-        PlaneGeometry,
-        MeshGeometry,
-    ],
-    Discriminator("type")
+Geometry = Union[
+    BoxGeometry,
+    SphereGeometry,
+    CylinderGeometry,
+    PlaneGeometry,
+    CapsuleGeometry,
+    ConeGeometry,
+    MeshGeometry,
+    HeightmapGeometry,
 ]
 
-# --- Component Structure Models ---
-
-class ComponentGeometry(BaseModel):
-    """
-    Represents a single geometric element within a larger component,
-    including its definition and local transformation.
-    """
-    name: Optional[str] = Field(None, description="Optional name for this specific geometry instance within the component.")
-    geometry: GeometryDefinition = Field(..., description="The definition of the geometric shape.")
-    transform: Optional[Transform] = Field(None, description="Local transform applied to this geometry element relative to its parent component.")
-
-class ComponentInstance(BaseModel):
-    """
-    Represents an instance of another component within a parent component,
-    allowing for hierarchical structures.
-    """
-    component_id: str = Field(..., description="The unique identifier (ID) of the component definition being instanced.")
-    name: Optional[str] = Field(None, description="Optional name for this specific component instance.")
-    transform: Optional[Transform] = Field(None, description="Local transform applied to this component instance relative to its parent component.")
+# --- Component Structure ---
 
 class Component(BaseModel):
     """
-    Defines a reusable component, which can contain its own geometry
-    and/or instances of other components, forming a hierarchical structure.
+    Represents a generic component within the kinetic system,
+    which can include visual geometry, collision geometry, and other properties.
     """
-    id: str = Field(..., pattern=r"^[a-zA-Z0-9_-]+$", description="Unique identifier for this component definition. Must be alphanumeric, underscores, or hyphens.")
-    name: Optional[str] = Field(None, description="Human-readable name for the component.")
-    description: Optional[str] = Field(None, description="Optional description of the component.")
-    geometry: List[ComponentGeometry] = Field(default_factory=list, description="List of geometric elements directly part of this component.")
-    components: List[ComponentInstance] = Field(default_factory=list, description="List of instances of other components nested within this component.")
-
-    model_config = {
-        "extra": "forbid"
-    }
+    id: str = Field(..., description="Unique identifier for the component within the manifest.")
+    name: Optional[str] = Field(None, description="Human-readable name for the component.", examples=["Main Chassis", "Left Wheel"])
+    geometry: Geometry = Field(..., description="The geometric definition of the component's visual or collision representation.")
+    pose: Optional[Pose] = Field(None, description="Relative pose (position and orientation) of the component.", examples=[{"position": {"x": 0.0, "y": 0.0, "z": 0.5}}])
+    # Future: Could add properties for material, physics, attachments, children components, etc.
