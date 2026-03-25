@@ -1,62 +1,142 @@
-from typing import Optional, Union, Literal
-from pydantic import BaseModel, Field
+from enum import Enum
+from typing import List, Optional, Tuple
+
+from pydantic import BaseModel, Field, model_validator
 
 
-class Vector3D(BaseModel):
-    """A 3D vector representing coordinates or an axis direction."""
-    x: float = Field(..., description="The X component of the vector.")
-    y: float = Field(..., description="The Y component of the vector.")
-    z: float = Field(..., description="The Z component of the vector.")
+class JointType(str, Enum):
+    """Enumeration of standard joint types."""
+    REVOLUTE = "revolute"
+    PRISMATIC = "prismatic"
+    CONTINUOUS = "continuous"
+    FIXED = "fixed"
+    FLOATING = "floating"
+    PLANAR = "planar"
 
 
-class Origin(BaseModel):
-    """Represents the origin (position and orientation) of a kinematic element."""
-    xyz: Vector3D = Field(Vector3D(x=0.0, y=0.0, z=0.0), description="Position of the origin relative to the parent frame.")
-    rpy: Vector3D = Field(Vector3D(x=0.0, y=0.0, z=0.0), description="Roll, Pitch, Yaw orientation of the origin (in radians) relative to the parent frame.")
+class Vector3(BaseModel):
+    """Represents a 3D vector (x, y, z)."""
+    xyz: Tuple[float, float, float] = Field((0.0, 0.0, 0.0), description="x, y, z components of the vector.")
+
+    @model_validator(mode="before")
+    def validate_xyz_input(cls, values):
+        # Allows passing a list/tuple directly for xyz
+        if isinstance(values, (list, tuple)) and len(values) == 3:
+            return {"xyz": tuple(values)}
+        elif isinstance(values, dict) and "xyz" in values:
+            if isinstance(values["xyz"], (list, tuple)) and len(values["xyz"]) == 3:
+                return {"xyz": tuple(values["xyz"]) }
+        return values
 
 
-class Axis(BaseModel):
-    """Represents the axis of rotation or translation for a joint."""
-    xyz: Vector3D = Field(Vector3D(x=0.0, y=0.0, z=0.0), description="The vector defining the axis direction.")
+class RPY(BaseModel):
+    """Represents Roll, Pitch, Yaw angles."""
+    rpy: Tuple[float, float, float] = Field((0.0, 0.0, 0.0), description="Roll, Pitch, Yaw angles in radians.")
+
+    @model_validator(mode="before")
+    def validate_rpy_input(cls, values):
+        # Allows passing a list/tuple directly for rpy
+        if isinstance(values, (list, tuple)) and len(values) == 3:
+            return {"rpy": tuple(values)}
+        elif isinstance(values, dict) and "rpy" in values:
+            if isinstance(values["rpy"], (list, tuple)) and len(values["rpy"]) == 3:
+                return {"rpy": tuple(values["rpy"]) }
+        return values
 
 
-class JointLimit(BaseModel):
-    """Defines the physical limits of a joint."""
-    lower: Optional[float] = Field(None, description="The lower joint limit (in meters or radians).")
-    upper: Optional[float] = Field(None, description="The upper joint limit (in meters or radians).")
-    velocity: Optional[float] = Field(None, description="The maximum joint velocity (in m/s or rad/s).")
-    effort: Optional[float] = Field(None, description="The maximum joint effort (in N or N*m).")
+class OriginModel(BaseModel):
+    """
+    Represents the origin of a joint or link frame relative to its parent frame.
+    Default is an identity transform (zero position and orientation).
+    """
+    xyz: Vector3 = Field(default_factory=Vector3, description="Position (x, y, z) relative to the parent frame.")
+    rpy: RPY = Field(default_factory=RPY, description="Orientation (roll, pitch, yaw) relative to the parent frame.")
 
 
-class BaseJoint(BaseModel):
-    """Base class for all joint types, defining common properties."""
-    name: str = Field(..., description="Unique name of the joint.")
-    parent: str = Field(..., description="Name of the parent link.")
-    child: str = Field(..., description="Name of the child link.")
-    origin: Origin = Field(Origin(), description="Origin of the joint relative to the parent link.")
-    type: Literal['revolute', 'prismatic', 'fixed'] = Field(..., description="Type of the joint.")
+class AxisModel(BaseModel):
+    """
+    Represents the axis of motion for a joint. The vector must not be (0,0,0).
+    """
+    xyz: Vector3 = Field(..., description="A 3D vector defining the axis of rotation or translation.")
 
-    class Config:
-        extra = "forbid"
-
-
-class RevoluteJoint(BaseJoint):
-    """A revolute joint allows rotation around a single axis."""
-    type: Literal['revolute'] = Field('revolute', description="Specifies the joint type as revolute.")
-    axis: Axis = Field(Axis(xyz=Vector3D(x=1.0, y=0.0, z=0.0)), description="Axis of rotation.")
-    limit: Optional[JointLimit] = Field(None, description="Rotational limits for the joint.")
+    @model_validator(mode="after")
+    def check_non_zero_vector(self):
+        x, y, z = self.xyz.xyz
+        if x == 0.0 and y == 0.0 and z == 0.0:
+            raise ValueError("Axis vector (xyz) cannot be (0, 0, 0).")
+        return self
 
 
-class PrismaticJoint(BaseJoint):
-    """A prismatic joint allows translation along a single axis."""
-    type: Literal['prismatic'] = Field('prismatic', description="Specifies the joint type as prismatic.")
-    axis: Axis = Field(Axis(xyz=Vector3D(x=1.0, y=0.0, z=0.0)), description="Axis of translation.")
-    limit: Optional[JointLimit] = Field(None, description="Translational limits for the joint.")
+class JointLimitsModel(BaseModel):
+    """
+    Defines the physical limits of a joint. Applicable to revolute and prismatic joints.
+    """
+    lower: Optional[float] = Field(None, description="Lower joint limit (rad for revolute, m for prismatic).")
+    upper: Optional[float] = Field(None, description="Upper joint limit (rad for revolute, m for prismatic).")
+    velocity: float = Field(..., gt=0, description="Maximum joint velocity (rad/s or m/s). Must be positive.")
+    effort: float = Field(..., gt=0, description="Maximum joint effort/torque (Nm or N). Must be positive.")
+
+    @model_validator(mode="after")
+    def check_limits_order(self):
+        if self.lower is not None and self.upper is not None and self.lower > self.upper:
+            raise ValueError("Joint lower limit cannot be greater than the upper limit.")
+        return self
 
 
-class FixedJoint(BaseJoint):
-    """A fixed joint completely restricts motion between two links."""
-    type: Literal['fixed'] = Field('fixed', description="Specifies the joint type as fixed.")
+class JointDynamicsModel(BaseModel):
+    """
+    Defines the dynamic properties of a joint, such as friction and damping.
+    """
+    friction: float = Field(0.0, ge=0, description="Friction value (Nm or Ns/m). Must be non-negative.")
+    damping: float = Field(0.0, ge=0, description="Damping value (Nm/s or Ns/m). Must be non-negative.")
 
 
-Joint = Union[RevoluteJoint, PrismaticJoint, FixedJoint]
+class JointMimicModel(BaseModel):
+    """
+    Defines a joint that mimics the motion of another joint.
+    """
+    joint: str = Field(..., description="The name of the joint to mimic.")
+    multiplier: float = Field(1.0, description="A scaling factor applied to the mimicked joint's position.")
+    offset: float = Field(0.0, description="An offset added to the mimicked joint's position.")
+
+
+class JointModel(BaseModel):
+    """
+    Represents a single joint, connecting two links within a kinetic system.
+    """
+    name: str = Field(..., description="The unique name of the joint.")
+    type: JointType = Field(..., description="The type of the joint (e.g., revolute, prismatic, fixed).")
+    parent_link: str = Field(..., description="The name of the parent link.")
+    child_link: str = Field(..., description="The name of the child link.")
+    origin: Optional[OriginModel] = Field(None, description="The transform of the joint frame relative to the parent link frame.")
+    axis: Optional[AxisModel] = Field(None, description="The axis of motion for revolute, prismatic, and continuous joints.")
+    limits: Optional[JointLimitsModel] = Field(None, description="Physical limits for revolute and prismatic joints.")
+    dynamics: Optional[JointDynamicsModel] = Field(None, description="Dynamic properties of the joint (friction, damping).")
+    mimic: Optional[JointMimicModel] = Field(None, description="If this joint mimics another joint.")
+
+    @model_validator(mode="after")
+    def validate_joint_type_specific_fields(self):
+        """
+        Validates fields based on joint type rules:
+        - Fixed joints cannot have axis, limits, dynamics, or mimic.
+        - Revolute, Prismatic, Continuous require an axis.
+        - Revolute, Prismatic require limits.
+        """
+        if self.type == JointType.FIXED:
+            if self.axis:
+                raise ValueError("Fixed joint cannot have an 'axis'.")
+            if self.limits:
+                raise ValueError("Fixed joint cannot have 'limits'.")
+            if self.dynamics:
+                raise ValueError("Fixed joint cannot have 'dynamics'.")
+            if self.mimic:
+                raise ValueError("Fixed joint cannot have 'mimic'.")
+        elif self.type in {JointType.REVOLUTE, JointType.PRISMATIC, JointType.CONTINUOUS}:
+            if not self.axis:
+                raise ValueError(f"{self.type.value} joint requires an 'axis'.")
+
+        if self.type in {JointType.REVOLUTE, JointType.PRISMATIC}:
+            if not self.limits:
+                raise ValueError(f"{self.type.value} joint requires 'limits'.")
+
+        return self
