@@ -6,7 +6,8 @@ import shutil
 
 # Assuming these are available from previously completed tasks
 from backend.kfs_manifest.asset_types import FileAsset, GitAsset, HttpAsset
-from backend.kfs_manifest.asset_resolver import AssetResolver, AssetResolutionError
+from backend.kfs_manifest.asset_resolver import AssetResolver
+from backend.kfs_manifest.errors import AssetResolutionError
 
 class TestAssetResolver(unittest.TestCase):
 
@@ -33,13 +34,20 @@ class TestAssetResolver(unittest.TestCase):
         resolved_path = self.resolver.resolve(file_asset)
         self.assertEqual(resolved_path, expected_path)
 
-    @patch("os.path.exists", return_value=True) # Assume files exist
-    def test_resolve_file_asset_absolute(self, mock_exists):
+    def test_resolve_file_asset_absolute_outside_base_raises(self):
+        """Absolute paths outside base_path should be rejected (path traversal prevention)."""
         absolute_path = "/path/to/absolute/model.glb"
         file_asset = FileAsset(path=absolute_path)
-        expected_path = os.path.abspath(absolute_path) # Resolver ensures it's an absolute path
-        resolved_path = self.resolver.resolve(file_asset)
-        self.assertEqual(resolved_path, expected_path)
+        with self.assertRaises(AssetResolutionError) as cm:
+            self.resolver.resolve(file_asset)
+        self.assertIn("Path traversal detected", str(cm.exception))
+
+    def test_resolve_file_asset_traversal_raises(self):
+        """Paths with ../../ that escape base_path should be rejected."""
+        file_asset = FileAsset(path="../../etc/passwd")
+        with self.assertRaises(AssetResolutionError) as cm:
+            self.resolver.resolve(file_asset)
+        self.assertIn("Path traversal detected", str(cm.exception))
 
     @patch("backend.kfs_manifest.asset_resolver.AssetResolver._resolve_git_asset", return_value="/mock/resolved/git/repo")
     def test_resolve_git_asset(self, mock_git_resolver):
