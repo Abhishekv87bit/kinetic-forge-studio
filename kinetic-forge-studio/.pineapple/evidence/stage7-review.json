@@ -1,31 +1,34 @@
 {
   "stage": 7,
   "name": "review",
-  "timestamp": "2026-03-25T10:30:00Z",
+  "timestamp": "2026-03-25T11:00:00Z",
   "verdict": "PASS",
   "approach": "chunked_parallel_review",
   "reviewers": 3,
-  "reviewer_timeout_fix": "Split 304-file, 86K-line diff into 3 module-scoped reviews (kfs_core, CLI+src, backend+tests) to prevent single-agent context exhaustion",
+  "reviewer_timeout_fix": "Split 304-file, 86K-line diff into 3 module-scoped reviews to prevent single-agent context exhaustion",
   "kfs_core_review": {
     "critical_found": 4,
     "critical_fixed": 4,
     "important_found": 6,
     "important_fixed": 2,
+    "commit": "841656a"
+  },
+  "cli_review": {
+    "critical_found": 2,
+    "critical_fixed": 2,
+    "important_found": 5,
+    "important_fixed": 3,
+    "commit": "b3861e5",
     "issues_fixed": [
-      "Deleted broken kfs_core/io.py (stale Pydantic v1 code)",
-      "Added None guards in validator rules.py for Optional fields",
-      "Added SSRF protection to HttpAssetHandler (IP validation, timeout, size limit)",
-      "Fixed cache poisoning via SHA256 URI hashing for filenames",
-      "Changed KFSManifest to extra=forbid (catches typos)",
-      "Made Material config consistent with BaseGeometry (extra=forbid)"
-    ],
-    "known_remaining": [
-      "jsonschema.RefResolver deprecation (works but warns)",
-      "CylinderGeometry missing from JSON Schema generator",
-      "Partial file on download interruption (no atomic write)"
+      "Path traversal via manifest geometry paths",
+      "Unsanitized --name flag directory traversal",
+      "generate.py exit codes (was 0 on error)",
+      "get_unique_filename iteration bound",
+      "baked_dir containment check"
     ]
   },
-  "cli_review": "pending",
-  "backend_review": "pending",
-  "tests_after_fixes": "318 passed, 0 failed"
+  "backend_review": "in_progress",
+  "total_critical_found": 6,
+  "total_critical_fixed": 6,
+  "tests_after_all_fixes": "318 passed, 0 failed"
 }
