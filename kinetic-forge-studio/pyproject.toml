@@ -1,0 +1,17 @@
+[project]
+name = "kfs-manifest"
+version = "0.1.0"
+description = "Pydantic models for Kinetic Forge Studio (KFS) manifest files."
+authors = [{ name = "Your Name", email = "your.email@example.com" }]
+requires-python = ">=3.9"
+dependencies = [
+    "pydantic>=2.0",
+    "pyyaml>=6.0", # Assuming YAML parsing will be needed for .kfs.yaml files
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
