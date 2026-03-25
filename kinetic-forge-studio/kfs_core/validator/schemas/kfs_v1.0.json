@@ -1,0 +1,843 @@
+{
+  "$id": "https://kineticforge.studio/schemas/kfs_v1.0.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Kinetic Forge Studio Manifest Schema v1.0",
+  "description": "Schema for defining kinetic sculpture projects in KFS.",
+  "type": "object",
+  "properties": {
+    "kfs_version": {
+      "description": "Version of the KFS manifest schema this file adheres to.",
+      "type": "string",
+      "minLength": 1,
+      "default": "1.0.0"
+    },
+    "name": {
+      "description": "Name of the kinetic sculpture project.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "description": {
+      "description": "A brief description of the project.",
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "geometries": {
+      "description": "Definitions of reusable 3D geometries, keyed by ID.",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/Geometry"
+      },
+      "default": {}
+    },
+    "materials": {
+      "description": "Definitions of reusable materials, keyed by ID.",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/Material"
+      },
+      "default": {}
+    },
+    "objects": {
+      "description": "List of kinetic sculpture objects in the scene.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/KFSObject"
+      },
+      "minItems": 1
+    },
+    "simulation_settings": {
+      "description": "Placeholder for simulation-specific settings.",
+      "type": "object",
+      "additionalProperties": {},
+      "default": {}
+    }
+  },
+  "required": [
+    "kfs_version",
+    "name",
+    "objects"
+  ],
+  "$defs": {
+    "RGBColor": {
+      "title": "RGBColor",
+      "description": "Represents an RGB color with values from 0-255.",
+      "type": "object",
+      "properties": {
+        "r": {
+          "description": "Red component (0-255)",
+          "type": "integer",
+          "exclusiveMinimum": -1,
+          "exclusiveMaximum": 256
+        },
+        "g": {
+          "description": "Green component (0-255)",
+          "type": "integer",
+          "exclusiveMinimum": -1,
+          "exclusiveMaximum": 256
+        },
+        "b": {
+          "description": "Blue component (0-255)",
+          "type": "integer",
+          "exclusiveMinimum": -1,
+          "exclusiveMaximum": 256
+        }
+      },
+      "required": [
+        "r",
+        "g",
+        "b"
+      ]
+    },
+    "BaseGeometry": {
+      "title": "BaseGeometry",
+      "description": "Base class for all KFS geometry types.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Unique identifier for this geometry definition",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false,
+      "examples": [
+        {
+          "type": "sphere",
+          "id": "sphere01",
+          "radius": 1.5
+        },
+        {
+          "type": "cube",
+          "id": "cube01",
+          "size": 2.0
+        },
+        {
+          "type": "mesh",
+          "id": "mesh01",
+          "path": "assets/model.obj"
+        }
+      ]
+    },
+    "SphereGeometry": {
+      "title": "SphereGeometry",
+      "description": "Defines a sphere geometry.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Unique identifier for this geometry definition",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "type": {
+          "description": "Type of geometry",
+          "type": "string",
+          "enum": [
+            "sphere"
+          ],
+          "default": "sphere"
+        },
+        "radius": {
+          "description": "Radius of the sphere",
+          "type": "number",
+          "minimum": 0.0,
+          "default": 1.0
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "CubeGeometry": {
+      "title": "CubeGeometry",
+      "description": "Defines a cube geometry.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Unique identifier for this geometry definition",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "type": {
+          "description": "Type of geometry",
+          "type": "string",
+          "enum": [
+            "cube"
+          ],
+          "default": "cube"
+        },
+        "size": {
+          "description": "Side length of the cube",
+          "type": "number",
+          "minimum": 0.0,
+          "default": 1.0
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "MeshGeometry": {
+      "title": "MeshGeometry",
+      "description": "Defines a mesh geometry loaded from an external file.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Unique identifier for this geometry definition",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "type": {
+          "description": "Type of geometry",
+          "type": "string",
+          "enum": [
+            "mesh"
+          ],
+          "default": "mesh"
+        },
+        "path": {
+          "description": "Path to the 3D model file (e.g., .obj, .fbx)",
+          "type": "string",
+          "minLength": 1
+        },
+        "scale": {
+          "description": "Overall scale or XYZ scale factors for the mesh.",
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0.0
+            },
+            {
+              "type": "array",
+              "items": [
+                {
+                  "type": "number",
+                  "minimum": 0.0
+                },
+                {
+                  "type": "number",
+                  "minimum": 0.0
+                },
+                {
+                  "type": "number",
+                  "minimum": 0.0
+                }
+              ],
+              "minItems": 3,
+              "maxItems": 3
+            }
+          ],
+          "default": 1.0
+        }
+      },
+      "required": [
+        "id",
+        "path"
+      ],
+      "additionalProperties": false
+    },
+    "Geometry": {
+      "title": "Geometry",
+      "description": "Union type for all allowed geometry definitions.",
+      "discriminator": {
+        "propertyName": "type"
+      },
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SphereGeometry"
+        },
+        {
+          "$ref": "#/$defs/CubeGeometry"
+        },
+        {
+          "$ref": "#/$defs/MeshGeometry"
+        }
+      ]
+    },
+    "BaseMaterial": {
+      "title": "BaseMaterial",
+      "description": "Base class for all KFS material types.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Unique identifier for this material definition",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false,
+      "examples": [
+        {
+          "type": "physical",
+          "id": "redPlastic",
+          "base_color": {
+            "r": 255,
+            "g": 0,
+            "b": 0
+          }
+        },
+        {
+          "type": "pbr",
+          "id": "goldMetal",
+          "metallic": 1.0,
+          "roughness": 0.1
+        }
+      ]
+    },
+    "PhysicalMaterial": {
+      "title": "PhysicalMaterial",
+      "description": "Defines a physically-based material (PBR-like simplified).",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Unique identifier for this material definition",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "type": {
+          "description": "Type of material",
+          "type": "string",
+          "enum": [
+            "physical"
+          ],
+          "default": "physical"
+        },
+        "base_color": {
+          "description": "Base color of the material.",
+          "allOf": [
+            {
+              "$ref": "#/$defs/RGBColor"
+            }
+          ],
+          "default": {
+            "r": 128,
+            "g": 128,
+            "b": 128
+          }
+        },
+        "metallic": {
+          "description": "Metallic property (0.0=dielectric, 1.0=metal).",
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "default": 0.0
+        },
+        "roughness": {
+          "description": "Roughness property (0.0=smooth, 1.0=rough).",
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "default": 0.5
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "PBRMaterial": {
+      "title": "PBRMaterial",
+      "description": "Defines a full PBR material, with more texture-based options (simplified).",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Unique identifier for this material definition",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "type": {
+          "description": "Type of material",
+          "type": "string",
+          "enum": [
+            "pbr"
+          ],
+          "default": "pbr"
+        },
+        "base_color_texture": {
+          "description": "Path to base color (albedo) texture.",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "normal_texture": {
+          "description": "Path to normal map texture.",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "metallic_roughness_texture": {
+          "description": "Path to metallic-roughness texture.",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "metallic": {
+          "description": "Metallic factor if no texture.",
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "default": 0.0
+        },
+        "roughness": {
+          "description": "Roughness factor if no texture.",
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "default": 0.5
+        },
+        "emissive_color": {
+          "description": "Emissive color of the material.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RGBColor"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "Material": {
+      "title": "Material",
+      "description": "Union type for all allowed material definitions.",
+      "discriminator": {
+        "propertyName": "type"
+      },
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PhysicalMaterial"
+        },
+        {
+          "$ref": "#/$defs/PBRMaterial"
+        }
+      ]
+    },
+    "Transform": {
+      "title": "Transform",
+      "description": "Represents position, rotation (Euler degrees), and scale.",
+      "type": "object",
+      "properties": {
+        "position": {
+          "description": "[x, y, z] position coordinates.",
+          "type": "array",
+          "items": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "minItems": 3,
+          "maxItems": 3,
+          "default": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "rotation": {
+          "description": "[x, y, z] Euler rotation in degrees.",
+          "type": "array",
+          "items": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "minItems": 3,
+          "maxItems": 3,
+          "default": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "scale": {
+          "description": "[x, y, z] scale factors.",
+          "type": "array",
+          "items": [
+            {
+              "type": "number",
+              "minimum": 0.0
+            },
+            {
+              "type": "number",
+              "minimum": 0.0
+            },
+            {
+              "type": "number",
+              "minimum": 0.0
+            }
+          ],
+          "minItems": 3,
+          "maxItems": 3,
+          "default": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "required": [
+        "position",
+        "rotation",
+        "scale"
+      ]
+    },
+    "Keyframe": {
+      "title": "Keyframe",
+      "description": "A single keyframe point in an animation track.",
+      "type": "object",
+      "properties": {
+        "time": {
+          "description": "Timestamp of the keyframe in seconds.",
+          "type": "number",
+          "minimum": 0.0
+        },
+        "value": {
+          "description": "Value of the property at this keyframe."
+        },
+        "interpolation": {
+          "description": "Interpolation method to the next keyframe.",
+          "type": "string",
+          "enum": [
+            "linear",
+            "step",
+            "spline"
+          ],
+          "default": "linear"
+        }
+      },
+      "required": [
+        "time",
+        "value"
+      ],
+      "additionalProperties": false,
+      "examples": [
+        {
+          "time": 0.0,
+          "value": 0
+        },
+        {
+          "time": 1.0,
+          "value": 10.5,
+          "interpolation": "spline"
+        }
+      ]
+    },
+    "AnimationTrack": {
+      "title": "AnimationTrack",
+      "description": "Defines an animation track for a specific object property.",
+      "type": "object",
+      "properties": {
+        "property": {
+          "description": "Dot-separated path to the animated property (e.g., 'transform.rotation.y').",
+          "type": "string",
+          "minLength": 1
+        },
+        "keyframes": {
+          "description": "List of keyframes for this animation track, sorted by time.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Keyframe"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "property",
+        "keyframes"
+      ],
+      "additionalProperties": false,
+      "examples": [
+        {
+          "property": "transform.rotation.y",
+          "keyframes": [
+            {
+              "time": 0.0,
+              "value": 0
+            },
+            {
+              "time": 5.0,
+              "value": 360,
+              "interpolation": "linear"
+            }
+          ]
+        }
+      ]
+    },
+    "KFSObject": {
+      "title": "KFSObject",
+      "description": "Represents a single kinetic sculpture object within the scene.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Unique identifier for the KFS object",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "geometry": {
+          "description": "Reference to a geometry ID or an inline geometry definition.",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/$defs/Geometry"
+            }
+          ]
+        },
+        "material": {
+          "description": "Reference to a material ID or an inline material definition.",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/$defs/Material"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "transform": {
+          "description": "Initial transform (position, rotation, scale) of the object.",
+          "allOf": [
+            {
+              "$ref": "#/$defs/Transform"
+            }
+          ],
+          "default": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "animation_tracks": {
+          "description": "Animation tracks for different properties of this object, keyed by track name.",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/AnimationTrack"
+          },
+          "default": {}
+        }
+      },
+      "required": [
+        "id",
+        "geometry",
+        "transform",
+        "animation_tracks"
+      ],
+      "additionalProperties": false,
+      "examples": [
+        {
+          "id": "mySculpture",
+          "geometry": "sphere01",
+          "material": "redPlastic",
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "animation_tracks": {
+            "rotateX": {
+              "property": "rotation.x",
+              "keyframes": [
+                {
+                  "time": 0.0,
+                  "value": 0
+                },
+                {
+                  "time": 5.0,
+                  "value": 360
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  "examples": [
+    {
+      "kfs_version": "1.0.0",
+      "name": "RotatingCubeSphere",
+      "description": "A simple example with a rotating cube and a static sphere.",
+      "geometries": {
+        "sphere01": {
+          "type": "sphere",
+          "radius": 1.5
+        },
+        "cube01": {
+          "type": "cube",
+          "size": 2.0
+        }
+      },
+      "materials": {
+        "redPlastic": {
+          "type": "physical",
+          "base_color": {
+            "r": 255,
+            "g": 0,
+            "b": 0
+          },
+          "roughness": 0.5
+        },
+        "blueMetal": {
+          "type": "physical",
+          "base_color": {
+            "r": 0,
+            "g": 0,
+            "b": 255
+          },
+          "metallic": 0.9
+        }
+      },
+      "objects": [
+        {
+          "id": "myCube",
+          "geometry": "cube01",
+          "material": "redPlastic",
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "animation_tracks": {
+            "rotateY": {
+              "property": "rotation.y",
+              "keyframes": [
+                {
+                  "time": 0.0,
+                  "value": 0
+                },
+                {
+                  "time": 10.0,
+                  "value": 360
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "mySphere",
+          "geometry": "sphere01",
+          "material": "blueMetal",
+          "transform": {
+            "position": [
+              3,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.8,
+              0.8,
+              0.8
+            ]
+          }
+        }
+      ],
+      "simulation_settings": {
+        "duration": 20.0,
+        "gravity": [
+          0,
+          -9.8,
+          0
+        ]
+      }
+    }
+  ]
+}
