@@ -2,249 +2,205 @@ import pytest
 from pydantic import ValidationError
 
 from backend.kfs_manifest.schema.v1.motion_models import (
-    ConstantMotion,
-    PeriodicMotion,
-    LimitConstraint,
-    GearConstraint,
-    KinematicChain,
-    MotionConstraint,
-    MotionModel,
+    TimeDuration,
+    JointState,
+    CartesianPoint,
+    KinematicMotion,
+    DynamicMotion,
+    Motion,
+    MotionType
 )
 
+# Test TimeDuration
+def test_time_duration_valid():
+    td = TimeDuration(duration=10.5)
+    assert td.duration == 10.5
+    td_zero = TimeDuration(duration=0.0)
+    assert td_zero.duration == 0.0
 
-def test_constant_motion_valid_data():
-    """Tests ConstantMotion with valid data."""
-    motion = ConstantMotion(speed=10.5)
-    assert motion.type == "constant"
-    assert motion.speed == 10.5
-
-
-def test_constant_motion_missing_speed():
-    """Tests ConstantMotion with missing speed, expecting ValidationError."""
+def test_time_duration_invalid_negative():
     with pytest.raises(ValidationError):
-        ConstantMotion()
+        TimeDuration(duration=-1.0)
 
-
-def test_constant_motion_invalid_speed_type():
-    """Tests ConstantMotion with invalid speed type, expecting ValidationError."""
+def test_time_duration_invalid_type():
     with pytest.raises(ValidationError):
-        ConstantMotion(speed="not_a_float")
+        TimeDuration(duration="ten")
 
-
-def test_periodic_motion_valid_data():
-    """Tests PeriodicMotion with valid data."""
-    motion = PeriodicMotion(amplitude=5.0, frequency=0.5, offset=0.1)
-    assert motion.type == "periodic"
-    assert motion.amplitude == 5.0
-    assert motion.frequency == 0.5
-    assert motion.offset == 0.1
-
-
-def test_periodic_motion_valid_data_default_offset():
-    """Tests PeriodicMotion with valid data and default offset."""
-    motion = PeriodicMotion(amplitude=5.0, frequency=0.5)
-    assert motion.type == "periodic"
-    assert motion.amplitude == 5.0
-    assert motion.frequency == 0.5
-    assert motion.offset == 0.0  # Default value
-
-
-def test_periodic_motion_missing_amplitude():
-    """Tests PeriodicMotion with missing amplitude, expecting ValidationError."""
+def test_time_duration_missing():
     with pytest.raises(ValidationError):
-        PeriodicMotion(frequency=0.5)
+        TimeDuration()
 
+# Test JointState
+def test_joint_state_valid():
+    js = JointState(joint_angles=[0.1, 0.2, 0.3])
+    assert js.joint_angles == [0.1, 0.2, 0.3]
+    js_single = JointState(joint_angles=[1.5])
+    assert js_single.joint_angles == [1.5]
 
-def test_periodic_motion_missing_frequency():
-    """Tests PeriodicMotion with missing frequency, expecting ValidationError."""
+def test_joint_state_invalid_empty_list():
     with pytest.raises(ValidationError):
-        PeriodicMotion(amplitude=5.0)
+        JointState(joint_angles=[])
 
-
-def test_periodic_motion_invalid_amplitude_type():
-    """Tests PeriodicMotion with invalid amplitude type, expecting ValidationError."""
+def test_joint_state_invalid_non_list():
     with pytest.raises(ValidationError):
-        PeriodicMotion(amplitude="invalid", frequency=0.5)
+        JointState(joint_angles="not_a_list")
 
-
-def test_periodic_motion_invalid_frequency_type():
-    """Tests PeriodicMotion with invalid frequency type, expecting ValidationError."""
+def test_joint_state_invalid_list_with_non_float():
     with pytest.raises(ValidationError):
-        PeriodicMotion(amplitude=5.0, frequency="invalid")
+        JointState(joint_angles=[0.1, "0.2", 0.3])
 
-
-def test_periodic_motion_invalid_offset_type():
-    """Tests PeriodicMotion with invalid offset type, expecting ValidationError."""
+def test_joint_state_missing():
     with pytest.raises(ValidationError):
-        PeriodicMotion(amplitude=5.0, frequency=0.5, offset="invalid")
+        JointState()
 
+# Test CartesianPoint
+def test_cartesian_point_valid():
+    cp = CartesianPoint(x=1.0, y=2.0, z=3.0, qx=0.0, qy=0.0, qz=0.0, qw=1.0)
+    assert cp.x == 1.0
+    assert cp.y == 2.0
+    assert cp.z == 3.0
+    assert cp.qx == 0.0
+    assert cp.qy == 0.0
+    assert cp.qz == 0.0
+    assert cp.qw == 1.0
 
-def test_limit_constraint_valid_data():
-    """Tests LimitConstraint with valid data."""
-    constraint = LimitConstraint(min_value=0.0, max_value=10.0)
-    assert constraint.type == "limit"
-    assert constraint.min_value == 0.0
-    assert constraint.max_value == 10.0
-
-
-def test_limit_constraint_missing_min_value():
-    """Tests LimitConstraint with missing min_value, expecting ValidationError."""
+def test_cartesian_point_invalid_missing_field():
     with pytest.raises(ValidationError):
-        LimitConstraint(max_value=10.0)
+        CartesianPoint(x=1.0, y=2.0, z=3.0, qx=0.0, qy=0.0, qz=0.0) # Missing qw
 
-
-def test_limit_constraint_missing_max_value():
-    """Tests LimitConstraint with missing max_value, expecting ValidationError."""
+def test_cartesian_point_invalid_type():
     with pytest.raises(ValidationError):
-        LimitConstraint(min_value=0.0)
+        CartesianPoint(x="one", y=2.0, z=3.0, qx=0.0, qy=0.0, qz=0.0, qw=1.0)
 
+# Test KinematicMotion
+def test_kinematic_motion_valid():
+    km = KinematicMotion(
+        duration=5.0,
+        target_joint_state={"joint_angles": [0.1, 0.2]}
+    )
+    assert km.duration == 5.0
+    assert km.type == MotionType.KINEMATIC
+    assert km.target_joint_state.joint_angles == [0.1, 0.2]
 
-def test_limit_constraint_invalid_value_type():
-    """Tests LimitConstraint with invalid value type, expecting ValidationError."""
+def test_kinematic_motion_invalid_duration():
     with pytest.raises(ValidationError):
-        LimitConstraint(min_value="zero", max_value=10.0)
+        KinematicMotion(
+            duration=-5.0,
+            target_joint_state={"joint_angles": [0.1, 0.2]}
+        )
+
+def test_kinematic_motion_invalid_joint_state():
     with pytest.raises(ValidationError):
-        LimitConstraint(min_value=0.0, max_value="ten")
+        KinematicMotion(
+            duration=5.0,
+            target_joint_state={"joint_angles": []} # Invalid JointState
+        )
 
-
-def test_gear_constraint_valid_data():
-    """Tests GearConstraint with valid data."""
-    constraint = GearConstraint(ratio=2.5)
-    assert constraint.type == "gear"
-    assert constraint.ratio == 2.5
-
-
-def test_gear_constraint_missing_ratio():
-    """Tests GearConstraint with missing ratio, expecting ValidationError."""
+def test_kinematic_motion_invalid_type_field():
     with pytest.raises(ValidationError):
-        GearConstraint()
+        KinematicMotion(
+            duration=5.0,
+            type="wrong_type", # Should be MotionType.KINEMATIC
+            target_joint_state={"joint_angles": [0.1, 0.2]}
+        )
 
-
-def test_gear_constraint_invalid_ratio_type():
-    """Tests GearConstraint with invalid ratio type, expecting ValidationError."""
+def test_kinematic_motion_missing_fields():
     with pytest.raises(ValidationError):
-        GearConstraint(ratio="two_point_five")
+        KinematicMotion(duration=5.0) # Missing target_joint_state
 
+# Test DynamicMotion
+def test_dynamic_motion_valid():
+    dm = DynamicMotion(
+        duration=7.5,
+        target_cartesian_point={"x": 1.0, "y": 2.0, "z": 3.0, "qx": 0.0, "qy": 0.0, "qz": 0.0, "qw": 1.0},
+        max_velocity=1.5
+    )
+    assert dm.duration == 7.5
+    assert dm.type == MotionType.DYNAMIC
+    assert dm.max_velocity == 1.5
+    assert dm.target_cartesian_point.x == 1.0
 
-def test_kinematic_chain_valid_data():
-    """Tests KinematicChain with valid data (elements only)."""
-    chain = KinematicChain(elements=["joint_a", "joint_b"])
-    assert chain.type == "kinematic_chain"
-    assert chain.elements == ["joint_a", "joint_b"]
-    assert chain.constraints == []
+def test_dynamic_motion_default_max_velocity():
+    dm = DynamicMotion(
+        duration=7.5,
+        target_cartesian_point={"x": 1.0, "y": 2.0, "z": 3.0, "qx": 0.0, "qy": 0.0, "qz": 0.0, "qw": 1.0}
+    )
+    assert dm.max_velocity == 0.0 # Assuming 0.0 is the default
 
-
-def test_kinematic_chain_valid_data_with_constraints():
-    """Tests KinematicChain with valid data including constraints."""
-    constraints_data = [
-        {"type": "limit", "min_value": 0.0, "max_value": 1.0},
-        {"type": "gear", "ratio": 3.0},
-    ]
-    chain = KinematicChain(elements=["joint_c"], constraints=constraints_data)
-    assert chain.type == "kinematic_chain"
-    assert chain.elements == ["joint_c"]
-    assert len(chain.constraints) == 2
-    assert isinstance(chain.constraints[0], LimitConstraint)
-    assert chain.constraints[0].min_value == 0.0
-    assert isinstance(chain.constraints[1], GearConstraint)
-    assert chain.constraints[1].ratio == 3.0
-
-
-def test_kinematic_chain_missing_elements():
-    """Tests KinematicChain with missing elements, expecting ValidationError."""
+def test_dynamic_motion_invalid_max_velocity_negative():
     with pytest.raises(ValidationError):
-        KinematicChain()
+        DynamicMotion(
+            duration=7.5,
+            target_cartesian_point={"x": 1.0, "y": 2.0, "z": 3.0, "qx": 0.0, "qy": 0.0, "qz": 0.0, "qw": 1.0},
+            max_velocity=-1.0
+        )
 
-
-def test_kinematic_chain_empty_elements():
-    """Tests KinematicChain with empty elements list, expecting ValidationError."""
+def test_dynamic_motion_invalid_cartesian_point():
     with pytest.raises(ValidationError):
-        KinematicChain(elements=[])
+        DynamicMotion(
+            duration=7.5,
+            target_cartesian_point={"x": 1.0, "y": 2.0, "z": 3.0, "qx": 0.0, "qy": 0.0, "qz": 0.0}, # Missing qw
+            max_velocity=1.0
+        )
 
+# Test Motion (Union model)
+def test_motion_with_kinematic_profile_valid():
+    motion = Motion(
+        name="approach_joint",
+        motion_profile={
+            "type": "kinematic",
+            "duration": 2.0,
+            "target_joint_state": {"joint_angles": [0.1, 0.2, 0.3, 0.4]}
+        }
+    )
+    assert motion.name == "approach_joint"
+    assert isinstance(motion.motion_profile, KinematicMotion)
+    assert motion.motion_profile.duration == 2.0
+    assert motion.motion_profile.target_joint_state.joint_angles == [0.1, 0.2, 0.3, 0.4]
 
-def test_kinematic_chain_invalid_elements_type():
-    """Tests KinematicChain with invalid elements type, expecting ValidationError."""
+def test_motion_with_dynamic_profile_valid():
+    motion = Motion(
+        name="move_cartesian",
+        motion_profile={
+            "type": "dynamic",
+            "duration": 3.0,
+            "target_cartesian_point": {"x": 1.0, "y": 2.0, "z": 3.0, "qx": 0.0, "qy": 0.0, "qz": 0.0, "qw": 1.0},
+            "max_velocity": 0.5
+        }
+    )
+    assert motion.name == "move_cartesian"
+    assert isinstance(motion.motion_profile, DynamicMotion)
+    assert motion.motion_profile.duration == 3.0
+    assert motion.motion_profile.max_velocity == 0.5
+
+def test_motion_invalid_missing_name():
     with pytest.raises(ValidationError):
-        KinematicChain(elements="not_a_list")
+        Motion(
+            motion_profile={
+                "type": "kinematic",
+                "duration": 2.0,
+                "target_joint_state": {"joint_angles": [0.1]}
+            }
+        )
+
+def test_motion_invalid_profile_type():
     with pytest.raises(ValidationError):
-        KinematicChain(elements=[1, 2]) # Elements must be strings
+        Motion(
+            name="bad_motion",
+            motion_profile={
+                "type": "unsupported_type", # Neither kinematic nor dynamic
+                "duration": 2.0,
+                "target_joint_state": {"joint_angles": [0.1]}
+            }
+        )
 
-
-def test_kinematic_chain_invalid_constraint_data():
-    """Tests KinematicChain with invalid constraint data, expecting ValidationError."""
-    invalid_constraints = [
-        {"type": "limit", "min_value": "bad", "max_value": 1.0} # Invalid type
-    ]
+def test_motion_invalid_profile_data():
     with pytest.raises(ValidationError):
-        KinematicChain(elements=["joint_d"], constraints=invalid_constraints)
-
-    invalid_constraints_no_type = [
-        {"min_value": 0.0, "max_value": 1.0} # Missing type
-    ]
-    with pytest.raises(ValidationError):
-        KinematicChain(elements=["joint_e"], constraints=invalid_constraints_no_type)
-
-
-def test_motion_model_union_constant_motion():
-    """Tests MotionModel union with ConstantMotion data."""
-    data = {"type": "constant", "speed": 15.0}
-    motion = MotionModel.model_validate(data)
-    assert isinstance(motion, ConstantMotion)
-    assert motion.speed == 15.0
-
-
-def test_motion_model_union_periodic_motion():
-    """Tests MotionModel union with PeriodicMotion data."""
-    data = {"type": "periodic", "amplitude": 8.0, "frequency": 1.2}
-    motion = MotionModel.model_validate(data)
-    assert isinstance(motion, PeriodicMotion)
-    assert motion.amplitude == 8.0
-    assert motion.frequency == 1.2
-
-
-def test_motion_model_union_kinematic_chain():
-    """Tests MotionModel union with KinematicChain data."""
-    data = {
-        "type": "kinematic_chain",
-        "elements": ["link1", "link2"],
-        "constraints": [
-            {"type": "limit", "min_value": -5.0, "max_value": 5.0}
-        ]
-    }
-    motion = MotionModel.model_validate(data)
-    assert isinstance(motion, KinematicChain)
-    assert motion.elements == ["link1", "link2"]
-    assert len(motion.constraints) == 1
-    assert isinstance(motion.constraints[0], LimitConstraint)
-
-
-def test_motion_model_union_invalid_type():
-    """Tests MotionModel union with an invalid type, expecting ValidationError."""
-    data = {"type": "unknown_motion", "value": 10}
-    with pytest.raises(ValidationError):
-        MotionModel.model_validate(data)
-
-
-def test_motion_constraint_union_limit_constraint():
-    """Tests MotionConstraint union with LimitConstraint data."""
-    data = {"type": "limit", "min_value": 0.0, "max_value": 360.0}
-    constraint = MotionConstraint.model_validate(data)
-    assert isinstance(constraint, LimitConstraint)
-    assert constraint.min_value == 0.0
-    assert constraint.max_value == 360.0
-
-
-def test_motion_constraint_union_gear_constraint():
-    """Tests MotionConstraint union with GearConstraint data."""
-    data = {"type": "gear", "ratio": 4.0}
-    constraint = MotionConstraint.model_validate(data)
-    assert isinstance(constraint, GearConstraint)
-    assert constraint.ratio == 4.0
-
-
-def test_motion_constraint_union_invalid_type():
-    """Tests MotionConstraint union with an invalid type, expecting ValidationError."""
-    data = {"type": "unknown_constraint", "param": 1}
-    with pytest.raises(ValidationError):
-        MotionConstraint.model_validate(data)
-
+        Motion(
+            name="bad_data",
+            motion_profile={
+                "type": "kinematic",
+                "duration": -2.0, # Invalid duration
+                "target_joint_state": {"joint_angles": [0.1]}
+            }
+        )
