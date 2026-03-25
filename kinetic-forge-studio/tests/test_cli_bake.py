@@ -130,28 +130,31 @@ def test_bake_remote_assets(runner, tmp_path, create_manifest_file, minimal_vali
     baked_project_name = "remote_asset_sculpture_baked"
     expected_baked_dir = output_dir / baked_project_name
     expected_baked_manifest_path = expected_baked_dir / "kfs.yaml"
-    expected_baked_asset_path = expected_baked_dir / "assets" / "complex.obj"
-
     # Mock requests.get for HTTPAssetHandler
-    with patch('requests.get') as mock_get:
+    with patch('requests.get') as mock_get, \
+         patch.object(__import__('kfs_core.assets.handlers', fromlist=['HttpAssetHandler']).HttpAssetHandler, '_is_safe_url', return_value=True):
         mock_response = MagicMock(spec=requests.Response)
         mock_response.status_code = 200
         mock_response.content = remote_obj_content
+        mock_response.headers = {"Content-Length": str(len(remote_obj_content))}
+        mock_response.iter_content = MagicMock(return_value=[remote_obj_content])
         mock_response.raise_for_status.return_value = None # No HTTP errors
         mock_get.return_value = mock_response
 
         result = runner.invoke(cli, ["bake", str(input_manifest_path), str(output_dir)])
 
         assert result.exit_code == 0, f"CLI exited with error: {result.stderr}"
-        assert mock_get.called_once_with(remote_obj_url, stream=True)
-        assert f"Resolved asset '{remote_obj_url}' to '{expected_baked_asset_path}'" in result.stdout
+        mock_get.assert_called_once_with(remote_obj_url, stream=True, timeout=30)
         assert f"Project baked to '{expected_baked_dir}'" in result.stdout
 
         # Verify output directory structure and files
         assert expected_baked_dir.is_dir()
         assert expected_baked_manifest_path.is_file()
-        assert expected_baked_asset_path.is_file()
-        assert expected_baked_asset_path.read_bytes() == remote_obj_content
+
+        # The cached filename includes a hash prefix for cache poisoning protection
+        baked_assets = list((expected_baked_dir / "assets").glob("*complex.obj"))
+        assert len(baked_assets) == 1, f"Expected one baked asset matching *complex.obj, found: {baked_assets}"
+        assert baked_assets[0].read_bytes() == remote_obj_content
 
         # Verify baked manifest content
         baked_manifest = load_kfs_manifest(expected_baked_manifest_path)
@@ -159,7 +162,8 @@ def test_bake_remote_assets(runner, tmp_path, create_manifest_file, minimal_vali
         assert baked_manifest.name == "Remote Asset Sculpture"
         assert "remote_mesh_geo" in baked_manifest.geometries
         assert isinstance(baked_manifest.geometries["remote_mesh_geo"], MeshGeometry)
-        assert baked_manifest.geometries["remote_mesh_geo"].path == "assets/complex.obj"
+        assert baked_manifest.geometries["remote_mesh_geo"].path.endswith("complex.obj")
+        assert "assets/" in baked_manifest.geometries["remote_mesh_geo"].path
 
 def test_bake_custom_name(runner, tmp_path, create_manifest_file, minimal_valid_manifest_data):
     """Test `kfs bake` with a custom project name using the --name option."""

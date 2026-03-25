@@ -48,6 +48,26 @@ def _check_duplicates_in_list(items: List[Any], id_key: str, collection_name: st
     return errors
 
 
+def _check_referenced_ids_exist(
+    referenced_ids: List[str],
+    available_ids: set,
+    code_prefix: str,
+    entity_name: str,
+    path: List[Union[str, int]]
+) -> List[SemanticValidationError]:
+    """Helper to check that referenced IDs exist in the available set."""
+    errors = []
+    for ref_id in referenced_ids:
+        if ref_id not in available_ids:
+            errors.append(SemanticValidationError(
+                code=f"MISSING_{code_prefix}_REFERENCE",
+                message=f"{entity_name} reference '{ref_id}' not found in available definitions.",
+                path=path,
+                value=ref_id
+            ))
+    return errors
+
+
 def validate_unique_component_ids(manifest: KFSManifest) -> List[SemanticValidationError]:
     """
     Ensures that IDs for geometries, materials, and objects are unique within their respective collections.
@@ -73,15 +93,15 @@ def validate_referenced_ids_exist(manifest: KFSManifest) -> List[SemanticValidat
     defined_material_ids = set(manifest.materials.keys())
 
     for i, obj in enumerate(manifest.objects):
-        if obj.geometry_id not in defined_geometry_ids:
+        if obj.geometry_id is not None and obj.geometry_id not in defined_geometry_ids:
             errors.append(SemanticValidationError(
                 code="UNKNOWN_GEOMETRY_REFERENCE",
                 message=f"Object '{obj.id}' references unknown geometry ID '{obj.geometry_id}'.",
                 path=["objects", i, "geometry_id"],
                 value=obj.geometry_id
             ))
-        
-        if obj.material_id not in defined_material_ids:
+
+        if obj.material_id is not None and obj.material_id not in defined_material_ids:
             errors.append(SemanticValidationError(
                 code="UNKNOWN_MATERIAL_REFERENCE",
                 message=f"Object '{obj.id}' references unknown material ID '{obj.material_id}'.",

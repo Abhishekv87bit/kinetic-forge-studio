@@ -1,13 +1,29 @@
 import click
-import yaml # Not strictly needed here, but might be for other manifest operations
 import os
+import re
+import tempfile
 from pathlib import Path
 import shutil
 
 from kfs_core.manifest_parser import load_kfs_manifest, save_kfs_manifest
 from kfs_core.manifest_models import KFSManifest, MeshGeometry
 from kfs_core.assets.resolver import AssetResolver
-from kfs_core.exceptions import AssetResolutionError, KFSBaseError
+from kfs_core.exceptions import (
+    AssetResolutionError,
+    KFSBaseError,
+    KFSManifestValidationError,
+    InvalidKFSManifestError,
+    ManifestVersionMismatchError,
+)
+
+
+def _slugify(name: str) -> str:
+    """Convert a project name to a filesystem-friendly slug."""
+    slug = name.lower().strip()
+    slug = re.sub(r'[^a-z0-9]+', '_', slug)
+    slug = slug.strip('_')
+    return slug
+
 
 def get_unique_filename(directory: Path, desired_name: str) -> Path:
     """
@@ -32,7 +48,7 @@ def get_unique_filename(directory: Path, desired_name: str) -> Path:
 )
 @click.argument(
     "output_dir",
-    type=click.Path(file_okay=False, dir_okay=True, writable=True, path_type=Path)
+    type=click.Path(file_okay=False, dir_okay=True, path_type=Path)
 )
 @click.option(
     "--name",
@@ -49,84 +65,119 @@ def bake(manifest_file: Path, output_dir: Path, name: str):
     OUTPUT_DIR: Path to the directory where the baked project will be saved.
                 This directory will be created if it doesn't exist.
     """
-    click.echo(f"Baking project from '{manifest_file}' to '{output_dir}'...")
-
     try:
         # 1. Load the manifest
         manifest = load_kfs_manifest(manifest_file)
-        click.echo("Manifest loaded successfully.")
+        click.echo(f"Manifest loaded from '{manifest_file}'")
+
+        # Bake requires at least one object in the manifest
+        if not manifest.objects:
+            raise KFSManifestValidationError(
+                "Manifest must contain at least one object (minItems: 1 for 'objects').",
+                errors=[{"type": "minItems", "msg": "minItems: objects list must not be empty", "loc": ("objects",)}],
+            )
 
         # Override project name if provided
         if name:
             manifest.name = name
 
-        # 2. Prepare output directory structure
-        output_dir.mkdir(parents=True, exist_ok=True)
-        baked_manifest_path = output_dir / f"{manifest_file.stem}_baked{manifest_file.suffix}"
-        baked_assets_dir = output_dir / "assets"
-        baked_assets_dir.mkdir(exist_ok=True)
-        click.echo(f"Output directory '{output_dir}' and assets directory '{baked_assets_dir}' prepared.")
+        # 2. Determine baked directory name
+        if name:
+            baked_dir_name = name
+        else:
+            baked_dir_name = _slugify(manifest.name) + "_baked"
+        baked_dir = output_dir / baked_dir_name
 
-        # 3. Initialize Asset Resolver (without default_cache_dir, so it uses system temp for initial resolution)
-        resolver = AssetResolver()
-
-        # 4. Resolve assets, copy to output_dir/assets with unique names, and update manifest paths
-        click.echo("Resolving external assets...")
-        assets_resolved_count = 0
-        
-        # Keep track of resolved URIs and their final paths in the baked assets directory
-        # to avoid re-resolving/re-copying if multiple manifest entries refer to the same external asset.
-        resolved_asset_map: dict[str, Path] = {} # Maps original_uri to its absolute path in baked_assets_dir
-
+        # 3. Collect mesh geometries that need asset resolution
+        mesh_geos = {}
         for geo_id, geometry in manifest.geometries.items():
             if isinstance(geometry, MeshGeometry):
-                original_uri = geometry.path
-                try:
-                    if original_uri in resolved_asset_map:
-                        # Asset already resolved and copied, reuse the baked path
-                        baked_abs_path = resolved_asset_map[original_uri]
-                        click.echo(f"  - Reusing baked asset '{baked_abs_path.name}' for '{original_uri}'")
+                mesh_geos[geo_id] = geometry
+
+        # 4. Resolve assets BEFORE creating output directory.
+        #    This ensures no output is created if resolution fails.
+        has_assets = bool(mesh_geos)
+        # resolved_sources maps original_uri -> (source_path, desired_filename, display_source)
+        resolved_sources: dict[str, tuple[Path, str, str]] = {}
+
+        if not has_assets:
+            click.echo("No external assets found in manifest.")
+        else:
+            manifest_dir = manifest_file.parent
+            # Use a unique temp cache dir for remote downloads to avoid stale cache
+            cache_dir = Path(tempfile.mkdtemp(prefix="kfs_bake_cache_"))
+            try:
+                resolver = AssetResolver(default_cache_dir=cache_dir)
+
+                for geo_id, geometry in mesh_geos.items():
+                    original_uri = geometry.path
+
+                    if original_uri in resolved_sources:
+                        continue
+
+                    # For local relative paths, resolve relative to manifest directory
+                    source_path = manifest_dir / original_uri
+                    if source_path.exists():
+                        resolved_sources[original_uri] = (
+                            source_path,
+                            source_path.name,
+                            str(source_path),
+                        )
                     else:
-                        # Resolve the asset to a temporary location first
+                        # Try the asset resolver (for http:// etc.)
                         resolved_temp_path = resolver.resolve(original_uri)
-                        
-                        # Generate a unique filename in the baked assets directory
-                        # based on the original asset's filename
-                        unique_baked_path_abs = get_unique_filename(baked_assets_dir, resolved_temp_path.name)
-                        
-                        # Copy the asset from the temporary location to its unique path in the baked assets directory
-                        shutil.copy2(resolved_temp_path, unique_baked_path_abs)
-                        
-                        baked_abs_path = unique_baked_path_abs
-                        resolved_asset_map[original_uri] = baked_abs_path
-                        assets_resolved_count += 1
-                        
-                        click.echo(f"  - Resolved '{original_uri}' and copied to '{baked_abs_path.name}'")
+                        resolved_sources[original_uri] = (
+                            resolved_temp_path,
+                            resolved_temp_path.name,
+                            original_uri,
+                        )
 
-                    # Update the geometry's path in the manifest object
-                    # This new path must be relative to the baked manifest file.
-                    # e.g., if baked_abs_path is /output_dir/assets/unique_mesh.obj
-                    # and baked_manifest_path is /output_dir/my_sculpture_baked.kfs.yaml
-                    # new_relative_path should be "assets/unique_mesh.obj"
-                    geometry.path = (Path("assets") / baked_abs_path.name).as_posix() # Store as posix path string
+                # 5. All assets resolved -- create output dir and copy
+                baked_dir.mkdir(parents=True, exist_ok=True)
+                baked_assets_dir = baked_dir / "assets"
+                baked_assets_dir.mkdir(exist_ok=True)
 
-                except AssetResolutionError as e:
-                    click.echo(f"  - Error resolving asset '{original_uri}': {e}", err=True)
-                    raise # Re-raise to stop bake process if an asset fails
-                except Exception as e:
-                    click.echo(f"  - Unexpected error during asset resolution for '{original_uri}': {e}", err=True)
-                    raise
+                for geo_id, geometry in mesh_geos.items():
+                    original_uri = geometry.path
+                    src_path, desired_filename, display_src = resolved_sources[original_uri]
 
-        click.echo(f"Successfully processed {assets_resolved_count} unique external assets.")
+                    unique_baked_path = get_unique_filename(baked_assets_dir, desired_filename)
+                    shutil.copy2(src_path, unique_baked_path)
 
-        # 5. Save the modified manifest
+                    click.echo(f"Resolved asset '{display_src}' to '{unique_baked_path}'")
+
+                    # Update the geometry's path to be relative within the baked package
+                    geometry.path = (Path("assets") / unique_baked_path.name).as_posix()
+
+            finally:
+                # Clean up temp cache dir
+                try:
+                    shutil.rmtree(cache_dir, ignore_errors=True)
+                except Exception:
+                    pass
+
+        # 6. Create output dir (if not already created for assets) and save manifest
+        if not baked_dir.exists():
+            baked_dir.mkdir(parents=True, exist_ok=True)
+
+        baked_manifest_path = baked_dir / "kfs.yaml"
         save_kfs_manifest(manifest, baked_manifest_path)
-        click.echo(f"Baked manifest saved to '{baked_manifest_path}'.")
-        click.echo(f"Project '{manifest.name}' baked successfully!")
+        click.echo(f"Project baked to '{baked_dir}'")
 
+    except (KFSManifestValidationError, InvalidKFSManifestError, ManifestVersionMismatchError) as e:
+        error_type = type(e).__name__
+        click.echo(f"Error baking project: {error_type}: {e}", err=True)
+        raise SystemExit(1)
+    except AssetResolutionError as e:
+        click.echo(f"Error baking project: AssetResolutionError: {e}", err=True)
+        raise SystemExit(1)
     except KFSBaseError as e:
-        click.echo(f"Bake failed: {e}", err=True)
-        exit(1) # Indicate failure to the shell
+        error_type = type(e).__name__
+        click.echo(f"Error baking project: {error_type}: {e}", err=True)
+        raise SystemExit(1)
+    except SystemExit:
+        raise
     except Exception as e:
-        click.echo(f"An unexpected error occurred during bake: {e}", err=True)
-        exit(1) # Indicate failure to the shell
+        error_type = type(e).__name__
+        click.echo(f"Error baking project: {error_type}: {e}", err=True)
+        raise SystemExit(1)

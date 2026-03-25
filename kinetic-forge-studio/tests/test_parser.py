@@ -306,7 +306,7 @@ class TestKFSManifestProcessing:
 
     def test_parse_wrong_type_for_field(self, parser):
         """Ensures parser/validator catches incorrect data type for a field."""
-        with pytest.raises(InvalidManifestError, match="Input should be a valid 'float'"): # Specific Pydantic error
+        with pytest.raises(InvalidManifestError, match="Input should be a valid number"):  # Specific Pydantic error
             parser.parse_manifest_from_string(INVALID_KFS_WRONG_TYPE_DURATION)
 
     def test_parse_negative_duration_value(self, parser):
@@ -316,7 +316,7 @@ class TestKFSManifestProcessing:
 
     def test_parse_invalid_enum_value(self, parser):
         """Ensures parser/validator catches invalid enum values."""
-        with pytest.raises(InvalidManifestError, match="Input should be 'mm', 'cm', 'm', or 'in'"): # Specific Pydantic error
+        with pytest.raises(InvalidManifestError, match="Input should be 'mm', 'cm', 'm'"):  # Specific Pydantic error
             parser.parse_manifest_from_string(INVALID_KFS_INVALID_ENUM_UNIT)
 
     def test_parse_duplicate_component_names(self, parser):

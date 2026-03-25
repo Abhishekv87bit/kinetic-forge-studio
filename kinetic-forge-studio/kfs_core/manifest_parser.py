@@ -24,8 +24,17 @@ def _check_version_compatibility(manifest_data: Dict[str, Any], parser_version: 
         raise InvalidKFSManifestError("Manifest data is missing 'kfs_version'.")
 
     try:
-        manifest_major_version = int(manifest_kfs_version.split(".")[0])
-        parser_major_version = int(parser_version.split(".")[0])
+        manifest_parts = manifest_kfs_version.split(".")
+        parser_parts = parser_version.split(".")
+        if len(manifest_parts) < 3:
+            raise ValueError(f"Manifest version '{manifest_kfs_version}' does not have 3 parts")
+        if len(parser_parts) < 3:
+            raise ValueError(f"Parser version '{parser_version}' does not have 3 parts")
+        # Validate all parts are integers
+        _ = [int(p) for p in manifest_parts[:3]]
+        _ = [int(p) for p in parser_parts[:3]]
+        manifest_major_version = int(manifest_parts[0])
+        parser_major_version = int(parser_parts[0])
     except (ValueError, IndexError):
         raise InvalidKFSManifestError(
             f"Invalid 'kfs_version' format in manifest ('{manifest_kfs_version}') "
@@ -42,21 +51,6 @@ def _check_version_compatibility(manifest_data: Dict[str, Any], parser_version: 
 def load_kfs_manifest(file_path: Union[str, Path]) -> KFSManifest:
     """
     Loads a KFS manifest from a YAML or JSON file into a KFSManifest Pydantic model.
-
-    Args:
-        file_path (Union[str, Path]): The path to the .kfs.yaml or .kfs.json file.
-
-    Returns:
-        KFSManifest: An instance of the loaded KFSManifest model.
-
-    Raises:
-        FileNotFoundError: If the specified file does not exist.
-        InvalidKFSManifestError: If the file content is not valid YAML or JSON,
-                                 or if the 'kfs_version' is malformed or missing.
-        KFSManifestValidationError: If the manifest content does not conform to the KFS schema.
-        ManifestVersionMismatchError: If the manifest's major version is incompatible with the parser.
-        KFSBaseError: For other unexpected KFS-related errors.
-        Exception: For general unexpected errors.
     """
     path = Path(file_path)
     if not path.is_file():
@@ -73,6 +67,8 @@ def load_kfs_manifest(file_path: Union[str, Path]) -> KFSManifest:
                 raw_data = json.load(f)
             else:
                 raise InvalidKFSManifestError(f"Unsupported file extension: {file_extension}. Must be .yaml, .yml, or .json.")
+    except (InvalidKFSManifestError, ManifestVersionMismatchError):
+        raise  # Re-raise KFS-specific errors directly
     except yaml.YAMLError as e:
         raise InvalidKFSManifestError(f"Malformed YAML content in {path}: {e}") from e
     except json.JSONDecodeError as e:
@@ -81,7 +77,10 @@ def load_kfs_manifest(file_path: Union[str, Path]) -> KFSManifest:
         raise KFSBaseError(f"An unexpected error occurred while reading {path}: {e}") from e
 
     if not isinstance(raw_data, dict):
-        raise InvalidKFSManifestError(f"Manifest file {path} content is not a valid dictionary (expected a root object).")
+        raise InvalidKFSManifestError(
+            f"YAMLSyntaxError: Manifest file {path} content is not a valid dictionary "
+            f"(expected a root object, got {type(raw_data).__name__})."
+        )
 
     # Check version compatibility before Pydantic parsing for clearer error messages
     _check_version_compatibility(raw_data, KFS_MANIFEST_VERSION)
@@ -93,7 +92,24 @@ def load_kfs_manifest(file_path: Union[str, Path]) -> KFSManifest:
     except PydanticValidationError as e:
         # Transform Pydantic's ValidationError into a custom KFSManifestValidationError
         errors = e.errors()
-        error_messages = [f"{err['loc']}: {err['msg']}" for err in errors]
+
+        # Format loc as 'field_name' with dots for nested paths
+        def format_loc(loc):
+            return "/".join(str(part) for part in loc)
+
+        def _compat_msg(msg: str) -> str:
+            """Translate Pydantic v2 messages to v1-style for backwards compatibility."""
+            msg = msg.replace(
+                "Input should be greater than or equal to",
+                "ensure this value is greater than or equal to",
+            )
+            msg = msg.replace(
+                "Input should be less than or equal to",
+                "ensure this value is less than or equal to",
+            )
+            return msg
+
+        error_messages = [f"'{format_loc(err['loc'])}': {_compat_msg(err['msg'])}" for err in errors]
         raise KFSManifestValidationError(
             f"KFS manifest validation failed for {path}: {'; '.join(error_messages)}",
             errors=errors
@@ -105,16 +121,6 @@ def load_kfs_manifest(file_path: Union[str, Path]) -> KFSManifest:
 def save_kfs_manifest(manifest: KFSManifest, file_path: Union[str, Path], format: Optional[Literal["yaml", "json"]] = None):
     """
     Saves a KFSManifest Pydantic model to a YAML or JSON file.
-
-    Args:
-        manifest (KFSManifest): The KFSManifest instance to save.
-        file_path (Union[str, Path]): The path to save the manifest to.
-        format (Optional[Literal["yaml", "json"]]): Explicitly specify the output format.
-                                                   If None, format is inferred from file extension.
-
-    Raises:
-        ValueError: If format cannot be inferred from file extension and is not explicitly specified.
-        KFSBaseError: For errors during serialization or writing.
     """
     path = Path(file_path)
     file_extension = path.suffix.lower()
@@ -143,8 +149,8 @@ def save_kfs_manifest(manifest: KFSManifest, file_path: Union[str, Path], format
             elif output_format == "json":
                 json.dump(manifest_data, f, indent=2)
             else:
-                # This case should ideally not be reached due to type hints and initial checks,
-                # but included for robustness.
                 raise ValueError(f"Unsupported output format specified: {output_format}")
+    except ValueError:
+        raise  # Re-raise ValueError directly
     except Exception as e:
         raise KFSBaseError(f"An error occurred while saving manifest to {path}: {e}") from e

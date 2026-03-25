@@ -29,3 +29,24 @@ class ManifestSchemaError(KFSManifestError):
 class InvalidManifestFormatError(KFSManifestError):
   """Exception raised when the manifest file format is invalid (e.g., malformed YAML)."""
   pass
+
+
+class AssetResolutionError(KFSManifestError):
+  """Exception raised when an asset cannot be resolved."""
+  pass
+
+
+class InvalidManifestError(KFSManifestError):
+  """Exception raised when a manifest is invalid (e.g., schema validation failure)."""
+
+  def __init__(self, message: str, errors: list | None = None):
+    super().__init__(message)
+    self.errors = errors if errors is not None else []
+
+
+class KFSManifestValidationError(KFSManifestError):
+  """Exception raised when manifest validation fails (wraps Pydantic errors)."""
+
+  def __init__(self, message: str, errors: list | None = None):
+    super().__init__(message)
+    self.errors = errors if errors is not None else []

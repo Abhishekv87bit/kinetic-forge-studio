@@ -1,9 +1,10 @@
 from pathlib import Path
 from typing import Optional, Union
+import sys
 
 from pydantic import ValidationError
 
-from src.kfs_manifest.models import KineticSculptureManifest # Assuming this model is defined in models.py
+from src.kfs_manifest.models import KineticSculptureManifest
 from src.kfs_manifest.yaml_loader import load_kfs_yaml
 
 def parse_kfs_manifest(
@@ -32,9 +33,9 @@ def parse_kfs_manifest(
         manifest = KineticSculptureManifest.model_validate(yaml_data)
         return manifest
     except ValidationError as e:
-        print(f"Error: KFS Manifest validation failed for '{path}':")
-        print(e)
+        print(f"Error: KFS Manifest validation failed for '{path}':", file=sys.stderr)
+        print(e, file=sys.stderr)
         return None
     except Exception as e:
-        print(f"An unexpected error occurred during manifest parsing for '{path}': {e}")
+        print(f"An unexpected error occurred during manifest parsing for '{path}': {e}", file=sys.stderr)
         return None

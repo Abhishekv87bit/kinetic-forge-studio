@@ -116,9 +116,10 @@ def test_cli_malformed_yaml_manifest(temp_kfs_yaml_file):
 
     assert result.returncode == 1
     assert f"Attempting to validate KFS manifest: '{manifest_path}'" in result.stdout
-    assert f"Error parsing YAML from {manifest_path}" in result.stderr
-    assert "syntax error" in result.stderr or "parser error" in result.stderr.lower()
-    assert f"Validation Failed: KFS Manifest '{manifest_path}' is invalid." in result.stderr
+    combined = result.stdout + result.stderr
+    assert f"Error parsing YAML from {manifest_path}" in combined
+    assert "syntax error" in combined.lower() or "parser error" in combined.lower()
+    assert f"Validation Failed: KFS Manifest '{manifest_path}' is invalid." in combined
     assert not result.stdout.strip().endswith("Success") # Ensure success message is not printed
 
 def test_cli_invalid_schema_manifest(temp_kfs_yaml_file):

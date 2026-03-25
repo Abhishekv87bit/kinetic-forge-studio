@@ -51,10 +51,10 @@ objects:
           keyframes:
             - time: 0.0
               value: 1.0
-              interpolation: "smooth"
+              interpolation: "spline"
             - time: 1.5
               value: 1.5
-              interpolation: "smooth"
+              interpolation: "spline"
             - time: 3.0
               value: 1.0
           loop: true
@@ -62,10 +62,10 @@ objects:
           keyframes:
             - time: 0.0
               value: 1.0
-              interpolation: "smooth"
+              interpolation: "spline"
             - time: 1.5
               value: 1.5
-              interpolation: "smooth"
+              interpolation: "spline"
             - time: 3.0
               value: 1.0
           loop: true
@@ -73,10 +73,10 @@ objects:
           keyframes:
             - time: 0.0
               value: 1.0
-              interpolation: "smooth"
+              interpolation: "spline"
             - time: 1.5
               value: 1.5
-              interpolation: "smooth"
+              interpolation: "spline"
             - time: 3.0
               value: 1.0
           loop: true

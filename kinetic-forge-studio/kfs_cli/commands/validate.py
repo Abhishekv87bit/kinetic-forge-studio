@@ -1,48 +1,42 @@
 import click
+import sys
 from pathlib import Path
-from typing import Tuple, Dict, Any
+from typing import Tuple, Dict, Any, List
 
-from kfs_core.validator.manifest_validator import KFSManifestValidator
+from kfs_core.manifest_parser import load_kfs_manifest
+from kfs_core.manifest_models import KFSManifest
+from kfs_core.validator.rules import SEMANTIC_VALIDATION_RULES, SemanticValidationError
 from kfs_core.exceptions import (
     KFSManifestValidationError,
     ManifestVersionMismatchError,
     InvalidKFSManifestError,
-    KFSBaseError
+    KFSBaseError,
 )
+from kfs_core.constants import KFS_MANIFEST_VERSION
 
-def _format_error_path(error_dict: Dict[str, Any]) -> str:
-    """Formats the error path from either a Pydantic 'loc' or a custom 'path'."""
-    if 'path' in error_dict: # Semantic error path (already string)
-        return error_dict['path']
-    elif 'loc' in error_dict: # Pydantic error location (tuple)
-        # Convert tuple like ('objects', 0, 'id') to 'objects/0/id'
-        return "/".join(map(str, error_dict['loc']))
-    return "N/A"
 
-def _format_error_message(error_dict: Dict[str, Any]) -> str:
-    """Formats the error message from a Pydantic 'msg' or a custom 'message'."""
-    if 'message' in error_dict: # Semantic error message
-        return error_dict['message']
-    elif 'msg' in error_dict: # Pydantic error message
-        return error_dict['msg']
-    return "No message"
+class _ValidateFilesType(click.ParamType):
+    """Custom Click type for validating file paths with specific error messages."""
+    name = "PATH"
 
-def _format_error_type_code(error_dict: Dict[str, Any]) -> str:
-    """Determines error type and code for display."""
-    error_type = error_dict.get('type', 'Unknown').replace('_', ' ').title()
-    error_code = error_dict.get('code') # Semantic errors have 'code'
-
-    if error_code:
-        return f"{error_type} ({error_code})"
-    return error_type
+    def convert(self, value, param, ctx):
+        p = Path(value)
+        if not p.exists():
+            # Write the error directly to stderr in the expected format
+            click.echo(f"Error: No such file or directory: '{value}'", err=True)
+            ctx.exit(2)
+        if not p.is_file():
+            click.echo(f"Error: '{value}' is not a file.", err=True)
+            ctx.exit(2)
+        return p
 
 
 @click.command()
 @click.argument(
     "files",
     nargs=-1,
-    type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True, path_type=Path),
-    required=True
+    type=_ValidateFilesType(),
+    required=True,
 )
 def validate(files: Tuple[Path, ...]):
     """
@@ -50,56 +44,85 @@ def validate(files: Tuple[Path, ...]):
 
     FILES: Path(s) to the .kfs.yaml or .kfs.json manifest file(s).
     """
-    validator = KFSManifestValidator()
-    all_valid = True
+    total_files = len(files)
+    valid_count = 0
+    invalid_count = 0
 
     for file_path in files:
         click.echo(f"Validating '{file_path}'...")
+
+        # Try loading the manifest
+        manifest = None
+        validation_errors: List[Dict[str, Any]] = []
+        version_mismatch = False
+
         try:
-            manifest = validator.validate_manifest(file_path)
-            click.echo(click.style(f"  '{file_path}' is VALID. (Name: {manifest.name})", fg="green"))
+            manifest = load_kfs_manifest(file_path)
         except ManifestVersionMismatchError as e:
-            all_valid = False
-            click.echo(click.style(f"  Error validating '{file_path}': Manifest Version Mismatch.", fg="red"))
-            click.echo(click.style(f"    Details: {e}", fg="red"))
-        except InvalidKFSManifestError as e:
-            all_valid = False
-            click.echo(click.style(f"  Error validating '{file_path}': Invalid Manifest Structure (YAML/JSON parsing or basic structure).", fg="red"))
-            click.echo(click.style(f"    Details: {e}", fg="red"))
+            version_mismatch = True
+            click.echo(
+                f"Error processing '{file_path}': {e}",
+                err=True,
+            )
         except KFSManifestValidationError as e:
-            all_valid = False
-            click.echo(click.style(f"  Error validating '{file_path}': KFS Manifest Validation Failed.", fg="red"))
+            # Pydantic validation errors
             if e.errors:
                 for err in e.errors:
-                    formatted_type_code = _format_error_type_code(err)
-                    formatted_message = _format_error_message(err)
-                    formatted_path = _format_error_path(err)
-                    
-                    # 'value' field is generally more present in semantic errors.
-                    # Pydantic errors might not have a direct 'value' in the error dict.
-                    err_value = err.get('value')
-                    
-                    click.echo(click.style(f"    [{formatted_type_code}]: {formatted_message}", fg="red"))
-                    if formatted_path and formatted_path != 'N/A':
-                        click.echo(click.style(f"      Path: {formatted_path}", fg="red"))
-                    if err_value is not None:
-                        # Truncate long values for cleaner output
-                        display_value = str(err_value)
-                        if len(display_value) > 100:
-                            display_value = display_value[:97] + "..."
-                        click.echo(click.style(f"      Value: {display_value}", fg="red"))
+                    validation_errors.append(err)
             else:
-                click.echo(click.style(f"    Details: {e}", fg="red")) # Fallback if errors list is empty
+                validation_errors.append({"type": "unknown", "msg": str(e)})
+        except InvalidKFSManifestError as e:
+            validation_errors.append({"type": "invalid_manifest", "msg": str(e)})
         except KFSBaseError as e:
-            all_valid = False
-            click.echo(click.style(f"  An unexpected KFS error occurred for '{file_path}': {e}", fg="red"))
+            validation_errors.append({"type": "kfs_error", "msg": str(e)})
         except Exception as e:
-            all_valid = False
-            click.echo(click.style(f"  An unhandled error occurred for '{file_path}': {e}", fg="red"))
-        click.echo("-" * 40)
+            validation_errors.append({"type": "unexpected", "msg": str(e)})
 
-    if not all_valid:
-        click.echo(click.style("One or more manifests failed validation.", fg="red"))
-        raise click.exceptions.Exit(1)
+        # Run semantic validation if manifest loaded
+        semantic_errors: List[Dict[str, Any]] = []
+        if manifest is not None:
+            for rule_func in SEMANTIC_VALIDATION_RULES:
+                for s_err in rule_func(manifest):
+                    semantic_errors.append(s_err.to_dict())
+
+        all_errors = validation_errors + semantic_errors
+        error_count = len(all_errors)
+
+        if version_mismatch:
+            invalid_count += 1
+            click.echo(f"'{file_path}' is INVALID (version mismatch).")
+        elif error_count > 0:
+            invalid_count += 1
+            click.echo(f"'{file_path}' is INVALID.")
+            for err in all_errors:
+                # Determine error category
+                err_type = err.get('type', 'unknown')
+                err_code = err.get('code')
+                err_msg = err.get('msg', err.get('message', 'No details'))
+
+                if err_code:
+                    # Semantic error
+                    label = f"Semantic ({err_code})"
+                    click.echo(f"  {label}: {err_msg}")
+                elif err_type in ('missing', 'value_error.missing'):
+                    display_msg = err_msg[0].lower() + err_msg[1:] if err_msg else err_msg
+                    click.echo(f"  Schema Validation Error (Missing): {display_msg}")
+                else:
+                    display_msg = err_msg[0].lower() + err_msg[1:] if err_msg else err_msg
+                    click.echo(f"  Validation Error: {display_msg}")
+
+            plural = "" if error_count == 1 else "s"
+            click.echo(f"Encountered {error_count} validation error{plural}.")
+        else:
+            valid_count += 1
+            click.echo(f"'{file_path}' is VALID.")
+            click.echo(f"Encountered 0 validation errors.")
+
+    # Summary
+    if invalid_count > 0:
+        click.echo("Overall KFS manifest validation: FAILED")
+        if total_files > 1:
+            click.echo(f"Total files checked: {total_files}, Valid: {valid_count}, Invalid: {invalid_count}")
+        raise SystemExit(1)
     else:
-        click.echo(click.style("All specified manifests passed validation.", fg="green"))
+        click.echo("Overall KFS manifest validation: SUCCESS")

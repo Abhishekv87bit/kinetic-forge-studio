@@ -1,5 +1,8 @@
 import abc
+import hashlib
+import ipaddress
 import requests
+import socket
 import tempfile
 from pathlib import Path
 from urllib.parse import urlparse, unquote
@@ -79,43 +82,89 @@ class HttpAssetHandler(AssetHandler):
     """
     Handles 'http://' and 'https://' URIs, downloading assets to a cache directory.
     """
+
+    DEFAULT_TIMEOUT = 30  # seconds
+    MAX_DOWNLOAD_SIZE = 100 * 1024 * 1024  # 100 MB
+
+    def __init__(self, timeout: int = DEFAULT_TIMEOUT, max_download_size: int = MAX_DOWNLOAD_SIZE):
+        self.timeout = timeout
+        self.max_download_size = max_download_size
+
     def can_handle(self, uri: str) -> bool:
         parsed_uri = urlparse(uri)
         return parsed_uri.scheme in ["http", "https"]
 
+    def _is_safe_url(self, uri: str) -> bool:
+        """Check URL doesn't point to private/internal networks."""
+        parsed = urlparse(uri)
+        try:
+            ip = socket.gethostbyname(parsed.hostname)
+            addr = ipaddress.ip_address(ip)
+            if addr.is_private or addr.is_loopback or addr.is_link_local:
+                return False
+        except (socket.gaierror, ValueError):
+            return False
+        return True
+
+    def _make_cache_filename(self, uri: str) -> str:
+        """Generate a cache-safe filename using a hash of the full URI."""
+        parsed_uri = urlparse(uri)
+        filename_from_path = Path(parsed_uri.path).name
+        uri_hash = hashlib.sha256(uri.encode()).hexdigest()[:16]
+
+        if filename_from_path and filename_from_path != '.' and filename_from_path != '..':
+            filename = f"{uri_hash}_{filename_from_path}"
+        else:
+            filename = f"{uri_hash}_asset.bin"
+
+        # Ensure filename is safe for file systems
+        if len(filename) > 200:
+            filename = f"{uri_hash}_{filename_from_path[:150]}" if filename_from_path else f"{uri_hash}_asset.bin"
+
+        return filename
+
     def resolve(self, uri: str, cache_dir: Optional[Path] = None) -> Path:
+        if not self._is_safe_url(uri):
+            raise RemoteAssetDownloadError(
+                f"URL points to a private/internal network address and is blocked: {uri}"
+            )
+
         target_dir = cache_dir if cache_dir else Path(tempfile.gettempdir()) / "kfs_asset_cache"
         target_dir.mkdir(parents=True, exist_ok=True)
 
-        parsed_uri = urlparse(uri)
-        # Use filename from URL if available, otherwise hash the URL
-        filename_from_path = Path(parsed_uri.path).name
-        if filename_from_path and filename_from_path != '.' and filename_from_path != '..': # Ensure not just a directory or empty
-            filename = filename_from_path
-        else:
-            # Fallback for URLs without a clear filename or with just a directory path
-            # Using a hash of the full URI and a generic extension
-            filename = f"asset_{hash(uri) % (10**10)}.bin" # Use .bin as generic fallback
-        
-        # Ensure filename is safe for file systems, maybe limit length
-        if len(filename) > 200: # Arbitrary limit, truncate and add a shorter hash
-            filename = f"{filename[:150]}_{hash(uri) % (10**5)}"
-
+        filename = self._make_cache_filename(uri)
         local_path = target_dir / filename
 
         if local_path.exists():
-            # Basic caching: if file exists, assume it's valid.
-            # More advanced caching would involve ETag, Last-Modified, etc.
             return local_path
 
         try:
-            response = requests.get(uri, stream=True)
-            response.raise_for_status() # Raise an HTTPError for bad responses (4xx or 5xx)
+            response = requests.get(uri, stream=True, timeout=self.timeout)
+            response.raise_for_status()
 
+            content_length = response.headers.get("Content-Length")
+            if content_length and int(content_length) > self.max_download_size:
+                raise RemoteAssetDownloadError(
+                    f"Asset at {uri} exceeds maximum download size "
+                    f"({int(content_length)} > {self.max_download_size} bytes)"
+                )
+
+            downloaded = 0
             with open(local_path, "wb") as f:
                 for chunk in response.iter_content(chunk_size=8192):
+                    downloaded += len(chunk)
+                    if downloaded > self.max_download_size:
+                        f.close()
+                        local_path.unlink(missing_ok=True)
+                        raise RemoteAssetDownloadError(
+                            f"Asset at {uri} exceeds maximum download size "
+                            f"({self.max_download_size} bytes) during download"
+                        )
                     f.write(chunk)
+
             return local_path
+        except RemoteAssetDownloadError:
+            raise
         except requests.exceptions.HTTPError as e:
             raise RemoteAssetDownloadError(
                 f"HTTP error {e.response.status_code} while downloading {uri}",

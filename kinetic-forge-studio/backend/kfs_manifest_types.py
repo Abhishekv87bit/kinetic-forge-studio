@@ -91,3 +91,23 @@ class KFSManifest(BaseModel):
     # actuators: Optional[List[ActuatorDefinition]] = None
     # controllers: Optional[List[ControllerDefinition]] = None
     # plugins: Optional[List[PluginConfiguration]] = None
+
+
+# --- Lightweight spec types for KFSManifestParser ---
+
+class GeometrySpec(BaseModel):
+    """Lightweight geometry specification parsed from a manifest."""
+    type: str = Field(..., description="Type of geometry (e.g., 'cube', 'sphere').")
+    parameters: Dict[str, Any] = Field(default_factory=dict, description="Geometry parameters.")
+
+class SimulationSpec(BaseModel):
+    """Lightweight simulation specification parsed from a manifest."""
+    type: str = Field(..., description="Type of simulation (e.g., 'kinematic_chain', 'ode_solver').")
+    parameters: Dict[str, Any] = Field(default_factory=dict, description="Simulation parameters.")
+
+
+class KFSManifestParsed:
+    """Simple container for parsed manifest data from KFSManifestParser."""
+    def __init__(self, geometry: GeometrySpec, simulation: SimulationSpec):
+        self.geometry = geometry
+        self.simulation = simulation

@@ -26,8 +26,13 @@ def generate(filename: Path, overwrite: bool):
         click.echo(f"Error: File '{filename}' already exists. Use --overwrite to force overwrite.", err=True)
         return
 
-    project_name_stem = filename.stem.replace('-', ' ').replace('_', ' ').title()
-    if project_name_stem.lower() == "kfs":
+    # Strip .kfs suffix from stem (e.g., "my_sculpture.kfs.yaml" -> "my_sculpture")
+    raw_stem = filename.stem
+    if raw_stem.lower().endswith('.kfs'):
+        raw_stem = raw_stem[:-4]
+    project_name_stem = raw_stem.replace('-', ' ').replace('_', ' ').title()
+    # Only use "Untitled Kinetic Sculpture" for the exact default manifest filename
+    if str(filename) == KFS_DEFAULT_MANIFEST_FILENAME:
         project_name = "Untitled Kinetic Sculpture"
     else:
         project_name = project_name_stem
@@ -50,11 +55,14 @@ def generate(filename: Path, overwrite: bool):
         # This catches any errors in our template generation logic itself.
         KFSManifest(**template_data)
 
+        # Create parent directories if they don't exist
+        filename.parent.mkdir(parents=True, exist_ok=True)
+
         with open(filename, "w", encoding="utf-8") as f:
             # Use yaml.dump with specific settings for good readability (block style, custom order)
             yaml.dump(template_data, f, indent=2, sort_keys=False, default_flow_style=False)
 
-        click.echo(f"Successfully generated blank KFS manifest to '{filename}'")
+        click.echo(f"Generated blank KFS manifest to: {filename.as_posix()}")
     except PydanticValidationError as e:
         click.echo(f"Internal Error: Generated template data is invalid according to KFSManifest schema.", err=True)
         for error in e.errors():

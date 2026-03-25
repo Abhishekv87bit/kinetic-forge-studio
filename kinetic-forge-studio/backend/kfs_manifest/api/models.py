@@ -1,7 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Optional, Union
-
-from ...schema.v1.kinetic_forge_schema import KineticForgeSchema
+from typing import List, Optional, Dict, Any
 
 
 class HealthCheckResponse(BaseModel):
@@ -18,5 +16,17 @@ class ManifestParseRequest(BaseModel):
 class ManifestParseResponse(BaseModel):
     """Response model for the KFS manifest parsing and validation endpoint."""
     status: str  # "success" or "failed"
-    parsed_manifest: Optional[KineticForgeSchema] = None
+    parsed_manifest: Optional[Dict[str, Any]] = None
     errors: Optional[List[str]] = None
+
+
+class ManifestValidateRequest(BaseModel):
+    """Request model for validating a KFS manifest."""
+    manifest_content: str
+
+
+class ManifestValidateResponse(BaseModel):
+    """Response model for the KFS manifest validation endpoint."""
+    status: str  # "success" or "error"
+    message: str
+    errors: Optional[List[Dict[str, Any]]] = None

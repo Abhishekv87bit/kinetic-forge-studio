@@ -2,7 +2,7 @@
 import pytest
 import yaml
 from backend.kfs_manifest_parser import KFSManifestParser
-from backend.kfs_manifest_types import KFSManifest, GeometrySpec, SimulationSpec
+from backend.kfs_manifest_types import KFSManifestParsed as KFSManifest, GeometrySpec, SimulationSpec
 
 @pytest.fixture
 def parser():
@@ -70,8 +70,10 @@ geometry:
   type: "cube"
 simulation:
   type: "kinematic_chain"
-  parameters:  # Missing value after colon
+  parameters:
     duration: 10.0
+    bad_indent:
+  wrong: [
 """
     with pytest.raises(ValueError, match="Invalid YAML syntax:") as exc_info:
         parser.parse_manifest(invalid_yaml_content)

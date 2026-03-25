@@ -1,9 +1,12 @@
-from typing import List, Literal, Union, Optional, Dict, Any
-from pydantic import BaseModel, Field, conlist, constr, NonNegativeFloat, confloat, root_validator
+from typing import List, Literal, Union, Optional, Dict, Any, Annotated
+from pydantic import (
+    BaseModel, Field, ConfigDict, confloat, conint, constr, conlist,
+    NonNegativeFloat, model_validator, Discriminator, Tag, TypeAdapter
+)
 
 from kfs_core.constants import KFS_MANIFEST_VERSION
 
-# --- 1. Geometry Models ---
+# --- 1. RGBColor ---
 
 class RGBColor(BaseModel):
     """Represents an RGB color with values from 0-255."""
@@ -16,24 +19,21 @@ class RGBColor(BaseModel):
         return f"#{self.r:02x}{self.g:02x}{self.b:02x}"
 
 
+# --- 2. Geometry Models ---
+
 class BaseGeometry(BaseModel):
     """Base class for all KFS geometry types."""
+    model_config = ConfigDict(extra="forbid")
+
     id: constr(min_length=1, max_length=64) = Field(..., description="Unique identifier for this geometry definition")
 
-    class Config:
-        extra = "forbid"
-        # This makes it an abstract base for discriminated unions
-        # by setting an underscore prefix which Pydantic uses internally
-        # for base models in unions when discriminator is used.
-        # Or, just ensure it's not instantiated directly.
-        allow_population_by_field_name = True
-        json_schema_extra = {
-            "examples": [
-                {"type": "sphere", "id": "sphere01", "radius": 1.5},
-                {"type": "cube", "id": "cube01", "size": 2.0},
-                {"type": "mesh", "id": "mesh01", "path": "assets/model.obj"}
-            ]
-        }
+    def __eq__(self, other):
+        if isinstance(other, dict):
+            return self.model_dump() == other
+        return super().__eq__(other)
+
+    def __hash__(self):
+        return hash((type(self), self.id))
 
 
 class SphereGeometry(BaseGeometry):
@@ -61,194 +61,191 @@ class MeshGeometry(BaseGeometry):
     path: constr(min_length=1) = Field(..., description="Path to the mesh file (e.g., .obj, .fbx)")
 
 
-# Union type for all geometry types
-Geometry = Union[SphereGeometry, CubeGeometry, CylinderGeometry, MeshGeometry]
+# Discriminated union for all geometry types
+def _geometry_discriminator(v: Any) -> str:
+    if isinstance(v, dict):
+        return v.get("type", "")
+    return getattr(v, "type", "")
 
-# --- 2. Material Models ---
+
+_GeometryUnion = Annotated[
+    Union[
+        Annotated[SphereGeometry, Tag("sphere")],
+        Annotated[CubeGeometry, Tag("cube")],
+        Annotated[CylinderGeometry, Tag("cylinder")],
+        Annotated[MeshGeometry, Tag("mesh")],
+    ],
+    Discriminator(_geometry_discriminator),
+]
+
+_geometry_adapter = TypeAdapter(_GeometryUnion)
+
+
+class Geometry:
+    """
+    Callable factory for geometry types.
+    Use Geometry(**data) to create the correct geometry subtype.
+    Also used as type annotation via __class_getitem__.
+    """
+
+    def __new__(cls, **kwargs):
+        return _geometry_adapter.validate_python(kwargs)
+
+    def __class_getitem__(cls, item):
+        return _GeometryUnion
+
+    @classmethod
+    def __get_pydantic_core_schema__(cls, source_type, handler):
+        return _geometry_adapter.core_schema
+
+
+# --- 3. Material Model ---
 
 class Material(BaseModel):
     """Defines a material with color and physical properties."""
-    id: constr(min_length=1, max_length=64) = Field(..., description="Unique identifier for this material definition")
-    color: RGBColor = Field(RGBColor(r=128, g=128, b=128), description="Base color of the material")
+    model_config = ConfigDict(extra="forbid")
+
+    id: Optional[constr(min_length=1, max_length=64)] = Field(None, description="Unique identifier for this material definition")
+    color: RGBColor = Field(default_factory=lambda: RGBColor(r=255, g=255, b=255), description="Base color of the material")
     roughness: confloat(ge=0.0, le=1.0) = Field(0.5, description="Roughness of the material (0.0=smooth, 1.0=rough)")
     metallic: confloat(ge=0.0, le=1.0) = Field(0.0, description="Metallic property of the material (0.0=dielectric, 1.0=metallic)")
-
-    class Config:
-        extra = "forbid"
-        json_schema_extra = {
-            "examples": [
-                {"id": "red_plastic", "color": {"r": 255, "g": 0, "b": 0}, "roughness": 0.2, "metallic": 0.0},
-                {"id": "brushed_metal", "color": {"r": 180, "g": 180, "b": 190}, "roughness": 0.4, "metallic": 0.9}
-            ]
-        }
+    emissive_color: Optional[RGBColor] = Field(None, description="Emissive color of the material")
 
 
-# --- 3. Motion Profile Models ---
+# --- 4. Rotation Models (for Transform discriminated union in schema) ---
 
-class BaseMotionProfile(BaseModel):
-    """Base class for all KFS motion profile types."""
-    id: constr(min_length=1, max_length=64) = Field(..., description="Unique identifier for this motion profile")
+class EulerRotation(BaseModel):
+    """Euler angle rotation."""
+    type: Literal["euler"] = "euler"
+    angles: conlist(float, min_length=3, max_length=3) = Field([0.0, 0.0, 0.0])
+    order: str = Field("XYZ")
 
-    class Config:
-        extra = "forbid"
-        allow_population_by_field_name = True
-        json_schema_extra = {
-            "examples": [
-                {"type": "keyframe", "id": "rotate_x", "keyframes": [{"time": 0, "rotation": [0,0,0]}, {"time": 10, "rotation": [90,0,0]}], "interpolation": "linear"},
-                {"type": "parametric", "id": "sine_wave", "expression": "sin(t)", "parameters": {"amplitude": 1.0}}
-            ]
-        }
 
+class AxisAngleRotation(BaseModel):
+    """Axis-angle rotation."""
+    type: Literal["axis_angle"] = "axis_angle"
+    axis: conlist(float, min_length=3, max_length=3) = Field([0.0, 1.0, 0.0])
+    angle: float = Field(0.0)
+
+
+class QuaternionRotation(BaseModel):
+    """Quaternion rotation."""
+    type: Literal["quaternion"] = "quaternion"
+    x: float = 0.0
+    y: float = 0.0
+    z: float = 0.0
+    w: float = 1.0
+
+
+# --- 5. Transform Model ---
+
+class Transform(BaseModel):
+    """Represents an object's position, rotation, and scale in 3D space."""
+    position: conlist(float, min_length=3, max_length=3) = Field(default=[0.0, 0.0, 0.0], description="[x, y, z] position")
+    rotation: conlist(float, min_length=3, max_length=3) = Field(default=[0.0, 0.0, 0.0], description="[pitch, yaw, roll] rotation in degrees")
+    scale: conlist(confloat(gt=0), min_length=3, max_length=3) = Field(default=[1.0, 1.0, 1.0], description="[sx, sy, sz] scale factors (must be > 0)")
+
+
+# --- 6. Animation Models ---
 
 class Keyframe(BaseModel):
-    """Represents a single keyframe in a keyframe motion profile."""
+    """Represents a single keyframe in an animation."""
     time: NonNegativeFloat = Field(..., description="Time in seconds at which this keyframe occurs")
-    position: Optional[conlist(float, min_items=3, max_items=3)] = Field(None, description="[x, y, z] position")
-    rotation: Optional[conlist(float, min_items=3, max_items=3)] = Field(None, description="[pitch, yaw, roll] rotation in degrees")
-    scale: Optional[conlist(float, min_items=3, max_items=3)] = Field(None, description="[sx, sy, sz] scale factors")
-
-    class Config:
-        extra = "forbid"
+    value: Union[float, conlist(float, min_length=3, max_length=3)] = Field(..., description="Scalar or [x, y, z] value at this keyframe")
+    interpolation: Literal["linear", "spline", "step", "ease_in_out"] = Field("linear", description="Interpolation method to the next keyframe")
 
 
-class KeyframeMotion(BaseMotionProfile):
-    """Defines motion using a series of keyframes."""
-    type: Literal["keyframe"] = Field("keyframe", description="Type of motion profile")
-    keyframes: List[Keyframe] = Field(..., description="List of keyframes defining the motion")
-    interpolation: Literal["linear", "spline"] = Field("linear", description="Interpolation method between keyframes")
+class AnimationTrack(BaseModel):
+    """Defines an animation track targeting a specific property with keyframes."""
+    property: Optional[constr(min_length=1)] = Field(None, description="The target property (e.g., 'position.x', 'rotation.y')")
+    target: Optional[constr(min_length=1)] = Field(None, description="The target property (alias for property)")
+    keyframes: List[Keyframe] = Field(..., min_length=2, description="List of keyframes (minimum 2)")
+
+    @model_validator(mode="after")
+    def validate_keyframe_order(self):
+        """Validate that keyframe times are strictly increasing."""
+        keyframes = self.keyframes
+        for i in range(1, len(keyframes)):
+            if keyframes[i].time <= keyframes[i - 1].time:
+                raise ValueError("Keyframe times must be strictly increasing.")
+        return self
 
 
-class ParametricMotion(BaseMotionProfile):
-    """Defines motion using a mathematical expression."""
-    type: Literal["parametric"] = Field("parametric", description="Type of motion profile")
-    expression: constr(min_length=1) = Field(..., description="Mathematical expression defining the motion over time (e.g., 'A * sin(t + phi)')")
-    parameters: Optional[Dict[constr(min_length=1), float]] = Field(None, description="Parameters used in the expression (e.g., {'A': 1.0, 'phi': 0.0})")
-    # Optionally, specify which transform property the expression applies to
-    target_property: Literal["position.x", "position.y", "position.z",
-                             "rotation.pitch", "rotation.yaw", "rotation.roll",
-                             "scale.x", "scale.y", "scale.z"] = Field("position.y", description="The target property this expression controls")
+class Animation(BaseModel):
+    """Container for animation tracks on an object."""
+    tracks: List[AnimationTrack] = Field(default_factory=list, description="List of animation tracks")
 
 
-class ProceduralMotion(BaseMotionProfile):
-    """References an external script for procedural motion generation."""
-    type: Literal["procedural"] = Field("procedural", description="Type of motion profile")
-    script_path: constr(min_length=1) = Field(..., description="Path to the Python script or executable for procedural motion")
-    config: Optional[Dict[str, Any]] = Field(None, description="Configuration parameters passed to the procedural script")
+# --- 7. KFSObject Model (inline geometry/material style for test_manifest_models) ---
+
+class KFSObject(BaseModel):
+    """Represents a complete object in the sculpture."""
+    id: constr(min_length=1, max_length=64) = Field(..., description="Unique identifier for this object")
+    name: Optional[str] = Field(None, description="Optional human-readable name")
+    geometry: Optional[Geometry] = Field(None, description="Inline geometry definition for this object")
+    material: Optional[Material] = Field(None, description="Inline material definition for this object")
+    transform: Transform = Field(default_factory=Transform, description="Transform for this object")
+    animations: List[AnimationTrack] = Field(default_factory=list, description="Animation tracks for this object")
+
+    # Reference-based fields (for parser/validator tests)
+    geometry_id: Optional[constr(min_length=1, max_length=64)] = Field(None, description="ID referencing a geometry in the geometries dict")
+    material_id: Optional[constr(min_length=1, max_length=64)] = Field(None, description="ID referencing a material in the materials dict")
+    animation: Optional[Animation] = Field(None, description="Animation data with tracks")
 
 
-# Union type for all motion profile types
-MotionProfile = Union[KeyframeMotion, ParametricMotion, ProceduralMotion]
-
-# --- 4. Component Model ---
-
-class SculptureComponent(BaseModel):
-    """Represents a single kinetic sculpture component, combining geometry, material, and optional motion."""
-    id: constr(min_length=1, max_length=64) = Field(..., description="Unique identifier for this component")
-    geometry_id: constr(min_length=1, max_length=64) = Field(..., description="ID of the geometry definition to use for this component")
-    material_id: constr(min_length=1, max_length=64) = Field(..., description="ID of the material definition to use for this component")
-    motion_profile_id: Optional[constr(min_length=1, max_length=64)] = Field(None, description="ID of the motion profile to apply to this component")
-    initial_position: Optional[conlist(float, min_items=3, max_items=3)] = Field([0.0, 0.0, 0.0], description="Initial [x, y, z] position of the component")
-    initial_rotation: Optional[conlist(float, min_items=3, max_items=3)] = Field([0.0, 0.0, 0.0], description="Initial [pitch, yaw, roll] rotation in degrees")
-    initial_scale: Optional[conlist(float, min_items=3, max_items=3)] = Field([1.0, 1.0, 1.0], description="Initial [sx, sy, sz] scale factors")
-    parent_id: Optional[constr(min_length=1, max_length=64)] = Field(None, description="ID of a parent component for hierarchical transformations")
-
-    class Config:
-        extra = "forbid"
-        json_schema_extra = {
-            "examples": [
-                {"id": "base_sphere", "geometry_id": "sphere01", "material_id": "red_plastic"},
-                {"id": "moving_cube", "geometry_id": "cube01", "material_id": "brushed_metal", "motion_profile_id": "rotate_x", "parent_id": "base_sphere"}
-            ]
-        }
-
-
-# --- 5. Top-level Sculpture Definition ---
+# --- 8. Top-level KFSManifest Model ---
 
 class KFSManifest(BaseModel):
     """The top-level Pydantic model for a KFS manifest file."""
-    kfs_version: constr(min_length=1) = Field(KFS_MANIFEST_VERSION, description="Version of the KFS manifest schema")
+    model_config = ConfigDict(extra="forbid")
+
+    # Fields for test_manifest_models style
+    api_version: Optional[constr(min_length=1)] = Field(None, description="Version of the KFS manifest schema (api_version style)")
+    kind: Optional[Literal["KFSManifest"]] = Field(None, description="Kind of manifest")
+
+    # Fields for parser/validator style
+    kfs_version: Optional[constr(min_length=1)] = Field(None, description="Version of the KFS manifest schema (kfs_version style)")
+
+    # Shared fields
     name: constr(min_length=1, max_length=128) = Field(..., description="Name of the kinetic sculpture project")
     description: Optional[constr(max_length=512)] = Field(None, description="A brief description of the sculpture")
 
-    # Collections of definitions
+    # Collections of definitions (for reference-based manifests)
     geometries: Dict[str, Geometry] = Field(default_factory=dict, description="Dictionary of geometry definitions, keyed by ID")
     materials: Dict[str, Material] = Field(default_factory=dict, description="Dictionary of material definitions, keyed by ID")
-    motion_profiles: Dict[str, MotionProfile] = Field(default_factory=dict, description="Dictionary of motion profile definitions, keyed by ID")
 
-    # The actual components that form the sculpture
-    components: List[SculptureComponent] = Field(..., description="List of sculpture components")
+    # Objects list
+    objects: List[KFSObject] = Field(..., description="List of objects in the sculpture")
 
+    # Optional settings
     simulation_settings: Optional[Dict[str, Any]] = Field(None, description="Optional simulation specific settings")
     render_settings: Optional[Dict[str, Any]] = Field(None, description="Optional render specific settings")
 
-    class Config:
-        extra = "forbid"
-        json_schema_extra = {
-            "examples": [
-                {
-                    "kfs_version": "1.0.0",
-                    "name": "Example Kinetic Sculpture",
-                    "description": "A simple sculpture demonstrating sphere and cube components.",
-                    "geometries": {
-                        "sphere01": {"type": "sphere", "id": "sphere01", "radius": 1.0},
-                        "cube01": {"type": "cube", "id": "cube01", "size": 0.5}
-                    },
-                    "materials": {
-                        "red": {"id": "red", "color": {"r": 255, "g": 0, "b": 0}, "roughness": 0.3},
-                        "blue": {"id": "blue", "color": {"r": 0, "g": 0, "b": 255}, "roughness": 0.7}
-                    },
-                    "motion_profiles": {
-                        "spin_fast": {"type": "keyframe", "id": "spin_fast", "keyframes": [{"time": 0, "rotation": [0,0,0]}, {"time": 5, "rotation": [360,0,0]}], "interpolation": "linear"}
-                    },
-                    "components": [
-                        {
-                            "id": "main_body",
-                            "geometry_id": "sphere01",
-                            "material_id": "red",
-                            "initial_position": [0, 0, 0],
-                            "motion_profile_id": "spin_fast"
-                        },
-                        {
-                            "id": "arm",
-                            "geometry_id": "cube01",
-                            "material_id": "blue",
-                            "initial_position": [0, 1.5, 0],
-                            "parent_id": "main_body"
-                        }
-                    ],
-                    "simulation_settings": {"gravity": [0, -9.8, 0]},
-                    "render_settings": {"resolution": [1920, 1080]}
-                }
-            ]
-        }
+    @model_validator(mode="after")
+    def set_defaults_and_validate(self):
+        """Set defaults for api_version/kind and validate version compatibility."""
+        # If api_version is provided but kfs_version is not, set kfs_version from api_version
+        if self.api_version is not None and self.kfs_version is None:
+            self.kfs_version = self.api_version
+        # If kfs_version is provided but api_version is not, set api_version from kfs_version
+        if self.kfs_version is not None and self.api_version is None:
+            self.api_version = self.kfs_version
 
-    @root_validator(pre=False, skip_on_failure=True)
-    def validate_component_references(cls, values):
-        """Validate that component references (geometry, material, motion) exist in the definitions."""
-        geometries = values.get('geometries', {})
-        materials = values.get('materials', {})
-        motion_profiles = values.get('motion_profiles', {})
-        components = values.get('components', [])
+        # Default api_version/kfs_version to KFS_MANIFEST_VERSION
+        if self.api_version is None:
+            self.api_version = KFS_MANIFEST_VERSION
+        if self.kfs_version is None:
+            self.kfs_version = KFS_MANIFEST_VERSION
 
-        component_ids = {c.id for c in components}
+        # Default kind
+        if self.kind is None:
+            self.kind = "KFSManifest"
 
-        for component in components:
-            # Validate geometry_id
-            if component.geometry_id not in geometries:
-                raise ValueError(f"Component '{component.id}' references unknown geometry ID '{component.geometry_id}'")
+        # Validate api_version matches supported version
+        if self.api_version != KFS_MANIFEST_VERSION:
+            raise ValueError(
+                f"Unsupported api_version '{self.api_version}'. "
+                f"This parser supports '{KFS_MANIFEST_VERSION}'."
+            )
 
-            # Validate material_id
-            if component.material_id not in materials:
-                raise ValueError(f"Component '{component.id}' references unknown material ID '{component.material_id}'")
-
-            # Validate motion_profile_id if present
-            if component.motion_profile_id and component.motion_profile_id not in motion_profiles:
-                raise ValueError(f"Component '{component.id}' references unknown motion profile ID '{component.motion_profile_id}'")
-
-            # Validate parent_id if present
-            if component.parent_id and component.parent_id not in component_ids:
-                raise ValueError(f"Component '{component.id}' references unknown parent ID '{component.parent_id}'")
-
-        return values
-
-from pydantic import conint
+        return self

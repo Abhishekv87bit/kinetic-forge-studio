@@ -1,6 +1,9 @@
+import sys
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
+
 import yaml
+
 
 def load_kfs_yaml(
     file_path: Union[str, Path]
@@ -32,9 +35,9 @@ def load_kfs_yaml(
         print(f"Error reading file {path}: {e}")
         return None
     except yaml.YAMLError as e:
-        print(f"Error parsing YAML from {path}: {e}")
+        error_type = type(e).__name__
+        print(f"Error parsing YAML from {path} ({error_type} - parser error): {e}")
         return None
     except Exception as e:
         print(f"An unexpected error occurred while loading YAML from {path}: {e}")
         return None
-
