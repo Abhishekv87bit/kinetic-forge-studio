@@ -101,9 +101,9 @@ stages:
 
   - stage: 3
     name: Planning
-    status: pending
-    start: TBD
-    end: TBD
+    status: completed
+    start: 2026-03-26
+    end: 2026-03-26
     duration_hours: 2
     owner: claude
     deliverables:
@@ -134,8 +134,8 @@ stages:
 
   - stage: 5
     name: Build
-    status: pending
-    start: TBD
+    status: in_progress
+    start: 2026-03-26
     end: TBD
     duration_hours: 8
     owner: claude (with subagents)
