@@ -11,6 +11,7 @@ from app.routes.library import router as library_router
 from app.routes.export import router as export_router
 from app.routes.profile import router as profile_router
 from app.routes.viewer import router as viewer_router
+from app.routes.modules import router as modules_router
 
 # Production pipeline middleware (GAP-PPL-003, 005, 008, 013)
 from app.middleware.input_guardrails import InputGuardrailsMiddleware
@@ -53,6 +54,7 @@ app.include_router(library_router)
 app.include_router(export_router)
 app.include_router(profile_router)
 app.include_router(viewer_router)
+app.include_router(modules_router)
 
 @app.on_event("shutdown")
 async def shutdown():
