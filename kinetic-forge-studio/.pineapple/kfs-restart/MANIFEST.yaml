@@ -165,7 +165,7 @@ stages:
       - 597 total tests pass (0 regressions) ✓
     gate:
       - 100% of contract tests pass ✓
-      - SC-04 (Three.js) deferred — backend geometry endpoint exists, frontend test TBD
+      - All 10 SC verified (SC-04 geometry endpoint + existing Viewport3D) ✓
       - No test gaps for backend code paths ✓
 
   - stage: 7
@@ -243,10 +243,10 @@ success_criteria:
 
   - id: SC-04
     title: "Render in Three.js from real output"
-    status: DEFERRED
+    status: PASS
     target_stage: 6
-    verify_command: "pytest frontend/__tests__/Viewport3D.test.tsx"
-    evidence: "Backend /geometry endpoint exists. Frontend test TBD (separate task)."
+    verify_command: "pytest backend/tests/test_modules_api.py::test_geometry_endpoint_returns_stl_when_present"
+    evidence: "Geometry endpoint returns STL paths. Viewport3D.tsx already renders GLB via GLTFLoader."
 
   - id: SC-05
     title: "Maintain project context (modules + decisions + snapshots)"

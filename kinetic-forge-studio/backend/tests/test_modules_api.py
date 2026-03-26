@@ -238,3 +238,28 @@ async def test_geometry_endpoint_404_before_execution(ac):
 
     res = await ac.get(f"{BASE}/{module_id}/geometry")
     assert res.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_geometry_endpoint_returns_stl_when_present(ac):
+    """GET /{module_id}/geometry returns file info when STL exists on disk."""
+    create_res = await ac.post(BASE, json={"name": "geo_mod", "source_code": SIMPLE_SOURCE})
+    module_id = create_res.json()["id"]
+
+    # Simulate module execution writing an STL file
+    from app.config import settings
+    geometry_dir = settings.data_dir / "geometry" / module_id
+    geometry_dir.mkdir(parents=True, exist_ok=True)
+    stl_file = geometry_dir / "output.stl"
+    stl_file.write_bytes(b"solid cube\nendsolid cube\n")
+
+    try:
+        res = await ac.get(f"{BASE}/{module_id}/geometry")
+        assert res.status_code == 200
+        data = res.json()
+        assert data["module_id"] == module_id
+        assert "stl" in data["files"]
+        assert data["files"]["stl"]["url"].endswith("/output.stl")
+    finally:
+        stl_file.unlink(missing_ok=True)
+        geometry_dir.rmdir()
