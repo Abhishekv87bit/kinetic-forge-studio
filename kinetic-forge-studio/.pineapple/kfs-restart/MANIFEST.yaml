@@ -80,20 +80,24 @@ stages:
 
   - stage: 2
     name: Architecture
-    status: pending
-    start: TBD
-    end: TBD
-    duration_hours: 3
+    status: completed
+    start: 2026-03-26
+    end: 2026-03-26
+    duration_hours: 1
     owner: claude
+    artifact: .pineapple/kfs-restart/01-architecture-design.md
     deliverables:
-      - 10-module architecture diagram
-      - File creation/modification list
-      - Data flow diagram (modules → VLAD → DB → UI)
-      - Dependency graph
+      - 10-module architecture diagram ✓
+      - File creation/modification list (20 new, 11 modified) ✓
+      - Data flow diagram (modules → VLAD → DB → UI) ✓
+      - Dependency graph (5 build phases) ✓
+      - Database schema (4 new tables) ✓
+      - API endpoints (11 new routes) ✓
+      - Risk assessment per module ✓
     gate:
-      - Architecture reviewed by user
-      - File list approved
-      - No conflicts with existing code
+      - Architecture reviewed by user ⏳
+      - File list approved ⏳
+      - No conflicts with existing code ✓
 
   - stage: 3
     name: Planning
@@ -312,7 +316,7 @@ git:
   commits_in_stage:
     stage_0: 0  # Intake is analysis, not coded
     stage_1: 0  # Strategic brief is design doc, not code
-    stage_2: TBD
+    stage_2: 1  # Architecture design doc
     stage_3: TBD
     stage_4: TBD
     stage_5: TBD
