@@ -61,6 +61,11 @@ async def shutdown():
     from app.routes.projects import _pm
     if _pm is not None:
         await _pm.db.close()
+    from app.routes.modules import _mm, _sl
+    if _mm and hasattr(_mm, 'db'):
+        await _mm.db.close()
+    if _sl and hasattr(_sl, 'db'):
+        await _sl.db.close()
 
 
 @app.get("/api/health")

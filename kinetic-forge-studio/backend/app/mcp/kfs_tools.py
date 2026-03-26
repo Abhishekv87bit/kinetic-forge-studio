@@ -51,7 +51,7 @@ validate_with_vlad: dict[str, Any] = {
         "Performs 35 checks across 8 tiers: topology, interference, clearance, "
         "manufacturability, export quality, and more. "
         "The module must export get_fixed_parts(), get_moving_parts(), and "
-        "get_mechanism_type()."
+        "get_geometry_type()."
     ),
     "input_schema": {
         "type": "object",

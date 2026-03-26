@@ -5,12 +5,13 @@ Each module is a versioned CadQuery/build123d script attached to a project.
 Execution writes STL/STEP geometry; VLAD validates the produced geometry.
 """
 
+import json
 import logging
 from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.config import settings
 from app.middleware.cache import clear_project_cache
@@ -57,7 +58,7 @@ async def get_sl() -> SessionLogManager:
 # ---------------------------------------------------------------------------
 
 class CreateModuleRequest(BaseModel):
-    name: str
+    name: str = Field(min_length=1, max_length=255, pattern=r"^[a-zA-Z0-9_\-. ]+$")
     source_code: str
     language: str = "python"
     parameters: dict = {}
@@ -152,20 +153,29 @@ async def execute_module_endpoint(
     except ValueError:
         raise HTTPException(status_code=404, detail="Module not found")
 
+    output_dir = Path(req.output_dir) if req.output_dir else settings.data_dir / "geometry" / module_id
+    if req.output_dir:
+        resolved = output_dir.resolve()
+        if not str(resolved).startswith(str(settings.data_dir.resolve())):
+            raise HTTPException(status_code=400, detail="output_dir must be within the data directory")
+
     try:
         result = await execute_module(
-            module=module,
-            output_dir=req.output_dir or str(settings.data_dir / "geometry" / module_id),
+            project_id=project_id,
+            module_id=module_id,
+            source_code=module["source_code"],
+            parameters=json.loads(module["parameters"]) if isinstance(module["parameters"], str) else module["parameters"],
+            output_dir=output_dir,
         )
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
     await sl.log_action(
         project_id, "module_executed",
-        {"success": result.get("success"), "output_files": result.get("output_files")},
+        {"success": result.success, "output_files": result.files_written},
         module_id,
     )
-    return result
+    return result.model_dump()
 
 
 @router.post("/{module_id}/validate")
@@ -178,17 +188,29 @@ async def validate_module(project_id: str, module_id: str):
     except ValueError:
         raise HTTPException(status_code=404, detail="Module not found")
 
+    geometry_dir = settings.data_dir / "geometry" / module_id
+    stl = geometry_dir / "output.stl"
+    step = geometry_dir / "output.step"
+    file_path = stl if stl.exists() else step if step.exists() else None
+    if file_path is None:
+        raise HTTPException(status_code=400, detail="No geometry files — execute the module first")
+
     try:
-        result = await run_vlad(module=module)
+        result = await run_vlad(
+            module_id=module_id,
+            file_path=file_path,
+            db=mm.db,
+            version=module.get("version"),
+        )
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
     await sl.log_action(
         project_id, "module_validated",
-        {"passed": result.get("passed"), "tier_results": result.get("tier_results")},
+        {"passed": result.passed, "tier_results": result.checks_failed},
         module_id,
     )
-    return result
+    return result.model_dump()
 
 
 @router.post("/{module_id}/execute-and-validate")
@@ -203,10 +225,19 @@ async def execute_and_validate(
     except ValueError:
         raise HTTPException(status_code=404, detail="Module not found")
 
+    output_dir = Path(req.output_dir) if req.output_dir else settings.data_dir / "geometry" / module_id
+    if req.output_dir:
+        resolved = output_dir.resolve()
+        if not str(resolved).startswith(str(settings.data_dir.resolve())):
+            raise HTTPException(status_code=400, detail="output_dir must be within the data directory")
+
     try:
         result = await execute_with_repair(
-            module=module,
-            output_dir=req.output_dir or str(settings.data_dir / "geometry" / module_id),
+            project_id=project_id,
+            module_id=module_id,
+            source_code=module["source_code"],
+            parameters=json.loads(module["parameters"]) if isinstance(module["parameters"], str) else module["parameters"],
+            output_dir=output_dir,
         )
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -214,12 +245,12 @@ async def execute_and_validate(
     await sl.log_action(
         project_id, "module_execute_validate",
         {
-            "execute_success": result.get("execute", {}).get("success"),
-            "vlad_passed": result.get("vlad", {}).get("passed"),
+            "execute_success": result.success,
+            "repairs_applied": result.repairs_applied,
         },
         module_id,
     )
-    return result
+    return result.model_dump()
 
 
 @router.get("/{module_id}/geometry")
@@ -288,12 +319,11 @@ async def generate_project_manifest(project_id: str):
     """Generate a .kfs.yaml manifest describing all modules in the project."""
     mm = await get_mm()
     sl = await get_sl()
-    modules = await mm.list_all(project_id)
 
     try:
-        manifest = await generate_manifest(project_id=project_id, modules=modules)
+        manifest = await generate_manifest(project_id=project_id, db=mm.db)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    await sl.log_action(project_id, "manifest_generated", {"module_count": len(modules)})
+    await sl.log_action(project_id, "manifest_generated", {})
     return manifest

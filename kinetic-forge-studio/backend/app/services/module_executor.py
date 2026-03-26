@@ -1,6 +1,5 @@
 import asyncio
 import json
-import secrets
 import tempfile
 import time
 from pathlib import Path
@@ -36,8 +35,10 @@ async def execute_module(
         f"{source_code}\n"
     )
 
-    tmp = Path(tempfile.mktemp(suffix=".py"))
-    tmp.write_text(wrapper, encoding="utf-8")
+    tmp_fd = tempfile.NamedTemporaryFile(suffix=".py", delete=False, mode="w", encoding="utf-8")
+    tmp = Path(tmp_fd.name)
+    tmp_fd.write(wrapper)
+    tmp_fd.close()
 
     start = time.monotonic()
     try:
