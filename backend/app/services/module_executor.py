@@ -8,9 +8,11 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import time
 from dataclasses import dataclass
 from typing import Optional
 
+from backend.app.middleware.observability import log_execution
 from backend.app.services.durga import DurgaRepairEngine
 
 logger = logging.getLogger(__name__)
@@ -86,8 +88,11 @@ class ModuleExecutor:
         stl_path = os.path.join(module_dir, f"{module_id}.stl")
         step_path = os.path.join(module_dir, f"{module_id}.step")
 
+        start = time.perf_counter()
+        exec_status = "failure"
         try:
             await self._run_engine(code, stl_path, step_path)
+            exec_status = "success"
             return ExecutionResult(
                 module_id=module_id,
                 status="valid",
@@ -109,6 +114,7 @@ class ModuleExecutor:
                 )
                 try:
                     await self._run_engine(repair.fixed_code, stl_path, step_path)
+                    exec_status = "success_after_repair"
                     return ExecutionResult(
                         module_id=module_id,
                         status="valid",
@@ -127,6 +133,14 @@ class ModuleExecutor:
                 module_id=module_id,
                 status="failed",
                 error=error_str,
+            )
+        finally:
+            await log_execution(
+                "ModuleExecutor",
+                "execute",
+                exec_status,
+                time.perf_counter() - start,
+                {"module_id": module_id},
             )
 
     async def execute_and_validate(self, module_id: str, code: str) -> ExecutionResult:
