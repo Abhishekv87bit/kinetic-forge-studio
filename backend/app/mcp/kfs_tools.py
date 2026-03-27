@@ -6,11 +6,11 @@ knowing internal service boundaries.
 
 Tools
 -----
-kfs_create_module   → ModuleManager.create()
-kfs_list_modules    → ModuleManager.list_all()
-kfs_get_module      → ModuleManager.get()
-kfs_execute_module  → ModuleExecutor.execute()
-kfs_validate_module → VladBridge + VladRunner.run() + ModuleManager.set_vlad_verdict()
+kfs_create_module   -> ModuleManager.create()
+kfs_list_modules    -> ModuleManager.list_all()
+kfs_get_module      -> ModuleManager.get()
+kfs_execute_module  -> ModuleExecutor.execute()
+kfs_validate_module -> VladBridge + VladRunner.run() + ModuleManager.set_vlad_verdict()
 
 Usage (host application wires together the dependencies)::
 
@@ -33,41 +33,14 @@ from __future__ import annotations
 import asyncio
 import dataclasses
 import logging
-from typing import Any, Dict, List, Optional, Protocol, runtime_checkable
+from typing import Any, Dict, List, Optional
 
+from backend.app.models.module import Module, ModuleManager
 from backend.app.services.module_executor import ExecutionResult, ModuleExecutor
 from backend.app.services.vlad_bridge import VladBridge
 from backend.app.services.vlad_runner import VladResult, VladRunner
 
 logger = logging.getLogger(__name__)
-
-
-# ---------------------------------------------------------------------------
-# Structural protocol for ModuleManager (SC-01 is implemented separately;
-# using Protocol keeps SC-07 decoupled from the concrete DB implementation)
-# ---------------------------------------------------------------------------
-
-
-@runtime_checkable
-class ModuleManagerProtocol(Protocol):
-    """Minimum interface consumed by KFSMCPServer."""
-
-    async def create(
-        self,
-        project_id: str,
-        name: str,
-        geometry_type: str,
-        source_code: str,
-        parameters: Dict[str, Any],
-    ) -> Any: ...
-
-    async def get(self, project_id: str, module_id: str) -> Any: ...
-
-    async def list_all(self, project_id: str) -> List[Any]: ...
-
-    async def set_vlad_verdict(
-        self, project_id: str, module_id: str, verdict: str
-    ) -> None: ...
 
 
 # ---------------------------------------------------------------------------
@@ -80,73 +53,53 @@ _TOOL_SCHEMAS: List[Dict[str, Any]] = [
     {
         "name": "kfs_create_module",
         "description": (
-            "Create a new KFS module (CadQuery geometry component) in a project. "
+            "Create a new KFS module (CadQuery geometry component). "
             "Returns the new module record including its assigned id."
         ),
         "inputSchema": {
             "type": "object",
             "properties": {
-                "project_id": {
-                    "type": "string",
-                    "description": "UUID of the parent KFS project.",
-                },
                 "name": {
                     "type": "string",
                     "description": "Human-readable module name (e.g. 'Spur Gear 20T').",
                 },
-                "geometry_type": {
-                    "type": "string",
-                    "description": (
-                        "ADR-04 geometry category: 'gear', 'lattice', "
-                        "'structural', 'organic', etc."
-                    ),
-                },
-                "source_code": {
+                "code": {
                     "type": "string",
                     "description": "CadQuery Python script that builds the geometry.",
                 },
                 "parameters": {
                     "type": "object",
                     "description": (
-                        "Parametric values used by source_code "
+                        "Parametric values used by the code "
                         "(e.g. {'teeth': 20, 'module': 1.5})."
                     ),
                     "additionalProperties": True,
                 },
             },
-            "required": ["project_id", "name", "geometry_type", "source_code"],
+            "required": ["name", "code"],
         },
     },
     {
         "name": "kfs_list_modules",
-        "description": "List all modules belonging to a KFS project.",
+        "description": "List all modules in the KFS database, ordered by creation time.",
         "inputSchema": {
             "type": "object",
-            "properties": {
-                "project_id": {
-                    "type": "string",
-                    "description": "UUID of the KFS project to query.",
-                },
-            },
-            "required": ["project_id"],
+            "properties": {},
+            "required": [],
         },
     },
     {
         "name": "kfs_get_module",
-        "description": "Retrieve a single KFS module by project and module id.",
+        "description": "Retrieve a single KFS module by its id.",
         "inputSchema": {
             "type": "object",
             "properties": {
-                "project_id": {
-                    "type": "string",
-                    "description": "UUID of the parent KFS project.",
-                },
                 "module_id": {
                     "type": "string",
-                    "description": "Id of the module to retrieve.",
+                    "description": "UUID of the module to retrieve.",
                 },
             },
-            "required": ["project_id", "module_id"],
+            "required": ["module_id"],
         },
     },
     {
@@ -154,21 +107,17 @@ _TOOL_SCHEMAS: List[Dict[str, Any]] = [
         "description": (
             "Execute a module's CadQuery source code through the CadQuery engine, "
             "write STL and STEP artefacts to disk, and return the execution result. "
-            "The module must already exist in the project."
+            "The module must already exist."
         ),
         "inputSchema": {
             "type": "object",
             "properties": {
-                "project_id": {
-                    "type": "string",
-                    "description": "UUID of the parent KFS project.",
-                },
                 "module_id": {
                     "type": "string",
-                    "description": "Id of the module to execute.",
+                    "description": "UUID of the module to execute.",
                 },
             },
-            "required": ["project_id", "module_id"],
+            "required": ["module_id"],
         },
     },
     {
@@ -181,27 +130,26 @@ _TOOL_SCHEMAS: List[Dict[str, Any]] = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "project_id": {
-                    "type": "string",
-                    "description": "UUID of the parent KFS project.",
-                },
                 "module_id": {
                     "type": "string",
-                    "description": "Id of the module to validate.",
+                    "description": "UUID of the module to validate.",
                 },
                 "mechanism_type": {
                     "type": "string",
                     "description": (
                         "VLAD mechanism category hint "
                         "(e.g. 'gear', 'slider', 'cam'). "
-                        "Defaults to the module's geometry_type if omitted."
+                        "Defaults to 'structural' if omitted."
                     ),
                 },
             },
-            "required": ["project_id", "module_id"],
+            "required": ["module_id"],
         },
     },
 ]
+
+#: Public alias — lets callers import TOOLS directly if preferred.
+TOOLS: List[Dict[str, Any]] = _TOOL_SCHEMAS
 
 
 def get_tools() -> List[Dict[str, Any]]:
@@ -223,8 +171,7 @@ class KFSMCPServer:
     Parameters
     ----------
     module_manager:
-        SC-01 :class:`~backend.app.models.module.ModuleManager` (or any object
-        satisfying :class:`ModuleManagerProtocol`).
+        SC-01 :class:`~backend.app.models.module.ModuleManager`.
     module_executor:
         SC-02 :class:`~backend.app.services.module_executor.ModuleExecutor`.
     vlad_runner:
@@ -233,7 +180,7 @@ class KFSMCPServer:
 
     def __init__(
         self,
-        module_manager: ModuleManagerProtocol,
+        module_manager: ModuleManager,
         module_executor: ModuleExecutor,
         vlad_runner: VladRunner,
     ) -> None:
@@ -247,90 +194,91 @@ class KFSMCPServer:
 
     async def kfs_create_module(
         self,
-        project_id: str,
         name: str,
-        geometry_type: str,
-        source_code: str,
+        code: str,
         parameters: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Create a new module and return its serialised record."""
-        module = await self._mgr.create(
-            project_id=project_id,
-            name=name,
-            geometry_type=geometry_type,
-            source_code=source_code,
-            parameters=parameters or {},
+        module: Module = await asyncio.to_thread(
+            self._mgr.create,
+            name,
+            code,
+            parameters,
         )
-        return _serialise(module)
+        return _serialise_module(module)
 
-    async def kfs_list_modules(self, project_id: str) -> List[Dict[str, Any]]:
-        """Return serialised records for all modules in the project."""
-        modules = await self._mgr.list_all(project_id=project_id)
-        return [_serialise(m) for m in modules]
+    async def kfs_list_modules(self) -> List[Dict[str, Any]]:
+        """Return serialised records for all modules."""
+        modules: List[Module] = await asyncio.to_thread(self._mgr.list_all)
+        return [_serialise_module(m) for m in modules]
 
-    async def kfs_get_module(
-        self, project_id: str, module_id: str
-    ) -> Dict[str, Any]:
-        """Return the serialised record for a single module."""
-        module = await self._mgr.get(project_id=project_id, module_id=module_id)
-        return _serialise(module)
+    async def kfs_get_module(self, module_id: str) -> Dict[str, Any]:
+        """Return the serialised record for a single module.
 
-    async def kfs_execute_module(
-        self, project_id: str, module_id: str
-    ) -> Dict[str, Any]:
-        """Execute a module's CadQuery code and return the ExecutionResult."""
-        # Fetch the module record to obtain its source code
-        module = await self._mgr.get(project_id=project_id, module_id=module_id)
-        source_code: str = (
-            module.source_code
-            if hasattr(module, "source_code")
-            else module["source_code"]
-        )
+        Raises
+        ------
+        KeyError
+            When *module_id* is not found.
+        """
+        module: Optional[Module] = await asyncio.to_thread(self._mgr.get, module_id)
+        if module is None:
+            raise KeyError(f"Module '{module_id}' not found")
+        return _serialise_module(module)
+
+    async def kfs_execute_module(self, module_id: str) -> Dict[str, Any]:
+        """Execute a module's CadQuery code and return the ExecutionResult.
+
+        Fetches the module's source code from the database, runs the
+        CadQuery engine, and returns a result dict.
+
+        Raises
+        ------
+        KeyError
+            When *module_id* is not found.
+        """
+        module: Optional[Module] = await asyncio.to_thread(self._mgr.get, module_id)
+        if module is None:
+            raise KeyError(f"Module '{module_id}' not found")
 
         result: ExecutionResult = await self._executor.execute(
             module_id=module_id,
-            code=source_code,
+            code=module.code,
         )
         return _serialise_execution(result)
 
     async def kfs_validate_module(
         self,
-        project_id: str,
         module_id: str,
         mechanism_type: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Run VLAD against a module and record the verdict."""
-        # Fetch the module record to obtain source code and geometry type
-        module = await self._mgr.get(project_id=project_id, module_id=module_id)
+        """Run VLAD against a module and record the verdict.
 
-        source_code: str = (
-            module.source_code
-            if hasattr(module, "source_code")
-            else module["source_code"]
-        )
-        geo_type: str = (
-            module.geometry_type
-            if hasattr(module, "geometry_type")
-            else module.get("geometry_type", "structural")
-        )
-        mech_type = mechanism_type or geo_type
+        Raises
+        ------
+        KeyError
+            When *module_id* is not found.
+        """
+        module: Optional[Module] = await asyncio.to_thread(self._mgr.get, module_id)
+        if module is None:
+            raise KeyError(f"Module '{module_id}' not found")
 
-        # Build a temporary bridge file for VLAD
-        bridge = VladBridge(source_code, mechanism_type=mech_type)
+        mech_type = mechanism_type or "structural"
+
+        # Build a temporary bridge file for VLAD, run in thread to avoid blocking
+        bridge = VladBridge(module.code, mechanism_type=mech_type)
         try:
-            bridge_path = bridge.write_bridge()
-            # VladRunner.run() is synchronous — run in a thread to avoid blocking
+            bridge_path = await asyncio.to_thread(bridge.write_bridge)
             vlad_result: VladResult = await asyncio.to_thread(
                 self._vlad.run, module_id, str(bridge_path)
             )
         finally:
             bridge.cleanup()
 
-        # Persist the verdict on the module record
-        await self._mgr.set_vlad_verdict(
-            project_id=project_id,
-            module_id=module_id,
-            verdict=vlad_result.verdict,
+        # Persist the verdict string on the module record
+        await asyncio.to_thread(
+            self._mgr.set_vlad_verdict,
+            module_id,
+            vlad_result.verdict,
         )
 
         return _serialise_vlad(vlad_result)
@@ -340,7 +288,7 @@ class KFSMCPServer:
 # Tool dispatcher
 # ---------------------------------------------------------------------------
 
-#: Maps tool name → KFSMCPServer method name (same naming convention here)
+#: Maps tool name -> KFSMCPServer method name
 _HANDLER_MAP: Dict[str, str] = {
     "kfs_create_module": "kfs_create_module",
     "kfs_list_modules": "kfs_list_modules",
@@ -387,19 +335,18 @@ async def dispatch_tool(
     return await handler(**arguments)
 
 
+#: Public alias for dispatch_tool — matches the expected call_tool interface.
+call_tool = dispatch_tool
+
+
 # ---------------------------------------------------------------------------
 # Serialisation helpers
 # ---------------------------------------------------------------------------
 
 
-def _serialise(obj: Any) -> Dict[str, Any]:
-    """Convert a Module dataclass or dict to a plain JSON-serialisable dict."""
-    if dataclasses.is_dataclass(obj) and not isinstance(obj, type):
-        return dataclasses.asdict(obj)
-    if isinstance(obj, dict):
-        return obj
-    # Fallback: use __dict__ for simple objects
-    return vars(obj)
+def _serialise_module(module: Module) -> Dict[str, Any]:
+    """Convert a Module dataclass to a plain JSON-serialisable dict."""
+    return dataclasses.asdict(module)
 
 
 def _serialise_execution(result: ExecutionResult) -> Dict[str, Any]:
