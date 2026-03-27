@@ -11,6 +11,8 @@ import os
 from dataclasses import dataclass
 from typing import Optional
 
+from backend.app.services.durga import DurgaRepairEngine
+
 logger = logging.getLogger(__name__)
 
 
@@ -58,9 +60,15 @@ class ModuleExecutor:
                     explicitly verify the "no engine" failure path.
     """
 
-    def __init__(self, output_dir: str, engine=None) -> None:
+    def __init__(
+        self,
+        output_dir: str,
+        engine=None,
+        durga_engine: Optional[DurgaRepairEngine] = None,
+    ) -> None:
         self.output_dir = output_dir
         self._engine = engine
+        self._durga = durga_engine or DurgaRepairEngine()
 
     # ------------------------------------------------------------------
     # Public interface
@@ -87,11 +95,38 @@ class ModuleExecutor:
                 step_path=step_path,
             )
         except Exception as exc:
-            logger.error("Execution failed for module %r: %s", module_id, exc)
+            error_str = str(exc)
+            logger.error("Execution failed for module %r: %s", module_id, error_str)
+
+            # ── SC-06: Durga repair escalation ────────────────────────
+            repair = await self._durga.attempt_repair(code, error_str)
+            if repair.success and repair.fixed_code:
+                logger.info(
+                    "Durga repaired module %r via tier=%r rule=%r — retrying",
+                    module_id,
+                    repair.tier_used,
+                    repair.rule_name,
+                )
+                try:
+                    await self._run_engine(repair.fixed_code, stl_path, step_path)
+                    return ExecutionResult(
+                        module_id=module_id,
+                        status="valid",
+                        stl_path=stl_path,
+                        step_path=step_path,
+                    )
+                except Exception as retry_exc:
+                    logger.error(
+                        "Durga-repaired retry failed for module %r: %s",
+                        module_id,
+                        retry_exc,
+                    )
+                    error_str = f"{error_str} | repair({repair.tier_used}) retry: {retry_exc}"
+
             return ExecutionResult(
                 module_id=module_id,
                 status="failed",
-                error=str(exc),
+                error=error_str,
             )
 
     async def execute_and_validate(self, module_id: str, code: str) -> ExecutionResult:
