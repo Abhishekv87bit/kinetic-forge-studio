@@ -361,6 +361,30 @@ class ModuleManager:
         return self._patch(module_id, {"vlad_verdict": _json_dumps(verdict)})
 
     # ------------------------------------------------------------------
+    # Contract-spec aliases
+    # (The protocol uses these names; they delegate to the canonical methods.)
+    # ------------------------------------------------------------------
+
+    def update_source(self, module_id: str, new_source: str) -> "Module":
+        """Alias for :meth:`update_code` (contract name from SC-01 spec)."""
+        return self.update_code(module_id, new_source)
+
+    def set_status(self, module_id: str, status: str) -> "Module":
+        """Alias for :meth:`update_status` (contract name from SC-01 spec)."""
+        return self.update_status(module_id, status)
+
+    def set_vlad_verdict(self, module_id: str, verdict: str) -> "Module":
+        """Store a VLAD verdict string (contract name from SC-01 spec).
+
+        Unlike :meth:`update_vlad_verdict` (which accepts a dict), this method
+        stores the raw string so callers can pass any opaque verdict token.
+
+        Raises:
+            KeyError: If *module_id* does not exist.
+        """
+        return self._patch(module_id, {"vlad_verdict": verdict})
+
+    # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
 
