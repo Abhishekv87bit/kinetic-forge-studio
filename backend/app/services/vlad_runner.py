@@ -14,15 +14,20 @@ JSON schema emitted by vlad.py --json:
     }
 """
 import json
+import logging
 import sqlite3
 import subprocess
 import sys
+import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional
 
 from backend.app.config import settings
+from backend.app.middleware.observability import log_execution_sync
+
+_log = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -183,10 +188,22 @@ class VladRunner:
             When VLAD exits with code 2 (fatal / import error) or produces
             non-JSON output.
         """
-        raw_output = self._invoke_vlad(bridge_module_path)
-        result = VladResult.from_vlad_json(module_id, raw_output)
-        result.db_row_id = self._store(result)
-        return result
+        start = time.perf_counter()
+        run_status = "failure"
+        try:
+            raw_output = self._invoke_vlad(bridge_module_path)
+            result = VladResult.from_vlad_json(module_id, raw_output)
+            result.db_row_id = self._store(result)
+            run_status = "success" if result.passed else "fail_verdict"
+            return result
+        finally:
+            log_execution_sync(
+                "VladRunner",
+                "run",
+                run_status,
+                time.perf_counter() - start,
+                {"module_id": module_id, "bridge": bridge_module_path},
+            )
 
     def get_latest(self, module_id: str) -> Optional[VladResult]:
         """
