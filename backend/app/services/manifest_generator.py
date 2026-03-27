@@ -1,115 +1,82 @@
 """SC-08 Manifest Generator.
 
-Queries all valid modules via ModuleManager (SC-01), translates each into a
-KFSObject backed by a MeshGeometry pointing at its STL artefact, assembles a
-KFSManifest, and persists it as a ``.kfs.yaml`` file using the existing
-``kfs_core.manifest_parser.save_kfs_manifest`` helper.
+Queries all valid modules via ModuleManager, maps each to a KFSObject using
+existing kfs_core models, assembles a KFSManifest, and writes a .kfs.yaml
+file via the existing manifest_parser.
 """
 from __future__ import annotations
 
 import logging
 import os
 from pathlib import Path
-from typing import Any, List, Protocol, runtime_checkable
+from typing import Any, List, Optional
 
-from kfs_core.manifest_models import (
-    KFSManifest,
-    KFSObject,
-    MeshGeometry,
-    Transform,
-)
-from kfs_core.manifest_parser import save_kfs_manifest
+from backend.app.models.module import Module, ModuleManager
 
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
-# Structural interface for ModuleManager (SC-01)
-# ---------------------------------------------------------------------------
-
-
-@runtime_checkable
-class ModuleManagerProtocol(Protocol):
-    """Minimum interface consumed by ManifestGenerator.
-
-    SC-01's concrete ModuleManager must implement this method.  Using a
-    Protocol (structural sub-typing) keeps SC-08 decoupled from SC-01's
-    internal database details.
-    """
-
-    async def list_valid(self) -> List[Any]:
-        """Return all modules whose status is ``"valid"``."""
-        ...
-
-
-# ---------------------------------------------------------------------------
-# Manifest Generator
-# ---------------------------------------------------------------------------
-
-
 class ManifestGenerator:
-    """Generate a ``.kfs.yaml`` manifest from all currently valid modules.
+    """Generate a .kfs.yaml manifest from all currently valid modules.
 
     Args:
-        module_manager: Any object that satisfies :class:`ModuleManagerProtocol`
-                        (i.e. exposes ``await list_valid()``).
+        module_manager: ModuleManager instance (SC-01) used to query modules.
         output_dir:     Root directory where per-module STL/STEP artefacts are
-                        stored.  Must match the ``output_dir`` passed to
+                        stored.  Must match the ``output_dir`` used by
                         :class:`~backend.app.services.module_executor.ModuleExecutor`.
     """
 
-    def __init__(self, module_manager: Any, output_dir: str) -> None:
-        self._mm = module_manager
+    def __init__(self, module_manager: ModuleManager, output_dir: str) -> None:
+        self.module_manager = module_manager
         self.output_dir = output_dir
 
     # ------------------------------------------------------------------
     # Public interface
     # ------------------------------------------------------------------
 
-    async def generate(
+    def generate(
         self,
         manifest_path: str,
-        *,
         project_name: str = "KFS Project",
-        description: str | None = None,
-    ) -> KFSManifest:
-        """Build and write a manifest for all currently valid modules.
+        description: Optional[str] = None,
+    ) -> str:
+        """Build and write a .kfs.yaml for all modules with status 'valid'.
 
         Args:
-            manifest_path: Absolute (or relative-to-cwd) path where the
-                           ``.kfs.yaml`` will be written.  Parent directories
-                           are created automatically.
+            manifest_path: Destination path for the manifest file.
             project_name:  ``name`` field in the manifest header.
-            description:   Optional ``description`` field in the manifest header.
+            description:   Optional ``description`` field.
 
         Returns:
-            The assembled :class:`~kfs_core.manifest_models.KFSManifest` that
-            was saved to disk.
+            Absolute path to the written manifest file.
 
         Raises:
-            RuntimeError: If no valid modules are found (manifests must contain
-                          at least one object).
+            RuntimeError: If kfs_core is not installed.
         """
-        modules = await self._mm.list_valid()
-        logger.info("ManifestGenerator: found %d valid module(s)", len(modules))
-
-        if not modules:
+        try:
+            from kfs_core.manifest_models import KFSManifest  # noqa: PLC0415
+            from kfs_core.manifest_parser import save_kfs_manifest  # noqa: PLC0415
+        except ImportError as exc:
             raise RuntimeError(
-                "No valid modules found — cannot generate a KFS manifest "
-                "with an empty objects list."
-            )
+                "kfs_core is required for manifest generation — "
+                "install it with: pip install kfs_core"
+            ) from exc
 
-        manifest_path_obj = Path(manifest_path).resolve()
-        objects: List[KFSObject] = []
+        manifest_abs = Path(manifest_path).resolve()
 
-        for module in modules:
-            module_id = self._get_attr(module, "id")
-            stl_abs = os.path.join(self.output_dir, module_id, f"{module_id}.stl")
-            kfs_obj = self._module_to_kfs_object(
-                module, stl_abs, str(manifest_path_obj)
-            )
-            objects.append(kfs_obj)
-            logger.debug("ManifestGenerator: added object %r", module_id)
+        all_modules: List[Module] = self.module_manager.list_all()
+        valid_modules = [m for m in all_modules if m.status == "valid"]
+
+        logger.info(
+            "ManifestGenerator: %d total modules, %d valid",
+            len(all_modules),
+            len(valid_modules),
+        )
+
+        objects = [
+            self._module_to_kfs_object(module, manifest_abs)
+            for module in valid_modules
+        ]
 
         manifest = KFSManifest(
             name=project_name,
@@ -117,70 +84,51 @@ class ManifestGenerator:
             objects=objects,
         )
 
-        save_kfs_manifest(manifest, manifest_path_obj)
-        logger.info("ManifestGenerator: manifest written to %s", manifest_path_obj)
-        return manifest
+        save_kfs_manifest(manifest, manifest_abs)
+        logger.info("Manifest written to %s", manifest_abs)
+        return str(manifest_abs)
 
     # ------------------------------------------------------------------
     # Translation
     # ------------------------------------------------------------------
 
-    def _module_to_kfs_object(
-        self,
-        module: Any,
-        stl_abs_path: str,
-        manifest_abs_path: str,
-    ) -> KFSObject:
-        """Translate a module record into a :class:`KFSObject`.
+    def _module_to_kfs_object(self, module: Module, manifest_path: Path):
+        """Translate one Module record into a KFSObject.
 
-        The ``MeshGeometry.path`` is stored relative to the directory that
-        contains the manifest file so the manifest remains portable — moving
-        the project root together with the ``.kfs.yaml`` preserves all paths.
+        The ``MeshGeometry.path`` is stored relative to the manifest file's
+        parent directory so the manifest stays portable.
 
         Args:
-            module:            Module record (duck-typed; must expose ``id``
-                               and optionally ``name``).
-            stl_abs_path:      Absolute path to the STL artefact on disk.
-            manifest_abs_path: Absolute path of the manifest file being written.
+            module:        Module dataclass from SC-01 ModuleManager.
+            manifest_path: Absolute path of the manifest file being written.
 
         Returns:
-            A :class:`KFSObject` with inline :class:`MeshGeometry`.
+            A :class:`~kfs_core.manifest_models.KFSObject` with inline
+            :class:`~kfs_core.manifest_models.MeshGeometry`.
         """
-        module_id = self._get_attr(module, "id")
-        module_name = self._get_attr(module, "name", default=module_id)
+        from kfs_core.manifest_models import KFSObject, MeshGeometry, Transform  # noqa: PLC0415
 
-        # Compute path relative to the manifest's parent directory
-        manifest_dir = Path(manifest_abs_path).parent
+        stl_abs = Path(self.output_dir) / module.id / f"{module.id}.stl"
+        manifest_dir = manifest_path.parent
+
         try:
-            rel_path = os.path.relpath(stl_abs_path, start=str(manifest_dir))
+            rel_path = os.path.relpath(str(stl_abs), start=str(manifest_dir))
         except ValueError:
-            # os.path.relpath raises ValueError on Windows when paths are on
-            # different drives.  Fall back to the absolute path.
-            rel_path = stl_abs_path
+            # os.path.relpath raises ValueError on Windows when paths cross
+            # drive letters.  Fall back to the absolute path.
+            rel_path = str(stl_abs)
 
         # Normalise separators to forward slashes for cross-platform YAML
         rel_path = rel_path.replace("\\", "/")
 
-        geometry = MeshGeometry(id=f"{module_id}_mesh", path=rel_path)
+        geometry = MeshGeometry(
+            id=f"{module.id}_mesh",
+            path=rel_path,
+        )
 
         return KFSObject(
-            id=module_id,
-            name=module_name,
+            id=module.id,
+            name=module.name,
             geometry=geometry,
             transform=Transform(),
         )
-
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _get_attr(obj: Any, attr: str, *, default: Any = None) -> Any:
-        """Retrieve *attr* from *obj* whether it is a dict or an object."""
-        if isinstance(obj, dict):
-            value = obj.get(attr, default)
-        else:
-            value = getattr(obj, attr, default)
-        if value is None and default is not None:
-            return default
-        return value

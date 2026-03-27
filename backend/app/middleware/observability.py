@@ -125,3 +125,26 @@ async def log_execution(
         duration_s,
         details or {},
     )
+
+
+def log_execution_sync(
+    component_name: str,
+    action: str,
+    status: str,
+    duration_s: float,
+    details: Optional[Dict[str, Any]] = None,
+) -> None:
+    """Synchronous counterpart to :func:`log_execution` for non-async callers.
+
+    Identical output format; use this from synchronous code such as
+    :class:`~backend.app.services.vlad_runner.VladRunner` where awaiting an
+    async helper is not possible without introducing an event-loop dependency.
+    """
+    logger.info(
+        "[EXECUTION] component=%s action=%s status=%s duration_s=%.4f details=%s",
+        component_name,
+        action,
+        status,
+        duration_s,
+        details or {},
+    )

@@ -14,6 +14,7 @@ import re
 from dataclasses import dataclass
 from typing import Optional
 
+from backend.app.middleware.observability import observe_llm_call
 from backend.app.services.durga_rules import DETERMINISTIC_RULES
 
 logger = logging.getLogger(__name__)
@@ -126,6 +127,7 @@ class DurgaRepairEngine:
                     )
         return None
 
+    @observe_llm_call
     async def _try_llm(self, code: str, error: str) -> RepairResult:
         """Escalate to the ChatAgent for a free-form LLM fix."""
         prompt = (
