@@ -15,7 +15,6 @@ import React, { useEffect } from 'react';
 
 import { useModuleStore, type KFSModule } from '../stores/moduleStore';
 import { useViewportStore } from '../stores/viewportStore';
-import { useProjectStore } from '../stores/projectStore';
 
 // ---------------------------------------------------------------------------
 // Types

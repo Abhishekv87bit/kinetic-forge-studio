@@ -5,13 +5,13 @@
  *   - Monaco-based CadQuery code editor (syntax: Python)
  *   - Execute button  → POST /api/modules/{id}/execute → bumps geometryVersion
  *   - Validate button → POST /api/modules/{id}/validate → shows VLAD results
- *   - Save button     → PATCH /api/modules/{id} (persists code edits)
+ *   - Save button     → PUT /api/modules/{id} (persists code edits)
  *   - VLAD results accordion: list of check rows coloured by PASS/FAIL/WARN
  *
  * The panel reads/writes to moduleStore and also calls bumpGeometryVersion()
  * on viewportStore after a successful execution so Viewport3D refetches GLB.
  */
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Editor, { OnMount } from '@monaco-editor/react';
 import type * as Monaco from 'monaco-editor';
 
@@ -223,7 +223,7 @@ export function ModuleEditorPanel({ style }: ModuleEditorPanelProps) {
   }, [activeModuleId, validateModule]);
 
   // -------------------------------------------------------------------------
-  // Save (persist edited code)
+  // Save (persist edited code) — backend uses PUT
   // -------------------------------------------------------------------------
 
   const handleSave = useCallback(async () => {
@@ -232,7 +232,7 @@ export function ModuleEditorPanel({ style }: ModuleEditorPanelProps) {
     setStatusMsg('Saving…');
     try {
       const res = await fetch(`/api/modules/${activeModuleId}`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: localCode }),
       });
@@ -256,7 +256,8 @@ export function ModuleEditorPanel({ style }: ModuleEditorPanelProps) {
       editor.addAction({
         id: 'kfs-save',
         label: 'Save Module',
-        keybindings: [2097 /* Monaco.KeyMod.CtrlCmd | Monaco.KeyCode.KeyS */],
+        // Monaco.KeyMod.CtrlCmd | Monaco.KeyCode.KeyS = 2097
+        keybindings: [2097],
         run: () => handleSave(),
       });
     },
