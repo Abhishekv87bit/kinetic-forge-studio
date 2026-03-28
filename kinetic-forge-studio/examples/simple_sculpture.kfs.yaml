@@ -1,0 +1,33 @@
+version: "1.0"
+metadata:
+  name: "Simple Kinetic Sculpture"
+  description: "A basic Kinetic Forge Studio sculpture featuring a single cube, demonstrating core manifest structure for geometries, materials, objects, and simulation settings."
+
+geometries:
+  - name: "main_cube_geometry"
+    type: "box"
+    width: 2.0
+    height: 2.0
+    depth: 2.0
+
+materials:
+  - name: "red_phong_material"
+    type: "phong"
+    color: "#FF0000" # Red glossy material
+
+objects:
+  - name: "main_rotating_cube"
+    type: "rigid_body"
+    transform:
+      position: {x: 0.0, y: 1.0, z: 0.0} # Elevated slightly
+      rotation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0} # Identity rotation
+      scale: {x: 1.0, y: 1.0, z: 1.0}
+    geometry_ref: "main_cube_geometry"
+    material_ref: "red_phong_material"
+
+animations: [] # Placeholder for future animation definitions
+
+simulations:
+  gravity: {x: 0.0, y: -9.81, z: 0.0} # Standard Earth gravity
+  solver: "euler"
+  timestep: 0.01 # 100 updates per second

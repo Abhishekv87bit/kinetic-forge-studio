@@ -8,6 +8,7 @@ Loaded into every Claude API call context.
 from fastapi import APIRouter
 from app.models.profile import UserProfile
 from app.config import settings
+from app.middleware.cache import prompt_cache
 
 router = APIRouter(prefix="/api/profile", tags=["profile"])
 
@@ -28,4 +29,6 @@ async def update_profile(updates: dict):
     """Update user profile with deep merge."""
     profile = _get_profile()
     profile.update(updates)
+    # Profile is injected into every system prompt — invalidate all cached prompts
+    prompt_cache.clear()
     return profile.load()

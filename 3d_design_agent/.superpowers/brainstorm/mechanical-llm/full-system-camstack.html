@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Synaptic Web — Full System with Cam Stack</title>
+<script src="p5.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #06060a; overflow: hidden; }
+  #info-panel {
+    position: fixed; top: 12px; left: 12px; z-index: 100;
+    background: rgba(8,8,14,0.92); border: 1px solid #1e1e2e; border-radius: 10px;
+    padding: 14px 18px; max-width: 280px; font-family: 'Segoe UI', sans-serif;
+  }
+  #info-panel h1 { font-size: 1.05em; color: #fff; margin-bottom: 4px; }
+  #info-panel .sub { font-size: 0.78em; color: #888; margin-bottom: 10px; }
+  #info-panel .phase { font-size: 0.85em; font-weight: 600; padding: 3px 8px; border-radius: 6px; display: inline-block; margin-bottom: 8px; }
+  #info-panel .step { font-size: 0.78em; color: #aaa; margin-bottom: 3px; }
+  #info-panel .step.active { color: #ff8844; font-weight: 600; }
+  #info-panel .step.done { color: #44ddaa; }
+  .controls-bar {
+    position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); z-index: 100;
+    background: rgba(8,8,14,0.92); border: 1px solid #1e1e2e; border-radius: 10px;
+    padding: 10px 18px; display: flex; gap: 10px; align-items: center;
+    font-family: 'Segoe UI', sans-serif;
+  }
+  .controls-bar button {
+    background: #1a1a2e; border: 1px solid #2a2a4a; color: #aaa;
+    padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 0.8em;
+  }
+  .controls-bar button:hover { background: #2a2a4e; color: #fff; }
+  .controls-bar button.active { background: #3a2a1a; border-color: #ff8844; color: #ff8844; }
+  .controls-bar .label { color: #555; font-size: 0.75em; }
+  #legend {
+    position: fixed; top: 12px; right: 12px; z-index: 100;
+    background: rgba(8,8,14,0.92); border: 1px solid #1e1e2e; border-radius: 10px;
+    padding: 14px 18px; font-family: 'Segoe UI', sans-serif; max-width: 220px;
+  }
+  #legend h3 { font-size: 0.85em; color: #888; margin-bottom: 8px; }
+  .leg-item { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+  .leg-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .leg-text { font-size: 0.75em; color: #aaa; }
+</style>
+</head>
+<body>
+
+<div id="info-panel">
+  <h1>The Synaptic Web</h1>
+  <div class="sub">Faithful Transformer — Cam Stack Weight Storage</div>
+  <div class="phase" id="phase-label" style="background:#3a2a1a;color:#ff8844;">Act 2: Inference</div>
+  <div class="step" id="s0">1. Token Input (marbles)</div>
+  <div class="step" id="s1">2. Cam Stack → Q, K, V</div>
+  <div class="step" id="s2">3. Attention (Q·K dot product)</div>
+  <div class="step" id="s3">4. Softmax (Babbage carry)</div>
+  <div class="step" id="s4">5. Weighted Sum (pantograph)</div>
+  <div class="step" id="s5">6. FFN + ReLU (snap flexures)</div>
+  <div class="step" id="s6">7. Output (Galton → iris)</div>
+</div>
+
+<div id="legend">
+  <h3>Mechanisms</h3>
+  <div class="leg-item"><div class="leg-dot" style="background:#ff8844"></div><div class="leg-text">Cam Stack (weights)</div></div>
+  <div class="leg-item"><div class="leg-dot" style="background:#8866ff"></div><div class="leg-text">Token / Marble Input</div></div>
+  <div class="leg-item"><div class="leg-dot" style="background:#44ddaa"></div><div class="leg-text">Wave Field (hidden state)</div></div>
+  <div class="leg-item"><div class="leg-dot" style="background:#ddaa44"></div><div class="leg-text">Output / Probability</div></div>
+  <div class="leg-item"><div class="leg-dot" style="background:#ff4466"></div><div class="leg-text">Gradient / Backprop</div></div>
+  <div class="leg-item"><div class="leg-dot" style="background:#5588ff"></div><div class="leg-text">Signal Flow</div></div>
+</div>
+
+<div class="controls-bar">
+  <span class="label">VIEW:</span>
+  <button onclick="setView('top')" id="v-top">Top Down</button>
+  <button onclick="setView('side')" id="v-side" class="active">Side View</button>
+  <button onclick="setView('front')" id="v-front">Front</button>
+  <span class="label" style="margin-left:10px;">SPEED:</span>
+  <button onclick="speed=0.3">Slow</button>
+  <button onclick="speed=1" class="active">Normal</button>
+  <button onclick="speed=2.5">Fast</button>
+  <span class="label" style="margin-left:10px;">ACT:</span>
+  <button onclick="setAct(1)" id="a1">Training</button>
+  <button onclick="setAct(2)" id="a2" class="active">Inference</button>
+</div>
+
+<div id="main-canvas"></div>
+
+<script>
+let speed = 1;
+let viewMode = 'side';
+let act = 2;
+let globalTime = 0;
+let stepPhase = 0;
+let activeStep = 0;
+
+function setView(v) {
+  viewMode = v;
+  document.querySelectorAll('.controls-bar button').forEach(b => {
+    if (b.id && b.id.startsWith('v-')) b.classList.remove('active');
+  });
+  document.getElementById('v-' + v).classList.add('active');
+}
+function setAct(a) {
+  act = a;
+  document.getElementById('a1').classList.toggle('active', a === 1);
+  document.getElementById('a2').classList.toggle('active', a === 2);
+  let pl = document.getElementById('phase-label');
+  if (a === 1) { pl.textContent = 'Act 1: Training'; pl.style.background = '#1a2a1a'; pl.style.color = '#44ddaa'; }
+  else { pl.textContent = 'Act 2: Inference'; pl.style.background = '#3a2a1a'; pl.style.color = '#ff8844'; }
+}
+
+let sketch = function(p) {
+  let W, H;
+
+  // Cam profile generator
+  function makeCamProfile(seed) {
+    let profile = [];
+    let baseR = 35;
+    for (let a = 0; a < 360; a++) {
+      let r = baseR;
+      let rad = a * Math.PI / 180;
+      r += 10 * Math.sin(rad * 3 + seed);
+      r += 6 * Math.sin(rad * 5 + seed * 2.3);
+      r += 4 * Math.sin(rad * 7 + seed * 0.7);
+      r += 3 * Math.sin(rad * 2 + seed * 1.5);
+      profile.push(Math.max(18, Math.min(52, r)));
+    }
+    return profile;
+  }
+
+  let camProfiles = [];
+  let followerReadings = [0,0,0];
+
+  p.setup = function() {
+    W = window.innerWidth;
+    H = window.innerHeight;
+    let c = p.createCanvas(W, H);
+    c.parent('main-canvas');
+    for (let i = 0; i < 8; i++) {
+      camProfiles.push(makeCamProfile(i * 1.7 + 0.5));
+    }
+  };
+
+  p.windowResized = function() {
+    W = window.innerWidth;
+    H = window.innerHeight;
+    p.resizeCanvas(W, H);
+  };
+
+  // Draw a single cam (oblique)
+  function drawCam(cx, cy, profile, rotation, scale, col, label) {
+    p.push();
+    p.translate(cx, cy);
+    // Filled shape
+    p.beginShape();
+    p.fill(p.red(col), p.green(col), p.blue(col), 20);
+    p.stroke(col);
+    p.strokeWeight(1.2 * scale);
+    for (let a = 0; a < 360; a += 2) {
+      let rad = (a + rotation) * Math.PI / 180;
+      let r = profile[a] * scale;
+      let px = Math.cos(rad) * r;
+      let py = Math.sin(rad) * r * 0.35; // oblique squash
+      p.vertex(px, py);
+    }
+    p.endShape(p.CLOSE);
+    // Center bore
+    p.fill(20, 20, 30);
+    p.stroke(60);
+    p.strokeWeight(0.8);
+    p.ellipse(0, 0, 7 * scale, 3 * scale);
+    // Label
+    if (label) {
+      p.fill(p.red(col), p.green(col), p.blue(col), 120);
+      p.noStroke();
+      p.textAlign(p.RIGHT);
+      p.textSize(8);
+      p.text(label, -55 * scale, 4);
+    }
+    p.pop();
+    // Return follower displacement at current angle
+    let readA = Math.floor(rotation % 360);
+    if (readA < 0) readA += 360;
+    return profile[readA] * scale;
+  }
+
+  // Draw follower arm
+  function drawFollower(x, y, displacement, col, name) {
+    let tipX = x - displacement;
+    // Arm
+    p.stroke(p.red(col), p.green(col), p.blue(col), 180);
+    p.strokeWeight(2.5);
+    p.line(x + 60, y, tipX, y);
+    // Tip
+    p.fill(col);
+    p.noStroke();
+    p.ellipse(tipX, y, 7, 7);
+    // Spring
+    p.stroke(70);
+    p.strokeWeight(0.8);
+    for (let s = 0; s < 6; s++) {
+      let sx1 = tipX + 4 + s * 8;
+      let sx2 = tipX + 4 + (s+1) * 8;
+      p.line(sx1, y + (s%2===0 ? -3 : 3), sx2, y + (s%2===0 ? 3 : -3));
+    }
+    // Label + value
+    p.fill(p.red(col), p.green(col), p.blue(col), 140);
+    p.noStroke();
+    p.textSize(8);
+    p.textAlign(p.LEFT);
+    p.text(name, x + 65, y - 6);
+    p.fill(180);
+    let val = p.map(displacement, 10, 35, -1, 1);
+    p.text(val.toFixed(2), x + 65, y + 8);
+  }
+
+  // Draw a mechanism node
+  function drawNode(x, y, r, col, label, sublabel, icon, pulse) {
+    // Glow
+    if (pulse) {
+      let glow = (Math.sin(globalTime * 3 + x * 0.01) + 1) * 0.5;
+      p.fill(p.red(col), p.green(col), p.blue(col), glow * 30);
+      p.noStroke();
+      p.ellipse(x, y, r * 3, r * 3);
+    }
+    // Body
+    p.fill(18, 18, 28);
+    p.stroke(col);
+    p.strokeWeight(1.8);
+    p.ellipse(x, y, r * 2, r * 2);
+    // Icon/text
+    p.fill(col);
+    p.noStroke();
+    p.textAlign(p.CENTER);
+    p.textSize(icon ? 16 : 9);
+    p.text(icon || label, x, y + (icon ? 5 : 0));
+    if (icon) {
+      p.textSize(7);
+      p.fill(p.red(col), p.green(col), p.blue(col), 150);
+      p.text(label, x, y + 16);
+    }
+    // Sublabel
+    if (sublabel) {
+      p.textSize(7);
+      p.fill(100);
+      p.text(sublabel, x, y + r + 14);
+    }
+  }
+
+  // Draw signal flow (animated dashed line along a path)
+  function drawSignal(points, col, active) {
+    if (!active) {
+      p.stroke(p.red(col), p.green(col), p.blue(col), 20);
+      p.strokeWeight(1);
+      p.noFill();
+      p.beginShape();
+      for (let pt of points) p.vertex(pt[0], pt[1]);
+      p.endShape();
+      return;
+    }
+    // Animated dash
+    p.stroke(p.red(col), p.green(col), p.blue(col), 150);
+    p.strokeWeight(1.5);
+    p.noFill();
+    let totalLen = 0;
+    for (let i = 1; i < points.length; i++) {
+      totalLen += p.dist(points[i-1][0], points[i-1][1], points[i][0], points[i][1]);
+    }
+    let dashLen = 8, gapLen = 12;
+    let offset = (globalTime * 80) % (dashLen + gapLen);
+    let traveled = -offset;
+    for (let i = 1; i < points.length; i++) {
+      let x1 = points[i-1][0], y1 = points[i-1][1];
+      let x2 = points[i][0], y2 = points[i][1];
+      let segLen = p.dist(x1, y1, x2, y2);
+      let dx = (x2-x1)/segLen, dy = (y2-y1)/segLen;
+      let pos = 0;
+      while (pos < segLen) {
+        let dashStart = Math.max(0, traveled < 0 ? -traveled : 0);
+        let cycle = ((traveled + pos) % (dashLen + gapLen) + (dashLen + gapLen)) % (dashLen + gapLen);
+        if (cycle < dashLen) {
+          let drawLen = Math.min(dashLen - cycle, segLen - pos);
+          let sx = x1 + (pos) * dx, sy = y1 + (pos) * dy;
+          let ex = x1 + (pos + drawLen) * dx, ey = y1 + (pos + drawLen) * dy;
+          p.line(sx, sy, ex, ey);
+          pos += drawLen;
+        } else {
+          pos += gapLen - (cycle - dashLen);
+        }
+        if (pos <= 0) pos = 0.1;
+      }
+      traveled += segLen;
+    }
+    // Arrow at end
+    let last = points[points.length - 1];
+    let prev = points[points.length - 2];
+    let ang = Math.atan2(last[1] - prev[1], last[0] - prev[0]);
+    p.fill(p.red(col), p.green(col), p.blue(col), 150);
+    p.noStroke();
+    p.push();
+    p.translate(last[0], last[1]);
+    p.rotate(ang);
+    p.triangle(0, 0, -8, -4, -8, 4);
+    p.pop();
+  }
+
+  // Draw wave field canopy
+  function drawWaveCanopy(cx, cy, w, h) {
+    let cols = 10, rows = 4;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        let ex = cx - w/2 + (c + 0.5) * (w / cols);
+        let ey = cy - h/2 + (r + 0.5) * (h / rows);
+        let phase = c * 0.5 + r * 0.3 + globalTime * 2;
+        let amp = Math.sin(phase) * 4;
+        let brightness = (Math.sin(phase) + 1) * 0.5;
+        let sz = 3 + brightness * 4;
+        p.fill(68, 221, 170, 40 + brightness * 180);
+        p.noStroke();
+        p.ellipse(ex, ey + amp, sz, sz);
+        // Suspension thread
+        p.stroke(68, 221, 170, 20);
+        p.strokeWeight(0.5);
+        p.line(ex, ey + amp - sz/2, ex, ey - 20);
+      }
+    }
+  }
+
+  // Draw Galton board
+  function drawGalton(cx, cy, w, h) {
+    p.fill(18, 18, 28);
+    p.stroke(80, 80, 100);
+    p.strokeWeight(1);
+    p.rect(cx - w/2, cy - h/2, w, h, 4);
+    // Pegs
+    let pegRows = 5;
+    for (let r = 0; r < pegRows; r++) {
+      let pegsInRow = r + 2;
+      for (let c = 0; c < pegsInRow; c++) {
+        let px = cx - (pegsInRow - 1) * 6 + c * 12;
+        let py = cy - h/2 + 12 + r * (h - 24) / pegRows;
+        p.fill(100, 100, 120);
+        p.noStroke();
+        p.ellipse(px, py, 4, 4);
+      }
+    }
+    // Animated balls
+    let numBalls = 5;
+    for (let b = 0; b < numBalls; b++) {
+      let bt = (globalTime * 0.8 + b * 1.3) % 4;
+      let by = cy - h/2 + bt * h / 4;
+      let bx = cx + Math.sin(bt * 3 + b * 2) * (w * 0.3) * (bt / 4);
+      if (by < cy + h/2 - 5) {
+        p.fill(221, 170, 68);
+        p.noStroke();
+        p.ellipse(bx, by, 5, 5);
+      }
+    }
+    // Histogram bins at bottom
+    let bins = 5;
+    for (let i = 0; i < bins; i++) {
+      let bh = 5 + Math.abs(Math.sin(i * 1.2 + globalTime * 0.3)) * 15;
+      let bx = cx - (bins - 1) * 6 + i * 12 - 4;
+      let by = cy + h/2 - bh - 2;
+      p.fill(221, 170, 68, 100 + bh * 5);
+      p.noStroke();
+      p.rect(bx, by, 8, bh, 1);
+    }
+  }
+
+  // Draw Hoberman-like expansion
+  function drawHoberman(cx, cy, r) {
+    let expand = (Math.sin(globalTime * 1.5) + 1) * 0.5;
+    let outerR = r * (0.6 + expand * 0.4);
+    let arms = 8;
+    for (let a = 0; a < arms; a++) {
+      let angle = a * Math.PI * 2 / arms + globalTime * 0.3;
+      let innerR = r * 0.2;
+      let x1 = cx + Math.cos(angle) * innerR;
+      let y1 = cy + Math.sin(angle) * innerR;
+      let x2 = cx + Math.cos(angle) * outerR;
+      let y2 = cy + Math.sin(angle) * outerR;
+      p.stroke(136, 102, 255, 100 + expand * 100);
+      p.strokeWeight(2);
+      p.line(x1, y1, x2, y2);
+      // Cross bars
+      let nextAngle = (a + 1) * Math.PI * 2 / arms + globalTime * 0.3;
+      let mx = cx + Math.cos(angle) * outerR * 0.7;
+      let my = cy + Math.sin(angle) * outerR * 0.7;
+      let nx = cx + Math.cos(nextAngle) * outerR * 0.7;
+      let ny = cy + Math.sin(nextAngle) * outerR * 0.7;
+      p.stroke(136, 102, 255, 50 + expand * 80);
+      p.strokeWeight(1);
+      p.line(mx, my, nx, ny);
+    }
+  }
+
+  // Draw snap flexure (ReLU)
+  function drawSnapFlexure(cx, cy, size, active) {
+    let snapAngle = active ? -0.3 : 0.3;
+    p.push();
+    p.translate(cx, cy);
+    p.rotate(snapAngle);
+    p.stroke(active ? p.color(68, 221, 170) : p.color(60));
+    p.strokeWeight(2);
+    // Curved beam
+    p.noFill();
+    p.beginShape();
+    for (let t = -1; t <= 1; t += 0.1) {
+      let x = t * size;
+      let y = (active ? -1 : 1) * (1 - t*t) * size * 0.3;
+      p.vertex(x, y);
+    }
+    p.endShape();
+    p.pop();
+    // Snap indicator
+    if (active) {
+      p.fill(68, 221, 170, 150);
+      p.noStroke();
+      p.textSize(7);
+      p.textAlign(p.CENTER);
+      p.text("SNAP!", cx, cy - size * 0.5);
+    }
+  }
+
+  p.draw = function() {
+    globalTime += p.deltaTime * 0.001 * speed;
+    p.background(6, 6, 10);
+
+    // Update active step
+    activeStep = Math.floor((globalTime * 0.5) % 7);
+    for (let i = 0; i < 7; i++) {
+      let el = document.getElementById('s' + i);
+      el.className = 'step' + (i === activeStep ? ' active' : (i < activeStep ? ' done' : ''));
+    }
+
+    let cx = W * 0.5;
+    let cy = H * 0.52;
+
+    // ===== WAVE FIELD CANOPY (top) =====
+    drawWaveCanopy(cx, cy - 220, 500, 80);
+    p.fill(68, 221, 170, 60);
+    p.noStroke();
+    p.textAlign(p.CENTER);
+    p.textSize(10);
+    p.text("MARGOLIN WAVE FIELD — CANOPY", cx, cy - 268);
+    // Suspension threads from canopy to hub
+    for (let i = 0; i < 5; i++) {
+      let tx = cx - 100 + i * 50;
+      p.stroke(68, 221, 170, 15);
+      p.strokeWeight(0.5);
+      p.line(tx, cy - 175, tx + (i-2)*8, cy - 100);
+    }
+
+    // ===== CENTRAL HUB =====
+    // Hub background
+    p.fill(14, 14, 22);
+    p.stroke(60, 60, 80);
+    p.strokeWeight(2);
+    p.ellipse(cx, cy, 200, 200);
+    p.fill(10, 10, 18);
+    p.stroke(40, 40, 60);
+    p.strokeWeight(1);
+    p.ellipse(cx, cy, 160, 160);
+
+    // Cam stack inside hub (the hero)
+    let camRot = globalTime * 30;
+    let camStackX = cx;
+    let camStackY = cy;
+    let camColors = [
+      p.color(255, 136, 68),   // Q
+      p.color(255, 136, 68),
+      p.color(255, 136, 68),
+      p.color(68, 221, 170),   // K
+      p.color(68, 221, 170),
+      p.color(136, 102, 255),  // V
+      p.color(136, 102, 255),
+      p.color(136, 102, 255),
+    ];
+    let camLabels = ["Q0","Q1","Q2","K0","K1","V0","V1","V2"];
+
+    // Shaft
+    p.stroke(80, 80, 100);
+    p.strokeWeight(3);
+    p.line(camStackX, camStackY - 55, camStackX, camStackY + 55);
+
+    // Draw cams
+    for (let i = 7; i >= 0; i--) {
+      let ccy = camStackY - 42 + i * 12;
+      let sc = 0.55 - i * 0.01;
+      drawCam(camStackX - 5, ccy, camProfiles[i], camRot + i * 15, sc, camColors[i], null);
+    }
+
+    // Hub label
+    p.fill(255, 255, 255, 100);
+    p.noStroke();
+    p.textAlign(p.CENTER);
+    p.textSize(9);
+    p.text("CAM STACK", cx, cy + 68);
+    p.textSize(7);
+    p.fill(100);
+    p.text("+ ADDER CHAINS", cx, cy + 80);
+
+    // Followers (3, extending right from hub)
+    let followerBaseX = cx + 70;
+    let fColors = [p.color(255,136,68), p.color(68,221,170), p.color(136,102,255)];
+    let fNames = ["Q", "K", "V"];
+    for (let f = 0; f < 3; f++) {
+      let fy = cy - 25 + f * 25;
+      let readA = Math.floor((camRot + f * 45) % 360);
+      if (readA < 0) readA += 360;
+      let disp = camProfiles[f * 3][readA] * 0.4;
+      followerReadings[f] = disp;
+
+      let tipX = followerBaseX + disp;
+      p.stroke(p.red(fColors[f]), p.green(fColors[f]), p.blue(fColors[f]), 150);
+      p.strokeWeight(2);
+      p.line(followerBaseX + 35, fy, tipX + 5, fy);
+      p.fill(fColors[f]);
+      p.noStroke();
+      p.ellipse(tipX + 5, fy, 5, 5);
+      // Label
+      p.textSize(7);
+      p.textAlign(p.LEFT);
+      p.text(fNames[f], followerBaseX + 38, fy - 4);
+    }
+
+    // ===== RADIAL ARMS =====
+    let armLen = 180;
+    let nodeR = 28;
+
+    // Arm positions (angle, label, sublabel, color, icon)
+    let arms = [
+      { ang: -2.3, label: "TOKENS", sub: "marble sequencer", col: p.color(136,102,255), icon: null, r: 30 },
+      { ang: -1.5, label: "ATTENTION", sub: "Hoberman expand", col: p.color(136,102,255), icon: null, r: 34 },
+      { ang: -0.7, label: "GENEVA", sub: "token stepping", col: p.color(136,102,255), icon: null, r: 22 },
+      { ang: 0.3,  label: "BABBAGE", sub: "softmax/norm", col: p.color(221,170,68), icon: null, r: 28 },
+      { ang: 0.9,  label: "PANTOGRAPH", sub: "weighted sum", col: p.color(68,221,170), icon: null, r: 28 },
+      { ang: 1.5,  label: "ReLU", sub: "snap flexures", col: p.color(68,221,170), icon: null, r: 24 },
+      { ang: 2.2,  label: "GRADIENT", sub: "spiral cams", col: p.color(255,68,102), icon: null, r: 26 },
+      { ang: 2.9,  label: "ESCAPEMENT", sub: "learning rate", col: p.color(221,170,68), icon: null, r: 24 },
+    ];
+
+    for (let arm of arms) {
+      let nx = cx + Math.cos(arm.ang) * (armLen + 20);
+      let ny = cy + Math.sin(arm.ang) * (armLen + 20);
+      let hubEdgeX = cx + Math.cos(arm.ang) * 100;
+      let hubEdgeY = cy + Math.sin(arm.ang) * 100;
+
+      // Arm line
+      p.stroke(p.red(arm.col), p.green(arm.col), p.blue(arm.col), 60);
+      p.strokeWeight(3);
+      p.line(hubEdgeX, hubEdgeY, nx, ny);
+
+      // Dendrite tendrils
+      let dendLen = 30 + Math.sin(globalTime + arm.ang) * 10;
+      let dendAng1 = arm.ang - 0.3;
+      let dendAng2 = arm.ang + 0.3;
+      p.stroke(30, 30, 45);
+      p.strokeWeight(1);
+      p.line(nx, ny, nx + Math.cos(dendAng1) * dendLen, ny + Math.sin(dendAng1) * dendLen);
+      p.line(nx, ny, nx + Math.cos(dendAng2) * dendLen * 0.7, ny + Math.sin(dendAng2) * dendLen * 0.7);
+
+      // Node
+      drawNode(nx, ny, arm.r, arm.col, arm.label, arm.sub, arm.icon, activeStep >= 0);
+
+      // Special visuals for specific mechanisms
+      if (arm.label === "ATTENTION") {
+        drawHoberman(nx, ny, arm.r * 0.8);
+      }
+      if (arm.label === "ReLU") {
+        let snapActive = Math.sin(globalTime * 2 + 1) > 0.3;
+        drawSnapFlexure(nx, ny, arm.r * 0.5, snapActive);
+      }
+    }
+
+    // ===== SIGNAL FLOW (animated) =====
+    let tokenNode = [cx + Math.cos(-2.3) * (armLen+20), cy + Math.sin(-2.3) * (armLen+20)];
+    let attnNode = [cx + Math.cos(-1.5) * (armLen+20), cy + Math.sin(-1.5) * (armLen+20)];
+    let genevaNode = [cx + Math.cos(-0.7) * (armLen+20), cy + Math.sin(-0.7) * (armLen+20)];
+    let babbageNode = [cx + Math.cos(0.3) * (armLen+20), cy + Math.sin(0.3) * (armLen+20)];
+    let pantoNode = [cx + Math.cos(0.9) * (armLen+20), cy + Math.sin(0.9) * (armLen+20)];
+    let reluNode = [cx + Math.cos(1.5) * (armLen+20), cy + Math.sin(1.5) * (armLen+20)];
+    let gradNode = [cx + Math.cos(2.2) * (armLen+20), cy + Math.sin(2.2) * (armLen+20)];
+
+    // Token → Hub (cam stack reads)
+    drawSignal([tokenNode, [cx, cy]], p.color(85, 136, 255), activeStep === 0);
+    // Hub → Attention (Q,K projections)
+    drawSignal([[cx+30, cy-20], attnNode], p.color(85, 136, 255), activeStep === 1 || activeStep === 2);
+    // Attention → Babbage (scores → softmax)
+    drawSignal([attnNode, babbageNode], p.color(85, 136, 255), activeStep === 3);
+    // Babbage → Pantograph (weights → sum)
+    drawSignal([babbageNode, pantoNode], p.color(85, 136, 255), activeStep === 4);
+    // Pantograph → ReLU
+    drawSignal([pantoNode, reluNode], p.color(85, 136, 255), activeStep === 5);
+    // ReLU → Hub (back to ALU for output)
+    drawSignal([reluNode, [cx-20, cy+30]], p.color(85, 136, 255), activeStep === 6);
+
+    // Backprop signals (Act 1 only)
+    if (act === 1) {
+      drawSignal([[cx, cy+30], gradNode], p.color(255, 68, 102), true);
+      drawSignal([gradNode, pantoNode], p.color(255, 68, 102, 100), activeStep > 3);
+    }
+
+    // ===== GALTON BOARD (below hub) =====
+    drawGalton(cx, cy + 150, 60, 80);
+    p.fill(221, 170, 68, 80);
+    p.noStroke();
+    p.textSize(8);
+    p.textAlign(p.CENTER);
+    p.text("GALTON BOARD", cx, cy + 200);
+
+    // Confidence Iris (below Galton)
+    let irisOpen = (Math.sin(globalTime * 0.8) + 1) * 0.5;
+    let irisY = cy + 245;
+    p.fill(18, 18, 28);
+    p.stroke(221, 170, 68);
+    p.strokeWeight(1.5);
+    p.ellipse(cx, irisY, 36, 36);
+    // Iris blades
+    let blades = 6;
+    for (let b = 0; b < blades; b++) {
+      let ba = b * Math.PI * 2 / blades + globalTime * 0.2;
+      let innerR = 3 + irisOpen * 10;
+      let outerR = 16;
+      p.stroke(221, 170, 68, 150);
+      p.strokeWeight(2);
+      p.line(
+        cx + Math.cos(ba) * innerR, irisY + Math.sin(ba) * innerR,
+        cx + Math.cos(ba + 0.3) * outerR, irisY + Math.sin(ba + 0.3) * outerR
+      );
+    }
+    // Center reveal
+    p.fill(221, 170, 68, irisOpen * 200);
+    p.noStroke();
+    p.ellipse(cx, irisY, irisOpen * 14, irisOpen * 14);
+    p.fill(221, 170, 68, 80);
+    p.textSize(7);
+    p.text("CONFIDENCE IRIS", cx, irisY + 26);
+    p.text("OUTPUT", cx, irisY + 36);
+
+    // Chime (bottom left)
+    let chimeX = cx - 160;
+    let chimeY = cy + 200;
+    p.fill(18, 18, 28);
+    p.stroke(221, 170, 68, 80);
+    p.strokeWeight(1);
+    p.ellipse(chimeX, chimeY, 28, 28);
+    p.fill(221, 170, 68, 120);
+    p.noStroke();
+    p.textSize(14);
+    p.textAlign(p.CENTER);
+    // Chime rings occasionally
+    let chimeRing = Math.sin(globalTime * 0.4) > 0.95;
+    if (chimeRing) {
+      p.fill(221, 170, 68, 200);
+      // Ring waves
+      p.noFill();
+      p.stroke(221, 170, 68, 100);
+      p.strokeWeight(1);
+      let ringT = (globalTime * 3) % 2;
+      p.ellipse(chimeX, chimeY, 28 + ringT * 20, 28 + ringT * 20);
+    }
+    p.fill(221, 170, 68, 120);
+    p.noStroke();
+    p.text("♪", chimeX, chimeY + 5);
+    p.textSize(7);
+    p.fill(100);
+    p.text("CHIME", chimeX, chimeY + 22);
+
+    // Connection from hub to Galton
+    p.stroke(221, 170, 68, 60);
+    p.strokeWeight(1.5);
+    p.line(cx, cy + 100, cx, cy + 110);
+  };
+};
+
+new p5(sketch);
+</script>
+</body>
+</html>

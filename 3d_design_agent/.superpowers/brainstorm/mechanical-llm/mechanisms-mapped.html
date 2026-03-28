@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mechanical LLM — Mechanisms Mapped to Form Factors</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #08080e; color: #e0e0e0; font-family: 'Segoe UI', system-ui, sans-serif; padding: 20px 30px; }
+  h1 { text-align: center; font-size: 1.6em; margin-bottom: 4px; color: #fff; }
+  .subtitle { text-align: center; color: #777; margin-bottom: 24px; font-size: 0.95em; }
+
+  .form-factors { display: flex; flex-direction: column; gap: 50px; max-width: 1300px; margin: 0 auto; }
+  .form-factor { background: #0e0e18; border: 2px solid #1e1e2e; border-radius: 16px; overflow: hidden; }
+  .form-factor.selected { border-color: #ff8844; box-shadow: 0 0 30px rgba(255,136,68,0.2); }
+  .ff-header { display: flex; align-items: center; padding: 16px 24px; background: #12121e; border-bottom: 1px solid #1e1e2e; cursor: pointer; }
+  .ff-header:hover { background: #16162a; }
+  .ff-badge { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.1em; margin-right: 16px; flex-shrink: 0; }
+  .ff-header h2 { font-size: 1.2em; color: #fff; margin-right: 12px; }
+  .ff-header .tagline { color: #888; font-style: italic; font-size: 0.9em; }
+  .ff-body { display: flex; }
+  .ff-visual { width: 60%; position: relative; min-height: 520px; }
+  .ff-legend { width: 40%; padding: 20px; border-left: 1px solid #1a1a2a; overflow-y: auto; max-height: 560px; }
+
+  .mech-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px solid #141420; }
+  .mech-item:last-child { border-bottom: none; }
+  .mech-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+  .mech-name { font-weight: 600; font-size: 0.88em; color: #ddd; }
+  .mech-role { font-size: 0.78em; color: #888; margin-top: 2px; }
+  .mech-detail { font-size: 0.75em; color: #666; margin-top: 2px; font-style: italic; }
+  .mech-drama { display: inline-block; font-size: 0.7em; padding: 1px 6px; border-radius: 8px; margin-top: 3px; }
+  .drama-5 { background: #2a1a0a; color: #ff8844; }
+  .drama-4 { background: #1a1a2a; color: #8888cc; }
+  .drama-3 { background: #1a1a1a; color: #888; }
+
+  .section-label { font-size: 0.8em; color: #556; text-transform: uppercase; letter-spacing: 1.5px; padding: 10px 0 4px; margin-top: 8px; border-top: 1px solid #1e1e2e; }
+  .section-label:first-child { border-top: none; margin-top: 0; }
+
+  .wave-callout { background: #1a2a1a; border: 1px solid #2a4a2a; border-radius: 8px; padding: 10px 12px; margin: 10px 0; }
+  .wave-callout .title { color: #44ddaa; font-weight: 600; font-size: 0.85em; }
+  .wave-callout .desc { color: #88aa88; font-size: 0.78em; margin-top: 4px; }
+
+  svg { width: 100%; height: 100%; }
+  @keyframes pulse { 0%,100% { opacity: 0.3; } 50% { opacity: 0.9; } }
+  @keyframes flow { 0% { stroke-dashoffset: 40; } 100% { stroke-dashoffset: 0; } }
+  @keyframes wave { 0% { d: path("M0,0 Q8,-6 16,0 Q24,6 32,0"); } 50% { d: path("M0,0 Q8,6 16,0 Q24,-6 32,0"); } 100% { d: path("M0,0 Q8,-6 16,0 Q24,6 32,0"); } }
+  .sig { stroke-dasharray: 8 12; animation: flow 2s linear infinite; }
+  .pls { animation: pulse 3s ease-in-out infinite; }
+  @keyframes breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.03); } }
+  .br { animation: breathe 4s ease-in-out infinite; transform-origin: center; }
+
+  /* Wave field shimmer */
+  @keyframes shimmer {
+    0% { opacity: 0.4; transform: translateY(0); }
+    25% { opacity: 0.8; transform: translateY(-2px); }
+    50% { opacity: 0.4; transform: translateY(0); }
+    75% { opacity: 0.7; transform: translateY(2px); }
+    100% { opacity: 0.4; transform: translateY(0); }
+  }
+  .wave-el { animation: shimmer 3s ease-in-out infinite; }
+</style>
+</head>
+<body>
+
+<h1>Mechanisms Mapped — E vs G vs F</h1>
+<p class="subtitle">Same 12 mechanisms, three different spatial arrangements. Click header to select.</p>
+
+<div class="form-factors">
+
+<!-- ==================== CONCEPT E: Neural Archipelago ==================== -->
+<div class="form-factor" id="conceptE">
+  <div class="ff-header" onclick="this.parentElement.classList.toggle('selected')">
+    <div class="ff-badge" style="background:#ff8844;color:#000;">E</div>
+    <h2>Neural Archipelago</h2>
+    <span class="tagline">Islands of intelligence — Margolin wave field as the CENTRAL SEA between hemispheres</span>
+  </div>
+  <div class="ff-body">
+    <div class="ff-visual">
+      <svg viewBox="0 0 760 520">
+        <rect width="760" height="520" fill="#08080e"/>
+
+        <!-- ===== MARGOLIN WAVE FIELD — THE CENTER ===== -->
+        <!-- This IS the central feature — a 6x6 grid of suspended elements between hemispheres -->
+        <rect x="290" y="100" width="180" height="280" rx="10" fill="#0a1a0a" stroke="#2a4a2a" stroke-width="1.5" stroke-dasharray="4 4"/>
+        <text x="380" y="92" text-anchor="middle" fill="#44ddaa" font-size="10" font-weight="bold">MARGOLIN WAVE FIELD</text>
+        <text x="380" y="400" text-anchor="middle" fill="#2a4a2a" font-size="8">hidden state / latent space</text>
+
+        <!-- Wave field elements (6x6 grid of dots that shimmer) -->
+        <g>
+          <circle cx="315" cy="130" r="4" fill="#44ddaa" opacity="0.5" class="wave-el" style="animation-delay:0s"/>
+          <circle cx="345" cy="130" r="4" fill="#44ddaa" opacity="0.6" class="wave-el" style="animation-delay:0.2s"/>
+          <circle cx="375" cy="130" r="4" fill="#44ddaa" opacity="0.4" class="wave-el" style="animation-delay:0.4s"/>
+          <circle cx="405" cy="130" r="4" fill="#44ddaa" opacity="0.7" class="wave-el" style="animation-delay:0.6s"/>
+          <circle cx="435" cy="130" r="4" fill="#44ddaa" opacity="0.5" class="wave-el" style="animation-delay:0.8s"/>
+          <circle cx="455" cy="130" r="3" fill="#44ddaa" opacity="0.3" class="wave-el" style="animation-delay:1.0s"/>
+
+          <circle cx="315" cy="160" r="4" fill="#44ddaa" opacity="0.6" class="wave-el" style="animation-delay:0.3s"/>
+          <circle cx="345" cy="160" r="5" fill="#44ddaa" opacity="0.8" class="wave-el" style="animation-delay:0.5s"/>
+          <circle cx="375" cy="160" r="5" fill="#66ffcc" opacity="0.9" class="wave-el" style="animation-delay:0.7s"/>
+          <circle cx="405" cy="160" r="5" fill="#44ddaa" opacity="0.7" class="wave-el" style="animation-delay:0.9s"/>
+          <circle cx="435" cy="160" r="4" fill="#44ddaa" opacity="0.5" class="wave-el" style="animation-delay:1.1s"/>
+          <circle cx="455" cy="160" r="3" fill="#44ddaa" opacity="0.4" class="wave-el" style="animation-delay:1.3s"/>
+
+          <circle cx="315" cy="190" r="4" fill="#44ddaa" opacity="0.4" class="wave-el" style="animation-delay:0.6s"/>
+          <circle cx="345" cy="190" r="5" fill="#44ddaa" opacity="0.7" class="wave-el" style="animation-delay:0.8s"/>
+          <circle cx="375" cy="190" r="6" fill="#88ffdd" opacity="1.0" class="wave-el" style="animation-delay:1.0s"/>
+          <circle cx="405" cy="190" r="5" fill="#44ddaa" opacity="0.8" class="wave-el" style="animation-delay:1.2s"/>
+          <circle cx="435" cy="190" r="4" fill="#44ddaa" opacity="0.5" class="wave-el" style="animation-delay:1.4s"/>
+          <circle cx="455" cy="190" r="3" fill="#44ddaa" opacity="0.3" class="wave-el" style="animation-delay:1.6s"/>
+
+          <circle cx="315" cy="220" r="4" fill="#44ddaa" opacity="0.5" class="wave-el" style="animation-delay:0.9s"/>
+          <circle cx="345" cy="220" r="5" fill="#44ddaa" opacity="0.6" class="wave-el" style="animation-delay:1.1s"/>
+          <circle cx="375" cy="220" r="5" fill="#66ffcc" opacity="0.8" class="wave-el" style="animation-delay:1.3s"/>
+          <circle cx="405" cy="220" r="5" fill="#44ddaa" opacity="0.7" class="wave-el" style="animation-delay:1.5s"/>
+          <circle cx="435" cy="220" r="4" fill="#44ddaa" opacity="0.4" class="wave-el" style="animation-delay:1.7s"/>
+          <circle cx="455" cy="220" r="3" fill="#44ddaa" opacity="0.3" class="wave-el" style="animation-delay:1.9s"/>
+
+          <circle cx="315" cy="250" r="3" fill="#44ddaa" opacity="0.4" class="wave-el" style="animation-delay:1.2s"/>
+          <circle cx="345" cy="250" r="4" fill="#44ddaa" opacity="0.5" class="wave-el" style="animation-delay:1.4s"/>
+          <circle cx="375" cy="250" r="5" fill="#44ddaa" opacity="0.7" class="wave-el" style="animation-delay:1.6s"/>
+          <circle cx="405" cy="250" r="4" fill="#44ddaa" opacity="0.6" class="wave-el" style="animation-delay:1.8s"/>
+          <circle cx="435" cy="250" r="3" fill="#44ddaa" opacity="0.3" class="wave-el" style="animation-delay:2.0s"/>
+
+          <circle cx="315" cy="280" r="3" fill="#44ddaa" opacity="0.3" class="wave-el" style="animation-delay:1.5s"/>
+          <circle cx="345" cy="280" r="4" fill="#44ddaa" opacity="0.4" class="wave-el" style="animation-delay:1.7s"/>
+          <circle cx="375" cy="280" r="4" fill="#44ddaa" opacity="0.6" class="wave-el" style="animation-delay:1.9s"/>
+          <circle cx="405" cy="280" r="3" fill="#44ddaa" opacity="0.4" class="wave-el" style="animation-delay:2.1s"/>
+          <circle cx="435" cy="280" r="3" fill="#44ddaa" opacity="0.3" class="wave-el" style="animation-delay:2.3s"/>
+
+          <circle cx="330" cy="310" r="3" fill="#44ddaa" opacity="0.3" class="wave-el" style="animation-delay:1.8s"/>
+          <circle cx="360" cy="310" r="3" fill="#44ddaa" opacity="0.4" class="wave-el" style="animation-delay:2.0s"/>
+          <circle cx="390" cy="310" r="3" fill="#44ddaa" opacity="0.5" class="wave-el" style="animation-delay:2.2s"/>
+          <circle cx="420" cy="310" r="3" fill="#44ddaa" opacity="0.3" class="wave-el" style="animation-delay:2.4s"/>
+
+          <circle cx="345" cy="340" r="2" fill="#44ddaa" opacity="0.2" class="wave-el" style="animation-delay:2.1s"/>
+          <circle cx="375" cy="340" r="3" fill="#44ddaa" opacity="0.3" class="wave-el" style="animation-delay:2.3s"/>
+          <circle cx="405" cy="340" r="2" fill="#44ddaa" opacity="0.2" class="wave-el" style="animation-delay:2.5s"/>
+        </g>
+
+        <!-- Hemisphere labels -->
+        <text x="145" y="38" text-anchor="middle" fill="#ff8844" font-size="11" opacity="0.6">LEFT — TRAINING (Act 1)</text>
+        <text x="615" y="38" text-anchor="middle" fill="#8866ff" font-size="11" opacity="0.6">RIGHT — INFERENCE (Act 2)</text>
+
+        <!-- ===== LEFT HEMISPHERE NODES ===== -->
+
+        <!-- 1. Cam Cassettes (Weight Memory) -->
+        <circle cx="100" cy="100" r="32" fill="#141420" stroke="#ff8844" stroke-width="2"/>
+        <rect x="86" y="90" width="12" height="16" rx="2" fill="#ff8844" opacity="0.4"/>
+        <rect x="102" y="88" width="12" height="18" rx="2" fill="#ff8844" opacity="0.6"/>
+        <text x="100" y="80" text-anchor="middle" fill="#ff8844" font-size="8" font-weight="bold">1</text>
+        <text x="100" y="145" text-anchor="middle" fill="#ff8844" font-size="8">CAM CASSETTES</text>
+        <text x="100" y="155" text-anchor="middle" fill="#886644" font-size="7">weight memory</text>
+
+        <!-- 2. Escapement + Foliot (Learning Rate) -->
+        <circle cx="60" cy="220" r="26" fill="#141420" stroke="#ddaa44" stroke-width="1.8"/>
+        <line x1="48" y1="220" x2="72" y2="220" stroke="#ddaa44" stroke-width="1.5"/>
+        <circle cx="48" cy="220" r="4" fill="#ddaa44" opacity="0.5"/>
+        <circle cx="72" cy="220" r="4" fill="#ddaa44" opacity="0.5"/>
+        <text x="60" y="190" text-anchor="middle" fill="#ddaa44" font-size="8" font-weight="bold">2</text>
+        <text x="60" y="255" text-anchor="middle" fill="#ddaa44" font-size="8">ESCAPEMENT</text>
+        <text x="60" y="265" text-anchor="middle" fill="#aa8833" font-size="7">learning rate</text>
+
+        <!-- 3. Spiral Cams (Gradient) -->
+        <circle cx="160" cy="260" r="28" fill="#141420" stroke="#ff8844" stroke-width="1.8"/>
+        <path d="M150,260 Q156,250 162,256 Q168,262 162,268 Q156,274 150,260" stroke="#ff8844" stroke-width="1.5" fill="none"/>
+        <text x="160" y="240" text-anchor="middle" fill="#ff8844" font-size="8" font-weight="bold">3</text>
+        <text x="160" y="298" text-anchor="middle" fill="#ff8844" font-size="8">SPIRAL CAMS</text>
+        <text x="160" y="308" text-anchor="middle" fill="#886644" font-size="7">gradient compute</text>
+
+        <!-- 4. Pantograph Diamonds (Summation) -->
+        <circle cx="80" cy="350" r="26" fill="#141420" stroke="#44ddaa" stroke-width="1.8"/>
+        <polygon points="80,336 90,350 80,364 70,350" fill="none" stroke="#44ddaa" stroke-width="1.5"/>
+        <text x="80" y="330" text-anchor="middle" fill="#44ddaa" font-size="8" font-weight="bold">4</text>
+        <text x="80" y="386" text-anchor="middle" fill="#44ddaa" font-size="8">PANTOGRAPH</text>
+        <text x="80" y="396" text-anchor="middle" fill="#448866" font-size="7">summation</text>
+
+        <!-- 5. Ganson Cascade (Vanishing Gradient) -->
+        <circle cx="190" cy="410" r="22" fill="#141420" stroke="#ff6644" stroke-width="1.5"/>
+        <circle cx="183" cy="410" r="4" fill="none" stroke="#ff6644" stroke-width="1"/>
+        <circle cx="190" cy="410" r="3" fill="none" stroke="#ff6644" stroke-width="0.8" opacity="0.6"/>
+        <circle cx="197" cy="410" r="2" fill="none" stroke="#ff6644" stroke-width="0.6" opacity="0.3"/>
+        <text x="190" y="395" text-anchor="middle" fill="#ff6644" font-size="8" font-weight="bold">5</text>
+        <text x="190" y="442" text-anchor="middle" fill="#ff6644" font-size="8">GANSON</text>
+        <text x="190" y="452" text-anchor="middle" fill="#884433" font-size="7">vanishing grad</text>
+
+        <!-- Left connections -->
+        <path d="M132,100 Q210,80 290,150" stroke="#ff8844" stroke-width="1.5" fill="none" class="sig" opacity="0.4"/>
+        <path d="M100,132 Q130,190 160,232" stroke="#ff8844" stroke-width="1.2" fill="none" class="sig" opacity="0.3" style="animation-delay:-0.3s"/>
+        <path d="M160,288 Q120,320 94,338" stroke="#44ddaa" stroke-width="1.2" fill="none" class="sig" opacity="0.3" style="animation-delay:-0.6s"/>
+        <path d="M80,376 Q130,400 290,340" stroke="#44ddaa" stroke-width="1" fill="none" class="sig" opacity="0.25" style="animation-delay:-0.9s"/>
+
+        <!-- ===== RIGHT HEMISPHERE NODES ===== -->
+
+        <!-- 6. Marble Sequencer (Tokens) -->
+        <circle cx="660" cy="100" r="30" fill="#141420" stroke="#8866ff" stroke-width="2"/>
+        <circle cx="660" cy="94" r="5" fill="#8866ff" opacity="0.5"/>
+        <circle cx="660" cy="94" r="3" fill="#ccbbff"/>
+        <circle cx="652" cy="106" r="3" fill="#8866ff" opacity="0.3"/>
+        <circle cx="668" cy="106" r="3" fill="#8866ff" opacity="0.3"/>
+        <text x="660" y="80" text-anchor="middle" fill="#8866ff" font-size="8" font-weight="bold">6</text>
+        <text x="660" y="143" text-anchor="middle" fill="#8866ff" font-size="8">MARBLE INPUT</text>
+        <text x="660" y="153" text-anchor="middle" fill="#664488" font-size="7">token sequencer</text>
+
+        <!-- 7. Geneva Drive (Autoregressive) -->
+        <circle cx="700" cy="220" r="24" fill="#141420" stroke="#8866ff" stroke-width="1.8"/>
+        <circle cx="700" cy="220" r="10" fill="none" stroke="#8866ff" stroke-width="1"/>
+        <line x1="700" y1="210" x2="700" y2="220" stroke="#8866ff" stroke-width="1.5"/>
+        <text x="700" y="200" text-anchor="middle" fill="#8866ff" font-size="8" font-weight="bold">7</text>
+        <text x="700" y="253" text-anchor="middle" fill="#8866ff" font-size="8">GENEVA</text>
+        <text x="700" y="263" text-anchor="middle" fill="#664488" font-size="7">token stepping</text>
+
+        <!-- 8. Hoberman (Attention) -->
+        <circle cx="620" cy="210" r="32" fill="#141420" stroke="#8866ff" stroke-width="2"/>
+        <line x1="606" y1="196" x2="634" y2="224" stroke="#8866ff" stroke-width="1.2"/>
+        <line x1="634" y1="196" x2="606" y2="224" stroke="#8866ff" stroke-width="1.2"/>
+        <circle cx="620" cy="210" r="12" fill="none" stroke="#8866ff" stroke-width="1" stroke-dasharray="3 3"/>
+        <text x="620" y="180" text-anchor="middle" fill="#8866ff" font-size="8" font-weight="bold">8</text>
+        <text x="620" y="252" text-anchor="middle" fill="#8866ff" font-size="8">HOBERMAN</text>
+        <text x="620" y="262" text-anchor="middle" fill="#664488" font-size="7">attention expand</text>
+
+        <!-- 9. Babbage Carry (Softmax) -->
+        <circle cx="660" cy="330" r="26" fill="#141420" stroke="#ddaa44" stroke-width="1.8"/>
+        <rect x="650" y="320" width="8" height="16" rx="2" fill="none" stroke="#ddaa44" stroke-width="1"/>
+        <rect x="660" y="318" width="8" height="18" rx="2" fill="none" stroke="#ddaa44" stroke-width="1"/>
+        <text x="660" y="310" text-anchor="middle" fill="#ddaa44" font-size="8" font-weight="bold">9</text>
+        <text x="660" y="366" text-anchor="middle" fill="#ddaa44" font-size="8">BABBAGE</text>
+        <text x="660" y="376" text-anchor="middle" fill="#aa8833" font-size="7">softmax/norm</text>
+
+        <!-- 10. Snap Flexures (ReLU) -->
+        <circle cx="570" cy="350" r="22" fill="#141420" stroke="#44ddaa" stroke-width="1.5"/>
+        <path d="M560,355 L570,345 L580,345" stroke="#44ddaa" stroke-width="1.5" fill="none"/>
+        <text x="570" y="335" text-anchor="middle" fill="#44ddaa" font-size="8" font-weight="bold">10</text>
+        <text x="570" y="382" text-anchor="middle" fill="#44ddaa" font-size="8">SNAP ReLU</text>
+
+        <!-- Right connections -->
+        <path d="M630,100 Q540,80 470,150" stroke="#8866ff" stroke-width="1.5" fill="none" class="sig" opacity="0.4" style="animation-delay:-0.5s"/>
+        <path d="M620,242 Q580,290 570,328" stroke="#44ddaa" stroke-width="1.2" fill="none" class="sig" opacity="0.3" style="animation-delay:-0.8s"/>
+        <path d="M470,300 Q530,320 548,340" stroke="#44ddaa" stroke-width="1" fill="none" class="sig" opacity="0.25" style="animation-delay:-1.1s"/>
+        <path d="M660,356 Q620,400 500,430" stroke="#ddaa44" stroke-width="1" fill="none" class="sig" opacity="0.25" style="animation-delay:-1.4s"/>
+
+        <!-- ===== GALTON BOARD (Below wave field, brainstem position) ===== -->
+        <rect x="355" y="410" width="50" height="90" rx="6" fill="#141420" stroke="#ddaa44" stroke-width="2"/>
+        <circle cx="370" cy="430" r="2.5" fill="#668"/><circle cx="390" cy="440" r="2.5" fill="#668"/>
+        <circle cx="375" cy="450" r="2.5" fill="#668"/><circle cx="385" cy="460" r="2.5" fill="#668"/>
+        <circle cx="370" cy="470" r="2.5" fill="#668"/><circle cx="390" cy="480" r="2.5" fill="#668"/>
+        <circle cx="380" cy="490" r="2.5" fill="#668"/>
+        <text x="380" y="418" text-anchor="middle" fill="#ddaa44" font-size="7" font-weight="bold">11</text>
+        <text x="380" y="510" text-anchor="middle" fill="#ddaa44" font-size="8">GALTON BOARD</text>
+
+        <!-- 12. Confidence Iris (at bottom of Galton) -->
+        <circle cx="440" cy="470" r="20" fill="#141420" stroke="#ddaa44" stroke-width="2"/>
+        <circle cx="440" cy="470" r="8" fill="none" stroke="#ddaa44" stroke-width="1.5"/>
+        <circle cx="440" cy="470" r="3" fill="#ddaa44" opacity="0.6"/>
+        <text x="440" y="455" text-anchor="middle" fill="#ddaa44" font-size="7" font-weight="bold">12</text>
+        <text x="440" y="498" text-anchor="middle" fill="#ddaa44" font-size="7">IRIS OUTPUT</text>
+
+        <!-- Reward chime (left side) -->
+        <circle cx="50" cy="460" r="16" fill="#141420" stroke="#ddaa44" stroke-width="1.5"/>
+        <text x="50" y="464" text-anchor="middle" fill="#ddaa44" font-size="12">♪</text>
+        <text x="50" y="484" text-anchor="middle" fill="#aa8833" font-size="7">CHIME</text>
+
+        <!-- Dendrite tendrils -->
+        <path d="M100,68 Q80,40 65,20" stroke="#2a2a3a" stroke-width="1" fill="none"/>
+        <path d="M36,220 Q20,210 10,195" stroke="#2a2a3a" stroke-width="0.8" fill="none"/>
+        <path d="M660,70 Q680,45 695,25" stroke="#2a2a3a" stroke-width="1" fill="none"/>
+        <path d="M724,220 Q740,215 750,200" stroke="#2a2a3a" stroke-width="0.8" fill="none"/>
+        <path d="M55,350 Q30,370 15,385" stroke="#2a2a3a" stroke-width="0.8" fill="none"/>
+      </svg>
+    </div>
+    <div class="ff-legend">
+      <div class="wave-callout">
+        <div class="title">MARGOLIN WAVE FIELD = THE CENTER</div>
+        <div class="desc">36 suspended brass elements between hemispheres. The "sea" that both hemispheres reach across. Training writes hidden state patterns; inference reads them. The most visible element from every angle.</div>
+      </div>
+
+      <div class="section-label">Left Hemisphere — Training</div>
+      <div class="mech-item">
+        <div class="mech-dot" style="background:#ff8844"></div>
+        <div>
+          <div class="mech-name">1. Cam Cassettes — Weight Memory</div>
+          <div class="mech-role">Swappable datasets. Each cassette = different curriculum.</div>
+          <div class="mech-drama drama-4">Drama: 4/5</div>
+        </div>
+      </div>
+      <div class="mech-item">
+        <div class="mech-dot" style="background:#ddaa44"></div>
+        <div>
+          <div class="mech-name">2. Escapement + Foliot — Learning Rate</div>
+          <div class="mech-role">Tick-tock heartbeat. Adjustable foliot = visitor can change speed.</div>
+          <div class="mech-drama drama-4">Drama: 4/5</div>
+        </div>
+      </div>
+      <div class="mech-item">
+        <div class="mech-dot" style="background:#ff8844"></div>
+        <div>
+          <div class="mech-name">3. Spiral Cams — Gradient Computation</div>
+          <div class="mech-role">Archimedean spirals multiply forward x adjoint. 42 units.</div>
+          <div class="mech-drama drama-3">Drama: 3/5</div>
+        </div>
+      </div>
+      <div class="mech-item">
+        <div class="mech-dot" style="background:#44ddaa"></div>
+        <div>
+          <div class="mech-name">4. Pantograph Diamonds — Summation</div>
+          <div class="mech-role">Visible "breathing" as weights sum. Diamond linkages expand/contract.</div>
+          <div class="mech-drama drama-4">Drama: 4/5</div>
+        </div>
+      </div>
+      <div class="mech-item">
+        <div class="mech-dot" style="background:#ff6644"></div>
+        <div>
+          <div class="mech-name">5. Ganson Cascade — Vanishing Gradient</div>
+          <div class="mech-role">6-8 worm gears in series. First spins fast, last frozen. Teaching element.</div>
+          <div class="mech-drama drama-5">Drama: 5/5</div>
+        </div>
+      </div>
+
+      <div class="section-label">Right Hemisphere — Inference</div>
+      <div class="mech-item">
+        <div class="mech-dot" style="background:#8866ff"></div>
+        <div>
+          <div class="mech-name">6. Marble Sequencer — Token Input</div>
+          <div class="mech-role">Visitor drops marbles as tokens. Each marble = one word.</div>
+          <div class="mech-drama drama-5">Drama: 5/5</div>
+        </div>
+      </div>
+      <div class="mech-item">
+        <div class="mech-dot" style="background:#8866ff"></div>
+        <div>
+          <div class="mech-name">7. Geneva Drive — Token Stepping</div>
+          <div class="mech-role">Snap-pause-snap rhythm. Master clock for autoregressive generation.</div>
+          <div class="mech-drama drama-4">Drama: 4/5</div>
+        </div>
+      </div>
+      <div class="mech-item">
+        <div class="mech-dot" style="background:#8866ff"></div>
+        <div>
+          <div class="mech-name">8. Hoberman — Attention Expansion</div>
+          <div class="mech-role">Scissor-linkage expands from center = input splitting into attention heads.</div>
+          <div class="mech-drama drama-5">Drama: 5/5</div>
+        </div>
+      </div>
+      <div class="mech-item">
+        <div class="mech-dot" style="background:#ddaa44"></div>
+        <div>
+          <div class="mech-name">9. Babbage Carry — Softmax</div>
+          <div class="mech-role">Carry cascade normalizes probabilities. "Gem of all mechanisms."</div>
+          <div class="mech-drama drama-5">Drama: 5/5</div>
+        </div>
+      </div>
+      <div class="mech-item">
+        <div class="mech-dot" style="background:#44ddaa"></div>
+        <div>
+          <div class="mech-name">10. Snap Flexures — ReLU Activation</div>
+          <div class="mech-role">Bistable snap-through. Below threshold = nothing. Above = SNAP.</div>
+          <div class="mech-drama drama-4">Drama: 4/5</div>
+        </div>
+      </div>
+
+      <div class="section-label">Central / Brainstem</div>
+      <div class="mech-item">
+        <div class="mech-dot" style="background:#44ddaa"></div>
+        <div>
+          <div class="mech-name">WAVE FIELD — Hidden State</div>
+          <div class="mech-role">36 suspended elements forming interference patterns. THE hero visual.</div>
+          <div class="mech-drama drama-5">Drama: 5/5</div>
+        </div>
+      </div>
+      <div class="mech-item">
+        <div class="mech-dot" style="background:#ddaa44"></div>
+        <div>
+          <div class="mech-name">11. Galton Board — Probability</div>
+          <div class="mech-role">Dynamic gates shift with training. Balls form histogram. Brainstem position.</div>
+          <div class="mech-drama drama-5">Drama: 5/5</div>
+        </div>
+      </div>
+      <div class="mech-item">
+        <div class="mech-dot" style="background:#ddaa44"></div>
+        <div>
+          <div class="mech-name">12. Confidence Iris — Output</div>
+          <div class="mech-role">Iris slowly opens as probability increases. Answer revealed.</div>
+          <div class="mech-drama drama-5">Drama: 5/5</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== CONCEPT G: Synaptic Web ==================== -->
+<div class="form-factor" id="conceptG">
+  <div class="ff-header" onclick="this.parentElement.classList.toggle('selected')">
+    <div class="ff-badge" style="background:#8866ff;color:#fff;">G</div>
+    <h2>Synaptic Web</h2>
+    <span class="tagline">Radial star — Margolin wave field as the CANOPY above, everything radiates beneath</span>
+  </div>
+  <div class="ff-body">
+    <div class="ff-visual">
+      <svg viewBox="0 0 760 520">
+        <rect width="760" height="520" fill="#08080e"/>
+
+        <!-- ===== MARGOLIN WAVE FIELD — THE CANOPY ===== -->
+        <!-- Suspended ABOVE the radial web like a floating brain surface -->
+        <ellipse cx="380" cy="65" rx="220" ry="45" fill="#0a1a0a" stroke="#2a4a2a" stroke-width="1.5" stroke-dasharray="4 4"/>
+        <text x="380" y="30" text-anchor="middle" fill="#44ddaa" font-size="10" font-weight="bold">MARGOLIN WAVE FIELD — THE CANOPY</text>
+        <text x="380" y="120" text-anchor="middle" fill="#2a4a2a" font-size="8">hidden state floats above all mechanisms</text>
+
+        <!-- Wave elements (elliptical grid) -->
+        <g>
+          <circle cx="240" cy="60" r="3" fill="#44ddaa" opacity="0.3" class="wave-el" style="animation-delay:0s"/>
+          <circle cx="270" cy="55" r="3" fill="#44ddaa" opacity="0.4" class="wave-el" style="animation-delay:0.2s"/>
+          <circle cx="300" cy="52" r="4" fill="#44ddaa" opacity="0.5" class="wave-el" style="animation-delay:0.4s"/>
+          <circle cx="330" cy="50" r="4" fill="#44ddaa" opacity="0.6" class="wave-el" style="animation-delay:0.6s"/>
+          <circle cx="360" cy="48" r="5" fill="#66ffcc" opacity="0.8" class="wave-el" style="animation-delay:0.8s"/>
+          <circle cx="390" cy="48" r="5" fill="#88ffdd" opacity="0.9" class="wave-el" style="animation-delay:1.0s"/>
+          <circle cx="420" cy="50" r="4" fill="#44ddaa" opacity="0.7" class="wave-el" style="animation-delay:1.2s"/>
+          <circle cx="450" cy="52" r="4" fill="#44ddaa" opacity="0.5" class="wave-el" style="animation-delay:1.4s"/>
+          <circle cx="480" cy="55" r="3" fill="#44ddaa" opacity="0.4" class="wave-el" style="animation-delay:1.6s"/>
+          <circle cx="510" cy="60" r="3" fill="#44ddaa" opacity="0.3" class="wave-el" style="animation-delay:1.8s"/>
+
+          <circle cx="260" cy="75" r="3" fill="#44ddaa" opacity="0.4" class="wave-el" style="animation-delay:0.3s"/>
+          <circle cx="300" cy="70" r="4" fill="#44ddaa" opacity="0.6" class="wave-el" style="animation-delay:0.5s"/>
+          <circle cx="340" cy="67" r="4" fill="#66ffcc" opacity="0.7" class="wave-el" style="animation-delay:0.7s"/>
+          <circle cx="380" cy="65" r="5" fill="#88ffdd" opacity="1.0" class="wave-el" style="animation-delay:0.9s"/>
+          <circle cx="420" cy="67" r="4" fill="#66ffcc" opacity="0.7" class="wave-el" style="animation-delay:1.1s"/>
+          <circle cx="460" cy="70" r="4" fill="#44ddaa" opacity="0.5" class="wave-el" style="animation-delay:1.3s"/>
+          <circle cx="500" cy="75" r="3" fill="#44ddaa" opacity="0.3" class="wave-el" style="animation-delay:1.5s"/>
+
+          <circle cx="300" cy="85" r="3" fill="#44ddaa" opacity="0.3" class="wave-el" style="animation-delay:0.8s"/>
+          <circle cx="340" cy="82" r="3" fill="#44ddaa" opacity="0.5" class="wave-el" style="animation-delay:1.0s"/>
+          <circle cx="380" cy="80" r="4" fill="#44ddaa" opacity="0.6" class="wave-el" style="animation-delay:1.2s"/>
+          <circle cx="420" cy="82" r="3" fill="#44ddaa" opacity="0.5" class="wave-el" style="animation-delay:1.4s"/>
+          <circle cx="460" cy="85" r="3" fill="#44ddaa" opacity="0.3" class="wave-el" style="animation-delay:1.6s"/>
+        </g>
+
+        <!-- Vertical threads from canopy to mechanisms below -->
+        <line x1="300" y1="90" x2="260" y2="200" stroke="#44ddaa" stroke-width="0.5" opacity="0.2"/>
+        <line x1="350" y1="90" x2="380" y2="250" stroke="#44ddaa" stroke-width="0.5" opacity="0.2"/>
+        <line x1="420" y1="90" x2="500" y2="200" stroke="#44ddaa" stroke-width="0.5" opacity="0.2"/>
+        <line x1="380" y1="90" x2="380" y2="250" stroke="#44ddaa" stroke-width="0.8" opacity="0.3"/>
+
+        <!-- ===== CENTRAL HUB ===== -->
+        <circle cx="380" cy="280" r="50" fill="#141420" stroke="#fff" stroke-width="2"/>
+        <circle cx="380" cy="280" r="36" fill="#0e0e18" stroke="#5588ff" stroke-width="1" stroke-dasharray="4 4"/>
+        <!-- Galton inside hub -->
+        <circle cx="370" cy="268" r="2" fill="#668"/><circle cx="390" cy="275" r="2" fill="#668"/>
+        <circle cx="375" cy="282" r="2" fill="#668"/><circle cx="385" cy="289" r="2" fill="#668"/>
+        <circle cx="380" cy="296" r="2" fill="#668"/>
+        <text x="380" y="265" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold">CORE</text>
+        <text x="380" y="310" text-anchor="middle" fill="#557" font-size="7">ALU + Galton</text>
+
+        <!-- Hemisphere labels -->
+        <text x="150" y="145" text-anchor="middle" fill="#ff8844" font-size="10" opacity="0.5">TRAINING</text>
+        <text x="610" y="145" text-anchor="middle" fill="#8866ff" font-size="10" opacity="0.5">INFERENCE</text>
+
+        <!-- ===== RADIAL ARMS WITH MECHANISMS ===== -->
+
+        <!-- Arm 1: Cam Cassettes (upper-left) -->
+        <path d="M335,250 Q250,180 140,160" stroke="#ff8844" stroke-width="2.5" fill="none"/>
+        <circle cx="140" cy="160" r="28" fill="#141420" stroke="#ff8844" stroke-width="2"/>
+        <text x="140" y="155" text-anchor="middle" fill="#ff8844" font-size="8" font-weight="bold">WEIGHT</text>
+        <text x="140" y="167" text-anchor="middle" fill="#ff8844" font-size="7">cassettes</text>
+        <text x="140" y="130" text-anchor="middle" fill="#ff8844" font-size="8">1</text>
+
+        <!-- Arm 2: Escapement (left) -->
+        <path d="M330,280 Q230,280 100,290" stroke="#ddaa44" stroke-width="2" fill="none"/>
+        <circle cx="100" cy="290" r="24" fill="#141420" stroke="#ddaa44" stroke-width="1.8"/>
+        <line x1="86" y1="290" x2="114" y2="290" stroke="#ddaa44" stroke-width="1.5"/>
+        <circle cx="86" cy="290" r="3.5" fill="#ddaa44" opacity="0.5"/>
+        <circle cx="114" cy="290" r="3.5" fill="#ddaa44" opacity="0.5"/>
+        <text x="100" y="260" text-anchor="middle" fill="#ddaa44" font-size="8">2 ESCAPEMENT</text>
+
+        <!-- Arm 3: Spiral Cams (lower-left) -->
+        <path d="M345,320 Q260,380 160,400" stroke="#ff8844" stroke-width="2" fill="none"/>
+        <circle cx="160" cy="400" r="26" fill="#141420" stroke="#ff8844" stroke-width="1.8"/>
+        <path d="M152,400 Q157,392 162,398 Q167,404 162,408" stroke="#ff8844" stroke-width="1.3" fill="none"/>
+        <text x="160" y="375" text-anchor="middle" fill="#ff8844" font-size="8">3 GRADIENT</text>
+
+        <!-- Arm 4: Pantograph (bottom-left) -->
+        <path d="M360,330 Q300,420 220,470" stroke="#44ddaa" stroke-width="2" fill="none"/>
+        <circle cx="220" cy="470" r="24" fill="#141420" stroke="#44ddaa" stroke-width="1.8"/>
+        <polygon points="220,458 228,470 220,482 212,470" fill="none" stroke="#44ddaa" stroke-width="1.2"/>
+        <text x="220" y="445" text-anchor="middle" fill="#44ddaa" font-size="8">4 SUM</text>
+
+        <!-- Arm 5: Ganson (bottom) -->
+        <path d="M380,330 Q380,420 380,480" stroke="#ff6644" stroke-width="1.5" fill="none"/>
+        <circle cx="380" cy="480" r="20" fill="#141420" stroke="#ff6644" stroke-width="1.5"/>
+        <text x="380" y="484" text-anchor="middle" fill="#ff6644" font-size="7">GANSON</text>
+        <text x="380" y="508" text-anchor="middle" fill="#ff6644" font-size="8">5</text>
+
+        <!-- Arm 6: Marble Input (upper-right) -->
+        <path d="M425,250 Q510,180 620,160" stroke="#8866ff" stroke-width="2.5" fill="none"/>
+        <circle cx="620" cy="160" r="28" fill="#141420" stroke="#8866ff" stroke-width="2"/>
+        <circle cx="620" cy="155" r="5" fill="#8866ff" opacity="0.5"/>
+        <circle cx="620" cy="155" r="3" fill="#ccbbff"/>
+        <text x="620" y="170" text-anchor="middle" fill="#8866ff" font-size="7">marbles</text>
+        <text x="620" y="130" text-anchor="middle" fill="#8866ff" font-size="8">6 TOKENS</text>
+
+        <!-- Arm 7: Hoberman (right) -->
+        <path d="M430,280 Q530,270 640,280" stroke="#8866ff" stroke-width="2" fill="none"/>
+        <circle cx="640" cy="280" r="30" fill="#141420" stroke="#8866ff" stroke-width="2"/>
+        <circle cx="640" cy="280" r="12" fill="none" stroke="#8866ff" stroke-width="1" stroke-dasharray="3 3"/>
+        <text x="640" y="250" text-anchor="middle" fill="#8866ff" font-size="8">8 ATTENTION</text>
+
+        <!-- Geneva inside Hoberman cluster -->
+        <circle cx="670" cy="255" r="12" fill="#141420" stroke="#8866ff" stroke-width="1"/>
+        <text x="670" y="258" text-anchor="middle" fill="#664488" font-size="6">7</text>
+
+        <!-- Arm 8: Babbage (lower-right) -->
+        <path d="M415,320 Q500,380 600,400" stroke="#ddaa44" stroke-width="2" fill="none"/>
+        <circle cx="600" cy="400" r="26" fill="#141420" stroke="#ddaa44" stroke-width="1.8"/>
+        <text x="600" y="404" text-anchor="middle" fill="#ddaa44" font-size="8">BABBAGE</text>
+        <text x="600" y="375" text-anchor="middle" fill="#ddaa44" font-size="8">9</text>
+
+        <!-- Arm 9: Snap ReLU + Output (bottom-right) -->
+        <path d="M400,330 Q460,420 540,470" stroke="#44ddaa" stroke-width="2" fill="none"/>
+        <circle cx="540" cy="470" r="22" fill="#141420" stroke="#44ddaa" stroke-width="1.5"/>
+        <path d="M530,475 L540,465 L550,465" stroke="#44ddaa" stroke-width="1.3" fill="none"/>
+        <text x="540" y="445" text-anchor="middle" fill="#44ddaa" font-size="8">10 ReLU</text>
+
+        <!-- Confidence Iris (hanging from hub bottom) -->
+        <circle cx="380" cy="370" r="22" fill="#141420" stroke="#ddaa44" stroke-width="2"/>
+        <circle cx="380" cy="370" r="9" fill="none" stroke="#ddaa44" stroke-width="1.5"/>
+        <circle cx="380" cy="370" r="3.5" fill="#ddaa44" opacity="0.6"/>
+        <text x="380" y="400" text-anchor="middle" fill="#ddaa44" font-size="8">12 IRIS</text>
+
+        <!-- Signal flows on arms -->
+        <path d="M168,160 Q250,200 330,250" stroke="#ff8844" stroke-width="1" fill="none" class="sig" opacity="0.3"/>
+        <path d="M430,260 Q520,200 592,160" stroke="#8866ff" stroke-width="1" fill="none" class="sig" opacity="0.3" style="animation-delay:-0.5s"/>
+
+        <!-- Chime -->
+        <circle cx="50" cy="390" r="14" fill="#141420" stroke="#ddaa44" stroke-width="1.5"/>
+        <text x="50" y="394" text-anchor="middle" fill="#ddaa44" font-size="11">♪</text>
+        <text x="50" y="412" text-anchor="middle" fill="#aa8833" font-size="7">CHIME</text>
+
+        <!-- Tendrils -->
+        <path d="M140,132 Q120,100 100,80" stroke="#2a2a3a" stroke-width="1" fill="none"/>
+        <path d="M620,132 Q640,100 660,80" stroke="#2a2a3a" stroke-width="1" fill="none"/>
+        <path d="M72,280 Q40,270 20,255" stroke="#2a2a3a" stroke-width="0.8" fill="none"/>
+        <path d="M670,280 Q700,270 720,255" stroke="#2a2a3a" stroke-width="0.8" fill="none"/>
+      </svg>
+    </div>
+    <div class="ff-legend">
+      <div class="wave-callout">
+        <div class="title">MARGOLIN WAVE FIELD = THE CANOPY</div>
+        <div class="desc">Suspended ABOVE the entire radial web like a floating cortex. Thin brass rods hang down, connecting wave elements to mechanisms below. Viewer looks UP into the shimmering wave patterns. Visible from across the gallery.</div>
+      </div>
+
+      <div class="section-label">Left Arms — Training</div>
+      <div class="mech-item">
+        <div class="mech-dot" style="background:#ff8844"></div>
+        <div><div class="mech-name">1. Cam Cassettes</div><div class="mech-role">Swappable weight datasets — upper-left arm</div></div>
+      </div>
+      <div class="mech-item">
+        <div class="mech-dot" style="background:#ddaa44"></div>
+        <div><div class="mech-name">2. Escapement</div><div class="mech-role">Learning rate heartbeat — left arm</div></div>
+      </div>
+      <div class="mech-item">
+        <div class="mech-dot" style="background:#ff8844"></div>
+        <div><div class="mech-name">3. Spiral Cams</div><div class="mech-role">Gradient computation — lower-left arm</div></div>
+      </div>
+      <div class="mech-item">
+        <div class="mech-dot" style="background:#44ddaa"></div>
+        <div><div class="mech-name">4. Pantograph</div><div class="mech-role">Weighted summation — bottom-left arm</div></div>
+      </div>
+      <div class="mech-item">
+        <div class="mech-dot" style="background:#ff6644"></div>
+        <div><div class="mech-name">5. Ganson Cascade</div><div class="mech-role">Vanishing gradient teaching element — bottom arm</div></div>
+      </div>
+
+      <div class="section-label">Right Arms — Inference</div>
+      <div class="mech-item">
+        <div class="mech-dot" style="background:#8866ff"></div>
+        <div><div class="mech-name">6. Marble Sequencer</div><div class="mech-role">Token input — upper-right arm</div></div>
+      </div>
+      <div class="mech-item">
+        <div class="mech-dot" style="background:#8866ff"></div>
+        <div><div class="mech-name">7. Geneva + 8. Hoberman</div><div class="mech-role">Stepping + attention expansion — right arm cluster</div></div>
+      </div>
+      <div class="mech-item">
+        <div class="mech-dot" style="background:#ddaa44"></div>
+        <div><div class="mech-name">9. Babbage Carry</div><div class="mech-role">Softmax normalization — lower-right arm</div></div>
+      </div>
+      <div class="mech-item">
+        <div class="mech-dot" style="background:#44ddaa"></div>
+        <div><div class="mech-name">10. Snap Flexures</div><div class="mech-role">ReLU activation — bottom-right arm</div></div>
+      </div>
+
+      <div class="section-label">Central Hub</div>
+      <div class="mech-item">
+        <div class="mech-dot" style="background:#fff"></div>
+        <div><div class="mech-name">ALU + 11. Galton Board</div><div class="mech-role">Core computation + probability inside the hub</div></div>
+      </div>
+      <div class="mech-item">
+        <div class="mech-dot" style="background:#ddaa44"></div>
+        <div><div class="mech-name">12. Confidence Iris</div><div class="mech-role">Hangs below hub — answer revealed downward</div></div>
+      </div>
+
+      <div class="section-label" style="margin-top:16px;">G vs E — Key Difference</div>
+      <div style="color:#888; font-size:0.82em; line-height:1.5;">
+        <strong style="color:#aaa;">G puts the wave field ABOVE</strong> as a floating canopy. Viewer looks UP into it. All mechanisms radiate BELOW. 360-degree viewing, no "back."<br><br>
+        <strong style="color:#aaa;">E puts the wave field BETWEEN</strong> hemispheres as a central sea. Viewer looks ACROSS it. Left/right separation is more obvious. Has a clear front/back.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== CONCEPT F UPDATED: Brain with Wave Field Front ==================== -->
+<div class="form-factor" id="conceptF">
+  <div class="ff-header" onclick="this.parentElement.classList.toggle('selected')">
+    <div class="ff-badge" style="background:#44ddaa;color:#000;">F+</div>
+    <h2>Thinking Machine (Updated)</h2>
+    <span class="tagline">Brain form — Margolin wave field as the FRONTAL CORTEX (most visible face)</span>
+  </div>
+  <div class="ff-body">
+    <div class="ff-visual">
+      <svg viewBox="0 0 760 520">
+        <rect width="760" height="520" fill="#08080e"/>
+
+        <!-- Brain silhouette -->
+        <path d="M380,50 Q540,40 620,120 Q680,190 660,290 Q640,380 550,420 Q460,450 380,440 Q300,450 210,420 Q120,380 100,290 Q80,190 140,120 Q220,40 380,50 Z"
+              fill="#0a0a12" stroke="#2a2a3a" stroke-width="2"/>
+
+        <!-- Sulci / folds -->
+        <path d="M380,50 Q385,240 380,440" stroke="#1a1a2a" stroke-width="1.5"/>
+        <path d="M170,170 Q280,200 380,190 Q480,200 590,170" stroke="#1a1a2a" stroke-width="1"/>
+        <path d="M140,300 Q260,320 380,310 Q500,320 620,300" stroke="#1a1a2a" stroke-width="1"/>
+
+        <!-- ===== MARGOLIN WAVE FIELD — FRONTAL CORTEX ===== -->
+        <!-- Top of the brain, most prominent position, viewer sees it first -->
+        <ellipse cx="380" cy="130" rx="160" ry="55" fill="#0a1a0a" stroke="#2a4a2a" stroke-width="1.5" stroke-dasharray="4 4"/>
+        <text x="380" y="80" text-anchor="middle" fill="#44ddaa" font-size="10" font-weight="bold">WAVE FIELD — FRONTAL CORTEX</text>
+
+        <!-- Wave elements in brain-shaped arrangement -->
+        <g>
+          <circle cx="280" cy="120" r="3" fill="#44ddaa" opacity="0.3" class="wave-el" style="animation-delay:0s"/>
+          <circle cx="310" cy="115" r="3" fill="#44ddaa" opacity="0.5" class="wave-el" style="animation-delay:0.2s"/>
+          <circle cx="340" cy="112" r="4" fill="#44ddaa" opacity="0.6" class="wave-el" style="animation-delay:0.4s"/>
+          <circle cx="370" cy="110" r="4" fill="#66ffcc" opacity="0.8" class="wave-el" style="animation-delay:0.6s"/>
+          <circle cx="400" cy="110" r="4" fill="#88ffdd" opacity="0.9" class="wave-el" style="animation-delay:0.8s"/>
+          <circle cx="430" cy="112" r="4" fill="#44ddaa" opacity="0.6" class="wave-el" style="animation-delay:1.0s"/>
+          <circle cx="460" cy="115" r="3" fill="#44ddaa" opacity="0.4" class="wave-el" style="animation-delay:1.2s"/>
+          <circle cx="490" cy="120" r="3" fill="#44ddaa" opacity="0.3" class="wave-el" style="animation-delay:1.4s"/>
+
+          <circle cx="300" cy="140" r="3" fill="#44ddaa" opacity="0.4" class="wave-el" style="animation-delay:0.3s"/>
+          <circle cx="330" cy="135" r="4" fill="#44ddaa" opacity="0.6" class="wave-el" style="animation-delay:0.5s"/>
+          <circle cx="360" cy="132" r="5" fill="#66ffcc" opacity="0.8" class="wave-el" style="animation-delay:0.7s"/>
+          <circle cx="390" cy="132" r="5" fill="#88ffdd" opacity="1.0" class="wave-el" style="animation-delay:0.9s"/>
+          <circle cx="420" cy="135" r="4" fill="#44ddaa" opacity="0.7" class="wave-el" style="animation-delay:1.1s"/>
+          <circle cx="450" cy="140" r="3" fill="#44ddaa" opacity="0.4" class="wave-el" style="animation-delay:1.3s"/>
+
+          <circle cx="330" cy="155" r="3" fill="#44ddaa" opacity="0.3" class="wave-el" style="animation-delay:0.8s"/>
+          <circle cx="360" cy="152" r="3" fill="#44ddaa" opacity="0.5" class="wave-el" style="animation-delay:1.0s"/>
+          <circle cx="390" cy="152" r="4" fill="#44ddaa" opacity="0.6" class="wave-el" style="animation-delay:1.2s"/>
+          <circle cx="420" cy="155" r="3" fill="#44ddaa" opacity="0.4" class="wave-el" style="animation-delay:1.4s"/>
+        </g>
+
+        <!-- LEFT HEMISPHERE: Training -->
+        <text x="240" y="200" text-anchor="middle" fill="#ff8844" font-size="10" opacity="0.5">TRAINING</text>
+
+        <!-- 1. Cam Cassettes (left parietal) -->
+        <circle cx="200" cy="240" r="28" fill="#141420" stroke="#ff8844" stroke-width="2"/>
+        <text x="200" y="236" text-anchor="middle" fill="#ff8844" font-size="8" font-weight="bold">WEIGHT</text>
+        <text x="200" y="248" text-anchor="middle" fill="#ff8844" font-size="7">cassettes</text>
+        <text x="200" y="210" text-anchor="middle" fill="#ff8844" font-size="8">1</text>
+
+        <!-- 2. Escapement (left edge) -->
+        <circle cx="130" cy="310" r="22" fill="#141420" stroke="#ddaa44" stroke-width="1.8"/>
+        <line x1="118" y1="310" x2="142" y2="310" stroke="#ddaa44" stroke-width="1.5"/>
+        <circle cx="118" cy="310" r="3" fill="#ddaa44" opacity="0.5"/>
+        <circle cx="142" cy="310" r="3" fill="#ddaa44" opacity="0.5"/>
+        <text x="130" y="290" text-anchor="middle" fill="#ddaa44" font-size="7">2 ESCAPEMENT</text>
+
+        <!-- 3. Spiral Cams (left temporal) -->
+        <circle cx="220" cy="370" r="24" fill="#141420" stroke="#ff8844" stroke-width="1.8"/>
+        <path d="M212,370 Q217,362 222,368 Q227,374 222,378" stroke="#ff8844" stroke-width="1.3" fill="none"/>
+        <text x="220" y="350" text-anchor="middle" fill="#ff8844" font-size="7">3 GRADIENT</text>
+
+        <!-- 4. Pantograph (left occipital-ish) -->
+        <circle cx="300" cy="400" r="22" fill="#141420" stroke="#44ddaa" stroke-width="1.8"/>
+        <polygon points="300,390 307,400 300,410 293,400" fill="none" stroke="#44ddaa" stroke-width="1.2"/>
+        <text x="300" y="378" text-anchor="middle" fill="#44ddaa" font-size="7">4 SUM</text>
+
+        <!-- 5. Ganson (left bottom) -->
+        <circle cx="170" cy="400" r="18" fill="#141420" stroke="#ff6644" stroke-width="1.5"/>
+        <text x="170" y="404" text-anchor="middle" fill="#ff6644" font-size="7">GANSON</text>
+        <text x="170" y="425" text-anchor="middle" fill="#ff6644" font-size="7">5</text>
+
+        <!-- RIGHT HEMISPHERE: Inference -->
+        <text x="520" y="200" text-anchor="middle" fill="#8866ff" font-size="10" opacity="0.5">INFERENCE</text>
+
+        <!-- 6. Marble Input (right parietal) -->
+        <circle cx="560" cy="240" r="28" fill="#141420" stroke="#8866ff" stroke-width="2"/>
+        <circle cx="560" cy="235" r="5" fill="#8866ff" opacity="0.5"/>
+        <circle cx="560" cy="235" r="3" fill="#ccbbff"/>
+        <text x="560" y="250" text-anchor="middle" fill="#8866ff" font-size="7">marbles</text>
+        <text x="560" y="210" text-anchor="middle" fill="#8866ff" font-size="8">6 TOKENS</text>
+
+        <!-- 7+8. Geneva + Hoberman (right edge) -->
+        <circle cx="630" cy="300" r="30" fill="#141420" stroke="#8866ff" stroke-width="2"/>
+        <circle cx="630" cy="300" r="12" fill="none" stroke="#8866ff" stroke-width="1" stroke-dasharray="3 3"/>
+        <text x="630" y="274" text-anchor="middle" fill="#8866ff" font-size="7">7+8 ATTENTION</text>
+
+        <!-- 9. Babbage (right temporal) -->
+        <circle cx="540" cy="370" r="24" fill="#141420" stroke="#ddaa44" stroke-width="1.8"/>
+        <text x="540" y="374" text-anchor="middle" fill="#ddaa44" font-size="8">BABBAGE</text>
+        <text x="540" y="350" text-anchor="middle" fill="#ddaa44" font-size="7">9</text>
+
+        <!-- 10. Snap ReLU (right occipital) -->
+        <circle cx="460" cy="400" r="20" fill="#141420" stroke="#44ddaa" stroke-width="1.5"/>
+        <path d="M452,405 L460,395 L468,395" stroke="#44ddaa" stroke-width="1.3" fill="none"/>
+        <text x="460" y="378" text-anchor="middle" fill="#44ddaa" font-size="7">10 ReLU</text>
+
+        <!-- BRAINSTEM — Galton Board -->
+        <rect x="365" y="440" width="30" height="70" rx="5" fill="#141420" stroke="#ddaa44" stroke-width="2"/>
+        <circle cx="375" cy="455" r="2" fill="#668"/><circle cx="385" cy="465" r="2" fill="#668"/>
+        <circle cx="377" cy="475" r="2" fill="#668"/><circle cx="383" cy="485" r="2" fill="#668"/>
+        <circle cx="380" cy="495" r="2" fill="#668"/>
+        <text x="380" y="445" text-anchor="middle" fill="#ddaa44" font-size="7" font-weight="bold">11</text>
+
+        <!-- 12. Confidence Iris (base of brainstem) -->
+        <circle cx="380" cy="510" r="0" fill="none"/>
+        <circle cx="430" cy="480" r="18" fill="#141420" stroke="#ddaa44" stroke-width="2"/>
+        <circle cx="430" cy="480" r="7" fill="none" stroke="#ddaa44" stroke-width="1.5"/>
+        <circle cx="430" cy="480" r="3" fill="#ddaa44" opacity="0.6"/>
+        <text x="430" y="505" text-anchor="middle" fill="#ddaa44" font-size="7">12 IRIS</text>
+
+        <!-- Signal flows -->
+        <path d="M228,240 Q300,200 340,160" stroke="#ff8844" stroke-width="1" fill="none" class="sig" opacity="0.3"/>
+        <path d="M200,268 Q210,320 220,346" stroke="#ff8844" stroke-width="1" fill="none" class="sig" opacity="0.25" style="animation-delay:-0.3s"/>
+        <path d="M532,240 Q460,200 420,160" stroke="#8866ff" stroke-width="1" fill="none" class="sig" opacity="0.3" style="animation-delay:-0.6s"/>
+        <path d="M560,268 Q550,320 540,346" stroke="#8866ff" stroke-width="1" fill="none" class="sig" opacity="0.25" style="animation-delay:-0.9s"/>
+        <path d="M380,160 Q380,300 380,440" stroke="#44ddaa" stroke-width="0.8" fill="none" class="sig" opacity="0.2" style="animation-delay:-1.2s"/>
+
+        <!-- Chime -->
+        <circle cx="110" cy="420" r="14" fill="#141420" stroke="#ddaa44" stroke-width="1.5"/>
+        <text x="110" y="424" text-anchor="middle" fill="#ddaa44" font-size="11">♪</text>
+
+        <!-- Corpus callosum -->
+        <path d="M200,240 Q380,220 560,240" stroke="#5588ff" stroke-width="1.5" fill="none" opacity="0.15" stroke-dasharray="4 5"/>
+      </svg>
+    </div>
+    <div class="ff-legend">
+      <div class="wave-callout">
+        <div class="title">WAVE FIELD = FRONTAL CORTEX (TOP-FRONT)</div>
+        <div class="desc">Moved from occipital (back) to frontal (top-front). Now the FIRST thing a viewer sees when approaching. The "forehead" of the brain shimmers with wave patterns. Scientifically: frontal cortex = executive function = the hidden state driving decisions.</div>
+      </div>
+
+      <div class="section-label">Layout — Brain Regions</div>
+      <div style="color:#888; font-size:0.82em; line-height:1.6; margin-bottom: 12px;">
+        <strong style="color:#44ddaa;">Frontal (top):</strong> Margolin wave field — hidden state<br>
+        <strong style="color:#ff8844;">Left parietal:</strong> Weights, escapement, gradients<br>
+        <strong style="color:#8866ff;">Right parietal:</strong> Tokens, attention, Hoberman<br>
+        <strong style="color:#ff8844;">Left temporal:</strong> Spiral cams, pantograph, Ganson<br>
+        <strong style="color:#ddaa44;">Right temporal:</strong> Babbage carry, snap ReLU<br>
+        <strong style="color:#ddaa44;">Brainstem:</strong> Galton board + confidence iris
+      </div>
+
+      <div class="section-label">F+ vs E vs G — The Choice</div>
+      <div style="color:#888; font-size:0.82em; line-height:1.5;">
+        <strong style="color:#44ddaa;">F+ (Brain):</strong> Instantly readable. "That's a brain." Wave field on the forehead = first thing you see. Constrained by brain shape but gains immediate recognition.<br><br>
+        <strong style="color:#ff8844;">E (Archipelago):</strong> Wave field as central sea between hemispheres. Most modular — nodes float independently. Clearest left/right split.<br><br>
+        <strong style="color:#8866ff;">G (Web):</strong> Wave field as canopy overhead. Most dramatic vertical composition. 360-degree viewing. Most abstract — less "brain," more "neural network."
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<p style="text-align:center; color:#555; margin-top:30px; font-size:0.85em;">Click headers to select. All three have the same 12 mechanisms — only the spatial arrangement differs.</p>
+
+</body>
+</html>

@@ -1,0 +1,1 @@
+"""Asset management components for KFS manifests."""

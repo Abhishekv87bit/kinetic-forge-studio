@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Dance to Music</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <div id="camera-container">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="overlay"></canvas>
+    </div>
+
+    <div id="hud">
+      <span id="fps">-- FPS</span>
+      <span id="status">Tap Start to begin</span>
+    </div>
+
+    <div id="energy-panel">
+      <div class="meter"><label>Energy</label><div class="bar"><div class="fill" id="energy-fill"></div></div></div>
+      <div class="meter"><label>Hands</label><div class="bar"><div class="fill" id="hands-fill"></div></div></div>
+      <div class="meter"><label>Feet</label><div class="bar"><div class="fill" id="feet-fill"></div></div></div>
+    </div>
+
+    <div id="genre-badge" style="display:none">EDM</div>
+    <div id="layer-panel" style="display:none">
+      <div class="layer-dot" id="layer-drums"><span>DR</span></div>
+      <div class="layer-dot" id="layer-bass"><span>BA</span></div>
+      <div class="layer-dot" id="layer-pad"><span>PD</span></div>
+      <div class="layer-dot" id="layer-melody"><span>ML</span></div>
+    </div>
+
+    <!-- Genre picker (shown before start) -->
+    <div id="genre-picker">
+      <p id="genre-picker-label">Pick a genre</p>
+      <div id="genre-grid">
+        <button class="genre-tile" data-genre="hiphop"><span class="genre-icon">🎤</span><span>Hip-Hop</span></button>
+        <button class="genre-tile" data-genre="edm"><span class="genre-icon">⚡</span><span>EDM</span></button>
+        <button class="genre-tile" data-genre="lofi"><span class="genre-icon">🎹</span><span>Lo-fi</span></button>
+        <button class="genre-tile" data-genre="latin"><span class="genre-icon">🌴</span><span>Latin</span></button>
+        <button class="genre-tile" data-genre="rnb"><span class="genre-icon">💜</span><span>R&B</span></button>
+        <button class="genre-tile" data-genre="cinematic"><span class="genre-icon">🎬</span><span>Cinematic</span></button>
+        <button class="genre-tile" data-genre="kpop"><span class="genre-icon">✨</span><span>K-Pop</span></button>
+        <button class="genre-tile" data-genre="afrobeat"><span class="genre-icon">🥁</span><span>Afrobeat</span></button>
+      </div>
+      <button id="start-btn" disabled>Pick a genre to start</button>
+    </div>
+    <!-- Genre switcher (shown during playback) -->
+    <div id="genre-switcher" style="display:none">
+      <button class="genre-chip" data-genre="hiphop">Hip-Hop</button>
+      <button class="genre-chip" data-genre="edm">EDM</button>
+      <button class="genre-chip" data-genre="lofi">Lo-fi</button>
+      <button class="genre-chip" data-genre="latin">Latin</button>
+      <button class="genre-chip" data-genre="rnb">R&B</button>
+      <button class="genre-chip" data-genre="cinematic">Cine</button>
+      <button class="genre-chip" data-genre="kpop">K-Pop</button>
+      <button class="genre-chip" data-genre="afrobeat">Afro</button>
+    </div>
+
+    <button id="mode-toggle" style="display:none">Mode: Stems</button>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/tone@14.7.77/build/Tone.js"></script>
+  <script type="importmap">
+  {
+    "imports": {
+      "@mediapipe/tasks-vision": "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/vision_bundle.mjs"
+    }
+  }
+  </script>
+  <script type="module" src="src/main.js?v=3"></script>
+</body>
+</html>

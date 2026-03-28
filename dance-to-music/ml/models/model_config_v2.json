@@ -1,0 +1,78 @@
+{
+  "version": 2,
+  "seq_len": 32,
+  "num_features": 13,
+  "num_targets": 9,
+  "lstm_units": 48,
+  "feature_names": [
+    "totalKE",
+    "handSpeed",
+    "footSpeed",
+    "coreSpeed",
+    "hipY",
+    "armSpread",
+    "symmetry",
+    "footContact",
+    "ankleAccel",
+    "handAccel",
+    "jerkMagnitude",
+    "headBob",
+    "bodyTilt"
+  ],
+  "target_names": [
+    "bass_trigger",
+    "bass_pitch",
+    "bass_velocity",
+    "melody_trigger",
+    "melody_pitch",
+    "melody_velocity",
+    "melody_sustain",
+    "energy_level",
+    "rhythm_density"
+  ],
+  "trigger_indices": [
+    0,
+    3
+  ],
+  "head_layout": {
+    "rhythm": {
+      "indices": [
+        0,
+        1,
+        2
+      ],
+      "names": [
+        "bass_trigger",
+        "bass_pitch",
+        "bass_velocity"
+      ]
+    },
+    "melody": {
+      "indices": [
+        3,
+        4,
+        5,
+        6
+      ],
+      "names": [
+        "melody_trigger",
+        "melody_pitch",
+        "melody_velocity",
+        "melody_sustain"
+      ]
+    },
+    "energy": {
+      "indices": [
+        7,
+        8
+      ],
+      "names": [
+        "energy_level",
+        "rhythm_density"
+      ]
+    }
+  },
+  "epochs_trained": 41,
+  "final_val_loss": 0.0759112536907196,
+  "final_val_mae": 0.0640350729227066
+}

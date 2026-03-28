@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Physical Transformer — 2D Mechanical Power Transfer Map</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #0a0a0f;
+  color: #e0e0e0;
+  overflow-x: auto;
+}
+
+/* ── Header ── */
+.header {
+  text-align: center;
+  padding: 30px 20px 15px;
+  border-bottom: 1px solid #1a1a2e;
+}
+.header h1 {
+  font-size: 2em;
+  font-weight: 300;
+  letter-spacing: 0.12em;
+  color: #c9a84c;
+  text-transform: uppercase;
+}
+.header .sub {
+  font-size: 0.95em;
+  color: #888;
+  margin-top: 6px;
+}
+
+/* ── Controls ── */
+.controls {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid #1a1a2e;
+}
+.controls button {
+  background: #111;
+  border: 1px solid #333;
+  color: #aaa;
+  padding: 8px 18px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85em;
+  transition: all 0.2s;
+}
+.controls button:hover { border-color: #c9a84c; color: #c9a84c; }
+.controls button.active { background: rgba(201,168,76,0.15); border-color: #c9a84c; color: #c9a84c; font-weight: 600; }
+
+/* ── Tick indicator ── */
+.tick-bar {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  padding: 12px;
+  background: #0d0d14;
+}
+.tick-bar .tick {
+  width: 50px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #222;
+  border-radius: 3px;
+  font-size: 0.75em;
+  color: #555;
+  transition: all 0.3s;
+}
+.tick-bar .tick.active { background: rgba(201,168,76,0.2); border-color: #c9a84c; color: #c9a84c; font-weight: 700; }
+.tick-bar .tick.forward { border-left: 3px solid #4a9eff; }
+.tick-bar .tick.adjoint { border-left: 3px solid #ff6b6b; }
+.tick-bar .tick.predict { border-left: 3px solid #50c878; }
+
+/* ── Legend ── */
+.legend {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  padding: 10px;
+  font-size: 0.8em;
+  color: #888;
+}
+.legend span { display: flex; align-items: center; gap: 6px; }
+.legend .dot { width: 10px; height: 10px; border-radius: 50%; }
+
+/* ── SVG container ── */
+.diagram-container {
+  width: 100%;
+  overflow-x: auto;
+  padding: 20px;
+}
+svg text { font-family: 'Segoe UI', system-ui, sans-serif; }
+
+/* ── Info panel ── */
+.info-panel {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px 30px 40px;
+}
+.info-panel h2 {
+  font-size: 1.3em;
+  font-weight: 300;
+  color: #c9a84c;
+  letter-spacing: 0.08em;
+  margin: 20px 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #1a1a2e;
+}
+.info-panel table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85em;
+  margin: 10px 0;
+}
+.info-panel th, .info-panel td {
+  padding: 6px 12px;
+  border: 1px solid #1a1a2e;
+  text-align: left;
+}
+.info-panel th { background: #111; color: #c9a84c; font-weight: 500; }
+.info-panel td { color: #ccc; }
+.info-panel .chain {
+  background: #0d0d14;
+  border: 1px solid #1a1a2e;
+  border-radius: 6px;
+  padding: 14px 18px;
+  margin: 10px 0;
+  font-size: 0.9em;
+  line-height: 1.8;
+}
+.info-panel .chain .arrow { color: #c9a84c; margin: 0 4px; }
+.info-panel .chain .comp { color: #4a9eff; font-weight: 500; }
+.info-panel .chain .comp.adjoint-comp { color: #ff6b6b; }
+.info-panel .chain .comp.converge-comp { color: #50c878; }
+.info-panel .chain .mech { color: #888; font-size: 0.85em; }
+
+/* ── Flow anim ── */
+@keyframes flowRight {
+  0% { stroke-dashoffset: 20; }
+  100% { stroke-dashoffset: 0; }
+}
+@keyframes flowLeft {
+  0% { stroke-dashoffset: -20; }
+  100% { stroke-dashoffset: 0; }
+}
+.flow-right {
+  stroke-dasharray: 8 4;
+  animation: flowRight 0.8s linear infinite;
+}
+.flow-left {
+  stroke-dasharray: 8 4;
+  animation: flowLeft 0.8s linear infinite;
+}
+
+/* tooltip */
+.tooltip {
+  position: fixed;
+  background: #1a1a2e;
+  border: 1px solid #c9a84c;
+  color: #e0e0e0;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 0.82em;
+  max-width: 320px;
+  pointer-events: none;
+  z-index: 100;
+  display: none;
+  line-height: 1.5;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Mechanical Power Transfer Map</h1>
+  <div class="sub">The Physical Transformer — Every energy path from NEMA 23 to output, tick by tick</div>
+</div>
+
+<div class="controls">
+  <button class="active" onclick="setView('power')">Power Distribution</button>
+  <button onclick="setView('forward')">Forward Pass (Ticks 1-8)</button>
+  <button onclick="setView('adjoint')">Adjoint Pass (Ticks 9-13)</button>
+  <button onclick="setView('predict')">Predict Mode (Ticks 1-10)</button>
+  <button onclick="setView('converge')">Convergence Detection</button>
+  <button onclick="setView('all')">All Paths</button>
+</div>
+
+<div class="tick-bar" id="tickBar"></div>
+
+<div class="legend">
+  <span><span class="dot" style="background:#c9a84c"></span> Motor power</span>
+  <span><span class="dot" style="background:#4a9eff"></span> Forward signal</span>
+  <span><span class="dot" style="background:#ff6b6b"></span> Adjoint signal</span>
+  <span><span class="dot" style="background:#50c878"></span> Convergence / Predict</span>
+  <span><span class="dot" style="background:#888"></span> Mechanical linkage</span>
+</div>
+
+<div class="diagram-container">
+  <svg id="mainDiagram" width="1400" height="1100" viewBox="0 0 1400 1100"></svg>
+</div>
+
+<div class="info-panel" id="infoPanel"></div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// COMPONENT DEFINITIONS — every physical component with position,
+// size, connections, and metadata
+// ═══════════════════════════════════════════════════════════════
+
+const COLORS = {
+  motor: '#c9a84c',
+  forward: '#4a9eff',
+  adjoint: '#ff6b6b',
+  converge: '#50c878',
+  mech: '#555',
+  brass: '#c9a84c',
+  steel: '#8899aa',
+  pla: '#444',
+  resin: '#7788aa',
+  frame: '#333',
+  string: '#aabbcc',
+};
+
+const components = {
+  // ── POWER SOURCE ──
+  motor: {
+    id: 'motor', label: 'NEMA 23', sublabel: '1.26 Nm',
+    x: 80, y: 500, w: 80, h: 60, color: COLORS.motor, face: 'BACK',
+    detail: 'NEMA 23 stepper motor. 57×57×56mm. Single power source for entire machine. 1.26 Nm holding torque, 0.5-0.7 Nm at operating speed.',
+    ticks: { power: [1,2,3,4,5,6,7,8,9,10,11,12,13] }
+  },
+  mainShaft: {
+    id: 'mainShaft', label: 'Main Drive Shaft', sublabel: 'all cam lobes',
+    x: 200, y: 480, w: 100, h: 30, color: COLORS.steel, face: 'BACK',
+    detail: 'Steel shaft carrying all cam lobes: barrel cam sequencer, 2 clamp bar cams, shishi-odoshi cam, staged engagement cams. Continuous rotation from motor.',
+    ticks: { power: [1,2,3,4,5,6,7,8,9,10,11,12,13] }
+  },
+
+  // ── TIMING ──
+  barrelCam: {
+    id: 'barrelCam', label: 'Barrel Cam', sublabel: '270mm PLA',
+    x: 200, y: 330, w: 100, h: 40, color: COLORS.pla, face: 'BACK',
+    detail: 'FDM PLA, single piece, 40dia × 270mm. Spiral groove encodes 13-tick timing sequence. 1 revolution = 1 training example. 7 groove sections for staged weight engagement.',
+    ticks: { power: [1,2,3,4,5,6,7,8,9,10,11,12,13] }
+  },
+  pendulum: {
+    id: 'pendulum', label: 'Pendulum', sublabel: '250mm, 1.003s',
+    x: 200, y: 610, w: 100, h: 40, color: COLORS.brass, face: 'BACK',
+    detail: 'Gravity pendulum escapement. 250mm steel rod + 30mm brass bob. Period = 1.003s. Gates each tick. Clock components from Timesavers.com.',
+    ticks: { power: [1,2,3,4,5,6,7,8,9,10,11,12,13] }
+  },
+  pinDrum: {
+    id: 'pinDrum', label: 'Pin Drum', sublabel: '70dia×360mm',
+    x: 200, y: 220, w: 100, h: 40, color: COLORS.brass, face: 'TOP',
+    detail: 'Brass cylinder with removable pin strips. 8 strips × 12 pins (9 input + 3 target). Star-wheel ratchet indexes one strip per training example. Reprogrammable by swapping strips.',
+    ticks: { power: [1, 13] }
+  },
+  shishiOdoshi: {
+    id: 'shishiOdoshi', label: 'Shishi-odoshi', sublabel: 'dry striker',
+    x: 200, y: 700, w: 100, h: 35, color: COLORS.brass, face: 'BACK',
+    detail: 'Cam-triggered brass striker on anvil plate. Fires at end of each training example (tick 13). TOCK sound. Dry mechanism — cam lifts arm, releases at lobe peak, gravity + spring drives strike.',
+    ticks: { power: [13] }
+  },
+
+  // ── CLAMP BARS (phase switching) ──
+  clampInput: {
+    id: 'clampInput', label: 'Input Clamp Bar', sublabel: '30 strings',
+    x: 380, y: 350, w: 110, h: 35, color: COLORS.brass, face: 'INTERIOR',
+    detail: 'Brass strip, 300mm wide. Clamps 27 input-to-hidden + 3 bias strings. Cam-actuated moving jaw, spring-return (fail-open). ENGAGED during forward pass (ticks 1-8), FREE during adjoint pass (ticks 9-13).',
+    ticks: { forward: [1,2,3,4,5,6,7,8], adjoint: [] }
+  },
+  clampOutput: {
+    id: 'clampOutput', label: 'Output Clamp Bar', sublabel: '12 strings',
+    x: 900, y: 350, w: 110, h: 35, color: COLORS.brass, face: 'INTERIOR',
+    detail: 'Brass strip, 300mm wide. Clamps 9 hidden-to-output + 3 bias strings. FREE during forward pass (outputs respond), ENGAGED during adjoint pass (error forces drive backward).',
+    ticks: { forward: [], adjoint: [9,10,11,12,13] }
+  },
+
+  // ── INPUT LAYER ──
+  inputPrisms: {
+    id: 'inputPrisms', label: '3 Input Prisms', sublabel: 'triangular, brass',
+    x: 380, y: 180, w: 110, h: 40, color: COLORS.brass, face: 'LEFT',
+    detail: '3 triangular brass prisms, 40mm face × 60mm long, horizontal axis. Spring-loaded ball detent (3 positions). Each position engages 1 of 3 string clamps (one-hot gating). User rotates by hand.',
+    ticks: { forward: [1] }
+  },
+  oneHotGates: {
+    id: 'oneHotGates', label: 'One-Hot Gates', sublabel: '9 string clamps',
+    x: 380, y: 260, w: 110, h: 35, color: COLORS.steel, face: 'LEFT',
+    detail: '9 spring-loaded cam followers on prism shafts. Each prism rotation engages 1 clamp, releases 1 string, locks 2 others to zero. Guarantees exactly 3 active inputs (one per prism).',
+    ticks: { forward: [1,2] }
+  },
+
+  // ── WEIGHT MATRIX (front face, top) ──
+  wormGears: {
+    id: 'wormGears', label: '42 Worm Gears', sublabel: 'M1.0 brass/steel',
+    x: 560, y: 100, w: 130, h: 50, color: COLORS.brass, face: 'FRONT-TOP',
+    detail: '42 off-shelf module 1.0 worm gear sets (Harfington/uxcell, $4-6 each). Brass worm wheel, steel worm. Self-locking: friction angle 19.3° >> lead angle 5.7° (3.4× margin). Each gear position = one weight value. ~3024 steps over 360°.',
+    ticks: { forward: [2,3], adjoint: [12] }
+  },
+
+  // ── STRINGS (input→hidden) ──
+  stringsIH: {
+    id: 'stringsIH', label: '30 Strings', sublabel: 'input→hidden + bias',
+    x: 530, y: 260, w: 100, h: 30, color: COLORS.string, face: 'INTERIOR',
+    detail: '27 weight strings + 3 bias strings. 0.5mm stainless steel 7-strand leader wire. Pre-tensioned with spring tensioners. Max 2 pulley redirections. Route on depth plane 1 (front 20mm).',
+    ticks: { forward: [2,3,4], adjoint: [10,11] }
+  },
+
+  // ── HIDDEN LAYER PANTOGRAPHS ──
+  pantographH: {
+    id: 'pantographH', label: '3×3 Pantograph Diamonds', sublabel: '36 HK0306 bearings',
+    x: 660, y: 260, w: 140, h: 50, color: COLORS.pla, face: 'RIGHT',
+    detail: '3 chains of 3 diamonds each (one chain per hidden neuron). PLA bars with HK0306 needle bearings at all 36 joints (3mm bore). Each diamond: OA+OB=OC. Per chain: 3 diamonds sum 4 active terms (3 one-hot + 1 bias). Expands/contracts like breathing.',
+    ticks: { forward: [3,4], adjoint: [10,11] }
+  },
+
+  // ── ReLU SHAPED CAMS ──
+  reluCams: {
+    id: 'reluCams', label: '3 ReLU Cams', sublabel: '50mm SLA resin',
+    x: 660, y: 370, w: 140, h: 40, color: COLORS.resin, face: 'RIGHT',
+    detail: '3 SLA resin cams (50mm dia, 50μm resolution). Profile = ReLU activation function: flat region (negative input → zero output, derivative=0) + linear ramp (positive input → proportional output, derivative=1). Spring-loaded follower rides profile. In adjoint pass: flat blocks signal (d=0), ramp passes signal (d=1) — chain rule computed by geometry.',
+    ticks: { forward: [5], adjoint: [10] }
+  },
+
+  // ── SPRING TOGGLES ──
+  springToggles: {
+    id: 'springToggles', label: '3 Spring Toggles', sublabel: 'SNAP sound',
+    x: 830, y: 370, w: 100, h: 35, color: COLORS.steel, face: 'RIGHT',
+    detail: 'Bistable toggle mechanism, one per hidden neuron. Produces audible SNAP when activation crosses threshold. Binary, decisive. Steel spring, ~20×10mm.',
+    ticks: { forward: [5] }
+  },
+
+  // ── STRINGS (hidden→output) ──
+  stringsHO: {
+    id: 'stringsHO', label: '12 Strings', sublabel: 'hidden→output + bias',
+    x: 830, y: 290, w: 100, h: 30, color: COLORS.string, face: 'INTERIOR',
+    detail: '9 weight strings + 3 bias strings. Same 0.5mm stainless steel leader. Route on depth plane 2 (rear 20mm), separated from input strings by 20-30mm to prevent collision.',
+    ticks: { forward: [6,7], adjoint: [10] }
+  },
+
+  // ── OUTPUT LAYER PANTOGRAPHS ──
+  pantographO: {
+    id: 'pantographO', label: '3 Output Pantographs', sublabel: '12 HK0306 bearings',
+    x: 960, y: 260, w: 130, h: 50, color: COLORS.pla, face: 'RIGHT',
+    detail: '3 single-diamond pantographs (one per output neuron). PLA bars with HK0306 needle bearings at all 12 joints. Each sums 3 hidden weights + 1 bias = 4 terms. Linear activation (no shaped cam).',
+    ticks: { forward: [7,8], adjoint: [10] }
+  },
+
+  // ── OUTPUT RODS ──
+  outputRods: {
+    id: 'outputRods', label: '3 Output Rods', sublabel: 'brass, continuous',
+    x: 1100, y: 260, w: 100, h: 40, color: COLORS.brass, face: 'RIGHT/LEFT',
+    detail: '3 brass rods, one per output neuron. Always produce continuous displacement in both TRAIN and PREDICT modes. The rods ARE the raw analog outputs. What changes between modes is which downstream mechanism reads them.',
+    ticks: { forward: [8], adjoint: [9], predict: [8] }
+  },
+
+  // ── PREDICT MODE COMPONENTS ──
+  comparisonBeam: {
+    id: 'comparisonBeam', label: 'Comparison Beam', sublabel: '120mm brass',
+    x: 1150, y: 180, w: 110, h: 35, color: COLORS.brass, face: 'LEFT',
+    detail: 'Tilting brass beam (120×8×4mm). Rests on whichever of the 3 output rods is highest. Tilt drives a follower arm into the Geneva drive input disc. Winner-take-all comparator. PREDICT mode only.',
+    ticks: { predict: [9] }
+  },
+  genevaDrive: {
+    id: 'genevaDrive', label: 'Geneva Drive', sublabel: '3-slot, 120°',
+    x: 1150, y: 120, w: 110, h: 35, color: COLORS.brass, face: 'LEFT',
+    detail: '3-slot Geneva mechanism. Produces 120° discrete indexing. chunk-chunk-chunk sound. Driven by comparison beam follower arm. Engages ONLY in PREDICT mode.',
+    ticks: { predict: [9,10] }
+  },
+  answerPrism: {
+    id: 'answerPrism', label: 'Answer Prism', sublabel: 'triangular, brass',
+    x: 1280, y: 120, w: 100, h: 35, color: COLORS.brass, face: 'LEFT',
+    detail: 'Triangular brass prism matching input prisms. 40mm face × 60mm long. 3 engraved output words. Driven by Geneva drive. Mounted at eye level above mode lever.',
+    ticks: { predict: [10] }
+  },
+
+  // ── MODE SWITCH ──
+  dogClutch: {
+    id: 'dogClutch', label: 'Dog Clutch', sublabel: 'TRAIN / PREDICT',
+    x: 1100, y: 180, w: 100, h: 35, color: COLORS.steel, face: 'LEFT',
+    detail: 'Sliding collar with dual engagement teeth. CLUNK sound. TRAIN: connects output rods to whippletree error beams. PREDICT: retracts whippletree, engages comparison beam → Geneva drive. Spring-loaded toggle holds position.',
+    ticks: { forward: [1], adjoint: [1], predict: [1] }
+  },
+
+  // ── TRAIN MODE: ERROR COMPUTATION ──
+  whippletree: {
+    id: 'whippletree', label: '4 Whippletree Beams', sublabel: 'knife-edge pivots',
+    x: 1100, y: 420, w: 110, h: 40, color: COLORS.brass, face: 'BOTTOM',
+    detail: '3 per-neuron beams + 1 aggregate. Each compares predicted vs target displacement. Knife-edge pivots (zero friction). Per-neuron beams feed sliding collar differentials. Aggregate feeds brachistochrone track.',
+    ticks: { adjoint: [9] }
+  },
+  sliders: {
+    id: 'sliders', label: '3 Error Sliders', sublabel: 'MGN7 rails',
+    x: 1100, y: 500, w: 110, h: 40, color: COLORS.steel, face: 'FRONT-BOTTOM',
+    detail: '3 sliding collar differentials on MGN7 linear rails (100mm). Brass cover plate. Predicted string pulls one direction, target string pulls opposite. Displacement = error. Blued steel leaf spring converts to force. "ZERO ERROR" engraved at center.',
+    ticks: { adjoint: [9,10] }
+  },
+  leafSprings: {
+    id: 'leafSprings', label: '3 Leaf Springs', sublabel: '0.3mm spring steel',
+    x: 1100, y: 580, w: 110, h: 35, color: COLORS.steel, face: 'FRONT-BOTTOM',
+    detail: '0.3mm × 5mm × 60mm blued spring steel. Anchored at rail center. Converts displacement to adjoint force: F = -k × error. k fixed at build time (calibrated Phase 6). NOT the learning rate — that is the swappable pinion.',
+    ticks: { adjoint: [9,10] }
+  },
+
+  // ── RESET MECHANISM ──
+  resetBar: {
+    id: 'resetBar', label: 'Global Reset Bar', sublabel: '42 ratchet pawls',
+    x: 460, y: 580, w: 110, h: 35, color: COLORS.steel, face: 'INTERIOR',
+    detail: 'Steel bar actuated by barrel cam at tick 13. Lifts all 42 ratchet pawls simultaneously (spiral cams return to zero). Also triggers clamp bar return to forward configuration.',
+    ticks: { adjoint: [13] }
+  },
+
+  // ── CONVERGENCE DETECTION ──
+  vNotchPins: {
+    id: 'vNotchPins', label: '3 V-Notch Pins', sublabel: '60° V, ~2mm',
+    x: 1260, y: 500, w: 100, h: 35, color: COLORS.steel, face: 'FRONT-BOTTOM',
+    detail: '3 spring-loaded pins (~1.5mm dia) ride above sliders. V-notch (60°) at center = 2mm wide = convergence threshold (2.5% of 80mm range). Pin drops into notch when slider within threshold.',
+    ticks: { converge: [9,10,11,12,13] }
+  },
+  triggerBar: {
+    id: 'triggerBar', label: 'Trigger Bar', sublabel: 'AND gate',
+    x: 1260, y: 580, w: 100, h: 35, color: COLORS.brass, face: 'BACK',
+    detail: 'Common bar connected to all 3 pins via short levers. Held UP by any pin not in notch. When ALL 3 drop: bar falls → trips lever → disengages motor clutch. Mechanical AND gate.',
+    ticks: { converge: [9,10,11,12,13] }
+  },
+  rotaryDamper: {
+    id: 'rotaryDamper', label: 'Rotary Damper', sublabel: '3s delay',
+    x: 1260, y: 650, w: 100, h: 35, color: COLORS.pla, face: 'BACK',
+    detail: 'Soft-close rotary damper (no fluid, no temperature sensitivity). Trigger bar must remain in "all pins dropped" state for 3 seconds before clutch disengages. Prevents false positives from transient oscillations.',
+    ticks: { converge: [9,10,11,12,13] }
+  },
+
+  // ── GRADIENT COMPUTATION ──
+  spiralCams: {
+    id: 'spiralCams', label: '42 Spiral Cams', sublabel: '40mm SLA, 36T ratchet',
+    x: 660, y: 500, w: 140, h: 50, color: COLORS.resin, face: 'FRONT-MIDDLE',
+    detail: '42 Archimedean spiral cam gradient computers. SLA resin, 40mm dia. r_min=1.0mm, r_max=6.0mm (6:1 ratio). 36-tooth ratchet (25 positions, 10° steps). Forward: string drives rack→pinion→cam shaft, ratchet locks. Adjoint: string wraps at stored radius. Torque = forward × adjoint = gradient. 7×6 grid at 55×40mm pitch = 385×240mm.',
+    ticks: { adjoint: [9,11,12,13] }
+  },
+
+  // ── WEIGHT UPDATE ──
+  rackPinion: {
+    id: 'rackPinion', label: '42 Rack & Pinion', sublabel: 'swappable pinion = LR',
+    x: 560, y: 500, w: 130, h: 40, color: COLORS.brass, face: 'FRONT-MIDDLE',
+    detail: '42 units. Gradient rack (0.5 module) from spiral cam → swappable pinion (Z=8/12/16/24 = 4 learning rates) → 4:1 reduction (48:12 gear pair) → worm shaft (Z=12). 1mm rack → 0.119° worm rotation at Z=16 default. Staged: 7 groups of 6.',
+    ticks: { adjoint: [12] }
+  },
+
+  // ── BRACHISTOCHRONE ──
+  brachistochrone: {
+    id: 'brachistochrone', label: 'Brachistochrone Track', sublabel: 'cycloid curve',
+    x: 1100, y: 700, w: 110, h: 40, color: COLORS.brass, face: 'BOTTOM',
+    detail: 'Cycloid curve (Bernoulli, 1696). Aggregate loss → scissor amplifier (5×) → catch gate position. Ball released each tick 12. Ball stops at gate = loss visualization. Return channel on underside. As training progresses, ball rolls less far.',
+    ticks: { adjoint: [12] }
+  },
+  scissorAmp: {
+    id: 'scissorAmp', label: 'Scissor Amplifier', sublabel: '5× magnification',
+    x: 1100, y: 640, w: 110, h: 35, color: COLORS.brass, face: 'BOTTOM',
+    detail: 'Mixed-size rhombi amplify small loss changes into visible displacement. 2mm loss change → 10mm visible motion. Driven by aggregate whippletree beam.',
+    ticks: { adjoint: [12] }
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════
+// CONNECTIONS — every mechanical link between components
+// ═══════════════════════════════════════════════════════════════
+
+const connections = [
+  // ── Motor power distribution ──
+  { from: 'motor', to: 'mainShaft', type: 'power', label: 'direct coupling', path: 'direct' },
+  { from: 'mainShaft', to: 'barrelCam', type: 'power', label: 'shaft mount' },
+  { from: 'mainShaft', to: 'pendulum', type: 'power', label: 'escapement' },
+  { from: 'mainShaft', to: 'shishiOdoshi', type: 'power', label: 'cam lobe' },
+  { from: 'mainShaft', to: 'clampInput', type: 'power', label: 'cam lobe 1' },
+  { from: 'mainShaft', to: 'clampOutput', type: 'power', label: 'cam lobe 2' },
+
+  // ── Barrel cam → timing ──
+  { from: 'barrelCam', to: 'pinDrum', type: 'power', label: 'star-wheel ratchet' },
+
+  // ── Forward pass: input → hidden ──
+  { from: 'inputPrisms', to: 'oneHotGates', type: 'forward', label: 'shaft rotation' },
+  { from: 'pinDrum', to: 'oneHotGates', type: 'forward', label: 'pin readers (9 bits)' },
+  { from: 'oneHotGates', to: 'stringsIH', type: 'forward', label: 'clamp release (3 active)' },
+  { from: 'wormGears', to: 'stringsIH', type: 'forward', label: 'weight displacement' },
+  { from: 'stringsIH', to: 'pantographH', type: 'forward', label: 'string tension (30)' },
+
+  // ── Forward pass: hidden → output ──
+  { from: 'pantographH', to: 'reluCams', type: 'forward', label: 'sum displacement' },
+  { from: 'reluCams', to: 'springToggles', type: 'forward', label: 'activation threshold' },
+  { from: 'reluCams', to: 'stringsHO', type: 'forward', label: 'activated output' },
+  { from: 'stringsHO', to: 'pantographO', type: 'forward', label: 'string tension (12)' },
+  { from: 'pantographO', to: 'outputRods', type: 'forward', label: 'sum displacement' },
+
+  // ── Predict mode: output → answer ──
+  { from: 'outputRods', to: 'dogClutch', type: 'predict', label: 'PREDICT mode' },
+  { from: 'dogClutch', to: 'comparisonBeam', type: 'predict', label: 'engage comparator' },
+  { from: 'comparisonBeam', to: 'genevaDrive', type: 'predict', label: 'tilt → follower arm' },
+  { from: 'genevaDrive', to: 'answerPrism', type: 'predict', label: '120° index' },
+
+  // ── Train mode: error computation ──
+  { from: 'outputRods', to: 'whippletree', type: 'adjoint', label: 'TRAIN mode (via dog clutch)' },
+  { from: 'pinDrum', to: 'sliders', type: 'adjoint', label: 'target string (3 bits)' },
+  { from: 'whippletree', to: 'sliders', type: 'adjoint', label: 'predicted vs target' },
+  { from: 'sliders', to: 'leafSprings', type: 'adjoint', label: 'displacement → force' },
+  { from: 'whippletree', to: 'scissorAmp', type: 'adjoint', label: 'aggregate error' },
+  { from: 'scissorAmp', to: 'brachistochrone', type: 'adjoint', label: '5× amplified loss' },
+
+  // ── Adjoint pass: backward through network ──
+  { from: 'leafSprings', to: 'pantographO', type: 'adjoint', label: 'adjoint force via yoke + strings (3)' },
+  { from: 'pantographO', to: 'reluCams', type: 'adjoint', label: 'backward (reciprocity)' },
+  { from: 'reluCams', to: 'pantographH', type: 'adjoint', label: 'chain rule (0 or 1)' },
+  { from: 'pantographH', to: 'spiralCams', type: 'adjoint', label: 'adjoint at weights' },
+  { from: 'stringsIH', to: 'spiralCams', type: 'adjoint', label: 'forward stored' },
+
+  // ── Gradient → weight update ──
+  { from: 'spiralCams', to: 'rackPinion', type: 'adjoint', label: 'gradient torque' },
+  { from: 'rackPinion', to: 'wormGears', type: 'adjoint', label: '4:1 reduction → worm' },
+
+  // ── Reset mechanism (tick 13) ──
+  { from: 'barrelCam', to: 'resetBar', type: 'power', label: 'cam lobe (tick 13)' },
+  { from: 'resetBar', to: 'spiralCams', type: 'adjoint', label: 'lift 42 ratchet pawls' },
+  { from: 'barrelCam', to: 'rackPinion', type: 'power', label: 'staged engagement (7×6)' },
+
+  // ── Adjoint: backward through strings (hidden→output) ──
+  { from: 'pantographO', to: 'stringsHO', type: 'adjoint', label: 'backward via strings (12)' },
+
+  // ── Convergence detection ──
+  { from: 'sliders', to: 'vNotchPins', type: 'converge', label: 'slider position' },
+  { from: 'vNotchPins', to: 'triggerBar', type: 'converge', label: 'pin drop (AND)' },
+  { from: 'triggerBar', to: 'rotaryDamper', type: 'converge', label: '3s delay' },
+  { from: 'rotaryDamper', to: 'motor', type: 'converge', label: 'clutch disengage' },
+  { from: 'rotaryDamper', to: 'dogClutch', type: 'converge', label: 'auto-shift to PREDICT' },
+
+  // ── Predict mode: input prisms drive forward pass ──
+  { from: 'inputPrisms', to: 'oneHotGates', type: 'predict', label: 'user rotates (PREDICT)' },
+];
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER ENGINE
+// ═══════════════════════════════════════════════════════════════
+
+let currentView = 'power';
+let currentTick = 0;
+const svg = document.getElementById('mainDiagram');
+const tooltip = document.getElementById('tooltip');
+
+function setView(view) {
+  currentView = view;
+  currentTick = 0;
+  document.querySelectorAll('.controls button').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  render();
+  renderTickBar();
+  renderInfoPanel();
+}
+
+function renderTickBar() {
+  const bar = document.getElementById('tickBar');
+  let html = '';
+  const ticks = currentView === 'predict' ? 10 : 13;
+  for (let i = 1; i <= ticks; i++) {
+    let cls = 'tick';
+    if (currentView === 'forward' && i <= 8) cls += ' forward';
+    else if (currentView === 'forward' && i > 8) cls += '';
+    else if (currentView === 'adjoint' && i >= 9) cls += ' adjoint';
+    else if (currentView === 'adjoint' && i < 9) cls += '';
+    else if (currentView === 'predict') cls += ' predict';
+    else if (currentView === 'converge') cls += i >= 9 ? ' adjoint' : '';
+    else {
+      if (i <= 8) cls += ' forward';
+      else cls += ' adjoint';
+    }
+    html += `<div class="${cls}" onclick="setTick(${i})" style="cursor:pointer">${i}</div>`;
+  }
+  bar.innerHTML = html;
+}
+
+function setTick(t) {
+  currentTick = currentTick === t ? 0 : t;
+  render();
+  // highlight tick
+  document.querySelectorAll('.tick-bar .tick').forEach((el, i) => {
+    el.classList.toggle('active', i + 1 === currentTick);
+  });
+}
+
+function isConnectionVisible(conn) {
+  if (currentView === 'all') return true;
+  if (currentView === 'power') return conn.type === 'power';
+  if (currentView === 'forward') return conn.type === 'forward' || conn.type === 'power';
+  if (currentView === 'adjoint') return conn.type === 'adjoint' || conn.type === 'power';
+  if (currentView === 'predict') return conn.type === 'predict' || conn.type === 'forward' || conn.type === 'power';
+  if (currentView === 'converge') return conn.type === 'converge' || conn.type === 'adjoint';
+  return true;
+}
+
+function isComponentVisible(comp) {
+  if (currentView === 'all' || currentView === 'power') return true;
+  // Check if any visible connection touches this component
+  return connections.some(c =>
+    isConnectionVisible(c) && (c.from === comp.id || c.to === comp.id)
+  );
+}
+
+function getConnectionColor(type) {
+  switch(type) {
+    case 'power': return COLORS.motor;
+    case 'forward': return COLORS.forward;
+    case 'adjoint': return COLORS.adjoint;
+    case 'predict': return COLORS.converge;
+    case 'converge': return COLORS.converge;
+    default: return COLORS.mech;
+  }
+}
+
+function render() {
+  let s = '';
+
+  // Background grid
+  s += `<defs>
+    <pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse">
+      <path d="M 50 0 L 0 0 0 50" fill="none" stroke="#111" stroke-width="0.5"/>
+    </pattern>
+    <marker id="arrowForward" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="${COLORS.forward}" />
+    </marker>
+    <marker id="arrowAdjoint" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="${COLORS.adjoint}" />
+    </marker>
+    <marker id="arrowPower" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="${COLORS.motor}" />
+    </marker>
+    <marker id="arrowPredict" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="${COLORS.converge}" />
+    </marker>
+    <marker id="arrowConverge" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="${COLORS.converge}" />
+    </marker>
+  </defs>`;
+  s += `<rect width="1400" height="1100" fill="url(#grid)" />`;
+
+  // Face zone labels
+  const zones = [
+    { label: 'BACK FACE', x: 60, y: 800, w: 280, h: 30 },
+    { label: 'LEFT FACE (I/O)', x: 350, y: 140, w: 170, h: 30 },
+    { label: 'FRONT FACE (Triptych)', x: 500, y: 60, w: 280, h: 30 },
+    { label: 'RIGHT FACE (Compute)', x: 630, y: 220, w: 220, h: 30 },
+    { label: 'BOTTOM (Loss)', x: 1050, y: 780, w: 200, h: 30 },
+    { label: 'CONVERGENCE', x: 1230, y: 460, w: 160, h: 30 },
+  ];
+  zones.forEach(z => {
+    s += `<text x="${z.x}" y="${z.y}" fill="#333" font-size="11" font-weight="600" letter-spacing="0.1em">${z.label}</text>`;
+  });
+
+  // Draw connections (behind components)
+  connections.forEach(conn => {
+    if (!isConnectionVisible(conn)) return;
+    const from = components[conn.from];
+    const to = components[conn.to];
+    if (!from || !to) return;
+
+    const x1 = from.x + from.w / 2;
+    const y1 = from.y + from.h / 2;
+    const x2 = to.x + to.w / 2;
+    const y2 = to.y + to.h / 2;
+
+    const color = getConnectionColor(conn.type);
+    const opacity = currentTick === 0 ? 0.6 : 0.2;
+    const markerId = `arrow${conn.type.charAt(0).toUpperCase() + conn.type.slice(1)}`;
+    const flowClass = conn.type === 'adjoint' ? 'flow-left' : 'flow-right';
+
+    // Smart path: prefer Manhattan routing
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    let path;
+    if (Math.abs(dx) > Math.abs(dy) * 2) {
+      // mostly horizontal
+      const mx = x1 + dx * 0.5;
+      path = `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`;
+    } else if (Math.abs(dy) > Math.abs(dx) * 2) {
+      // mostly vertical
+      const my = y1 + dy * 0.5;
+      path = `M${x1},${y1} C${x1},${my} ${x2},${my} ${x2},${y2}`;
+    } else {
+      path = `M${x1},${y1} Q${x1 + dx*0.3},${y1} ${x1 + dx*0.5},${y1 + dy*0.5} T${x2},${y2}`;
+    }
+
+    s += `<path d="${path}" fill="none" stroke="${color}" stroke-width="2"
+          opacity="${opacity}" marker-end="url(#${markerId})" class="${flowClass}" />`;
+
+    // Connection label at midpoint
+    const mx = (x1 + x2) / 2;
+    const my = (y1 + y2) / 2;
+    if (conn.label && opacity > 0.3) {
+      s += `<text x="${mx}" y="${my - 6}" fill="${color}" font-size="9" text-anchor="middle" opacity="0.7">${conn.label}</text>`;
+    }
+  });
+
+  // Draw components
+  Object.values(components).forEach(comp => {
+    const visible = isComponentVisible(comp);
+    const opacity = visible ? 1.0 : 0.15;
+
+    // Determine if active at current tick
+    let isActive = currentTick === 0;
+    if (currentTick > 0 && comp.ticks) {
+      Object.values(comp.ticks).forEach(tArr => {
+        if (tArr.includes(currentTick)) isActive = true;
+      });
+    }
+    const fillOpacity = isActive ? 0.25 : 0.08;
+    const strokeOpacity = isActive ? 0.9 : 0.3;
+
+    // Component box
+    s += `<g opacity="${opacity}" class="comp-group" data-id="${comp.id}"
+          onmouseenter="showTooltip(event,'${comp.id}')" onmouseleave="hideTooltip()">`;
+    s += `<rect x="${comp.x}" y="${comp.y}" width="${comp.w}" height="${comp.h}"
+          rx="4" fill="${comp.color}" fill-opacity="${fillOpacity}"
+          stroke="${comp.color}" stroke-width="${isActive ? 2 : 1}" stroke-opacity="${strokeOpacity}" />`;
+
+    // Active glow
+    if (isActive && currentTick > 0) {
+      s += `<rect x="${comp.x - 2}" y="${comp.y - 2}" width="${comp.w + 4}" height="${comp.h + 4}"
+            rx="6" fill="none" stroke="${comp.color}" stroke-width="1" stroke-opacity="0.3" />`;
+    }
+
+    // Label
+    s += `<text x="${comp.x + comp.w / 2}" y="${comp.y + comp.h / 2 - 4}"
+          fill="#eee" font-size="11" font-weight="600" text-anchor="middle">${comp.label}</text>`;
+    s += `<text x="${comp.x + comp.w / 2}" y="${comp.y + comp.h / 2 + 10}"
+          fill="#999" font-size="9" text-anchor="middle">${comp.sublabel}</text>`;
+
+    // Face badge
+    s += `<text x="${comp.x + comp.w - 4}" y="${comp.y + 10}"
+          fill="#444" font-size="7" text-anchor="end">${comp.face}</text>`;
+
+    s += `</g>`;
+  });
+
+  // Title for current view
+  const titles = {
+    power: 'MOTOR POWER DISTRIBUTION — NEMA 23 → all mechanisms',
+    forward: 'FORWARD PASS — Input → Hidden → Output (Ticks 1-8)',
+    adjoint: 'ADJOINT BACKPROPAGATION — Error → Gradients → Weight Update (Ticks 9-13)',
+    predict: 'PREDICT MODE — Forward pass → Winner-take-all → Answer (Ticks 1-10)',
+    converge: 'CONVERGENCE DETECTION — Error sliders → AND gate → Motor stop',
+    all: 'ALL PATHS — Complete mechanical power transfer map',
+  };
+  s += `<text x="700" y="1060" fill="#c9a84c" font-size="14" font-weight="300"
+        text-anchor="middle" letter-spacing="0.08em">${titles[currentView]}</text>`;
+  s += `<text x="700" y="1085" fill="#555" font-size="11" text-anchor="middle">
+        Click a tick number above to highlight active components at that moment. Click component for details.</text>`;
+
+  svg.innerHTML = s;
+}
+
+function showTooltip(e, id) {
+  const comp = components[id];
+  if (!comp) return;
+  tooltip.innerHTML = `<strong style="color:${comp.color}">${comp.label}</strong><br>${comp.detail}`;
+  tooltip.style.display = 'block';
+  tooltip.style.left = (e.clientX + 15) + 'px';
+  tooltip.style.top = (e.clientY - 10) + 'px';
+}
+
+function hideTooltip() {
+  tooltip.style.display = 'none';
+}
+
+document.addEventListener('mousemove', e => {
+  if (tooltip.style.display === 'block') {
+    tooltip.style.left = (e.clientX + 15) + 'px';
+    tooltip.style.top = (e.clientY - 10) + 'px';
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// INFO PANEL — detailed E2E power transfer chains
+// ═══════════════════════════════════════════════════════════════
+
+function renderInfoPanel() {
+  const panel = document.getElementById('infoPanel');
+  let html = '';
+
+  if (currentView === 'power' || currentView === 'all') {
+    html += `<h2>Motor Power Distribution</h2>
+    <div class="chain">
+      <span class="comp">NEMA 23 (1.26 Nm)</span>
+      <span class="arrow">→</span> <span class="comp">Main Drive Shaft</span>
+      <span class="mech">[direct coupling, continuous rotation]</span><br>
+      ├─<span class="arrow">→</span> <span class="comp">Barrel Cam</span> <span class="mech">[shaft mount, 13-tick sequence per revolution]</span><br>
+      │&nbsp;&nbsp; └─<span class="arrow">→</span> <span class="comp">Pin Drum</span> <span class="mech">[star-wheel ratchet, indexes at tick 13]</span><br>
+      ├─<span class="arrow">→</span> <span class="comp">Pendulum Escapement</span> <span class="mech">[gates each tick at 1.003s period]</span><br>
+      ├─<span class="arrow">→</span> <span class="comp">Input Clamp Bar</span> <span class="mech">[cam lobe 1: ENGAGED ticks 1-8, FREE ticks 9-13]</span><br>
+      ├─<span class="arrow">→</span> <span class="comp">Output Clamp Bar</span> <span class="mech">[cam lobe 2: FREE ticks 1-8, ENGAGED ticks 9-13]</span><br>
+      ├─<span class="arrow">→</span> <span class="comp">Staged Engagement Cams</span> <span class="mech">[7 groups of 6 weights, tick 12]</span><br>
+      └─<span class="arrow">→</span> <span class="comp">Shishi-odoshi Striker</span> <span class="mech">[cam lobe fires at tick 13, TOCK]</span>
+    </div>
+    <table>
+      <tr><th>Load</th><th>Torque (Nm)</th><th>When</th></tr>
+      <tr><td>6 worm gears simultaneous</td><td>~0.12</td><td>Tick 12 (staged)</td></tr>
+      <tr><td>Barrel cam friction</td><td>~0.05</td><td>Continuous</td></tr>
+      <tr><td>Pendulum escapement</td><td>~0.02</td><td>Continuous</td></tr>
+      <tr><td>Pin drum indexing</td><td>~0.05</td><td>Tick 13</td></tr>
+      <tr><td>Clamp bar actuation (×2)</td><td>~0.03</td><td>Tick 1, 9</td></tr>
+      <tr><td><strong>Peak total (conservative)</strong></td><td><strong>~0.27</strong></td><td>Tick 12 (all loads concurrent)</td></tr>
+      <tr><td><strong>Peak total (spec §4.6)</strong></td><td><strong>~0.24</strong></td><td>Tick 12 (excludes clamp bar overlap)</td></tr>
+      <tr><td><strong>Available (NEMA 23 at speed)</strong></td><td><strong>0.5-0.7</strong></td><td>—</td></tr>
+      <tr><td><strong>Margin (conservative)</strong></td><td><strong>2-3×</strong></td><td>—</td></tr>
+    </table>`;
+  }
+
+  if (currentView === 'forward' || currentView === 'all') {
+    html += `<h2>Forward Pass — Signal Chain (Ticks 1-8)</h2>
+    <div class="chain">
+      <strong>Tick 1:</strong> <span class="comp">Pin Drum</span> <span class="mech">[pins sense current example]</span>
+      <span class="arrow">→</span> <span class="comp">One-Hot Gates</span> <span class="mech">[9 string clamps, 3 active per neuron]</span><br>
+      <strong>Tick 2:</strong> <span class="comp">42 Worm Gears</span> <span class="mech">[weight displacement from stored position]</span>
+      <span class="arrow">→</span> <span class="comp">30 Strings (I→H)</span> <span class="mech">[pre-tensioned, depth plane 1]</span><br>
+      <strong>Tick 3-4:</strong> <span class="comp">30 Strings</span>
+      <span class="arrow">→</span> <span class="comp">3×3 Pantograph Diamonds</span> <span class="mech">[OA+OB=OC, 36 needle bearings, expanding]</span>
+      <span class="arrow">→</span> settles<br>
+      <strong>Tick 5:</strong> <span class="comp">Pantograph Sum</span>
+      <span class="arrow">→</span> <span class="comp">3 ReLU Cams</span> <span class="mech">[50mm SLA, flat=0, ramp=1×input]</span>
+      <span class="arrow">→</span> <span class="comp">3 Spring Toggles</span> <span class="mech">[SNAP if threshold crossed]</span><br>
+      <strong>Tick 6:</strong> <span class="comp">ReLU Output</span>
+      <span class="arrow">→</span> <span class="comp">12 Strings (H→O)</span> <span class="mech">[depth plane 2, 20-30mm offset]</span><br>
+      <strong>Tick 7-8:</strong> <span class="comp">12 Strings</span>
+      <span class="arrow">→</span> <span class="comp">3 Output Pantographs</span> <span class="mech">[12 needle bearings, 3w+1b each]</span>
+      <span class="arrow">→</span> <span class="comp">3 Output Rods</span> <span class="mech">[continuous displacement, always active]</span>
+    </div>
+    <table>
+      <tr><th>Signal</th><th>Medium</th><th>Loss</th></tr>
+      <tr><td>Input → One-hot gate</td><td>Prism shaft → cam follower</td><td>~0% (mechanical detent)</td></tr>
+      <tr><td>Weight → String</td><td>Worm gear shaft → string anchor</td><td>~0% (rigid coupling)</td></tr>
+      <tr><td>String → Pantograph</td><td>Pre-tensioned SS wire + pulley</td><td>~2-5% per pulley</td></tr>
+      <tr><td>Through 3 pantograph diamonds</td><td>PLA bars + HK0306 needle bearings</td><td>~4% (12 joints)</td></tr>
+      <tr><td>Pantograph → ReLU cam</td><td>Follower on cam profile</td><td>~1% (spring-loaded)</td></tr>
+      <tr><td>Through output pantograph</td><td>PLA bars + HK0306 needle bearings</td><td>~4% (12 joints)</td></tr>
+      <tr><td><strong>Total forward path</strong></td><td>—</td><td><strong>~10-15%</strong></td></tr>
+    </table>`;
+  }
+
+  if (currentView === 'adjoint' || currentView === 'all') {
+    html += `<h2>Adjoint Backpropagation — Signal Chain (Ticks 9-13)</h2>
+    <div class="chain">
+      <strong>Tick 9:</strong> Clamp bars switch. <span class="comp adjoint-comp">Output Clamp</span> <span class="mech">[ENGAGED — error drives backward]</span>.
+      <span class="comp adjoint-comp">Input Clamp</span> <span class="mech">[FREE — inputs respond to adjoint]</span>.<br>
+      <span class="comp adjoint-comp">42 Spiral Cam Ratchets</span> <span class="mech">[LOCK — storing forward displacements]</span><br>
+      <span class="comp adjoint-comp">3 Whippletree Beams</span>
+      <span class="arrow">→</span> <span class="comp adjoint-comp">3 Error Sliders (MGN7)</span> <span class="mech">[predicted - target = error]</span>
+      <span class="arrow">→</span> <span class="comp adjoint-comp">3 Leaf Springs</span> <span class="mech">[F = -k × error]</span><br><br>
+      <strong>Tick 10:</strong> <span class="comp adjoint-comp">Leaf Spring Force</span>
+      <span class="arrow">→</span> <span class="comp adjoint-comp">3 Output Pantographs</span> <span class="mech">[BACKWARD — push output, inputs move (Maxwell reciprocity)]</span><br>
+      <span class="arrow">→</span> <span class="comp adjoint-comp">3 ReLU Cams</span> <span class="mech">[flat = BLOCKS signal (d=0), ramp = PASSES signal (d=1). Chain rule by geometry.]</span><br>
+      <span class="arrow">→</span> <span class="comp adjoint-comp">3×3 Pantograph Diamonds</span> <span class="mech">[BACKWARD — 36 joints, ~10% attenuation (hidden layer only)]</span><br><br>
+      <strong>Tick 11:</strong> Adjoint signal reaches all 42 weight positions.<br>
+      <span class="comp adjoint-comp">42 Spiral Cams</span> <span class="mech">[adjoint string wraps at stored radius. Torque = forward × adjoint = EXACT GRADIENT]</span><br><br>
+      <strong>Tick 12:</strong> <span class="comp adjoint-comp">42 Spiral Cams</span>
+      <span class="arrow">→</span> <span class="comp adjoint-comp">42 Rack & Pinion</span> <span class="mech">[gradient rack → pinion (LR) → 4:1 → worm shaft]</span>
+      <span class="arrow">→</span> <span class="comp adjoint-comp">42 Worm Gears</span> <span class="mech">[weights UPDATE. 7 groups of 6, staged. 42 clicks.]</span><br>
+      <span class="comp adjoint-comp">Brachistochrone Ball</span> <span class="mech">[released — loss visualization]</span><br><br>
+      <strong>Tick 13:</strong> RESET. <span class="comp adjoint-comp">42 Ratchet Pawls</span> <span class="mech">[global reset bar lifts all]</span>.
+      Clamp bars return to forward. Pin drum indexes. <span class="comp adjoint-comp">Shishi-odoshi</span> <span class="mech">[TOCK]</span>.
+    </div>
+    <table>
+      <tr><th>Gradient Path</th><th>Mechanism</th><th>Error Contribution</th></tr>
+      <tr><td>Error → Adjoint force</td><td>Leaf spring (F = -k × error)</td><td>~2% (spring linearity)</td></tr>
+      <tr><td>Through output pantograph</td><td>12 HK0306 joints backward</td><td>~4%</td></tr>
+      <tr><td>Through ReLU cam</td><td>Geometry computes derivative</td><td>~1%</td></tr>
+      <tr><td>Through hidden pantographs</td><td>36 HK0306 joints backward</td><td>~10%</td></tr>
+      <tr><td>Spiral cam multiplication</td><td>torque = tension × radius</td><td>~4% (ratchet quantization)</td></tr>
+      <tr><td>Cone bias (r_min offset)</td><td>r_min=1.0mm adds systematic error</td><td>~8%</td></tr>
+      <tr><td>SLA surface roughness</td><td>50μm layer lines</td><td>~2%</td></tr>
+      <tr><td><strong>Total gradient error (RMS)</strong></td><td>—</td><td><strong>~15-20%</strong></td></tr>
+      <tr><td><strong>SGD noise tolerance</strong></td><td>—</td><td><strong>30%</strong></td></tr>
+    </table>`;
+  }
+
+  if (currentView === 'predict' || currentView === 'all') {
+    html += `<h2>Predict Mode — Signal Chain (Ticks 1-10)</h2>
+    <div class="chain">
+      <strong>Setup:</strong> Mode lever <span class="arrow">→</span> <span class="comp converge-comp">Dog Clutch</span> <span class="mech">[CLUNK. Whippletree retracts. Comparator engages.]</span><br><br>
+      <strong>Ticks 1-8:</strong> Same forward pass as training, but driven by <span class="comp converge-comp">Input Prisms</span> <span class="mech">[user rotates by hand]</span> instead of pin drum.<br>
+      Signal: Prisms → One-hot gates → Strings → Pantographs → ReLU → Output pantographs → <span class="comp converge-comp">3 Output Rods</span><br><br>
+      <strong>Tick 9:</strong> <span class="comp converge-comp">3 Output Rods</span>
+      <span class="arrow">→</span> <span class="comp converge-comp">Comparison Beam</span> <span class="mech">[120mm brass, rests on highest rod]</span>
+      <span class="arrow">→</span> <span class="comp converge-comp">Geneva Drive</span> <span class="mech">[3-slot, 120° index, chunk-chunk-chunk]</span><br><br>
+      <strong>Tick 10:</strong> <span class="comp converge-comp">Geneva Drive</span>
+      <span class="arrow">→</span> <span class="comp converge-comp">Answer Prism</span> <span class="mech">[rotates to show winning word]</span>
+    </div>`;
+  }
+
+  if (currentView === 'converge' || currentView === 'all') {
+    html += `<h2>Convergence Detection Chain</h2>
+    <div class="chain">
+      <span class="comp converge-comp">3 Error Sliders</span> <span class="mech">[continuously track error magnitude on MGN7 rails]</span><br>
+      <span class="arrow">→</span> <span class="comp converge-comp">3 V-Notch Pins</span> <span class="mech">[spring-loaded, 1.5mm dia. 60° V-notch = 2mm wide = 2.5% threshold. Pin drops when slider within notch.]</span><br>
+      <span class="arrow">→</span> <span class="comp converge-comp">Trigger Bar</span> <span class="mech">[common bar via short levers. Held UP by ANY undropped pin. When ALL 3 drop: bar FALLS. Mechanical AND gate.]</span><br>
+      <span class="arrow">→</span> <span class="comp converge-comp">Rotary Damper</span> <span class="mech">[3-second delay. No fluid. Must sustain "all dropped" for 3s before trip.]</span><br>
+      <span class="arrow">→</span> <span class="comp converge-comp">Motor Clutch</span> <span class="mech">[DISENGAGE. Motor spins free. Barrel cam stops. Pendulum decays. Silence.]</span><br>
+      <span class="arrow">→</span> <span class="comp converge-comp">Auto-PREDICT Switch</span> <span class="mech">[same clutch shifts dog clutch to PREDICT position. Machine invites interaction.]</span>
+    </div>
+    <table>
+      <tr><th>Parameter</th><th>Value</th><th>Notes</th></tr>
+      <tr><td>V-notch width</td><td>2mm</td><td>2.5% of 80mm rail = convergence threshold</td></tr>
+      <tr><td>V-notch angle</td><td>60°</td><td>Good centering force</td></tr>
+      <tr><td>Pin diameter</td><td>~1.5mm</td><td>Spring-loaded, rides above slider</td></tr>
+      <tr><td>Damper delay</td><td>3 seconds</td><td>Prevents false positives from transient oscillations</td></tr>
+      <tr><td>Threshold adjustable?</td><td>Yes</td><td>Replaceable V-notch inserts (wider = easier convergence)</td></tr>
+    </table>`;
+  }
+
+  // Always show the complete E2E summary
+  html += `<h2>Complete E2E Power Transfer Summary</h2>
+  <table>
+    <tr><th>Chain</th><th>Path (component → component)</th><th>Energy Form</th><th>Ticks Active</th></tr>
+    <tr><td>Motor → Timing</td><td>NEMA 23 → shaft → barrel cam → pendulum</td><td>Rotational → sequential</td><td>1-13 (continuous)</td></tr>
+    <tr><td>Motor → Clamps</td><td>shaft → 2 cam lobes → clamp bar jaws</td><td>Rotational → linear squeeze</td><td>1 (switch), 9 (switch)</td></tr>
+    <tr><td>Input encoding</td><td>Pin drum → pin readers → one-hot gates</td><td>Mechanical contact → string clamp</td><td>1</td></tr>
+    <tr><td>Forward: weights</td><td>Worm gears → strings → pantographs</td><td>Angular position → linear displacement → summation</td><td>2-4</td></tr>
+    <tr><td>Forward: activation</td><td>Pantograph sum → ReLU cam → spring toggle</td><td>Linear → cam profile → bistable snap</td><td>5</td></tr>
+    <tr><td>Forward: output</td><td>ReLU → strings → output pantographs → rods</td><td>Linear → string → summation → linear</td><td>6-8</td></tr>
+    <tr><td>Error computation</td><td>Output rods → whippletree → sliders → springs</td><td>Linear → balance → differential → elastic</td><td>9</td></tr>
+    <tr><td>Adjoint backward</td><td>Leaf springs → pantographs (backward) → ReLU → pantographs</td><td>Force → reciprocal displacement → chain rule</td><td>10</td></tr>
+    <tr><td>Gradient multiply</td><td>Adjoint at weights → spiral cams (stored × adjoint)</td><td>Torque = radius × tension</td><td>11</td></tr>
+    <tr><td>Weight update</td><td>Spiral cam → rack & pinion → 4:1 → worm gear</td><td>Torque → linear → rotational → self-lock</td><td>12</td></tr>
+    <tr><td>Reset</td><td>Reset bar → ratchets → clamps → pin drum → striker</td><td>Mechanical release → spring return</td><td>13</td></tr>
+    <tr><td>Convergence</td><td>Sliders → V-notch pins → trigger bar → damper → clutch</td><td>Position → detent → AND logic → time delay → disengage</td><td>Continuous monitoring</td></tr>
+    <tr><td>Predict</td><td>Output rods → comparison beam → Geneva → answer prism</td><td>Linear → tilt → 120° index → rotation</td><td>9-10 (PREDICT only)</td></tr>
+  </table>`;
+
+  panel.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+
+renderTickBar();
+render();
+renderInfoPanel();
+</script>
+</body>
+</html>

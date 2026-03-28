@@ -1,0 +1,135 @@
+# examples/complex_motion.kfs.yaml
+# This manifest demonstrates more complex features including keyframe animations,
+# multiple objects, and an external mesh asset.
+
+kfs_version: "1.0.0"
+name: "Pulsating Cube with Orbiting Gear"
+description: "A dynamic sculpture featuring a pulsating cube and an orbiting, rotating gear imported from an OBJ file."
+
+# Define reusable geometries
+geometries:
+  pulsating_cube_geo:
+    id: pulsating_cube_geo
+    type: cube
+    size: 2.0
+  
+  # Reference an external 3D mesh file
+  imported_gear_mesh:
+    id: imported_gear_mesh
+    type: mesh
+    # The 'path' here is a URI. For local files, it's relative to the manifest.
+    # In a baked project, this asset would be bundled.
+    path: "assets/models/fancy_gear.obj"
+
+# Define reusable materials
+materials:
+  vibrant_green_material:
+    id: vibrant_green_material
+    color: {r: 0, g: 200, b: 50}
+    roughness: 0.4
+    metallic: 0.2
+  
+  polished_metal_material:
+    id: polished_metal_material
+    color: {r: 150, g: 150, b: 160}
+    roughness: 0.2
+    metallic: 0.8
+
+# Define the kinetic sculpture objects in the scene
+objects:
+  - id: main_pulsating_cube
+    geometry_id: pulsating_cube_geo
+    material_id: vibrant_green_material
+    transform:
+      position: [0, 0, 0]
+      rotation: [0, 0, 0]
+      scale: [1, 1, 1]
+    animation:
+      tracks:
+        # Scale animation to create a pulsating effect (all axes sync)
+        - property: "scale_x"
+          keyframes:
+            - time: 0.0
+              value: 1.0
+              interpolation: "spline"
+            - time: 1.5
+              value: 1.5
+              interpolation: "spline"
+            - time: 3.0
+              value: 1.0
+          loop: true
+        - property: "scale_y"
+          keyframes:
+            - time: 0.0
+              value: 1.0
+              interpolation: "spline"
+            - time: 1.5
+              value: 1.5
+              interpolation: "spline"
+            - time: 3.0
+              value: 1.0
+          loop: true
+        - property: "scale_z"
+          keyframes:
+            - time: 0.0
+              value: 1.0
+              interpolation: "spline"
+            - time: 1.5
+              value: 1.5
+              interpolation: "spline"
+            - time: 3.0
+              value: 1.0
+          loop: true
+
+  - id: orbiting_rotating_gear
+    geometry_id: imported_gear_mesh
+    material_id: polished_metal_material
+    transform:
+      position: [4, 0, 0] # Start 4 units away on X axis
+      rotation: [0, 0, 0]
+      scale: [0.5, 0.5, 0.5]
+    animation:
+      tracks:
+        # Rotation around its own Y-axis
+        - property: "rotation_y"
+          keyframes:
+            - time: 0.0
+              value: 0
+            - time: 4.0
+              value: 360
+          loop: true
+        
+        # Orbiting around the origin (simplified circular path on XZ plane)
+        # A more precise orbit would involve sine/cosine functions for position_x and position_z.
+        - property: "position_x"
+          keyframes:
+            - time: 0.0
+              value: 4.0
+            - time: 2.0
+              value: 0.0
+            - time: 4.0
+              value: -4.0
+            - time: 6.0
+              value: 0.0
+            - time: 8.0
+              value: 4.0
+          loop: true
+        - property: "position_z"
+          keyframes:
+            - time: 0.0
+              value: 0.0
+            - time: 2.0
+              value: 4.0
+            - time: 4.0
+              value: 0.0
+            - time: 6.0
+              value: -4.0
+            - time: 8.0
+              value: 0.0
+          loop: true
+
+# Placeholder for simulation-specific settings
+simulation_settings:
+  gravity: [0, -9.81, 0]
+  time_scale: 1.0
+  quality_preset: "high"

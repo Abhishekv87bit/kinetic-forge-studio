@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from app.db.library import LibraryManager
 from app.routes.projects import get_pm
+from app.middleware.cache import search_cache
 
 router = APIRouter(prefix="/api/library", tags=["library"])
 
@@ -63,6 +64,7 @@ async def add_library_entry(req: AddLibraryEntryRequest):
         thumbnail_path=req.thumbnail_path,
         project_id=req.project_id,
     )
+    search_cache.clear()
     return entry
 
 

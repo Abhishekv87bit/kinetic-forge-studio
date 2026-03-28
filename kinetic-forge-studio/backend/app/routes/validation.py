@@ -22,6 +22,7 @@ from app.routes.projects import get_pm
 from app.models.component import ComponentManager
 from app.utils.geometry import component_to_geometry
 from app.consultants.rule99_engine import get_engine as get_rule99_engine, ProjectState
+from app.middleware.cache import clear_project_cache
 
 router = APIRouter(prefix="/api/projects/{project_id}", tags=["validation"])
 
@@ -167,6 +168,7 @@ async def advance_gate(project_id: str, req: AdvanceGateRequest):
 
     if gate_result.passed:
         await pm.update_gate(project_id, target)
+        clear_project_cache(project_id)
         return {
             "advanced": True,
             "previous_gate": current_gate,

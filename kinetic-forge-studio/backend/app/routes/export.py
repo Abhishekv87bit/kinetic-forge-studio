@@ -17,10 +17,11 @@ from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from app.config import settings
+from app.middleware.rate_limiter import limiter
 from app.engines.geometry_engine import GeometryEngine
 from app.models.component import ComponentManager
 from app.models.decision import DecisionManager
@@ -35,7 +36,8 @@ _enforcer = GateEnforcer()
 
 
 @router.get("/export")
-async def export_project(project_id: str):
+@limiter.limit("5/minute")
+async def export_project(request: Request, project_id: str):
     """
     Export project as a ZIP package.
 

@@ -97,7 +97,14 @@
       "mcp__freecad__execute_code",
       "mcp__freecad__get_view",
       "mcp__mcp-registry__search_mcp_registry",
-      "Bash(git reset HEAD kinetic-forge-studio/frontend/.vite/)"
+      "Bash(git reset HEAD kinetic-forge-studio/frontend/.vite/)",
+      "WebSearch",
+      "WebFetch(domain:www.nxcode.io)",
+      "WebFetch(domain:medium.com)",
+      "WebFetch(domain:resources.anthropic.com)",
+      "WebFetch(domain:towardsdatascience.com)",
+      "WebFetch(domain:plaid.com)",
+      "mcp__playwright__browser_navigate"
     ]
   }
 }

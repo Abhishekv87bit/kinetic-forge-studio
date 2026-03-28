@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weight Storage — Bit Registers vs Cam Stack</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #08080e; color: #e0e0e0; font-family: 'Segoe UI', system-ui, sans-serif; overflow-x: hidden; }
+  .container { display: flex; width: 100vw; height: 100vh; }
+  .panel { width: 50%; position: relative; border-right: 1px solid #1a1a2a; }
+  .panel:last-child { border-right: none; }
+  .panel-header { position: absolute; top: 0; left: 0; right: 0; z-index: 10; padding: 16px 20px; background: linear-gradient(to bottom, rgba(8,8,14,0.95), rgba(8,8,14,0)); }
+  .panel-header h2 { font-size: 1.1em; margin-bottom: 4px; }
+  .panel-header .tag { font-size: 0.8em; color: #888; }
+  .panel-header .badge { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 0.75em; font-weight: 600; margin-right: 6px; }
+  .panel-footer { position: absolute; bottom: 0; left: 0; right: 0; z-index: 10; padding: 14px 20px; background: linear-gradient(to top, rgba(8,8,14,0.95), rgba(8,8,14,0)); }
+  .stat { display: inline-block; margin-right: 16px; }
+  .stat-label { font-size: 0.68em; color: #556; text-transform: uppercase; }
+  .stat-value { font-size: 0.9em; color: #fff; font-weight: 600; }
+  .controls { position: absolute; bottom: 60px; left: 20px; z-index: 10; }
+  .controls button { background: #1a1a2e; border: 1px solid #2a2a4a; color: #aaa; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 0.8em; margin-right: 6px; }
+  .controls button:hover { background: #2a2a4e; color: #fff; }
+  .controls button.active { background: #3a2a1a; border-color: #ff8844; color: #ff8844; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<div class="container">
+  <!-- LEFT: Bit Register ALU -->
+  <div class="panel" id="panel-left">
+    <div class="panel-header">
+      <h2 style="color:#8866ff">Option A — Binary Bit Registers</h2>
+      <div class="tag">512 bistable levers storing 128 weights × 4-bit each</div>
+    </div>
+    <div id="sketch-registers"></div>
+    <div class="controls" id="ctrl-left">
+      <button onclick="toggleAnimA()" id="btn-a" class="active">▶ Animate</button>
+      <button onclick="triggerUpdateA()">⚡ Weight Update</button>
+    </div>
+    <div class="panel-footer">
+      <span class="stat"><span class="stat-label">Parts</span><br><span class="stat-value">512 levers + 512 springs</span></span>
+      <span class="stat"><span class="stat-label">Sound</span><br><span class="stat-value">Click-click-click</span></span>
+      <span class="stat"><span class="stat-label">Drama</span><br><span class="stat-value" style="color:#ddaa44">★★★★</span></span>
+    </span>
+    </div>
+  </div>
+
+  <!-- RIGHT: Cam Stack -->
+  <div class="panel" id="panel-right">
+    <div class="panel-header">
+      <h2 style="color:#ff8844">Option B — Jaquet-Droz Cam Stack</h2>
+      <div class="tag">32 shaped cams on vertical shaft, 3 cam followers reading edges</div>
+    </div>
+    <div id="sketch-cams"></div>
+    <div class="controls" id="ctrl-right">
+      <button onclick="toggleAnimB()" id="btn-b" class="active">▶ Animate</button>
+      <button onclick="swapCassetteB()">🔄 Swap Cassette</button>
+    </div>
+    <div class="panel-footer">
+      <span class="stat"><span class="stat-label">Parts</span><br><span class="stat-value">32 cams + 3 followers</span></span>
+      <span class="stat"><span class="stat-label">Sound</span><br><span class="stat-value">Smooth purr + tap</span></span>
+      <span class="stat"><span class="stat-label">Drama</span><br><span class="stat-value" style="color:#ff8844">★★★★★</span></span>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===================== OPTION A: BIT REGISTERS =====================
+let animA = true;
+let registerBits = [];
+let updateFlash = [];
+let readPointer = 0;
+let carryWave = -1;
+
+function toggleAnimA() {
+  animA = !animA;
+  document.getElementById('btn-a').classList.toggle('active');
+}
+
+function triggerUpdateA() {
+  // Flash a random row of bits to simulate weight update
+  let row = Math.floor(Math.random() * 16);
+  for (let col = 0; col < 4; col++) {
+    updateFlash[row * 4 + col] = 30;
+    // Flip some bits
+    if (Math.random() > 0.4) {
+      registerBits[row * 4 + col] = registerBits[row * 4 + col] === 1 ? 0 : 1;
+    }
+  }
+  carryWave = 0;
+}
+
+let sketchA = function(p) {
+  let w, h;
+
+  p.setup = function() {
+    let parent = document.getElementById('sketch-registers');
+    w = parent.offsetWidth;
+    h = parent.offsetHeight || window.innerHeight;
+    let canvas = p.createCanvas(w, h);
+    canvas.parent('sketch-registers');
+
+    // Initialize 128 weights × 4 bits = 512 bits (show 16×4 grid of 4-bit words)
+    for (let i = 0; i < 128; i++) {
+      registerBits[i] = Math.random() > 0.5 ? 1 : 0;
+      updateFlash[i] = 0;
+    }
+  };
+
+  p.draw = function() {
+    p.background(8, 8, 14);
+
+    let marginTop = 70;
+    let marginBot = 90;
+    let marginX = 30;
+    let gridW = w - marginX * 2;
+    let gridH = h - marginTop - marginBot;
+
+    // 32 rows × 4 columns of 4-bit registers (showing 32 weights)
+    let rows = 32;
+    let cols = 4;
+    let cellW = gridW / cols;
+    let cellH = gridH / rows;
+    let leverW = cellW * 0.6;
+    let leverH = cellH * 0.65;
+
+    // Title for the grid
+    p.fill(80);
+    p.noStroke();
+    p.textAlign(p.CENTER);
+    p.textSize(9);
+    p.text("BIT 3", marginX + cellW * 0.5, marginTop - 8);
+    p.text("BIT 2", marginX + cellW * 1.5, marginTop - 8);
+    p.text("BIT 1", marginX + cellW * 2.5, marginTop - 8);
+    p.text("BIT 0", marginX + cellW * 3.5, marginTop - 8);
+
+    // Weight labels
+    p.textAlign(p.RIGHT);
+    for (let r = 0; r < rows; r += 4) {
+      p.fill(60);
+      p.text("W" + r, marginX - 6, marginTop + r * cellH + cellH * 0.6);
+    }
+
+    // Draw each bit as a lever
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        let idx = r * cols + c;
+        if (idx >= 128) continue;
+        let x = marginX + c * cellW + cellW * 0.5;
+        let y = marginTop + r * cellH + cellH * 0.5;
+        let bit = registerBits[idx];
+
+        // Flash effect
+        if (updateFlash[idx] > 0) {
+          updateFlash[idx]--;
+          let flash = updateFlash[idx] / 30;
+          p.fill(255, 136, 68, flash * 150);
+          p.noStroke();
+          p.rect(x - cellW * 0.45, y - cellH * 0.45, cellW * 0.9, cellH * 0.9, 3);
+        }
+
+        // Read pointer highlight
+        let isReading = animA && Math.floor(readPointer) === r;
+        if (isReading) {
+          p.fill(85, 136, 255, 40);
+          p.noStroke();
+          p.rect(marginX, y - cellH * 0.45, gridW, cellH * 0.9, 2);
+        }
+
+        // Lever pivot
+        p.fill(40);
+        p.noStroke();
+        p.ellipse(x, y, 6, 6);
+
+        // Lever arm
+        let angle = bit === 1 ? -0.5 : 0.5;
+        // Animate during update
+        if (updateFlash[idx] > 15) {
+          angle = p.sin(p.frameCount * 0.8) * 0.6;
+        }
+
+        p.push();
+        p.translate(x, y);
+        p.rotate(angle);
+        // Lever body
+        let leverColor = bit === 1 ? p.color(136, 102, 255) : p.color(60, 60, 80);
+        if (isReading) leverColor = bit === 1 ? p.color(170, 140, 255) : p.color(80, 80, 110);
+        p.stroke(leverColor);
+        p.strokeWeight(2.5);
+        p.line(-leverW * 0.4, 0, leverW * 0.4, 0);
+        // Lever tip (shows state)
+        p.fill(leverColor);
+        p.noStroke();
+        p.ellipse(leverW * 0.4 * (bit === 1 ? 1 : -1), 0, 5, 5);
+        p.pop();
+      }
+    }
+
+    // Carry wave visualization
+    if (carryWave >= 0 && carryWave < cols * 8) {
+      let cCol = Math.floor(carryWave);
+      if (cCol < cols) {
+        let cx = marginX + cCol * cellW + cellW * 0.5;
+        p.stroke(255, 200, 68, 200);
+        p.strokeWeight(2);
+        p.line(cx, marginTop, cx, marginTop + gridH);
+      }
+      carryWave += 0.15;
+      if (carryWave >= cols * 2) carryWave = -1;
+    }
+
+    // Read pointer animation
+    if (animA) {
+      readPointer += 0.03;
+      if (readPointer >= rows) readPointer = 0;
+
+      // Simulate occasional bit flips
+      if (p.frameCount % 45 === 0) {
+        let flipIdx = Math.floor(Math.random() * 128);
+        registerBits[flipIdx] = registerBits[flipIdx] === 1 ? 0 : 1;
+        updateFlash[flipIdx] = 20;
+      }
+    }
+
+    // Multiplexer / router indicator
+    p.fill(40, 40, 60);
+    p.stroke(85, 136, 255, 100);
+    p.strokeWeight(1);
+    p.rect(w - 55, marginTop, 30, gridH, 4);
+    p.fill(85, 136, 255);
+    p.noStroke();
+    p.textAlign(p.CENTER);
+    p.textSize(8);
+    p.push();
+    p.translate(w - 40, marginTop + gridH / 2);
+    p.rotate(-p.HALF_PI);
+    p.text("MUX → ADDER", 0, 0);
+    p.pop();
+
+    // Arrow from read row to MUX
+    if (animA) {
+      let readY = marginTop + Math.floor(readPointer) * cellH + cellH * 0.5;
+      p.stroke(85, 136, 255, 120);
+      p.strokeWeight(1);
+      p.line(marginX + gridW, readY, w - 55, readY);
+      p.fill(85, 136, 255);
+      p.noStroke();
+      p.triangle(w - 55, readY, w - 62, readY - 4, w - 62, readY + 4);
+    }
+  };
+};
+
+// ===================== OPTION B: CAM STACK =====================
+let animB = true;
+let camRotation = 0;
+let camProfiles = [];
+let cassetteIdx = 0;
+let followerPositions = [0, 0, 0];
+let swapAnim = 0;
+
+function toggleAnimB() {
+  animB = !animB;
+  document.getElementById('btn-b').classList.toggle('active');
+}
+
+function swapCassetteB() {
+  swapAnim = 60;
+  cassetteIdx = (cassetteIdx + 1) % 3;
+  generateCamProfiles();
+}
+
+function generateCamProfiles() {
+  camProfiles = [];
+  // Generate 8 visible cam profiles (representing the stack)
+  for (let i = 0; i < 8; i++) {
+    let profile = [];
+    let baseR = 40 + Math.random() * 10;
+    // Generate bumpy profile with harmonics
+    let harmonics = [];
+    for (let h = 0; h < 4 + cassetteIdx * 2; h++) {
+      harmonics.push({
+        freq: 1 + Math.floor(Math.random() * 6),
+        amp: 3 + Math.random() * 12,
+        phase: Math.random() * Math.PI * 2
+      });
+    }
+    for (let a = 0; a < 360; a++) {
+      let r = baseR;
+      let rad = a * Math.PI / 180;
+      for (let h of harmonics) {
+        r += h.amp * Math.sin(rad * h.freq + h.phase);
+      }
+      profile.push(Math.max(20, Math.min(65, r)));
+    }
+    camProfiles.push(profile);
+  }
+}
+
+let sketchB = function(p) {
+  let w, h;
+
+  p.setup = function() {
+    let parent = document.getElementById('sketch-cams');
+    w = parent.offsetWidth;
+    h = parent.offsetHeight || window.innerHeight;
+    let canvas = p.createCanvas(w, h);
+    canvas.parent('sketch-cams');
+    generateCamProfiles();
+  };
+
+  p.draw = function() {
+    p.background(8, 8, 14);
+
+    let centerX = w * 0.42;
+    let centerY = h * 0.48;
+
+    if (animB) {
+      camRotation += 0.005;
+    }
+
+    // Swap cassette animation
+    let swapOffset = 0;
+    if (swapAnim > 0) {
+      swapAnim--;
+      if (swapAnim > 40) {
+        swapOffset = (60 - swapAnim) * 8; // slide out
+      } else if (swapAnim > 20) {
+        swapOffset = 160; // fully out
+      } else {
+        swapOffset = swapAnim * 8; // slide in
+      }
+    }
+
+    // ===== VERTICAL CAM STACK (3D-ish perspective) =====
+    let stackSpacing = 38;
+    let numCams = 8;
+    let stackTop = centerY - numCams * stackSpacing * 0.4;
+
+    // Central shaft
+    p.stroke(80, 80, 100);
+    p.strokeWeight(4);
+    p.line(centerX, stackTop - 30, centerX, stackTop + numCams * stackSpacing + 30);
+
+    // Shaft label
+    p.fill(60);
+    p.noStroke();
+    p.textAlign(p.CENTER);
+    p.textSize(9);
+    p.text("▼ MOTOR", centerX, stackTop - 38);
+
+    // Draw each cam (from back to front for depth)
+    for (let i = numCams - 1; i >= 0; i--) {
+      let cy = stackTop + i * stackSpacing + swapOffset * (i > 3 ? 0.01 : 0);
+      let depth = 1 - i * 0.06; // slight depth scaling
+      let profile = camProfiles[i];
+      if (!profile) continue;
+
+      // Cam label
+      p.fill(80, 60, 40);
+      p.noStroke();
+      p.textAlign(p.RIGHT);
+      p.textSize(8);
+      p.text("W" + (i * 4) + "-" + (i * 4 + 3), centerX - 75 * depth, cy + 4);
+
+      // Cam disc (oblique view — ellipse with profile modulation)
+      p.push();
+      p.translate(centerX, cy);
+
+      // Shadow
+      p.fill(15, 15, 25);
+      p.noStroke();
+      p.ellipse(3, 3, 130 * depth, 40 * depth);
+
+      // Cam body outline with profile
+      p.beginShape();
+      p.noFill();
+      let camColor;
+      if (i < 3) camColor = p.color(255, 136, 68, 200); // Q weights
+      else if (i < 5) camColor = p.color(68, 221, 170, 200); // K weights
+      else camColor = p.color(136, 102, 255, 200); // V weights
+      p.stroke(camColor);
+      p.strokeWeight(1.5 * depth);
+
+      for (let a = 0; a < 360; a += 2) {
+        let rad = (a + camRotation * 180 / Math.PI) * Math.PI / 180;
+        let r = profile[a % 360] * depth * 0.95;
+        // Oblique projection: squash Y
+        let px = Math.cos(rad) * r;
+        let py = Math.sin(rad) * r * 0.3;
+        p.vertex(px, py);
+      }
+      p.endShape(p.CLOSE);
+
+      // Filled disc (semi-transparent)
+      p.beginShape();
+      p.fill(p.red(camColor), p.green(camColor), p.blue(camColor), 25);
+      p.noStroke();
+      for (let a = 0; a < 360; a += 4) {
+        let rad = (a + camRotation * 180 / Math.PI) * Math.PI / 180;
+        let r = profile[a % 360] * depth * 0.95;
+        let px = Math.cos(rad) * r;
+        let py = Math.sin(rad) * r * 0.3;
+        p.vertex(px, py);
+      }
+      p.endShape(p.CLOSE);
+
+      // Center bore
+      p.fill(30, 30, 45);
+      p.stroke(60);
+      p.strokeWeight(1);
+      p.ellipse(0, 0, 10 * depth, 4 * depth);
+
+      p.pop();
+    }
+
+    // ===== CAM FOLLOWERS (3 of them) =====
+    let followerX = centerX + 80;
+    let followerNames = ["Q follower", "K follower", "V follower"];
+    let followerColors = [
+      [255, 136, 68],
+      [68, 221, 170],
+      [136, 102, 255]
+    ];
+
+    for (let f = 0; f < 3; f++) {
+      let fy = stackTop + f * stackSpacing * 2.5 + stackSpacing;
+      let profile = camProfiles[f * 3];
+      if (!profile) continue;
+
+      // Read current displacement from cam
+      let readAngle = Math.floor((camRotation * 180 / Math.PI) % 360);
+      if (readAngle < 0) readAngle += 360;
+      let displacement = profile[readAngle] * 0.6;
+      followerPositions[f] = displacement;
+
+      // Follower arm
+      let tipX = followerX + displacement;
+      p.stroke(followerColors[f][0], followerColors[f][1], followerColors[f][2], 180);
+      p.strokeWeight(3);
+      p.line(followerX + 90, fy, tipX, fy);
+
+      // Follower tip (touching cam edge)
+      p.fill(followerColors[f][0], followerColors[f][1], followerColors[f][2]);
+      p.noStroke();
+      p.ellipse(tipX, fy, 8, 8);
+
+      // Return spring (zigzag)
+      p.stroke(80);
+      p.strokeWeight(1);
+      let springStart = tipX + 4;
+      let springEnd = followerX + 95;
+      let springSegs = 8;
+      let segLen = (springEnd - springStart) / springSegs;
+      for (let s = 0; s < springSegs; s++) {
+        let sx1 = springStart + s * segLen;
+        let sx2 = springStart + (s + 1) * segLen;
+        let sy1 = fy + (s % 2 === 0 ? -4 : 4);
+        let sy2 = fy + (s % 2 === 0 ? 4 : -4);
+        p.line(sx1, sy1, sx2, sy2);
+      }
+
+      // Label
+      p.fill(followerColors[f][0], followerColors[f][1], followerColors[f][2], 150);
+      p.noStroke();
+      p.textAlign(p.LEFT);
+      p.textSize(9);
+      p.text(followerNames[f], followerX + 95, fy - 10);
+
+      // Displacement readout
+      p.fill(200);
+      p.textSize(10);
+      let weightVal = p.map(displacement, 15, 40, -1.0, 1.0);
+      p.text(weightVal.toFixed(2), followerX + 95, fy + 5);
+
+      // Connection line to arm output
+      p.stroke(followerColors[f][0], followerColors[f][1], followerColors[f][2], 50);
+      p.strokeWeight(1);
+      let outX = w - 30;
+      p.line(followerX + 95, fy, outX, fy);
+      p.fill(followerColors[f][0], followerColors[f][1], followerColors[f][2], 80);
+      p.noStroke();
+      p.triangle(outX, fy, outX - 6, fy - 3, outX - 6, fy + 3);
+
+      // Output label
+      p.textAlign(p.RIGHT);
+      p.textSize(8);
+      p.fill(80);
+      p.text("→ to arm", outX - 10, fy - 8);
+    }
+
+    // ===== DISPLACEMENT GRAPH (bottom) =====
+    let graphY = h - 160;
+    let graphH = 70;
+    let graphW = w - 60;
+    let graphX = 30;
+
+    p.fill(12, 12, 20);
+    p.stroke(25, 25, 40);
+    p.strokeWeight(1);
+    p.rect(graphX, graphY, graphW, graphH, 4);
+
+    p.fill(60);
+    p.noStroke();
+    p.textAlign(p.LEFT);
+    p.textSize(8);
+    p.text("FOLLOWER DISPLACEMENT OVER TIME", graphX + 8, graphY - 5);
+
+    // Draw traces
+    for (let f = 0; f < 3; f++) {
+      let profile = camProfiles[f * 3];
+      if (!profile) continue;
+      p.noFill();
+      p.stroke(followerColors[f][0], followerColors[f][1], followerColors[f][2], 120);
+      p.strokeWeight(1.5);
+      p.beginShape();
+      for (let x = 0; x < graphW; x++) {
+        let a = Math.floor(((x / graphW) * 360 + camRotation * 180 / Math.PI) % 360);
+        if (a < 0) a += 360;
+        let val = profile[a];
+        let py = graphY + graphH - p.map(val, 15, 65, 5, graphH - 5);
+        p.vertex(graphX + x, py);
+      }
+      p.endShape();
+    }
+
+    // Current position marker
+    p.stroke(255, 255, 255, 100);
+    p.strokeWeight(1);
+    p.line(graphX + graphW * 0.5, graphY, graphX + graphW * 0.5, graphY + graphH);
+    p.fill(200);
+    p.noStroke();
+    p.textSize(7);
+    p.textAlign(p.CENTER);
+    p.text("READ HEAD", graphX + graphW * 0.5, graphY + graphH + 12);
+
+    // Cassette indicator
+    let cassetteNames = ["Dataset A: Logic", "Dataset B: Patterns", "Dataset C: Sequence"];
+    p.fill(swapAnim > 0 ? 255 : 180, swapAnim > 0 ? 136 : 136, swapAnim > 0 ? 68 : 68);
+    p.textAlign(p.CENTER);
+    p.textSize(11);
+    p.text("CASSETTE: " + cassetteNames[cassetteIdx], centerX, h - 75);
+
+    // Legend
+    p.textAlign(p.LEFT);
+    p.textSize(8);
+    let legX = graphX + 10;
+    let legY = graphY + 14;
+    for (let f = 0; f < 3; f++) {
+      p.fill(followerColors[f][0], followerColors[f][1], followerColors[f][2]);
+      p.rect(legX, legY + f * 14, 12, 3, 1);
+      p.fill(120);
+      p.text(followerNames[f], legX + 18, legY + f * 14 + 5);
+    }
+  };
+};
+
+// Launch both sketches
+new p5(sketchA);
+new p5(sketchB);
+</script>
+</body>
+</html>

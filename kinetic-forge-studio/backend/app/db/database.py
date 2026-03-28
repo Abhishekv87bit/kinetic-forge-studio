@@ -86,6 +86,58 @@ class Database:
             );
             CREATE INDEX IF NOT EXISTS idx_snapshots_project
                 ON snapshots(project_id, created_at);
+            CREATE TABLE IF NOT EXISTS modules (
+                id TEXT PRIMARY KEY,
+                project_id TEXT NOT NULL,
+                name TEXT NOT NULL,
+                source_code TEXT NOT NULL,
+                language TEXT DEFAULT 'python',
+                version INTEGER DEFAULT 1,
+                status TEXT DEFAULT 'active',
+                parameters TEXT DEFAULT '{}',
+                created_at TEXT,
+                updated_at TEXT,
+                FOREIGN KEY (project_id) REFERENCES projects(id)
+            );
+            CREATE TABLE IF NOT EXISTS module_versions (
+                id TEXT PRIMARY KEY,
+                module_id TEXT NOT NULL,
+                version INTEGER NOT NULL,
+                source_code TEXT NOT NULL,
+                change_summary TEXT,
+                created_at TEXT,
+                FOREIGN KEY (module_id) REFERENCES modules(id)
+            );
+            CREATE TABLE IF NOT EXISTS vlad_results (
+                id TEXT PRIMARY KEY,
+                module_id TEXT NOT NULL,
+                version INTEGER,
+                tier TEXT,
+                passed INTEGER,
+                checks_run TEXT DEFAULT '[]',
+                checks_passed TEXT DEFAULT '[]',
+                checks_failed TEXT DEFAULT '[]',
+                findings TEXT DEFAULT '[]',
+                created_at TEXT,
+                FOREIGN KEY (module_id) REFERENCES modules(id)
+            );
+            CREATE TABLE IF NOT EXISTS session_log (
+                id TEXT PRIMARY KEY,
+                project_id TEXT NOT NULL,
+                action TEXT NOT NULL,
+                details TEXT DEFAULT '{}',
+                module_id TEXT,
+                created_at TEXT,
+                FOREIGN KEY (project_id) REFERENCES projects(id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_modules_project
+                ON modules(project_id);
+            CREATE INDEX IF NOT EXISTS idx_module_versions_module
+                ON module_versions(module_id, version);
+            CREATE INDEX IF NOT EXISTS idx_vlad_results_module
+                ON vlad_results(module_id);
+            CREATE INDEX IF NOT EXISTS idx_session_log_project
+                ON session_log(project_id, created_at);
         """)
         await self.conn.commit()
 

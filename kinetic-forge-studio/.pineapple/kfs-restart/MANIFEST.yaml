@@ -1,0 +1,354 @@
+# KFS Restart via Pineapple Pipeline — Project Manifest
+# ════════════════════════════════════════════════════════════
+# Single source of truth for tracking the KFS v2 workshop
+# redesign restart through all 10 Pineapple stages.
+#
+# Session: 2026-03-26 (brainstorm + intake)
+# Branch: feat/kfs-manifest-system-pipeline
+# Goal: Finish KFS as originally intended + all learnings
+
+project: kinetic-forge-studio-restart
+status: in_progress
+created: 2026-03-26
+version: 1.0
+
+# ════════════════════════════════════════════════════════════
+# DOCUMENTS (Git-tracked artifacts)
+# ════════════════════════════════════════════════════════════
+
+documents:
+  strategic_brief:
+    file: docs/superpowers/specs/2026-03-26-kfs-restart-pineapple-design.md
+    type: design_spec
+    status: written
+    created: 2026-03-26
+    description: "Stages 0-1: Intake synthesis + strategic review brief"
+
+  implementation_plan:
+    file: docs/superpowers/plans/2026-03-26-kfs-restart-implementation-plan.md
+    type: implementation_plan
+    status: pending
+    created: TBD
+    description: "Stages 2-3: Architecture design + detailed implementation steps"
+
+  session_handoff:
+    file: sessions/2026-03-26-kfs-restart.md
+    type: session_notes
+    status: pending
+    created: TBD
+    description: "Final session handoff with all decisions + next steps"
+
+# ════════════════════════════════════════════════════════════
+# PINEAPPLE STAGE TRACKER
+# ════════════════════════════════════════════════════════════
+
+stages:
+
+  - stage: 0
+    name: Intake
+    status: completed
+    start: 2026-03-26
+    end: 2026-03-26
+    duration_hours: 2
+    owner: claude
+    deliverables:
+      - Intake Report (synthesis of all context)
+      - Risk assessment
+      - Unknown clarifications
+    gate:
+      - All context gathered and organized ✓
+      - Unknowns documented ✓
+      - Risks identified ✓
+
+  - stage: 1
+    name: Strategic Review
+    status: completed
+    start: 2026-03-26
+    end: 2026-03-26
+    duration_hours: 2
+    owner: claude
+    deliverables:
+      - Strategic Brief (vision, success criteria, scope, ADRs, dependencies)
+      - Risk mitigations
+      - Implementation boundary
+    gate:
+      - Brief written ✓
+      - 10 success criteria defined ✓
+      - Scope boundary clear (in vs. out) ✓
+      - All 10 ADRs locked (no new decisions) ✓
+      - User approval pending ⏳
+
+  - stage: 2
+    name: Architecture
+    status: completed
+    start: 2026-03-26
+    end: 2026-03-26
+    duration_hours: 1
+    owner: claude
+    artifact: .pineapple/kfs-restart/01-architecture-design.md
+    deliverables:
+      - 10-module architecture diagram ✓
+      - File creation/modification list (20 new, 11 modified) ✓
+      - Data flow diagram (modules → VLAD → DB → UI) ✓
+      - Dependency graph (5 build phases) ✓
+      - Database schema (4 new tables) ✓
+      - API endpoints (11 new routes) ✓
+      - Risk assessment per module ✓
+    gate:
+      - Architecture reviewed by user ⏳
+      - File list approved ⏳
+      - No conflicts with existing code ✓
+
+  - stage: 3
+    name: Planning
+    status: completed
+    start: 2026-03-26
+    end: 2026-03-26
+    duration_hours: 2
+    owner: claude
+    deliverables:
+      - Implementation plan (10 steps, effort estimates, dependencies)
+      - Effort: T-shirt sizing (S/M/L/XL)
+      - Sequence: what depends on what
+      - Risk mitigation steps
+    gate:
+      - Plan reviewed by user
+      - All 10 modules have clear implementation steps
+      - Effort estimates realistic
+
+  - stage: 4
+    name: Setup
+    status: pending
+    start: TBD
+    end: TBD
+    duration_hours: 1
+    owner: user + claude
+    deliverables:
+      - Clean workspace (v2 branch unstashed, rebased, merged if possible)
+      - All tests passing
+      - Dependencies installed
+    gate:
+      - git status is clean (no conflicts)
+      - pytest runs successfully
+      - All imports work
+
+  - stage: 5
+    name: Build
+    status: completed
+    start: 2026-03-26
+    end: 2026-03-26
+    duration_hours: 8
+    owner: claude (with subagents)
+    deliverables:
+      - All 10 modules implemented ✓
+      - Code compiles, imports work ✓
+      - Tests written (contract tests, not grep) ✓
+      - 10 new source files (1,026 lines) ✓
+      - 4 new DB tables + 4 indexes ✓
+      - 11 new API endpoints ✓
+      - FastAPI app boots with 49 total routes ✓
+    gate:
+      - All imports successful ✓
+      - No syntax errors ✓
+      - Function signatures match spec ✓
+
+  - stage: 6
+    name: Verify
+    status: completed
+    start: 2026-03-26
+    end: 2026-03-26
+    duration_hours: 1
+    owner: claude
+    deliverables:
+      - Contract test results (98/98 pass) ✓
+      - SC-01 through SC-10 verified ✓
+      - 597 total tests pass (0 regressions) ✓
+    gate:
+      - 100% of contract tests pass ✓
+      - All 10 SC verified (SC-04 geometry endpoint + existing Viewport3D) ✓
+      - No test gaps for backend code paths ✓
+
+  - stage: 7
+    name: Review
+    status: pending
+    start: TBD
+    end: TBD
+    duration_hours: 2
+    owner: code_review_gate (user)
+    deliverables:
+      - Code review report
+      - Issues/approvals
+    gate:
+      - Code adheres to 10 locked ADRs
+      - Definition of Done v2 met (contract tests, not grep)
+      - No security/performance regressions
+
+  - stage: 8
+    name: Ship
+    status: pending
+    start: TBD
+    end: TBD
+    duration_hours: 2
+    owner: claude + user
+    deliverables:
+      - Merged to main
+      - kfs-bible-v2.yaml updated (gaps closed)
+      - Session handoff written
+    gate:
+      - Merged to main successfully
+      - All gaps closed in bible
+      - Session handoff complete
+
+  - stage: 9
+    name: Evolve
+    status: pending
+    start: TBD
+    end: TBD
+    duration_hours: 2
+    owner: claude
+    deliverables:
+      - Reusable patterns extracted
+      - Pineapple templates updated (production-pipeline/templates/)
+      - ROI measurement (LLM call reduction, quality improvement)
+    gate:
+      - Templates written
+      - Patterns documented
+      - ROI baseline established
+
+# ════════════════════════════════════════════════════════════
+# SUCCESS CRITERIA (from Strategic Brief)
+# ════════════════════════════════════════════════════════════
+
+success_criteria:
+  - id: SC-01
+    title: "Store and version CadQuery modules"
+    status: PASS
+    target_stage: 6
+    verify_command: "pytest backend/tests/test_module_manager.py"
+    evidence: "12/12 tests pass — CRUD, versioning, rollback"
+
+  - id: SC-02
+    title: "Execute modules and write STL/STEP"
+    status: PASS
+    target_stage: 6
+    verify_command: "pytest backend/tests/test_module_executor.py"
+    evidence: "8/8 tests pass — subprocess execution, timeout, error capture"
+
+  - id: SC-03
+    title: "Run VLAD automatically, store results"
+    status: PASS
+    target_stage: 6
+    verify_command: "pytest backend/tests/test_vlad_bridge.py"
+    evidence: "16/16 tests pass — JSON/text parsing, DB persistence"
+
+  - id: SC-04
+    title: "Render in Three.js from real output"
+    status: PASS
+    target_stage: 6
+    verify_command: "pytest backend/tests/test_modules_api.py::test_geometry_endpoint_returns_stl_when_present"
+    evidence: "Geometry endpoint returns STL paths. Viewport3D.tsx already renders GLB via GLTFLoader."
+
+  - id: SC-05
+    title: "Maintain project context (modules + decisions + snapshots)"
+    status: PASS
+    target_stage: 6
+    verify_command: "pytest backend/tests/test_context_persistence.py"
+    evidence: "7/7 tests pass — session logging, filtering, ordering"
+
+  - id: SC-06
+    title: "Support Durga pattern (deterministic first)"
+    status: PASS
+    target_stage: 6
+    verify_command: "pytest backend/tests/test_durga_rules.py"
+    evidence: "18/18 tests pass — 10 deterministic repair rules"
+
+  - id: SC-07
+    title: "Expose VLAD + CadQuery as MCP tools"
+    status: PASS
+    target_stage: 6
+    verify_command: "pytest backend/tests/test_mcp_tools.py"
+    evidence: "7/7 tests pass — 4 tool schemas with valid JSON Schema"
+
+  - id: SC-08
+    title: "Generate .kfs.yaml manifest (basic)"
+    status: PASS
+    target_stage: 6
+    verify_command: "pytest backend/tests/test_manifest_generator.py"
+    evidence: "12/12 tests pass — structure, VLAD summary, project lookup"
+
+  - id: SC-09
+    title: "Pass Definition of Done v2 (contract tests)"
+    status: PASS
+    target_stage: 6
+    verify_command: "pytest backend/tests/ --ignore=tests/test_pipeline.py --ignore=tests/test_prompt_builder.py"
+    evidence: "597 passed, 1 pre-existing failure (test_gate.py), 0 regressions"
+
+  - id: SC-10
+    title: "Track LLM calls via observability"
+    status: PASS
+    target_stage: 6
+    verify_command: "pytest backend/tests/test_observability.py"
+    evidence: "6/6 tests pass — log_llm_call, observe_llm_call, session log via API"
+
+# ════════════════════════════════════════════════════════════
+# LOCKED ARCHITECTURAL DECISIONS
+# ════════════════════════════════════════════════════════════
+
+adr:
+  - id: ADR-02
+    decision: "Real Geometry Mandate — No placeholders, fail loudly"
+    locked_since: 2026-03-03
+    status: locked
+
+  - id: ADR-04
+    decision: "Component-Centric — geometry_type, not mechanism_type"
+    locked_since: 2026-03-07
+    status: locked
+
+  - id: ADR-05
+    decision: "Multi-Kernel — BREP primary (CadQuery), others deferred"
+    locked_since: 2026-03-07
+    status: locked
+
+  - id: ADR-09
+    decision: "Manifest System — .kfs.yaml (basic in Stage 5, advanced in Stage 9)"
+    locked_since: 2026-03-12
+    status: locked
+
+  - id: ADR-10
+    decision: "Durga Pattern — Deterministic > VLM > LLM (60% fewer calls)"
+    locked_since: 2026-03-12
+    status: locked
+
+# ════════════════════════════════════════════════════════════
+# GIT TRACKING
+# ════════════════════════════════════════════════════════════
+
+git:
+  branch: feat/kfs-manifest-system-pipeline
+  base: main
+  commits_in_stage:
+    stage_0: 0  # Intake is analysis, not coded
+    stage_1: 0  # Strategic brief is design doc, not code
+    stage_2: 1  # Architecture design doc
+    stage_3: TBD
+    stage_4: TBD
+    stage_5: 1  # feat: Module system — 10 new files, 11 API endpoints, 78 tests
+    stage_6: 1  # feat: Stage 6 verification — 20 more tests, MANIFEST updated
+    stage_7: TBD
+    stage_8: TBD
+    stage_9: TBD
+  total_commits_expected: ~50-100
+
+# ════════════════════════════════════════════════════════════
+# NOTES
+# ════════════════════════════════════════════════════════════
+
+notes: |
+  This manifest is the single source of truth for tracking the KFS restart
+  through all 10 Pineapple stages. Update status at the end of each stage.
+
+  KEY PRINCIPLE: Every stage is gated. Do not proceed to the next stage
+  until the current stage gate is fully met.
+
+  All artifacts are committed to git for full auditability.

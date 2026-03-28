@@ -1,0 +1,27 @@
+{
+  "seq_len": 32,
+  "num_features": 7,
+  "num_targets": 7,
+  "feature_names": [
+    "totalKE",
+    "handSpeed",
+    "footSpeed",
+    "coreSpeed",
+    "hipY",
+    "armSpread",
+    "symmetry"
+  ],
+  "target_names": [
+    "melody_trigger",
+    "melody_pitch",
+    "melody_velocity",
+    "bass_trigger",
+    "bass_pitch",
+    "bass_velocity",
+    "energy_level"
+  ],
+  "lstm_units": 32,
+  "epochs_trained": 50,
+  "final_val_loss": 0.09254216402769089,
+  "final_val_mae": 0.0662148967385292
+}

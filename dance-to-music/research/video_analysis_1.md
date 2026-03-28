@@ -1,0 +1,516 @@
+# Dance Video Analysis
+
+**Source**: https://www.youtube.com/watch?v=DBGoSFIv__4
+**Model**: Gemini 2.5 Flash
+**Date**: 2026-03-13
+
+---
+
+Here is a detailed analysis of the dance styles shown in the video:
+
+---
+
+### 1. Lite Feet (0:17-0:26, 1:13-1:55)
+
+**Description from video:** A subset of Hip Hop done to "lite feet music," originated in Harlem, NYC (2004-2005). Emphasizes footwork, often incorporating hat tricks and shoe tricks for flair. Foundation built on "Harlem Shake," "Bad One," "Tone Wop," "Rev Up," "Tic Tac Toe," "Lock In," and "Ankle Breaks."
+
+1.  **Movement Quality as Music (Laban)**
+    *   **Weight**: Predominantly **light/floating**. The dancer appears agile and quick, often on the balls of the feet with jumps and bounces. Musically, this translates to light, often syncopated percussive elements, like hi-hats or light snare hits, or a fluid, almost playful melody that doesn't drag.
+    *   **Time**: Primarily **sudden/sharp**. Movements are quick, precise, and have a distinct attack and release. This translates to a **staccato** musical quality, emphasizing individual beats and quick rhythmic patterns. There's also a constant, fast rhythm.
+    *   **Space**: Predominantly **direct/linear**. Footwork often involves precise steps, glides, and taps that follow clear lines or angles. Arm movements are often sharp, extending and retracting with purpose. Musically, this can be likened to a focused, rhythmic riff or a sharp, percussive accent that lands exactly on the beat.
+    *   **Flow**: Predominantly **bound/controlled**. Despite the speed, there's a clear mastery over each movement, with precise stops and defined shapes. This implies a musical quality of controlled energy, sharp rhythmic punctuation, and a sense of "tension" that is constantly being released and re-engaged.
+
+2.  **Body Part Roles**
+    *   **Feet/legs**: **Primary rhythmic and melodic element.** They carry the core identity of the style. The rapid, intricate footwork acts as the lead drum machine or a complex, fast-paced bassline, dictating the groove and adding percussive flourishes. Jumps and slides can add melodic accents.
+    *   **Hips/torso**: **Groove and foundational rhythm.** The torso provides the foundational bounce and pulse, connecting the intricate footwork to the upper body. It acts as the underlying bass drum or the main rhythmic engine, providing the "spank" or "groove" as described in the video.
+    *   **Hands/arms**: **Accents and stylistic flair.** Arms are used for emphasis, creating sharp lines or fluid gestures that punctuate footwork. They can represent cymbal crashes, atmospheric synth sounds, or melodic counterpoints. They provide visual interest and "flair."
+    *   **Head/shoulders**: **Attitude and visual connection.** Head bobs and shoulder shrugs add attitude, communicating confidence and swag. They connect the dancer to the audience and can emphasize sharp rhythmic accents, like a vocal ad-lib or a specific synth hit.
+
+3.  **Intensity Range**
+    *   **Minimum Intensity**: A subtle bounce in the knees, light foot taps or glides (e.g., a simple "Harlem Shake" or "Tone Wop" groove) with relaxed but engaged arms and a slight head bob. The core energy is present but contained, a quiet pulse.
+    *   **Maximum Intensity**: Rapid-fire, complex footwork with continuous jumps and turns ("Rev Up"), often incorporating hat/shoe tricks, dynamic arm extensions, deep body leans ("Bad One"), and highly energetic facial expressions. This is when the dancer is "on fire," showcasing maximum agility, speed, and creative flair, pushing the boundaries of rhythm and physical control.
+
+4.  **Musical Dynamics**
+    *   **Pauses/freezes**: Used for sharp punctuation ("Lock In" on the '8th count'). Musically, this demands abrupt stops, silence, or a sudden, impactful hit to mark a definitive end to a phrase before resuming.
+    *   **Builds**: Energy gathers through increased foot speed, more complex patterns, and higher jumps, often building towards a "Rev Up" section. Musically, this aligns with rising pitch, increasing rhythmic density, or a crescendo in volume, hinting at an impending burst of energy.
+    *   **Transitions between sections**: Often abrupt and distinct, moving from one foundational step to another with clear breaks, or using a "Lock In" as a period. Musically, transitions might be marked by a strong beat, a sudden shift in melody, or a brief percussive break.
+    *   **Repetitive grooves vs. pattern breaks**: Relies heavily on repetitive footwork grooves for flow ("Tone Wop" is the groove), but frequently breaks these patterns with sudden, sharp variations, turns, jumps, or tricks to showcase skill and surprise the audience. This mirrors a looped beat with unexpected, flashy solos or breakdowns.
+
+5.  **Key Kinematic Features (Ranked by importance for driving music)**
+    1.  **Foot speed**: Drives the fast, intricate rhythms.
+    2.  **Jerk magnitude**: Creates the sudden, sharp, percussive accents.
+    3.  **Overall energy**: Sustains the high-intensity, dynamic performance.
+    4.  **Core speed**: Contributes to the bouncy, rhythmic foundation.
+    5.  **Head bob**: Adds attitude and emphasizes rhythmic accents.
+    6.  **Arm spread**: Adds flair and complements footwork, directing attention.
+    7.  **Hand speed**: Supports arm movements for accents.
+    8.  **Body tilt**: Adds dynamism and plays with gravity.
+    9.  **Symmetry**: Less critical, as often asymmetrical movements and steps are used.
+
+---
+
+### 2. Shuffling (2:12-2:19, 2:38-3:46)
+
+**Description from video:** Originally "Melbourne Shuffle," started in early 1990s in Melbourne, Australia, in underground EDM and rave scenes. Popularized on YouTube (2008-2009). Main foundation is "Running Man." Key is keeping feet close to the ground, gliding. Can shuffle in any direction. Incorporates "Charleston," "kicks," "Spongebob," "C-walking," and "Tecktonik arm movements."
+
+1.  **Movement Quality as Music (Laban)**
+    *   **Weight**: Predominantly **light/floating**. The dancer appears nimble and quick, with a focus on gliding movements across the floor rather than heavy impacts. Musically, this suggests a light, airy rhythmic texture, often carried by synth melodies or high-frequency percussion, creating a sense of continuous motion.
+    *   **Time**: Predominantly **sustained/flowing** for the glides, but with **sudden/sharp** elements for kicks and shifts. The underlying "running man" has a continuous quality, yet individual steps are distinct. This translates to a **legato** feel for the overall flow, punctuated by **staccato** accents.
+    *   **Space**: Primarily **direct/linear** for the footwork patterns, which often involve clear forward, backward, or lateral slides and kicks. However, the continuous, flowing nature of the movement can create a sense of indirectness in transitions. Musically, this is like a repetitive, focused beat with linear melodic phrases that build a continuous energetic flow.
+    *   **Flow**: A blend of **free/continuous** and **bound/controlled**. The gliding motion emphasizes continuous, fluid movement, suggesting release. Yet, the precise foot placements and rapid weight shifts require significant control, implying bound energy that allows for quick changes and sharp accents.
+
+2.  **Body Part Roles**
+    *   **Feet/legs**: **Primary rhythmic and melodic drive, creating the illusion of gliding.** They define the style. The constant movement, slides, kicks, and taps form the core percussion and bassline, driving the energetic beat of EDM.
+    *   **Hips/torso**: **Core engine for momentum and direction.** The hips and torso initiate and guide the directional shifts of the shuffle, contributing to the continuous groove. They act as the harmonic foundation or the main rhythmic pulse, connecting upper and lower body.
+    *   **Hands/arms**: **Expressive flair and balance.** Arms are not "set" in shuffling, offering dancers freedom to add personal style, sometimes borrowing from Tecktonik or simply being playful. They can add dynamic accents, expressive flourishes (like synth swells), or contribute to the overall energetic atmosphere.
+    *   **Head/shoulders**: **Direction and attitude.** The head often follows the direction of travel or adds expressive nuances, maintaining engagement. Shoulders contribute to the overall body engagement and can emphasize the downbeat with subtle bounces.
+
+3.  **Intensity Range**
+    *   **Minimum Intensity**: Subtle "running man" steps with minimal lift, keeping feet very close to the ground. Arms would be relaxed, possibly with a slight swing, and the focus is on smooth, continuous gliding.
+    *   **Maximum Intensity**: Rapid, complex "running man" variations with intricate cross-steps, powerful kicks, quick directional changes, and fluid transitions between different footwork patterns (e.g., "Charleston," "Spongebob"). Arms are highly dynamic, adding flourishes and personality ("your own flare"). The overall impression is high-energy, continuous motion, and precise ankle mobility.
+
+4.  **Musical Dynamics**
+    *   **Pauses/freezes**: Less common than in styles like Lite Feet or Breaking, as the emphasis is on continuous flow. If used, they would be very brief, sharp stops to mark a strong beat or a dramatic shift in the music, creating a sudden impact.
+    *   **Builds**: Energy accumulates through increasing foot speed, adding more complex variations, or integrating more pronounced kicks. Musically, this aligns with the build-ups typical in EDM tracks, with rising synth lines, increasing percussion, and rising tension before a drop.
+    *   **Transitions between sections**: Smooth and flowing, often incorporating circular or diagonal glides to seamlessly move between different shuffling patterns or directions. Musically, transitions are often seamless, driven by continuous beats or evolving synth patterns.
+    *   **Repetitive grooves vs. pattern breaks**: The "Running Man" is the quintessential repetitive groove, providing the continuous rhythm. Pattern breaks come from introducing different steps (Charleston, kicks, Spongebob), changing direction, or adding flourishes from other styles, keeping the dance engaging over extended periods of repetitive beats.
+
+5.  **Key Kinematic Features (Ranked by importance for driving music)**
+    1.  **Foot speed**: Drives the continuous, fast rhythm and energetic flow.
+    2.  **Core speed**: Essential for weight shifts and maintaining the overall pulse.
+    3.  **Jerk magnitude**: Crucial for sharp kicks and quick changes in direction.
+    4.  **Overall energy**: Sustains the high-energy, continuous motion.
+    5.  **Body tilt**: Adds to dynamic movement and visual interest.
+    6.  **Arm spread**: Used for balance and expressive flair, supporting the movement.
+    7.  **Hand speed**: Contributes to the "playful" and expressive arm movements.
+    8.  **Head bob**: Provides minor rhythmic emphasis.
+    9.  **Symmetry**: Less emphasized, individual footwork patterns may be asymmetrical.
+
+---
+
+### 3. Breaking (3:55-4:02, 4:25-6:32)
+
+**Description from video:** Created in 1970s Bronx, NY, by Black and Latino people during the disco era, specifically at 1520 Sedgwick Ave. (first Hip Hop party). Was a party dance and battle dance. Foundation includes "Toprock" (Indian Step, Front Step, Salsa Step) for introduction, "Go-downs" (Basic Drop, W, Sweep) as glue, "Footwork" (6-step, 3-step, 1-step/Coffeegrinder, CCs, Kick-outs, Hooks) as blueprint, "Freezes" (Baby, Chair, Elbow, Air Baby, Nike, Flag) as punctuation, and "Power Moves" (Windmills, Flares, Halos, Headspins, Backspins for ground; 1990s/2000s, Swipes, Air Flares for air) as showstoppers.
+
+1.  **Movement Quality as Music (Laban)**
+    *   **Weight**: Extremely varied, from **light/floating** (e.g., footwork, air flares) to **heavy/grounded** (e.g., stomps in toprock, powerful freezes). This dynamic range translates musically to shifts between light, intricate rhythms and powerful, impactful basslines or percussive hits.
+    *   **Time**: Also highly varied. **Sudden/sharp** movements are prominent in hits, freezes, and transitions, while **sustained/flowing** qualities appear in spins, power moves, and some footwork. Musically, this combines **staccato** bursts, **legato** sweeps, and intricate rhythmic syncopation.
+    *   **Space**: Predominantly **direct/linear** in footwork and freezes, establishing clear paths and shapes. However, some power moves and transitions can involve **indirect/curving** paths, especially when creating momentum for spins. Musically, this can be a focused, driving beat that explodes into wandering, virtuosic melodic lines.
+    *   **Flow**: A continuous interplay of **bound/controlled** and **free/continuous**. Free energy drives momentum for power moves and fluid footwork, while bound energy enables precise freezes, sharp transitions, and intricate footwork patterns, creating tension and release.
+
+2.  **Body Part Roles**
+    *   **Feet/legs**: **Foundation, rhythm, and travel.** They are crucial for footwork, initiating power moves, and defining the groove. They act as the primary percussion (kick, snare, hi-hats), laying down complex rhythmic patterns and driving transitions.
+    *   **Hips/torso**: **Power generation, momentum, and core stability.** The hips and torso are vital for generating power for spins and freezes, acting as the central axis for rotation and providing stability. They embody the main bassline, creating powerful drives and rhythmic accents.
+    *   **Hands/arms**: **Balance, support, and expressive accents.** Arms are used for support in freezes and power moves, maintaining balance, and adding stylistic gestures. They can act as melodic accents, percussive flourishes, or even simulate instrument sounds like scratching.
+    *   **Head/shoulders**: **Direction, attitude, and impact.** The head guides turns, maintains focus during freezes, and can be used for direct impact in headspins. They contribute to the expressive attitude and can punctuate powerful beats or vocal samples.
+
+3.  **Intensity Range**
+    *   **Minimum Intensity**: Simple "Toprock" steps (e.g., Indian Step) with minimal torso movement and relaxed arms, establishing a basic groove while standing. The goal is to show personal style and rhythm subtly.
+    *   **Maximum Intensity**: A dynamic "round" incorporating intricate footwork transitioning into complex power moves (e.g., continuous windmills, flares) with extreme speed and control, culminating in a difficult freeze (e.g., Air Baby, Flag Freeze) held with perfect balance. This displays peak athleticism, creativity, and musicality, demanding total body engagement and explosive energy.
+
+4.  **Musical Dynamics**
+    *   **Pauses/freezes**: Used as definitive "punctuation" at the end of phrases or rounds ("closing statement"). Musically, this demands abrupt stops, silences, or a very strong, sustained hit to create a dramatic finality before the next dancer or segment.
+    *   **Builds**: Energy builds through transitions from Toprock to go-downs, increasing footwork complexity, and generating momentum for power moves. Musically, this aligns with drum breaks, increasing tempo, or a rising bassline, creating anticipation for an energetic drop or climax.
+    *   **Transitions between sections**: "Go-downs" are explicitly named as the "glue" between standing and floor movements. Transitions are often sharp and impactful, moving quickly between different elements of the dance. Musically, transitions are often marked by drum fills, breaks, or sudden shifts in the beat.
+    *   **Repetitive grooves vs. pattern breaks**: Footwork has repetitive patterns (e.g., 6-step) that establish a foundational groove. Pattern breaks are constant, as dancers layer go-downs, power moves, and freezes, often improvising to the beat and reacting to the DJ's cuts and breaks, showcasing originality.
+
+5.  **Key Kinematic Features (Ranked by importance for driving music)**
+    1.  **Overall energy**: Essential for the dynamic shifts, power, and continuous flow.
+    2.  **Jerk magnitude**: Crucial for sharp freezes, hits, and impactful transitions.
+    3.  **Core speed**: Drives rotation for power moves and quick body shifts.
+    4.  **Foot speed**: Dictates the tempo and complexity of footwork and transitions.
+    5.  **Body tilt**: Adds dynamism and expressiveness to moves and freezes.
+    6.  **Arm spread**: Important for balance in power moves and adding visual breadth.
+    7.  **Symmetry**: Less important, as asymmetry is often used for dynamic poses and unique movements.
+    8.  **Hand speed**: Supports arm movements for accents and holds.
+    9.  **Head bob**: Present but less central compared to full body dynamics.
+
+---
+
+### 4. Robot (6:42-6:50, 7:09-8:12)
+
+**Description from video:** Comes from mimes of the 1920s imitating robots. Popularized in late 60s-70s by Robert Shields and Michael Jackson. Core foundation is "Dimestop" (stopping completely and instantly after a movement). Emphasizes looking "unreal." Techniques include "Stop Motion," "Strobing," "Speed Control," "Slow Motion," "Fast Motion," "Rebound," and "Animated Bounce."
+
+1.  **Movement Quality as Music (Laban)**
+    *   **Weight**: Predominantly **heavy/grounded** for the stops, giving a sense of mechanical precision, but can also be **light/floating** in the transitions if the goal is to appear weightless. Musically, stops equate to strong, isolated bass hits or drum kicks, while transitions can be subtle synth glides.
+    *   **Time**: A strong dichotomy between **sustained/flowing** (slow motion, glides) and **sudden/sharp** (dimestops, strobing, fast motion). This creates a highly **staccato** musical feel with abrupt stops and starts, interspersed with **legato**, controlled movements.
+    *   **Space**: Primarily **direct/linear**. Movements are precise, often isolated, and follow clear lines and angles, creating a rigid, mechanical aesthetic. Musically, this suggests sharp, percussive sounds or synthesized melodies that are very exact and focused.
+    *   **Flow**: Predominantly **bound/controlled**. The essence of the robot is complete control over every muscle, allowing for instantaneous stops and isolated movements. This implies a musical quality of extreme rhythmic precision, sharp attacks, and constant tension.
+
+2.  **Body Part Roles**
+    *   **Feet/legs**: **Foundation and directional shifts.** Feet are used for subtle slides and glides, providing the illusion of smooth, mechanical movement or sudden shifts. They act as the underlying rhythmic pulse, providing stability for stops.
+    *   **Hips/torso**: **Core isolations and transitions.** The torso is crucial for isolating movements (chest pops, rib slides) and creating the illusion of mechanical articulation. It acts as the central processor, connecting and moving other body parts with deliberate, segmented actions.
+    *   **Hands/arms**: **Primary expressive and illustrative elements.** Arms are key for creating the segmented, robotic illusion, performing isolations, waves, and precise gestures that define the character. They mimic switches, levers, or the movements of an automaton, often acting as the lead melody or prominent synth effects.
+    *   **Head/shoulders**: **Focus, initiation, and character portrayal.** The head often initiates movements or accents stops, providing a focal point for the robotic character. Shoulders can emphasize isolations or contribute to the mechanical appearance, like sound effects or vocalizations.
+
+3.  **Intensity Range**
+    *   **Minimum Intensity**: Subtle, isolated dimestops in the hands or head, maintaining a static posture with minimal body movement. The "unreal" character is present through precise, almost imperceptible movements.
+    *   **Maximum Intensity**: Full body "Strobing" with rapid, irregular dimestops across multiple body parts, combined with extreme "Speed Control" (fast to slow, slow to fast), contorted "Animated Bounces" or "Rebounds," creating a complex, hyper-realistic mechanical illusion. This requires immense physical control, precision, and focus to maintain the character.
+
+4.  **Musical Dynamics**
+    *   **Pauses/freezes**: The "Dimestop" is the central element, implying instantaneous and complete stops. Musically, this calls for abrupt silence, sharp percussive hits, or a sudden, hard cut to emphasize the mechanical stop-start nature.
+    *   **Builds**: Energy can build through increasing the frequency of dimestops ("Strobing"), accelerating movements ("Fast Motion"), or adding more intricate isolations. Musically, this can involve increasing rhythmic complexity, faster tempos, or rising synth lines.
+    *   **Transitions between sections**: Often abrupt and segmented, mimicking a robot recalibrating or shifting gears. Transitions are precise, without fluid blending. Musically, these are marked by distinct cuts, percussive hits, or sudden changes in sound design.
+    *   **Repetitive grooves vs. pattern breaks**: Relies on segmented, repetitive isolations or movements that create a mechanical groove. Pattern breaks are achieved through "Strobing" (irregular dimestops), varying speeds ("Speed Control"), or sudden "Rebounds" and "Animated Bounces" to create unpredictable, non-humanlike motion.
+
+5.  **Key Kinematic Features (Ranked by importance for driving music)**
+    1.  **Jerk magnitude**: Absolutely critical for the instantaneous stops (dimestops) and sharp, defined movements.
+    2.  **Core speed**: Enables precise body isolations and segmented movements.
+    3.  **Hand speed**: Vital for intricate arm and hand isolations that define the robot character.
+    4.  **Overall energy**: Contributes to the sustained illusion of a moving machine.
+    5.  **Arm spread**: Used to create distinct lines and shapes, emphasizing mechanical form.
+    6.  **Body tilt**: Adds to the angular, non-human appearance.
+    7.  **Foot speed**: Important for subtle glides and supporting body shifts.
+    8.  **Symmetry**: Often utilized to enhance the mechanical, programmed aesthetic.
+    9.  **Head bob**: Can be used for accents but is less central than full body control.
+
+---
+
+### 5. Krump (8:30-8:40, 9:15-10:23)
+
+**Description from video:** A raw, expressive, storytelling-based dance style from early 2000s South Central LA. Roots in "Clowning." Pulls from C-walking and clowning balance points. Techniques split into "Old School" (Clowning-inspired, linear, structured: Woah, Banging/Day Ones, Call the Dogs, Whips, Hops, C-walking/Heel-Toe) and "New School" (rugged, bully mentality: Wobble, Stomps, Chest Pops, Arm Swings, Arm Placements, Jabs, Focus Points, Bounce, Gallop, Kickback). Emphasizes "Character" and "Language" (power, open hand, talking hands/style). Stances include "Krump Stance" (shoulder-width), "Technical Stance," and "Off-Balance Stance."
+
+1.  **Movement Quality as Music (Laban)**
+    *   **Weight**: Predominantly **heavy/grounded**, emphasizing powerful stomps, chest pops, and assertive movements. This translates musically to strong, impactful basslines, heavy drum beats, and powerful percussive accents that convey raw energy.
+    *   **Time**: Primarily **sudden/sharp**. Movements are explosive, aggressive, and punctuated by quick, decisive actions. This creates a **staccato** musical quality, emphasizing strong attacks and percussive hits, often with a driving, relentless rhythm.
+    *   **Space**: Predominantly **direct/linear** with clear, impactful jabs, arm swings, and stomps. However, the raw, expressive nature allows for moments of **indirect/curving** exploration, particularly in character-driven segments. Musically, this is a powerful, focused rhythmic pattern with sharp melodic or percussive accents.
+    *   **Flow**: Predominantly **bound/controlled**, reflecting intense, contained energy that bursts forth in powerful, deliberate movements. This implies a musical quality of high tension, strong rhythmic punctuation, and a raw, sometimes aggressive, drive.
+
+2.  **Body Part Roles**
+    *   **Feet/legs**: **Power generation and grounded rhythm.** Feet are crucial for stomps, gallops, and kickbacks, anchoring the dancer and generating explosive energy. They act as the primary bass drum and percussive foundation, driving the aggressive beat.
+    *   **Hips/torso**: **Core power, emotional expression, and physical impact.** The torso is central to chest pops and wobbles, conveying raw emotion and impactful movements. It serves as the main rhythmic and emotional core, embodying powerful basslines and vocal expressions.
+    *   **Hands/arms**: **Assertive expression, "language," and visual punctuation.** Arms are used for jabs, swings, and distinct placements ("power hands," "open hand," "talking hands"), acting as a form of non-verbal communication. They can be compared to sharp brass hits, impactful synth stabs, or aggressive vocalizations.
+    *   **Head/shoulders**: **Direction, focus, and character manifestation.** The head often leads aggressive movements, making eye contact ("focus points"), and conveying the dancer's "character" (e.g., "Beast"). Shoulders contribute to the powerful, rugged aesthetic, emphasizing impacts and attitude.
+
+3.  **Intensity Range**
+    *   **Minimum Intensity**: A subtle "bounce" with light foot stomps, contained chest pops, and small, controlled arm movements (e.g., basic "Krump Stance" or a gentle "Wobble"). The character is present but subdued, a simmering energy.
+    *   **Maximum Intensity**: Explosive, continuous stomps and gallops, deep "Wobbles," aggressive "Chest Pops," rapid "Jabs" and "Arm Swings," performed with intense facial expressions and full body commitment to the "character" (e.g., "bully mentality"). This demonstrates raw, unbridled energy, powerful storytelling, and rhythmic dominance.
+
+4.  **Musical Dynamics**
+    *   **Pauses/freezes**: Less common, but impactful if used. A sudden halt would emphasize a powerful beat or a moment of intense emotional clarity, creating a jarring, dramatic effect.
+    *   **Builds**: Energy accumulates through increasing rhythmic intensity (faster stomps, more rapid jabs), layering movements, and deepening the emotional expression. Musically, this aligns with drum rolls, rising basslines, and intensifying vocal samples that create anticipation for an aggressive release.
+    *   **Transitions between sections**: Often sharp, aggressive, and direct, mirroring the "rugged" and "bully mentality" described. Transitions are powerful statements rather than smooth blends. Musically, these are marked by strong, percussive hits, sudden changes in the beat, or abrupt vocal cues.
+    *   **Repetitive grooves vs. pattern breaks**: "Bounce" and recurring rhythmic footwork patterns provide a foundational groove. Pattern breaks are frequent and aggressive, integrating diverse "Old School" and "New School" techniques (whips, hops, stomps, jabs) and shifting "Language" gestures to express varied emotions and narratives, often directly responding to musical breaks and drops.
+
+5.  **Key Kinematic Features (Ranked by importance for driving music)**
+    1.  **Overall energy**: Crucial for conveying the raw, explosive, and continuous power.
+    2.  **Jerk magnitude**: Essential for the sharp, impactful hits, stomps, and chest pops.
+    3.  **Core speed**: Drives the power generation for torso movements and aggressive actions.
+    4.  **Foot speed**: Dictates the rhythm of stomps, gallops, and footwork patterns.
+    5.  **Body tilt**: Adds to the aggressive stance and dynamic impacts.
+    6.  **Arm spread**: Contributes to the visual force and expressive gestures.
+    7.  **Hand speed**: Supports arm movements, especially for "jabs" and "language" gestures.
+    8.  **Head bob**: Often used for aggressive accents and maintaining eye contact.
+    9.  **Symmetry**: Less critical, as asymmetry often enhances the raw, confrontational nature.
+
+---
+
+### 6. Dancehall (10:40-10:47, 11:18-12:35)
+
+**Description from video:** Dancehall music started in Jamaica in the 1970s. Dance style grew in popularity in the 90s, pioneered by Gerald "Bogle" Levy. Beyond music and dance, it's also fashion, celebration, and a lifestyle. Foundation: "Posture" (soft knees, shoulders relaxed, waistline forward). Develop "waist and hip control" for "wines" and "jooks." Includes "social dances" (Thunder Clap, Signal Di Plane, Pon Di River by John Hype; Zip It Up, Summer Bounce, Good Chemistry by Bogle). Also "badman/gunman" dances (Gun Man Skank by North Coast Boys; Rifle Walk by Cool Boss) expressing societal realities. Emphasizes "full body engagement" from head to toe.
+
+1.  **Movement Quality as Music (Laban)**
+    *   **Weight**: Predominantly **heavy/grounded**, emphasizing a strong connection to the earth through the hips and a powerful bounce. Musically, this translates to a strong, driving bassline and a powerful, consistent drum beat that grounds the rhythm.
+    *   **Time**: A mix of **sustained/flowing** (wines, body rolls) and **sudden/sharp** (kicks, accents, quick hip isolations). The overall groove is continuous, but individual movements are punctuated. Musically, this combines a **legato** flow with **staccato** accents, creating a rich, syncopated rhythm.
+    *   **Space**: Often **indirect/curving** through hip isolations ("wines"), body rolls, and fluid arm movements, but can also be **direct/linear** in specific steps or kicks. Musically, this can be likened to a winding bassline or vocal melody over a steady, driving beat, creating a sensual and fluid feel.
+    *   **Flow**: Predominantly **free/continuous**, reflecting the expressive, uninhibited nature of the dance and emphasizing fluidity and sensuality. This implies a musical quality of release, allowing the body to move freely and organically with the music's rhythm.
+
+2.  **Body Part Roles**
+    *   **Feet/legs**: **Grounding, rhythmic foundation, and travel.** Feet provide the pulse and enable smooth glides or powerful steps, often emphasizing syncopated rhythms. They act as the main drum machine, providing the beat and carrying the dancer across the floor.
+    *   **Hips/torso**: **Primary rhythmic and expressive engine, carrying the "waist and hip control" identity.** The hips are central for "wining," "jooking," and other isolations that define Dancehall. The torso drives body rolls and contributes to the overall groove. This is the main bassline and rhythmic core, infusing sensuality and power.
+    *   **Hands/arms**: **Expressive flair, storytelling, and communication.** Arms are used for big, sweeping gestures, rhythmic accents, and to convey the "social" or "badman" narratives. They add melodic flourishes, cymbal accents, or emulate vocal calls.
+    *   **Head/shoulders**: **Attitude, direction, and rhythmic emphasis.** The head often follows the hip movements or adds rhythmic accents, conveying confidence and engaging the audience. Shoulders add to body rolls and powerful shimmies.
+
+3.  **Intensity Range**
+    *   **Minimum Intensity**: A subtle bounce in the knees and hips (posture), with minimal "wining" or "jooking" in the waist. Arms would be relaxed, occasionally adding a gentle sweep. The focus is on feeling the rhythm internally.
+    *   **Maximum Intensity**: Full "full body engagement" with vigorous "wining," powerful "jooks," dynamic body rolls, high kicks, and energetic arm movements that fill the space. The facial expression is confident and expressive, showcasing high energy, stamina, and deep connection to the music's rhythm and lyrics.
+
+4.  **Musical Dynamics**
+    *   **Pauses/freezes**: Infrequent, as the dance emphasizes continuous movement and flow. If used, they would be sharp and brief, highlighting a specific musical hit or vocal sample, creating a sudden punctuation.
+    *   **Builds**: Energy builds through increasing speed and range of hip isolations, adding more complex steps, or transitioning into more vigorous full-body movements. Musically, this aligns with rising rhythmic intensity, accelerating tempos, or vocal calls that build excitement.
+    *   **Transitions between sections**: Fluid and seamless, allowing dancers to move from one social dance step to another, or from a general groove to a specific move. Musically, transitions are often smooth, driven by continuous beats and evolving rhythms that encourage constant motion.
+    *   **Repetitive grooves vs. pattern breaks**: Features repetitive hip-driven grooves (wines, jook) that provide a continuous, sensual rhythm. Pattern breaks are introduced by incorporating specific "social dances" or "badman steps," adding kicks, or changing the level of energy, keeping the dance fresh and allowing for improvisation to lyrical content.
+
+5.  **Key Kinematic Features (Ranked by importance for driving music)**
+    1.  **Core speed**: Essential for rapid hip isolations, body rolls, and driving the central groove.
+    2.  **Overall energy**: Crucial for the sustained, high-energy, and expressive nature of the dance.
+    3.  **Body tilt**: Adds to the dynamic, fluid, and sensual movements.
+    4.  **Foot speed**: Drives the rhythmic steps and accents.
+    5.  **Arm spread**: Used for expressive gestures, framing, and adding to the overall energy.
+    6.  **Jerk magnitude**: Important for sharp accents and kicks.
+    7.  **Hand speed**: Supports arm movements for flourishes and communication.
+    8.  **Head bob**: Contributes to attitude and rhythmic accents.
+    9.  **Symmetry**: Less critical, as often asymmetrical movements and isolations are used.
+
+---
+
+### 7. Bhangra (12:52-13:00, 13:21-14:44)
+
+**Description from video:** Hails from Punjab, India. A folk dance dating back centuries, created to celebrate and rejoice during the harvest season. Historically done by men (women did Gidda), but now men and women connect to culture through Bhangra. "Posture" includes up/down shoulder movements (loose upper body), and a ready position (soft knees, tucked pelvis, chest puffed, chin raised, shoulders down, arms big, look proud). "Footwork" (Bedi, Dhamaal, Punjab) are done with many upper body moves. "Hand positions" include L-shape, thumb/index touching, or extended index. "Nakhra" (cute, witty, cheeky) is key for facial expressions and storytelling. Energetic, celebratory, lead with a smile.
+
+1.  **Movement Quality as Music (Laban)**
+    *   **Weight**: Predominantly **heavy/grounded**, emphasizing powerful stomps, jumps, and a strong connection to the earth. Musically, this translates to powerful, driving dhol (drum) rhythms and a strong, consistent beat that feels very rooted.
+    *   **Time**: Primarily **sudden/sharp** for the stomps, kicks, and jumps, giving a dynamic, rhythmic punch. There are also **sustained/flowing** qualities in arm movements and turns. Musically, this creates a **staccato** and rhythmic quality, emphasizing strong, percussive beats.
+    *   **Space**: Often **direct/linear** in powerful kicks, arm extensions, and stomps, creating clear lines and impactful movements. However, circular arm movements and turns can also add **indirect/curving** elements. Musically, this suggests a powerful, marching rhythm with clear melodic or percussive accents.
+    *   **Flow**: A continuous interplay of **bound/controlled** and **free/continuous**. Powerful, controlled energy is visible in the precise stomps and strong arm movements, while a sense of joyous release allows for free, expressive facial expressions and vibrant energy.
+
+2.  **Body Part Roles**
+    *   **Feet/legs**: **Primary rhythmic drive, grounded power, and jumps.** Feet are crucial for the powerful stomps, hops, kicks, and rhythmic patterns that define Bhangra. They act as the main percussion, providing the driving, earthy beats.
+    *   **Hips/torso**: **Core power, proud posture, and rhythmic pulse.** The torso maintains the "puffed chest" posture and drives the rhythmic bounce, connecting the powerful footwork to the expansive arm movements. It acts as the central rhythmic engine, supporting the strong beats.
+    *   **Hands/arms**: **Expansive expression, framing, and emotional display.** Arms are large, sweeping, and often held high, emphasizing the celebratory mood and framing the proud posture. Specific hand positions are also key. They represent melodic lines, vocal calls, or large percussive swells.
+    *   **Head/shoulders**: **Proud display, rhythmic emphasis, and "nakhra."** The raised chin and relaxed, expressive shoulders contribute to the proud, confident posture. "Nakhra" (facial expressions) is vital for conveying emotions like joy and cheekiness, acting as lyrical or melodic accents.
+
+3.  **Intensity Range**
+    *   **Minimum Intensity**: Basic "Bedi" footwork (taps on balls of feet) with relaxed but engaged "Posture" (soft knees, slightly puffed chest), and small, controlled arm movements. The energy is contained but present, a subtle internal pulse.
+    *   **Maximum Intensity**: Vigorous, continuous jumps and powerful stomps, high kicks, dynamic arm movements that fill the space, and a wide range of "Nakhra" (expressive facial cues). The entire body is engaged with explosive, celebratory energy, demonstrating stamina, coordination, and deep connection to the vibrant music.
+
+4.  **Musical Dynamics**
+    *   **Pauses/freezes**: Less common, as the dance emphasizes continuous, high-energy movement. If used, they would be sharp and brief, highlighting a powerful dhol hit or a vocal exclamation, creating a sudden impact.
+    *   **Builds**: Energy accumulates through increasing speed and power of footwork (stomps, jumps), adding more complex steps (Dhamaal, Punjab), and intensifying arm movements and facial expressions. Musically, this aligns with crescendos in dhol drumming, faster tempos, and rising vocal melodies that build excitement.
+    *   **Transitions between sections**: Often marked by powerful stomps or energetic jumps, moving directly from one step to another without much blending. Musically, transitions are often signified by strong drum fills or a clear shift in the rhythm.
+    *   **Repetitive grooves vs. pattern breaks**: Utilizes repetitive, powerful footwork patterns and rhythmic stomps that form a driving, earthy groove. Pattern breaks are introduced by changing steps (Bedi, Dhamaal, Punjab), incorporating jumps, altering arm movements, or varying "Nakhra" to maintain engagement and reflect the celebratory changes in the music.
+
+5.  **Key Kinematic Features (Ranked by importance for driving music)**
+    1.  **Overall energy**: Crucial for conveying the high-energy, celebratory, and sustained performance.
+    2.  **Jerk magnitude**: Essential for the powerful stomps, kicks, and dynamic accents.
+    3.  **Core speed**: Drives the rhythmic bounce and power generation for the whole body.
+    4.  **Foot speed**: Dictates the tempo and complexity of footwork and jumps.
+    5.  **Arm spread**: Essential for the expansive, framing gestures and overall visual impact.
+    6.  **Body tilt**: Adds dynamism and expressiveness, especially when leaning into moves.
+    7.  **Head bob**: Often used to emphasize strong beats and rhythmic accents.
+    8.  **Hand speed**: Supports arm movements for flourishes and specific hand positions.
+    9.  **Symmetry**: Often present in the broader arm movements, contributing to the grand, celebratory feel.
+
+---
+
+### 8. Ballet (14:56-15:05, 15:36-17:55)
+
+**Description from video:** From Italian "ballare" (to dance), originated in Renaissance Italy (15th-16th centuries) as court dance. Developed into a concert dance. Popularized by Catherine de' Medici. Importance of "Barre" (basic moves for centering, warm-up, strength, individual leg focus). Foot positions (1st-5th). "Point" (articulation of feet) is vital, elongating feet. Techniques include "Plié" (to bend), "Relevé" (to rise), "Tendu" (constant balance test). Everything grows off these. Turns (Soutenu, Chaîne, Pirouette-En Dehors/En Dedans) and Jumps (Sauté, Saut de Chat, Glissade) are also key. Body and spatial awareness are vital. Dancer performs to an audience, even if none are present.
+
+1.  **Movement Quality as Music (Laban)**
+    *   **Weight**: Predominantly **light/floating**, especially in relevés, jumps, and graceful extensions, creating an ethereal quality. However, plies and landing jumps incorporate a grounded weight. Musically, this translates to lyrical, flowing melodies and light, airy accompaniments, with moments of grounded strength from the bass.
+    *   **Time**: Primarily **sustained/flowing**. Movements are elongated, controlled, and fluid, emphasizing smooth transitions and graceful lines. There are also **sudden/sharp** elements in quick turns, jumps, and pointe work. Musically, this is deeply **legato**, with seamless phrasing, interspersed with **staccato** bursts.
+    *   **Space**: Primarily **direct/linear** in the precise placement of limbs, clear lines of extension, and defined pathways through space. Every movement has an intended direction. Musically, this suggests clear, structured melodic lines and harmonies, often with a soaring quality.
+    *   **Flow**: Predominantly **bound/controlled**. Ballet demands extreme control, precision, and muscular engagement to execute movements with grace, balance, and technical accuracy. This implies a musical quality of sustained tension, refined phrasing, and meticulous execution.
+
+2.  **Body Part Roles**
+    *   **Feet/legs**: **Foundation, grace, elevation, and line.** Feet are central for all positions, turns, jumps, and pointe work, embodying grace and strength. They act as the primary rhythmic pulse (often very subtle) and provide the base for melodic lines and jumps.
+    *   **Hips/torso**: **Core stability, carriage, and aesthetic line.** The torso maintains the elegant posture, serving as the central axis for turns and providing core strength for all movements. It embodies the harmonic structure and supports the expressive upper body.
+    *   **Hands/arms**: **Expressive phrasing, balance, and visual extension.** Arms create graceful lines (port de bras), contributing to the aesthetic beauty and balance. They enhance the overall lyrical quality, acting as a secondary melody or framing the dancer's expression.
+    *   **Head/shoulders**: **Direction, focus, and emotional expression.** The head follows the movement (épaulement), directs turns (spotting), and conveys emotion, maintaining engagement with the audience (even an imagined one). Shoulders are kept down and relaxed, contributing to the elongated line.
+
+3.  **Intensity Range**
+    *   **Minimum Intensity**: A simple "Plié" or "Tendu" at the barre with subtle arm movements, focusing on core engagement and proper form. The grace and control are present, but the energy is internal and contained.
+    *   **Maximum Intensity**: A virtuosic "Variation" combining multiple pirouettes (e.g., en dehors/en dedans), grand jumps (e.g., Grand Jeté, Saut de Chat), intricate footwork, and expansive extensions, executed with perfect technical precision, fluidity, and dramatic expression. This showcases peak athleticism, artistry, and command of space.
+
+4.  **Musical Dynamics**
+    *   **Pauses/freezes**: Can be used for dramatic effect, often at the peak of a pose or extension (e.g., an Arabesque) or a sustained balance. Musically, this calls for sustained notes, a brief hold, or a moment of silence to emphasize the beauty and control.
+    *   **Builds**: Energy builds through a sequence of smaller movements leading to a larger jump, turn, or combination (e.g., plié before relevé or sauté). Musically, this aligns with a crescendo in dynamics, increasing tempo, or a rising melodic line, creating anticipation for a climactic movement.
+    *   **Transitions between sections**: Smooth and continuous, with an emphasis on fluid links between steps, turns, and jumps, often incorporating pliés or tendus. Musically, transitions are seamless, guided by continuous melodic phrases and rhythmic flow.
+    *   **Repetitive grooves vs. pattern breaks**: Barre work and adagio typically involve repetitive patterns to build strength and technique. Choreography (variations) features intricate patterns with planned breaks and shifts in tempo and dynamics, creating a narrative flow and artistic expression.
+
+5.  **Key Kinematic Features (Ranked by importance for driving music)**
+    1.  **Overall energy**: Crucial for sustained grace, power in jumps, and expressive quality.
+    2.  **Symmetry**: Highly important for classical ballet's aesthetic and precise body lines.
+    3.  **Core speed**: Essential for maintaining balance, executing turns, and controlling complex movements.
+    4.  **Body tilt**: Creates dynamic lines and adds to the expressive range of poses and movements.
+    5.  **Arm spread**: Integral to port de bras, balance, and creating expansive, graceful lines.
+    6.  **Foot speed**: Important for quick steps, intricate footwork, and precise landings.
+    7.  **Jerk magnitude**: Used for the sharp initiation of jumps and turns, but less frequent than fluid movements.
+    8.  **Hand speed**: Supports arm movements, adding subtle nuances and refined gestures.
+    9.  **Head bob**: Primarily used for spotting in turns and conveying emotional intent, not a rhythmic "bob."
+
+---
+
+### 9. Waving (18:09-18:18, 18:44-19:57)
+
+**Description from video:** Started alongside popping (late 60s-early 70s) as a transition. Evolved to emulate natural water flow in all environments. Core techniques: "Arm Wave" (fingertip-to-fingertip) and "Tidal Wave" (head-to-toe). Variations: "Hand Waves," "Micro Waves," "Side Waves," "Isolated/Segmented Waves," "Toe Waves," "Twist Waves," "Rock Waves," "Diagonal Body Waves," "Leg Waves." Styles include "Snaking" (by Popin' Taco), "King Cobra" (by Darryl "King Cobra" Johnson, inspired by Boogaloo Sam's circular chest motion), and "Digits" (rave scene, finger waves). "Liquid" (by David Elsewhere, infinite flowing waves). "Fluidity" is bread and butter. "Clear intention and completion" for waves.
+
+1.  **Movement Quality as Music (Laban)**
+    *   **Weight**: Predominantly **light/floating**, creating a seamless, fluid illusion as if the body is without mass. However, there can be moments of grounding to initiate or conclude a wave. Musically, this translates to fluid, sustained synth pads, gliding melodies, or atmospheric soundscapes that evoke a sense of weightlessness.
+    *   **Time**: Predominantly **sustained/flowing**. The essence of waving is continuous, unbroken movement, creating a smooth, ripple-like effect. This aligns perfectly with a **legato** musical quality, emphasizing smooth transitions and elongated phrasing.
+    *   **Space**: Primarily **indirect/curving**. Waves inherently follow a serpentine, curving path through the body or limbs, creating a hypnotic visual. Musically, this suggests winding, evolving melodies, often with a drone-like quality, that lead the listener on a continuous journey.
+    *   **Flow**: Predominantly **free/continuous**, embodying the unrestricted, natural flow of water. This implies a musical quality of release, allowing for effortless, unbroken movement without sharp breaks or holds.
+
+2.  **Body Part Roles**
+    *   **Feet/legs**: **Foundation, subtle ripple, and ground connection.** Feet are used for "Toe Waves" and to subtly anchor or move the body to allow waves to pass through. Legs can perform "Leg Waves" as secondary ripples. They act as the very subtle, underlying bass or rhythmic foundation that supports the overall flow.
+    *   **Hips/torso**: **Primary conduit for body waves and flow.** The torso is crucial for "Tidal Waves," "Snaking," and "King Cobra," acting as the main channel through which the wave travels, making the movement appear seamless. It embodies the core melodic line or atmospheric texture.
+    *   **Hands/arms**: **Primary conduit for arm waves and precise manipulation.** Arms are central for "Arm Waves," "Hand Waves," and "Micro Waves," creating the visual ripples that define the style. They act as the lead melody, creating intricate, flowing lines.
+    *   **Head/shoulders**: **Initiation, direction, and seamless connection.** The head can initiate a "Tidal Wave" or guide the direction of a "Twist Wave." Shoulders serve as joints through which the wave passes, ensuring a smooth, unbroken flow.
+
+3.  **Intensity Range**
+    *   **Minimum Intensity**: Subtle "Arm Waves" or "Hand Waves," focusing on smooth, continuous ripples through a single limb with minimal body engagement. The flow is present, but restrained.
+    *   **Maximum Intensity**: Complex, multi-directional "Diagonal Body Waves" or intricate "Liquid" movements incorporating multiple wave styles ("Snaking," "King Cobra"), flowing seamlessly across the entire body, often performed with intense focus and an almost trance-like fluidity. This demonstrates peak bodily control, precision, and the ability to maintain an unbroken, hypnotic flow.
+
+4.  **Musical Dynamics**
+    *   **Pauses/freezes**: Extremely rare, as the dance's core is continuous fluidity. If a pause occurs, it's usually brief and acts as a momentary suspension within a larger flow, demanding a sustained note or atmospheric hold.
+    *   **Builds**: Energy can build through increasing the speed or complexity of waves, integrating more body parts, or creating larger, more encompassing movements. Musically, this aligns with crescendos in synth washes, rising melodic lines, or increasing textural density, leading to a peak of fluid motion.
+    *   **Transitions between sections**: Always seamless and flowing, ensuring that one wave or movement smoothly transitions into the next, maintaining the illusion of unbroken liquid motion. Musically, transitions are continuous, without abrupt cuts, often using sustained notes or evolving atmospheric sounds.
+    *   **Repetitive grooves vs. pattern breaks**: Waving, by its nature, is a continuous, flowing pattern. "Pattern breaks" are more about varying the type of wave (e.g., from arm wave to tidal wave), changing direction, or introducing different stylistic variations (e.g., "Snaking," "Liquid") while maintaining the core fluidity. This mirrors continuous, evolving atmospheric music with subtle changes in texture and melodic direction.
+
+5.  **Key Kinematic Features (Ranked by importance for driving music)**
+    1.  **Overall energy**: Crucial for maintaining the continuous, fluid, and often hypnotic motion.
+    2.  **Core speed**: Essential for the smooth passage of waves through the torso and body.
+    3.  **Hand speed**: Vital for intricate "Hand Waves," "Digits," and initiating ripples through the arms.
+    4.  **Arm spread**: Creates the visual breadth and enhances the flow of arm waves.
+    5.  **Body tilt**: Adds to the serpentine quality and dynamic lines of waves.
+    6.  **Symmetry**: Can be used to create mesmerizing, mirrored wave patterns.
+    7.  **Foot speed**: Less critical, as foot movement is often subtle, supporting the waves.
+    8.  **Jerk magnitude**: Extremely low, as smoothness and continuity are paramount.
+    9.  **Head bob**: Not characteristic of the style; focus is on smooth transitions.
+
+---
+
+### 10. Vogue (20:12-20:20, 20:41-21:58)
+
+**Description from video:** A category in the ballroom scene from the 1980s, but existed in rudimentary forms before that. Created by LGBTQ Black and Latinx people dancing in underground clubs in NY. A way for queer dancers to escape, create, and find community. A stylized and performative dance with three subsets: "Old Way" (static poses, like magazine covers), "New Way" (geometric, intricate, high energy/flexibility), and "Vogue Femme" (feminine, feeling-based, soft/dramatic). Foundations include "Poses," "Lines," "Floorwork" (like B-boying), "Freezes" (like B-boying), "Popping" (like Popping). New Way elements: "Arms Control" (lines, boxes, clicks/bone breaking), "Stretch" (splits, contortion/flexibility stunts). Vogue Femme elements: "Catwalk," "Duckwalk," "Hands Performance," "Spins & Dips," "Floor Performance." Has codified names and elements.
+
+1.  **Movement Quality as Music (Laban)**
+    *   **Weight**: Highly dynamic. Can be **light/floating** in graceful hand performances and "Catwalks," or **heavy/grounded** in powerful "Spins & Dips" and "Floorwork." This versatility allows for musical interpretation ranging from light, intricate details to strong, impactful beats.
+    *   **Time**: Very diverse. **Sudden/sharp** movements are prominent in hits, poses, and "clicks" (bone-breaking). **Sustained/flowing** qualities appear in "Arm Control" (lines), "Stretch," and transitions. Musically, this combines **staccato** bursts, **legato** lines, and rhythmic syncopation.
+    *   **Space**: Predominantly **direct/linear** in the precise, geometric shapes of "New Way," the sharp lines of "Old Way" poses, and "Arm Control." However, "Catwalk" and "Duckwalk" introduce **indirect/curving** elements, often with a sensual sway. Musically, this can be a structured beat that flows into sinuous melodic phrases.
+    *   **Flow**: A continuous interplay of **bound/controlled** and **free/continuous**. Bound energy enables precise poses, sharp transitions, and intricate hand performances. Free energy drives fluidity in "Vogue Femme" and powerful spins, creating tension and release.
+
+2.  **Body Part Roles**
+    *   **Feet/legs**: **Foundation, runway, and stunts.** Legs are crucial for "Catwalks" and "Duckwalks," providing stability for poses, and performing splits and contortion stunts. They act as the rhythmic bassline or driving beat, defining the walk and power.
+    *   **Hips/torso**: **Core expression, character, and power for dips/spins.** The torso is central to the expressive posture, driving the deep "Spins & Dips," and connecting the various elements of the dance. It embodies the main melodic line or powerful rhythmic core, communicating attitude and emotion.
+    *   **Hands/arms**: **Primary expressive tool, framing, and geometric precision.** Hands and arms are essential for "Hand Performance," creating lines, boxes, and clicks that define the aesthetic. They act as the lead melody, showcasing intricate and precise movements.
+    *   **Head/shoulders**: **Attitude, focus, and dramatic flair.** The head often leads poses, directs eye contact, and conveys intense emotion ("feeling-based"). Shoulders contribute to the dramatic lines and powerful dips, emphasizing the theatrical aspect.
+
+3.  **Intensity Range**
+    *   **Minimum Intensity**: Subtle hand gestures ("Hands Performance") with minimal body movement, or holding a simple "Old Way" pose with controlled presence. The character is present through precise detail, even when still.
+    *   **Maximum Intensity**: A dynamic combination of "Catwalks" transitioning into intricate "New Way" arm control, extreme "Stretch" (splits, contortion), followed by powerful "Spins & Dips," culminating in a dramatic "Floor Performance." This displays peak athleticism, precision, theatricality, and fierce expression, demanding total body engagement and explosive energy.
+
+4.  **Musical Dynamics**
+    *   **Pauses/freezes**: Essential for "Old Way" poses and "Freezes." Musically, this demands sharp cuts, dramatic silences, or a strong, sustained hit to emphasize the iconic visual and dramatic impact.
+    *   **Builds**: Energy builds through increasing speed and complexity of hand performance, intricate "New Way" combinations, and generating momentum for "Spins & Dips." Musically, this aligns with rising synth lines, increasing rhythmic density, or vocal prompts that create anticipation for a powerful drop.
+    *   **Transitions between sections**: Can be sharp and impactful (like B-boying freezes) or fluid and sensual (like "Catwalks"), depending on the subset. Transitions are deliberate and contribute to the overall performative narrative. Musically, these are marked by drum fills, sharp cuts, or evolving beats.
+    *   **Repetitive grooves vs. pattern breaks**: Often features repetitive "Catwalk" or "Duckwalk" patterns that establish a foundational groove. Pattern breaks are frequent and deliberate, incorporating a wide range of hand performances, spins, dips, and floorwork, creating continuous visual interest and dramatic storytelling to the music's structure and beats.
+
+5.  **Key Kinematic Features (Ranked by importance for driving music)**
+    1.  **Jerk magnitude**: Crucial for sharp poses, hits, "clicks," and impactful transitions.
+    2.  **Core speed**: Essential for executing powerful "Spins & Dips" and maintaining core stability in complex poses.
+    3.  **Hand speed**: Vital for intricate "Hands Performance" and precise articulation of geometric shapes.
+    4.  **Overall energy**: Crucial for conveying the sustained performative intensity and dramatic flair.
+    5.  **Arm spread**: Essential for creating expansive lines, geometric shapes, and dramatic framing.
+    6.  **Body tilt**: Adds to the dramatic poses, sensual lines, and dynamic dips.
+    7.  **Symmetry**: Often utilized, especially in "Old Way" poses and "New Way" geometric movements, for striking visual effect.
+    8.  **Foot speed**: Important for "Catwalks," "Duckwalks," and initiating spins.
+    9.  **Head bob**: Often used for accents and attitude, contributing to the performative aspect.
+
+---
+
+### 11. Afro Dance (Amapiano) (22:10-22:18, 23:09-24:26)
+
+**Description from video:** "Africa is too big... multiple countries, cultures, music genres, and styles of dance." Focusing on specific popular South African dances. "Amapiano" is a music genre (fusion of Kwaito, SA House, Jazz, Bacardi) that emerged in early 2010s, played at house parties and underground parties. "Posture" is influenced by Pantsula culture: chest forward, derriere protruded, knees slightly bent, head and neck relaxed. Moves include "Kwasa Kwasa" (90s dance, vital for learning how to sink), "Sikalekeke" (90s, "cut the cake," Kwaito dance turned Amapiano), "Pouncing Cat" (hips/sinking to the beat), "Dakiwe" (sinking, head nodding), "Gwara Gwara" (popular in 2017-2018). Emphasizes syncopation and musicality.
+
+1.  **Movement Quality as Music (Laban)**
+    *   **Weight**: Predominantly **heavy/grounded**, emphasizing powerful stomps, sinking motions, and a strong connection to the earth. Musically, this translates to deep, driving basslines, heavy, syncopated drum beats, and a powerful, rhythmic pulse.
+    *   **Time**: A mix of **sustained/flowing** (e.g., hip swaying, body rolls in Kwasa Kwasa) and **sudden/sharp** (e.g., foot stomps, quick accents, Dakiwe head nods). The overall groove is rhythmic and continuous, but punctuated. Musically, this combines **legato** fluid movements with **staccato** rhythmic hits.
+    *   **Space**: Often **indirect/curving** through hip movements and body rolls (Kwasa Kwasa), creating a fluid, earthy feel. Can also be **direct/linear** in stomps and directional steps (Dakiwe, Gwara Gwara). Musically, this suggests a rich, winding bassline or a fluid vocal melody over a strong, driving beat.
+    *   **Flow**: Predominantly **free/continuous**, reflecting the expressive, uninhibited nature of the dance and emphasizing fluidity and rootedness. This implies a musical quality of release, allowing the body to move organically with the music's intricate rhythms.
+
+2.  **Body Part Roles**
+    *   **Feet/legs**: **Grounding, rhythmic foundation, and sinking motions.** Feet are crucial for stomps, taps, and setting the rhythmic pulse, while legs execute the bent-knee posture and "sinking" movements. They act as the primary percussion (especially the kick drum and bassline), driving the dance.
+    *   **Hips/torso**: **Primary rhythmic and expressive engine, embodying the "derriere protruded" posture and sinking.** Hips are central for circular movements (Kwasa Kwasa) and driving the "Pouncing Cat" motion. The torso connects these movements, providing the core groove. This is the main rhythmic core, infusing fluidity and power.
+    *   **Hands/arms**: **Expressive flair and rhythmic accents.** Arms are used for big, sweeping gestures (Gwara Gwara), rhythmic punctuation, and framing the body's posture. They add melodic flourishes, percussive accents, or emphasize vocal calls.
+    *   **Head/shoulders**: **Rhythmic emphasis, attitude, and character.** The head often nods upwards (Dakiwe) or follows hip movements, adding rhythmic accents and conveying the dance's joyful, proud attitude. Shoulders contribute to dynamic body rolls and shimmies.
+
+3.  **Intensity Range**
+    *   **Minimum Intensity**: A subtle "Posture" (bent knees, protruded derriere) with gentle hip swaying (Kwasa Kwasa) and relaxed arm movements. The energy is contained but deeply rhythmic, a simmering internal pulse.
+    *   **Maximum Intensity**: Full "full body engagement" with vigorous "sinking" movements, continuous hip circles, powerful stomps, dynamic arm swings (Gwara Gwara), and expressive facial cues. This demonstrates peak energy, stamina, and deep rhythmic syncopation, communicating joy and confidence.
+
+4.  **Musical Dynamics**
+    *   **Pauses/freezes**: Less common, as the dance emphasizes continuous, energetic movement and flow. If used, they would be very brief, sharp stops to highlight a specific musical hit or vocal sample, creating a sudden punctuation.
+    *   **Builds**: Energy builds through increasing speed and range of hip movements, adding more powerful stomps (Sikalekeke), and intensifying arm movements and body rolls. Musically, this aligns with crescendos in drumming, accelerating tempos, or rising melodic lines, creating excitement and anticipation.
+    *   **Transitions between sections**: Fluid and seamless, allowing dancers to move from one step to another (Kwasa Kwasa to Sikalekeke) or vary the sinking motion. Musically, transitions are often smooth, driven by continuous beats and evolving rhythms that encourage constant motion.
+    *   **Repetitive grooves vs. pattern breaks**: Relies on repetitive, hip-driven grooves and sinking motions (Pouncing Cat) that create a continuous, earthy rhythm. Pattern breaks are introduced by changing steps (Kwasa Kwasa, Sikalekeke, Dakiwe, Gwara Gwara), varying the intensity of stomps, or altering arm movements, showcasing rhythmic complexity and improvisation to the rich musical textures.
+
+5.  **Key Kinematic Features (Ranked by importance for driving music)**
+    1.  **Core speed**: Essential for the rhythmic hip movements, body rolls, and driving the central groove.
+    2.  **Overall energy**: Crucial for conveying the high-energy, joyful, and sustained performance.
+    3.  **Foot speed**: Drives the intricate rhythmic steps, stomps, and accents.
+    4.  **Body tilt**: Adds to the dynamic, fluid, and earthy movements, especially in sinking.
+    5.  **Jerk magnitude**: Important for sharp accents and powerful stomps.
+    6.  **Arm spread**: Used for expansive gestures, framing, and adding to the overall energy.
+    7.  **Head bob**: Often used to emphasize strong beats and rhythmic accents, particularly in Dakiwe.
+    8.  **Hand speed**: Supports arm movements for flourishes and rhythmic punctuation.
+    9.  **Symmetry**: Less critical, as often asymmetrical movements and isolations are used.
+
+---
+
+### 12. Waacking (24:35-24:44, 25:21-26:48)
+
+**Description from video:** An athletic, dramatic, and freeing dance style created in LA by young gay men in the 70s. Originated from "Punking." So much of the foundational movements of posing and the whack itself came from this style's predecessor. Created as a form of escape for young gay men, to make positives out of negatives. Main techniques: "Posing" (creating space/pictures, demanding presence, expressing emotion) and "Waacking" (action of striking with force, from action scenes of Batman and Robin). Uses "Rolls/Nunchucks/Twirls" (inspired by Bruce Lee's nunchuck movements), "Overheads/Tinkers/Bolos" (first done by Tinker Toy). Context & stories often clash/create controversy and divide. "Waacking" (with 2 'a's) and "Whacking" (with 'h'a) are different spellings. Respect where the style comes from and individual stories.
+
+1.  **Movement Quality as Music (Laban)**
+    *   **Weight**: Highly dynamic, often shifting between **light/floating** (fluid transitions, graceful arm movements) and **heavy/grounded** (powerful strikes, sharp poses). This allows for musical interpretation that shifts between intricate, airy details and strong, impactful beats.
+    *   **Time**: Primarily **sudden/sharp** for the powerful arm strikes and precise poses, giving a dynamic, percussive punch. There are also **sustained/flowing** qualities in transitions and rolls. Musically, this creates a **staccato** and rhythmic quality, emphasizing strong attacks and sharp accents.
+    *   **Space**: Predominantly **direct/linear** in the powerful arm extensions, precise poses, and sharp strikes, creating clear lines and impactful movements. However, circular arm movements ("rolls," "twirls") and dramatic facial expressions can add **indirect/curving** elements. Musically, this suggests a precise, driving rhythm that can burst into fluid, expressive melodic phrases.
+    *   **Flow**: A continuous interplay of **bound/controlled** and **free/continuous**. Powerful, controlled energy is visible in the deliberate strikes, sharp poses, and precise arm work. Simultaneously, there's a sense of free, expressive release, especially in the emotional intensity and improvisational storytelling.
+
+2.  **Body Part Roles**
+    *   **Feet/legs**: **Foundation and rhythmic accents.** Legs are used for grounding, subtle stepping (e.g., disco step, pas de bourrée), and establishing the rhythmic pulse. They provide stability for powerful upper body movements and contribute to turns.
+    *   **Hips/torso**: **Core expression and dramatic posture.** The torso frames the powerful arm movements and contributes to the overall dramatic posture, conveying attitude and emotion. It acts as the central emotional core, supporting the expressive upper body.
+    *   **Hands/arms**: **Primary expressive tool, power generation, and character manifestation.** Hands and arms are central for the defining "Waacking" action (striking with force), "Rolls," "Twirls," "Overheads," and creating dramatic poses. They act as the lead melodic line, showcasing intricate, powerful, and precise movements.
+    *   **Head/shoulders**: **Attitude, direction, and intense expression.** The head often leads poses, directs eye contact, and conveys intense emotion and confidence. Shoulders contribute to the powerful arm movements and dramatic posture, emphasizing the theatrical aspect.
+
+3.  **Intensity Range**
+    *   **Minimum Intensity**: Subtle arm movements ("Rolls" or "Twirls") with soft posing, focusing on continuous flow and refined styling. The emotional presence is internal, hinted at through subtle expressions.
+    *   **Maximum Intensity**: Explosive "Waacking" actions with powerful, rapid arm strikes and extensions, intricate "Rolls/Nunchucks/Twirls," dynamic "Overheads/Tinkers/Bolos," sharp and expressive "Posing" that demands presence, combined with fierce facial expressions. This demonstrates peak athleticism, precision, theatricality, and raw emotional power, commanding attention with every movement.
+
+4.  **Musical Dynamics**
+    *   **Pauses/freezes**: Essential for "Posing." Musically, this demands sharp cuts, dramatic silences, or a strong, sustained hit to emphasize the iconic visual and dramatic impact.
+    *   **Builds**: Energy builds through increasing speed and power of arm strikes, layering intricate "Rolls" and "Twirls," and transitioning into more expansive "Overheads." Musically, this aligns with rising melodic lines, increasing rhythmic density, or vocal prompts that create anticipation for an impactful beat or dramatic climax.
+    *   **Transitions between sections**: Often sharp and defined, flowing from one powerful strike or pose to the next, with deliberate changes in direction and intensity. Musically, these are marked by strong percussive hits, abrupt shifts in melody, or evolving rhythms.
+    *   **Repetitive grooves vs. pattern breaks**: While less groove-based than other club styles, specific arm patterns can become repetitive. Pattern breaks are crucial, as dancers layer various "Waacking" actions, "Rolls," "Twirls," and "Posing" to create continuous visual interest and dramatic storytelling, often improvising to lyrical content and musical breaks.
+
+5.  **Key Kinematic Features (Ranked by importance for driving music)**
+    1.  **Jerk magnitude**: Absolutely crucial for the powerful, sharp strikes and precise transitions.
+    2.  **Hand speed**: Vital for intricate "Rolls," "Twirls," and the rapid execution of "Waacking" actions.
+    3.  **Overall energy**: Crucial for conveying the sustained performative intensity and dramatic flair.
+    4.  **Arm spread**: Essential for creating expansive lines, dramatic framing, and powerful strikes.
+    5.  **Core speed**: Supports the stability for powerful upper body movements and dynamic shifts in balance.
+    6.  **Body tilt**: Adds to the dramatic poses and dynamic execution of strikes.
+    7.  **Symmetry**: Can be utilized to create powerful, mirrored arm movements or striking poses.
+    8.  **Foot speed**: Less critical, as footwork is often subtle, supporting upper body actions.
+    9.  **Head bob**: Often used for accents and attitude, contributing to the performative aspect.
+
+---
+
+### 13. Locking (27:22-27:28, 28:15-29:43)
+
+**Description from video:** Created in downtown LA by Don "Campbellock" Campbell in 1970. Originated from him poorly doing the Robot Shuffle, creating the "Lock" which became the base. Changed name to Locking in 1974 due to legal reasons (record company vs. Don). Base movement is "The Lock" (can add freezes if musically sensible). Moves include "Down Lock," "Up Lock/Muscle Man," "Lock Lock." Other moves: "Give Yourself 5" (70s greeting/acknowledgement, acknowledge yourself when no one else is around), "Give the Floor 5" (give levels to the dance), "Keeping Time/Pacing" (how he kept beat/timing), "Wrist Rolls" (embellishment/accentuation), "Splits" (James Brown/Sammy Davis Jr. inspired kick splits), "Hambone" (African-American style of dance involving stomping, slapping/patting arms, legs, chest, cheeks), "Hat Tricks" (twirling, tossing, catching), "Knee Drops," "Swan Dives."
+
+1.  **Movement Quality as Music (Laban)**
+    *   **Weight**: Predominantly **heavy/grounded** due to the strong "locking" positions and powerful knee drops. However, swift transitions and arm movements can be lighter. Musically, this translates to strong, impactful basslines, sharp drum hits, and a grounded, funky rhythm.
+    *   **Time**: Predominantly **sudden/sharp** for the "locks" (freezes) and powerful arm movements. Transitions can be quick and precise. Musically, this creates a **staccato** and rhythmic quality, emphasizing sharp attacks and percussive hits, often with a driving, funky beat.
+    *   **Space**: Primarily **direct/linear** in the precise, angular "locking" positions and sharp arm extensions. However, circular arm movements (wrist rolls) and dynamic level changes (give the floor 5) can add **indirect/curving** elements. Musically, this suggests a structured, driving rhythm with precise, often angular, melodic or percussive accents.
+    *   **Flow**: Predominantly **bound/controlled**. The defining characteristic is the precise, intentional "lock" (momentary freeze), which demands strong muscular control and clarity. This implies a musical quality of tension, sharp rhythmic punctuation, and a funky, syncopated groove.
+
+2.  **Body Part Roles**
+    *   **Feet/legs**: **Foundation, rhythmic accents, and level changes.** Feet are used for stomping (Hambone) and basic steps to establish rhythm. Legs are crucial for knee drops, splits, and maintaining low-level engagement. They act as the primary percussion (kick drum, snare), driving the funky beat.
+    *   **Hips/torso**: **Core stability, rhythmic pulse, and attitude.** The torso maintains a strong, upright posture, providing stability for locks and contributing to powerful strikes (Hambone). It acts as the central rhythmic engine, supporting the strong, syncopated groove.
+    *   **Hands/arms**: **Primary expressive tool, defining "locks," and dynamic accents.** Hands and arms are central for the "lock" motion, wrist rolls, and hat tricks, creating distinct, sharp positions. They act as the lead melody, showcasing intricate and precise movements, often mimicking instrument sounds like horns.
+    *   **Head/shoulders**: **Attitude, direction, and communication.** The head often leads the gaze, contributing to the dancer's confident and playful attitude. Shoulders are used for powerful shimmies and dramatic poses, emphasizing the theatrical aspect.
+
+3.  **Intensity Range**
+    *   **Minimum Intensity**: A basic "Up Lock" or "Down Lock" with subtle arm movements, establishing presence and a rhythmic pulse. The character is present, but the energy is contained and precise.
+    *   **Maximum Intensity**: Explosive, continuous "Lock Locks" (lock x2), dynamic "Give the Floor 5" moves, intricate "Wrist Rolls," powerful "Splits" or "Hambone" sequences, often incorporating "Hat Tricks" with seamless execution and high energy. This demonstrates peak athleticism, precision, and a vibrant, funky personality, commanding attention with every sharp movement.
+
+4.  **Musical Dynamics**
+    *   **Pauses/freezes**: The "Lock" is the defining element, used for sharp, deliberate stops. Musically, this demands distinct cuts, sharp percussive hits (e.g., horn stabs), or sudden silences to emphasize the precise, frozen positions.
+    *   **Builds**: Energy builds through increasing the frequency of locks, layering arm movements (e.g., Lock Lock), incorporating more dynamic steps (Give the Floor 5), or accelerating sequences. Musically, this aligns with drum fills, rising horn sections, or intensifying basslines that build excitement.
+    *   **Transitions between sections**: Often sharp and precise, transitioning from one distinct lock or step to the next with clear definition. Transitions contribute to the overall rhythmic complexity and theatricality. Musically, these are marked by short, percussive breaks, sudden changes in the beat, or horn accents.
+    *   **Repetitive grooves vs. pattern breaks**: Features repetitive "locking" actions and basic steps (e.g., "Keeping Time") that form a foundational groove. Pattern breaks are crucial, as dancers layer various arm movements, hat tricks, and level changes, often improvising to the music's syncopated rhythms and strong beats.
+
+5.  **Key Kinematic Features (Ranked by importance for driving music)**
+    1.  **Jerk magnitude**: Absolutely crucial for the powerful, sharp "locks" and precise, impactful transitions.
+    2.  **Hand speed**: Vital for intricate "Wrist Rolls" and the rapid execution of "locking" actions and hat tricks.
+    3.  **Core speed**: Supports the stability for powerful upper body movements and sudden shifts in balance.
+    4.  **Overall energy**: Crucial for conveying the sustained performative intensity and vibrant, funky attitude.
+    5.  **Arm spread**: Essential for creating expansive lines, dramatic framing, and powerful "locking" positions.
+    6.  **Body tilt**: Adds to the dramatic poses and dynamic execution of locks and level changes.
+    7.  **Symmetry**: Often utilized to create powerful, mirrored arm movements and striking poses.
+    8.  **Foot speed**: Important for basic steps, rhythmic accents, and initiating level changes.
+    9.  **Head bob**: Often used for accents and attitude, contributing to the performative aspect.

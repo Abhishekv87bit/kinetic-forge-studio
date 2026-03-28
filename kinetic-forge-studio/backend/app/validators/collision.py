@@ -199,8 +199,9 @@ def check_collisions(
                 name_a, mesh_a, tf_a = entries[i]
                 name_b, mesh_b, tf_b = entries[j]
                 if _aabb_overlap(mesh_a, tf_a, mesh_b, tf_b):
-                    if _is_gear_mesh_pair(name_a, name_b, component_types):
-                        exempted.append({"mesh_a": name_a, "mesh_b": name_b, "type": "gear_mesh"})
+                    exemption = _is_intentional_contact(name_a, name_b, component_types)
+                    if exemption:
+                        exempted.append({"mesh_a": name_a, "mesh_b": name_b, "type": exemption})
                     else:
                         collisions_found.append({
                             "mesh_a": name_a,

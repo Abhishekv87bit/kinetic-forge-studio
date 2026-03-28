@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Synaptic Web — 3D Explorer</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; background: #06060a; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
+  canvas { display: block; width: 100% !important; height: 100% !important; position: fixed; top: 0; left: 0; z-index: 0; }
+  #info {
+    position: fixed; top: 6px; left: 6px; z-index: 100;
+    background: rgba(8,8,14,0.7); border: 1px solid #1e1e2e; border-radius: 6px;
+    padding: 6px 10px; color: #ccc; font-size: 10px; line-height: 1.3;
+  }
+  #info h2 { color: #fff; font-size: 11px; margin-bottom: 2px; }
+  #info .sub { color: #888; font-size: 9px; margin-bottom: 0; }
+  .btn-row {
+    position: fixed; bottom: 6px; left: 50%; transform: translateX(-50%); z-index: 100;
+    display: flex; gap: 3px; flex-wrap: nowrap;
+    background: rgba(8,8,14,0.7); border: 1px solid #1e1e2e; border-radius: 6px; padding: 3px 6px;
+  }
+  .btn-row button {
+    background: #1a1a2e; border: 1px solid #2a2a4a; color: #aaa;
+    padding: 3px 8px; border-radius: 4px; cursor: pointer; font-size: 9px; white-space: nowrap;
+  }
+  .btn-row button:hover { background: #2a2a4e; color: #fff; }
+  .btn-row button.active { background: #3a2a1a; border-color: #ff8844; color: #ff8844; }
+  #tooltip {
+    position: fixed; z-index: 200; background: rgba(10,10,20,0.95); border: 1px solid #3a3a5a;
+    border-radius: 8px; padding: 8px 12px; color: #ddd; font-size: 12px; pointer-events: none;
+    display: none; max-width: 220px;
+  }
+  #tooltip h3 { color: #ff8844; font-size: 13px; margin-bottom: 3px; }
+  #tooltip .role { color: #aaa; font-size: 11px; }
+</style>
+</head>
+<body>
+
+<div id="info">
+  <h2>The Synaptic Web</h2>
+  <div class="sub">Faithful Transformer — Cam Stack</div>
+</div>
+
+<div class="btn-row">
+  <button onclick="toggleAnim()" id="btn-play" class="active">▶ Play</button>
+  <button onclick="toggleExplode()" id="btn-explode">Explode</button>
+  <button onclick="camPreset('front')">Front</button>
+  <button onclick="camPreset('top')">Top</button>
+  <button onclick="camPreset('side')">Side</button>
+  <button onclick="camPreset('free')">Free</button>
+</div>
+
+<div id="tooltip"><h3 id="tt-name"></h3><div id="tt-role" class="role"></div></div>
+
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x06060a);
+scene.fog = new THREE.FogExp2(0x06060a, 0.0004);
+
+const camera = new THREE.PerspectiveCamera(50, innerWidth/innerHeight, 1, 5000);
+camera.position.set(400, 350, 600);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.domElement.style.position = 'fixed';
+renderer.domElement.style.top = '0';
+renderer.domElement.style.left = '0';
+renderer.domElement.style.zIndex = '0';
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.target.set(0, 100, 0);
+
+// Lights
+scene.add(new THREE.AmbientLight(0x334455, 1.5));
+const key = new THREE.DirectionalLight(0xffeedd, 1.2);
+key.position.set(200, 400, 300);
+scene.add(key);
+const rim = new THREE.DirectionalLight(0x4466ff, 0.6);
+rim.position.set(-200, 200, -300);
+scene.add(rim);
+const bottom = new THREE.PointLight(0xddaa44, 0.4, 600);
+bottom.position.set(0, -200, 0);
+scene.add(bottom);
+
+// Materials
+const brass = new THREE.MeshStandardMaterial({ color: 0xcc9944, metalness: 0.8, roughness: 0.3 });
+const darkSteel = new THREE.MeshStandardMaterial({ color: 0x2a2a3a, metalness: 0.7, roughness: 0.4 });
+const camQ = new THREE.MeshStandardMaterial({ color: 0xff8844, metalness: 0.5, roughness: 0.4, emissive: 0x331100, emissiveIntensity: 0.3 });
+const camK = new THREE.MeshStandardMaterial({ color: 0x44ddaa, metalness: 0.5, roughness: 0.4, emissive: 0x003311, emissiveIntensity: 0.3 });
+const camV = new THREE.MeshStandardMaterial({ color: 0x8866ff, metalness: 0.5, roughness: 0.4, emissive: 0x110033, emissiveIntensity: 0.3 });
+const purple = new THREE.MeshStandardMaterial({ color: 0x8866ff, metalness: 0.5, roughness: 0.4, emissive: 0x110033, emissiveIntensity: 0.2 });
+const green = new THREE.MeshStandardMaterial({ color: 0x44ddaa, metalness: 0.5, roughness: 0.4, emissive: 0x003311, emissiveIntensity: 0.2 });
+const gold = new THREE.MeshStandardMaterial({ color: 0xddaa44, metalness: 0.7, roughness: 0.3, emissive: 0x332200, emissiveIntensity: 0.2 });
+const red = new THREE.MeshStandardMaterial({ color: 0xff4466, metalness: 0.4, roughness: 0.5, emissive: 0x220011, emissiveIntensity: 0.2 });
+const wire = new THREE.MeshStandardMaterial({ color: 0x5588ff, metalness: 0.6, roughness: 0.3, emissive: 0x112244, emissiveIntensity: 0.3 });
+const waveMat = new THREE.MeshStandardMaterial({ color: 0x44ddaa, metalness: 0.3, roughness: 0.5, emissive: 0x115533, emissiveIntensity: 0.5 });
+
+// Track animated objects
+let animating = true;
+let exploded = false;
+let animRefs = {};
+let hoverTargets = [];
+
+// ===== GROUND REFERENCE =====
+const gridHelper = new THREE.GridHelper(1200, 30, 0x111122, 0x0a0a14);
+gridHelper.position.y = -250;
+scene.add(gridHelper);
+
+// ===== CENTRAL HUB =====
+const hubGroup = new THREE.Group();
+scene.add(hubGroup);
+
+// Hub shell (transparent-ish)
+const hubGeo = new THREE.CylinderGeometry(90, 90, 20, 32);
+const hubMat = new THREE.MeshStandardMaterial({ color: 0x1a1a2e, metalness: 0.6, roughness: 0.3, transparent: true, opacity: 0.4 });
+const hubShell = new THREE.Mesh(hubGeo, hubMat);
+hubGroup.add(hubShell);
+
+// Hub ring
+const hubRingGeo = new THREE.TorusGeometry(92, 3, 8, 48);
+const hubRing = new THREE.Mesh(hubRingGeo, darkSteel);
+hubRing.rotation.x = Math.PI / 2;
+hubGroup.add(hubRing);
+
+// Central shaft
+const shaftGeo = new THREE.CylinderGeometry(4, 4, 180, 12);
+const shaft = new THREE.Mesh(shaftGeo, darkSteel);
+shaft.position.y = 0;
+hubGroup.add(shaft);
+animRefs.shaft = shaft;
+
+// Cam discs on shaft
+const camGroup = new THREE.Group();
+hubGroup.add(camGroup);
+animRefs.camGroup = camGroup;
+
+function makeCamDisc(y, mat, radiusVar) {
+  // Irregular cam shape using lathe
+  const points = [];
+  const segments = 36;
+  for (let i = 0; i <= segments; i++) {
+    const angle = (i / segments) * Math.PI;
+    const baseR = 35 + radiusVar * Math.sin(angle * 3) + radiusVar * 0.6 * Math.sin(angle * 7 + 1);
+    points.push(new THREE.Vector2(Math.max(8, baseR), 0));
+  }
+  // Use cylinder with varying radius approximation
+  const geo = new THREE.CylinderGeometry(35 + radiusVar, 35 + radiusVar * 0.7, 8, 24);
+  // Deform vertices to create cam profile
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i);
+    const z = pos.getZ(i);
+    const angle = Math.atan2(z, x);
+    const r = Math.sqrt(x*x + z*z);
+    if (r > 5) {
+      const bump = 1 + 0.25 * Math.sin(angle * 3 + radiusVar) + 0.15 * Math.sin(angle * 5 + radiusVar * 2);
+      pos.setX(i, x * bump);
+      pos.setZ(i, z * bump);
+    }
+  }
+  geo.computeVertexNormals();
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.y = y;
+  return mesh;
+}
+
+// Q cams (orange)
+camGroup.add(makeCamDisc(50, camQ, 8));
+camGroup.add(makeCamDisc(38, camQ, 10));
+camGroup.add(makeCamDisc(26, camQ, 6));
+// K cams (green)
+camGroup.add(makeCamDisc(10, camK, 9));
+camGroup.add(makeCamDisc(-2, camK, 7));
+// V cams (purple)
+camGroup.add(makeCamDisc(-18, camV, 11));
+camGroup.add(makeCamDisc(-30, camV, 8));
+camGroup.add(makeCamDisc(-42, camV, 6));
+
+// Cam followers (3 horizontal arms extending from hub)
+function makeFollower(y, mat, name) {
+  const group = new THREE.Group();
+  group.position.set(50, y, 0);
+  const armGeo = new THREE.CylinderGeometry(2, 2, 60, 8);
+  armGeo.rotateZ(Math.PI / 2);
+  const arm = new THREE.Mesh(armGeo, mat);
+  arm.position.x = 30;
+  group.add(arm);
+  const tipGeo = new THREE.SphereGeometry(5, 12, 8);
+  const tip = new THREE.Mesh(tipGeo, mat);
+  group.add(tip);
+  // Spring coil
+  const springCurve = new THREE.CatmullRomCurve3([]);
+  for (let t = 0; t < 20; t++) {
+    springCurve.points.push(new THREE.Vector3(60 + t * 2, Math.sin(t * 1.5) * 3, Math.cos(t * 1.5) * 3));
+  }
+  const springGeo = new THREE.TubeGeometry(springCurve, 40, 0.8, 6, false);
+  const spring = new THREE.Mesh(springGeo, darkSteel);
+  group.add(spring);
+  group.userData = { name, arm };
+  hubGroup.add(group);
+  return group;
+}
+animRefs.followerQ = makeFollower(44, camQ, 'Q Follower');
+animRefs.followerK = makeFollower(4, camK, 'K Follower');
+animRefs.followerV = makeFollower(-30, camV, 'V Follower');
+
+// ===== RADIAL ARMS + NODES =====
+function makeNode(x, y, z, radius, mat, name, role) {
+  const group = new THREE.Group();
+  group.position.set(x, y, z);
+  group.userData = { name, role, basePos: new THREE.Vector3(x, y, z) };
+
+  // Sphere body
+  const geo = new THREE.SphereGeometry(radius, 20, 16);
+  const mesh = new THREE.Mesh(geo, mat);
+  group.add(mesh);
+
+  // Ring
+  const ringGeo = new THREE.TorusGeometry(radius + 3, 1.5, 8, 24);
+  const ring = new THREE.Mesh(ringGeo, mat);
+  ring.rotation.x = Math.PI / 2;
+  group.add(ring);
+
+  // Label sprite
+  const canvas = document.createElement('canvas');
+  canvas.width = 256; canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 24px Segoe UI';
+  ctx.textAlign = 'center';
+  ctx.fillText(name, 128, 30);
+  ctx.font = '16px Segoe UI';
+  ctx.fillStyle = '#aaaaaa';
+  ctx.fillText(role, 128, 52);
+  const tex = new THREE.CanvasTexture(canvas);
+  const spriteMat = new THREE.SpriteMaterial({ map: tex, transparent: true });
+  const sprite = new THREE.Sprite(spriteMat);
+  sprite.scale.set(80, 20, 1);
+  sprite.position.y = radius + 18;
+  group.add(sprite);
+
+  scene.add(group);
+  hoverTargets.push(mesh);
+  mesh.userData = { name, role, group };
+  return group;
+}
+
+// Arm connections (tubes from hub to node)
+function makeArm(target, mat) {
+  const start = new THREE.Vector3(0, 0, 0);
+  const end = target.position.clone();
+  const mid = start.clone().lerp(end, 0.5);
+  mid.y += 30;
+  const curve = new THREE.QuadraticBezierCurve3(start, mid, end);
+  const geo = new THREE.TubeGeometry(curve, 24, 2.5, 8, false);
+  const armMat = mat.clone();
+  armMat.transparent = true;
+  armMat.opacity = 0.4;
+  const mesh = new THREE.Mesh(geo, armMat);
+  scene.add(mesh);
+  return mesh;
+}
+
+// Dendrite tendrils
+function makeTendril(from, angle, length) {
+  const dir = new THREE.Vector3(Math.cos(angle), 0.3, Math.sin(angle)).normalize();
+  const end = from.clone().add(dir.multiplyScalar(length));
+  const geo = new THREE.BufferGeometry().setFromPoints([from, end]);
+  const mat = new THREE.LineBasicMaterial({ color: 0x1a1a2a, transparent: true, opacity: 0.3 });
+  scene.add(new THREE.Line(geo, mat));
+}
+
+// Create all nodes
+const armAngleStep = Math.PI * 2 / 8;
+const armRadius = 280;
+
+const nodeTokens = makeNode(
+  Math.cos(0) * armRadius, 40, Math.sin(0) * armRadius,
+  28, purple, 'TOKENS', 'marble sequencer'
+);
+const nodeAttn = makeNode(
+  Math.cos(armAngleStep) * armRadius, 50, Math.sin(armAngleStep) * armRadius,
+  32, purple, 'ATTENTION', 'Hoberman expand'
+);
+const nodeGeneva = makeNode(
+  Math.cos(armAngleStep*2) * armRadius, 30, Math.sin(armAngleStep*2) * armRadius,
+  22, purple, 'GENEVA', 'token stepping'
+);
+const nodeBabbage = makeNode(
+  Math.cos(armAngleStep*3) * armRadius, 20, Math.sin(armAngleStep*3) * armRadius,
+  30, gold, 'BABBAGE', 'softmax / carry cascade'
+);
+const nodePanto = makeNode(
+  Math.cos(armAngleStep*4) * armRadius, 10, Math.sin(armAngleStep*4) * armRadius,
+  30, green, 'PANTOGRAPH', 'weighted summation'
+);
+const nodeRelu = makeNode(
+  Math.cos(armAngleStep*5) * armRadius, 20, Math.sin(armAngleStep*5) * armRadius,
+  24, green, 'ReLU SNAP', 'bistable flexures'
+);
+const nodeGrad = makeNode(
+  Math.cos(armAngleStep*6) * armRadius, 30, Math.sin(armAngleStep*6) * armRadius,
+  26, red, 'GRADIENT', 'spiral cams (backprop)'
+);
+const nodeEscape = makeNode(
+  Math.cos(armAngleStep*7) * armRadius, 40, Math.sin(armAngleStep*7) * armRadius,
+  24, gold, 'ESCAPEMENT', 'learning rate'
+);
+
+const allNodes = [nodeTokens, nodeAttn, nodeGeneva, nodeBabbage, nodePanto, nodeRelu, nodeGrad, nodeEscape];
+
+// Arms
+for (const node of allNodes) {
+  const mat = node.children[0].material;
+  makeArm(node, mat);
+  // Tendrils
+  const pos = node.position;
+  const outAngle = Math.atan2(pos.z, pos.x);
+  makeTendril(pos.clone(), outAngle - 0.3, 60);
+  makeTendril(pos.clone(), outAngle + 0.4, 45);
+}
+
+// ===== WAVE FIELD CANOPY =====
+const waveGroup = new THREE.Group();
+waveGroup.position.y = 220;
+scene.add(waveGroup);
+animRefs.waveElements = [];
+
+for (let row = 0; row < 4; row++) {
+  for (let col = 0; col < 8; col++) {
+    const x = (col - 3.5) * 50;
+    const z = (row - 1.5) * 40;
+    const dist = Math.sqrt(x*x + z*z);
+    const size = Math.max(3, 8 - dist * 0.02);
+
+    // Suspended element
+    const geo = new THREE.SphereGeometry(size, 10, 8);
+    const el = new THREE.Mesh(geo, waveMat);
+    el.position.set(x, 0, z);
+    el.userData = { baseY: 0, phase: col * 0.5 + row * 0.7, amp: 8 + Math.random() * 6 };
+    waveGroup.add(el);
+    animRefs.waveElements.push(el);
+
+    // Suspension wire
+    const wireGeo = new THREE.CylinderGeometry(0.3, 0.3, 40, 4);
+    const wireMesh = new THREE.Mesh(wireGeo, new THREE.MeshBasicMaterial({ color: 0x44ddaa, transparent: true, opacity: 0.1 }));
+    wireMesh.position.set(x, 20, z);
+    waveGroup.add(wireMesh);
+  }
+}
+
+// Canopy frame ring
+const canopyRingGeo = new THREE.TorusGeometry(200, 2, 8, 48);
+const canopyRing = new THREE.Mesh(canopyRingGeo, new THREE.MeshStandardMaterial({ color: 0x2a4a3a, metalness: 0.6, roughness: 0.4 }));
+canopyRing.rotation.x = Math.PI / 2;
+canopyRing.position.y = 220;
+scene.add(canopyRing);
+
+// ===== GALTON BOARD (below hub) =====
+const galtonGroup = new THREE.Group();
+galtonGroup.position.set(0, -120, 0);
+scene.add(galtonGroup);
+
+// Board housing
+const boardGeo = new THREE.BoxGeometry(50, 80, 15);
+const boardMesh = new THREE.Mesh(boardGeo, darkSteel);
+galtonGroup.add(boardMesh);
+
+// Pegs
+for (let r = 0; r < 5; r++) {
+  const pegsInRow = r + 2;
+  for (let c = 0; c < pegsInRow; c++) {
+    const pegGeo = new THREE.CylinderGeometry(2, 2, 16, 8);
+    const peg = new THREE.Mesh(pegGeo, brass);
+    peg.rotation.x = Math.PI / 2;
+    peg.position.set((c - (pegsInRow-1)/2) * 10, 25 - r * 15, 8);
+    galtonGroup.add(peg);
+  }
+}
+
+// Falling balls
+animRefs.galtonBalls = [];
+for (let b = 0; b < 6; b++) {
+  const ballGeo = new THREE.SphereGeometry(3, 8, 6);
+  const ball = new THREE.Mesh(ballGeo, gold);
+  ball.userData = { phase: b * 1.1, speed: 0.5 + Math.random() * 0.3 };
+  galtonGroup.add(ball);
+  animRefs.galtonBalls.push(ball);
+}
+
+// Histogram bins
+for (let i = 0; i < 5; i++) {
+  const h = 5 + Math.random() * 15;
+  const binGeo = new THREE.BoxGeometry(8, h, 12);
+  const binMat = new THREE.MeshStandardMaterial({ color: 0xddaa44, metalness: 0.4, roughness: 0.5, transparent: true, opacity: 0.4 + h/30 });
+  const bin = new THREE.Mesh(binGeo, binMat);
+  bin.position.set((i - 2) * 10, -40 + h/2, 0);
+  galtonGroup.add(bin);
+}
+
+// Label
+const galtonLabel = makeNode(0, -120, 40, 0, gold, 'GALTON BOARD', 'probability histogram');
+galtonLabel.visible = false; // just for hover
+
+// ===== CONFIDENCE IRIS (below Galton) =====
+const irisGroup = new THREE.Group();
+irisGroup.position.set(0, -200, 0);
+scene.add(irisGroup);
+
+const irisRingGeo = new THREE.TorusGeometry(20, 2, 8, 24);
+const irisRing = new THREE.Mesh(irisRingGeo, gold);
+irisRing.rotation.x = Math.PI / 2;
+irisGroup.add(irisRing);
+
+// Iris blades
+for (let b = 0; b < 6; b++) {
+  const bladeGeo = new THREE.BoxGeometry(12, 2, 3);
+  const blade = new THREE.Mesh(bladeGeo, brass);
+  const angle = b * Math.PI / 3;
+  blade.position.set(Math.cos(angle) * 12, 0, Math.sin(angle) * 12);
+  blade.rotation.y = angle;
+  irisGroup.add(blade);
+}
+animRefs.iris = irisGroup;
+
+// Center glow
+const irisGlowGeo = new THREE.SphereGeometry(5, 12, 8);
+const irisGlowMat = new THREE.MeshStandardMaterial({ color: 0xddaa44, emissive: 0xddaa44, emissiveIntensity: 0.8, transparent: true, opacity: 0.5 });
+const irisGlow = new THREE.Mesh(irisGlowGeo, irisGlowMat);
+irisGroup.add(irisGlow);
+animRefs.irisGlow = irisGlow;
+
+// ===== CONNECTION: Hub to Galton =====
+const connGeo = new THREE.CylinderGeometry(2, 2, 100, 8);
+const conn = new THREE.Mesh(connGeo, darkSteel);
+conn.position.y = -60;
+scene.add(conn);
+
+// ===== REWARD CHIME =====
+const chimeGeo = new THREE.CylinderGeometry(1, 8, 25, 12);
+const chime = new THREE.Mesh(chimeGeo, brass);
+chime.position.set(-180, -80, 100);
+scene.add(chime);
+const chimeRingGeo = new THREE.TorusGeometry(12, 0.5, 6, 20);
+const chimeRingMesh = new THREE.Mesh(chimeRingGeo, brass);
+chimeRingMesh.rotation.x = Math.PI / 2;
+chimeRingMesh.position.set(-180, -65, 100);
+scene.add(chimeRingMesh);
+
+// ===== RAYCASTER FOR HOVER =====
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+const tooltip = document.getElementById('tooltip');
+
+window.addEventListener('mousemove', (e) => {
+  mouse.x = (e.clientX / innerWidth) * 2 - 1;
+  mouse.y = -(e.clientY / innerHeight) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(hoverTargets);
+  if (hits.length > 0) {
+    const data = hits[0].object.userData;
+    document.getElementById('tt-name').textContent = data.name;
+    document.getElementById('tt-role').textContent = data.role;
+    tooltip.style.display = 'block';
+    tooltip.style.left = e.clientX + 15 + 'px';
+    tooltip.style.top = e.clientY + 15 + 'px';
+  } else {
+    tooltip.style.display = 'none';
+  }
+});
+
+// ===== CONTROLS =====
+window.toggleAnim = () => {
+  animating = !animating;
+  document.getElementById('btn-play').classList.toggle('active');
+  document.getElementById('btn-play').textContent = animating ? '▶ Play' : '⏸ Pause';
+};
+
+window.toggleExplode = () => {
+  exploded = !exploded;
+  document.getElementById('btn-explode').classList.toggle('active');
+};
+
+window.camPreset = (view) => {
+  const t = controls.target;
+  if (view === 'front') { camera.position.set(0, 100, 700); }
+  else if (view === 'top') { camera.position.set(0, 700, 0.1); }
+  else if (view === 'side') { camera.position.set(700, 150, 0); }
+  else { camera.position.set(400, 350, 600); }
+};
+
+// ===== RESIZE =====
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ===== ANIMATION LOOP =====
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+  controls.update();
+
+  if (animating) {
+    // Cam stack rotation
+    animRefs.camGroup.rotation.y = t * 0.5;
+
+    // Followers bob
+    animRefs.followerQ.position.x = 50 + Math.sin(t * 2) * 8;
+    animRefs.followerK.position.x = 50 + Math.sin(t * 2 + 1.3) * 10;
+    animRefs.followerV.position.x = 50 + Math.sin(t * 2 + 2.6) * 7;
+
+    // Wave field shimmer
+    for (const el of animRefs.waveElements) {
+      el.position.y = el.userData.baseY + Math.sin(t * 1.5 + el.userData.phase) * el.userData.amp;
+      el.material.emissiveIntensity = 0.3 + Math.sin(t * 2 + el.userData.phase) * 0.3;
+    }
+
+    // Galton balls
+    for (const ball of animRefs.galtonBalls) {
+      const bt = ((t * ball.userData.speed + ball.userData.phase) % 3) / 3;
+      ball.position.y = 35 - bt * 70;
+      ball.position.x = Math.sin(bt * 8 + ball.userData.phase) * (15 * bt);
+      ball.visible = bt < 0.95;
+    }
+
+    // Iris glow pulse
+    animRefs.irisGlow.material.opacity = 0.3 + Math.sin(t * 0.8) * 0.3;
+    animRefs.irisGlow.scale.setScalar(0.8 + Math.sin(t * 0.8) * 0.4);
+
+    // Node breathing
+    for (const node of allNodes) {
+      const s = 1 + Math.sin(t * 1.2 + node.position.x * 0.01) * 0.03;
+      node.scale.setScalar(s);
+    }
+  }
+
+  // Explode animation
+  for (const node of allNodes) {
+    const base = node.userData.basePos;
+    const dir = base.clone().normalize();
+    const target = exploded ? base.clone().add(dir.multiplyScalar(120)) : base;
+    node.position.lerp(target, 0.05);
+  }
+
+  renderer.render(scene, camera);
+}
+
+animate();
+</script>
+</body>
+</html>
