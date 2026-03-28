@@ -70,9 +70,10 @@ _DDL_SESSION_LOG = """
 CREATE TABLE IF NOT EXISTS session_log (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     session_id  TEXT    NOT NULL,
-    event_type  TEXT    NOT NULL,
-    payload     TEXT    NOT NULL DEFAULT '{}',
-    created_at  TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP
+    action_type TEXT    NOT NULL,
+    module_id   TEXT    NOT NULL DEFAULT '',
+    details     TEXT    NOT NULL DEFAULT '{}',
+    timestamp   TEXT    NOT NULL
 )
 """
 

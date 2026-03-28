@@ -35,15 +35,11 @@ class _FakeModule:
     """Minimal dataclass that satisfies the module fields KFSMCPServer reads."""
 
     id: str = "mod-abc"
-    project_id: str = "proj-1"
     name: str = "Test Gear"
-    geometry_type: str = "gear"
-    source_code: str = "import cadquery as cq\nresult = cq.Workplane('XY').box(1,1,1)"
-    parameters: Dict[str, Any] = dataclasses.field(default_factory=dict)
+    code: str = "import cadquery as cq\nresult = cq.Workplane('XY').box(1,1,1)"
     version: int = 1
     status: str = "draft"
-    stl_path: Optional[str] = None
-    step_path: Optional[str] = None
+    parameters: Dict[str, Any] = dataclasses.field(default_factory=dict)
     vlad_verdict: Optional[str] = None
     created_at: str = "2026-01-01T00:00:00Z"
     updated_at: str = "2026-01-01T00:00:00Z"
@@ -75,9 +71,9 @@ def _make_vlad_result(verdict: str = "PASS") -> VladResult:
 
 
 @pytest.fixture()
-def mock_mgr() -> AsyncMock:
-    """Async mock of ModuleManager that returns a _FakeModule by default."""
-    mgr = AsyncMock()
+def mock_mgr() -> MagicMock:
+    """Sync mock of ModuleManager (methods are sync, called via asyncio.to_thread)."""
+    mgr = MagicMock()
     mgr.create.return_value = _FakeModule()
     mgr.get.return_value = _FakeModule()
     mgr.list_all.return_value = [_FakeModule(), _FakeModule(id="mod-xyz")]
@@ -216,10 +212,10 @@ async def test_create_module_delegates_to_manager(server, mock_mgr):
         source_code="import cadquery as cq",
         parameters={"teeth": 20},
     )
-    mock_mgr.create.assert_awaited_once()
-    call_kwargs = mock_mgr.create.call_args.kwargs
-    assert call_kwargs["project_id"] == "proj-1"
-    assert call_kwargs["name"] == "Test Gear"
+    mock_mgr.create.assert_called_once()
+    call_args = mock_mgr.create.call_args
+    # create is called with positional args: (name, code, parameters)
+    assert call_args.args[0] == "Test Gear"
 
 
 @pytest.mark.asyncio
@@ -287,7 +283,7 @@ async def test_get_module_has_id(server):
 @pytest.mark.asyncio
 async def test_get_module_delegates_correct_ids(server, mock_mgr):
     await server.kfs_get_module(project_id="proj-1", module_id="mod-abc")
-    mock_mgr.get.assert_awaited_once_with(project_id="proj-1", module_id="mod-abc")
+    mock_mgr.get.assert_called_once_with("mod-abc")
 
 
 @pytest.mark.asyncio
@@ -458,11 +454,7 @@ async def test_validate_module_stores_verdict(server, mock_mgr, mock_vlad_runner
     with patch("backend.app.mcp.kfs_tools.VladBridge", return_value=fake_bridge):
         await server.kfs_validate_module(project_id="proj-1", module_id="mod-abc")
 
-    mock_mgr.set_vlad_verdict.assert_awaited_once_with(
-        project_id="proj-1",
-        module_id="mod-abc",
-        verdict="PASS",
-    )
+    mock_mgr.set_vlad_verdict.assert_called_once_with("mod-abc", "PASS")
 
 
 @pytest.mark.asyncio

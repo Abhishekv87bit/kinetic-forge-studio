@@ -226,18 +226,17 @@ class KFSMCPServer:
         parameters: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Create a new module and return its serialised record."""
-        module: Module = await self._mgr.create(
-            project_id=project_id,
-            name=name,
-            geometry_type=geometry_type,
-            source_code=source_code,
-            parameters=parameters,
+        module: Module = await asyncio.to_thread(
+            self._mgr.create,
+            name,
+            source_code,
+            parameters,
         )
         return _serialise_module(module)
 
     async def kfs_list_modules(self, project_id: str) -> List[Dict[str, Any]]:
         """Return serialised records for all modules in a project."""
-        modules: List[Module] = await self._mgr.list_all(project_id=project_id)
+        modules: List[Module] = await asyncio.to_thread(self._mgr.list_all)
         return [_serialise_module(m) for m in modules]
 
     async def kfs_get_module(self, project_id: str, module_id: str) -> Dict[str, Any]:
@@ -248,8 +247,8 @@ class KFSMCPServer:
         KeyError
             When *module_id* is not found.
         """
-        module: Optional[Module] = await self._mgr.get(
-            project_id=project_id, module_id=module_id
+        module: Optional[Module] = await asyncio.to_thread(
+            self._mgr.get, module_id
         )
         if module is None:
             raise KeyError(f"Module '{module_id}' not found")
@@ -268,15 +267,15 @@ class KFSMCPServer:
         KeyError
             When *module_id* is not found.
         """
-        module: Optional[Module] = await self._mgr.get(
-            project_id=project_id, module_id=module_id
+        module: Optional[Module] = await asyncio.to_thread(
+            self._mgr.get, module_id
         )
         if module is None:
             raise KeyError(f"Module '{module_id}' not found")
 
         result: ExecutionResult = await self._executor.execute(
             module_id=module_id,
-            code=module.source_code,
+            code=module.code,
         )
         return _serialise_execution(result)
 
@@ -293,8 +292,8 @@ class KFSMCPServer:
         KeyError
             When *module_id* is not found.
         """
-        module: Optional[Module] = await self._mgr.get(
-            project_id=project_id, module_id=module_id
+        module: Optional[Module] = await asyncio.to_thread(
+            self._mgr.get, module_id
         )
         if module is None:
             raise KeyError(f"Module '{module_id}' not found")
@@ -302,7 +301,7 @@ class KFSMCPServer:
         mech_type = mechanism_type or "structural"
 
         # Build a temporary bridge file for VLAD, run in thread to avoid blocking
-        bridge = VladBridge(module.source_code, mechanism_type=mech_type)
+        bridge = VladBridge(module.code, mechanism_type=mech_type)
         try:
             bridge_path = await asyncio.to_thread(bridge.write_bridge)
             vlad_result: VladResult = await asyncio.to_thread(
@@ -312,10 +311,8 @@ class KFSMCPServer:
             bridge.cleanup()
 
         # Persist the verdict string on the module record
-        await self._mgr.set_vlad_verdict(
-            project_id=project_id,
-            module_id=module_id,
-            verdict=vlad_result.verdict,
+        await asyncio.to_thread(
+            self._mgr.set_vlad_verdict, module_id, vlad_result.verdict
         )
 
         return _serialise_vlad(vlad_result)

@@ -8,10 +8,20 @@ from __future__ import annotations
 
 import logging
 import os
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, List, Optional
 
 from backend.app.models.module import Module, ModuleManager
+
+
+@dataclass
+class ManifestResult:
+    """Result returned by :meth:`ManifestGenerator.generate`."""
+
+    path: str
+    project_name: str
+    object_count: int
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +49,7 @@ class ManifestGenerator:
         manifest_path: str,
         project_name: str = "KFS Project",
         description: Optional[str] = None,
-    ) -> str:
+    ) -> ManifestResult:
         """Build and write a .kfs.yaml for all modules with status 'valid'.
 
         Args:
@@ -48,7 +58,8 @@ class ManifestGenerator:
             description:   Optional ``description`` field.
 
         Returns:
-            Absolute path to the written manifest file.
+            :class:`ManifestResult` with the absolute path, project name, and
+            number of objects written to the manifest.
 
         Raises:
             RuntimeError: If kfs_core is not installed.
@@ -86,7 +97,11 @@ class ManifestGenerator:
 
         save_kfs_manifest(manifest, manifest_abs)
         logger.info("Manifest written to %s", manifest_abs)
-        return str(manifest_abs)
+        return ManifestResult(
+            path=str(manifest_abs),
+            project_name=manifest.name,
+            object_count=len(manifest.objects),
+        )
 
     # ------------------------------------------------------------------
     # Translation

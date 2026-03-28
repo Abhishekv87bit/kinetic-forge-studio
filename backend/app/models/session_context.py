@@ -8,6 +8,7 @@ The table is created automatically on first use so no migration step is needed.
 """
 from __future__ import annotations
 
+import contextlib
 import json
 import sqlite3
 from dataclasses import dataclass, field
@@ -165,7 +166,7 @@ class SessionContextManager:
         """
         ts = datetime.now(timezone.utc).isoformat()
         details_json = json.dumps(details or {})
-        with self._connect() as conn:
+        with self._open_conn() as conn:
             cur = conn.execute(
                 _INSERT_ACTION,
                 (session_id, action_type, module_id, details_json, ts),
@@ -249,14 +250,14 @@ class SessionContextManager:
     # ------------------------------------------------------------------
 
     def _load_actions(self, session_id: str) -> List[SessionAction]:
-        with self._connect() as conn:
+        with self._open_conn() as conn:
             rows = conn.execute(_SELECT_BY_SESSION, (session_id,)).fetchall()
         return [self._row_to_action(r) for r in rows]
 
     def _load_module_actions(
         self, session_id: str, module_id: str
     ) -> List[SessionAction]:
-        with self._connect() as conn:
+        with self._open_conn() as conn:
             rows = conn.execute(
                 _SELECT_BY_MODULE, (session_id, module_id)
             ).fetchall()
@@ -274,11 +275,18 @@ class SessionContextManager:
         )
 
     def _ensure_table(self) -> None:
-        with self._connect() as conn:
+        with self._open_conn() as conn:
             conn.execute(_CREATE_SESSION_LOG)
             conn.commit()
 
-    def _connect(self) -> sqlite3.Connection:
+    @contextlib.contextmanager
+    def _open_conn(self):
+        """Yield a connection; close it afterwards for file-based DBs."""
         if self._shared_conn is not None:
-            return self._shared_conn
-        return sqlite3.connect(self.db_path)
+            yield self._shared_conn
+            return
+        conn = sqlite3.connect(self.db_path)
+        try:
+            yield conn
+        finally:
+            conn.close()

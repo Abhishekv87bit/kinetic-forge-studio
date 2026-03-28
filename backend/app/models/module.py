@@ -83,6 +83,8 @@ class ModuleManager:
         db_path: Filesystem path to the SQLite database file.
     """
 
+    _PATCHABLE_COLS: frozenset = frozenset({"status", "vlad_verdict", "code"})
+
     def __init__(self, db_path: str) -> None:
         self.db_path = db_path
         self._init_tables()
@@ -402,6 +404,13 @@ class ModuleManager:
         """
         if not fields:
             raise ValueError("_patch requires at least one field")
+
+        invalid = set(fields.keys()) - self._PATCHABLE_COLS
+        if invalid:
+            raise ValueError(
+                f"_patch received non-patchable column(s): {sorted(invalid)}. "
+                f"Allowed: {sorted(self._PATCHABLE_COLS)}"
+            )
 
         cols = ", ".join(f"{k} = ?" for k in fields)
         values = list(fields.values())

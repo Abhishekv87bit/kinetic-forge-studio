@@ -515,7 +515,8 @@ async def generate_manifest(
         output_dir=settings.models_dir,
     )
     try:
-        manifest = await gen.generate(
+        manifest = await asyncio.to_thread(
+            gen.generate,
             body.manifest_path,
             project_name=body.project_name,
             description=body.description,
@@ -530,7 +531,7 @@ async def generate_manifest(
         ) from exc
 
     return ManifestResponse(
-        manifest_path=body.manifest_path,
-        object_count=len(manifest.objects),
-        project_name=manifest.name,
+        manifest_path=manifest.path,
+        object_count=manifest.object_count,
+        project_name=manifest.project_name,
     )
