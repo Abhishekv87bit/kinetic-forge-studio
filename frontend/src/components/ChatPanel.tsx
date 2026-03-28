@@ -274,8 +274,8 @@ export function ChatPanel({ style }: ChatPanelProps) {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { saveAsModule, upsertModule, setActiveModuleId } = useModuleStore();
-  const { projectId, upsertModule: projectUpsert } = useProjectStore();
+  const { saveAsModule, setActiveModuleId } = useModuleStore();
+  const { projectId } = useProjectStore();
   const { setActiveModuleId: setViewportModule } = useViewportStore();
 
   // Auto-scroll on new messages
@@ -307,7 +307,7 @@ export function ChatPanel({ style }: ChatPanelProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: text,
-          history: messages.map((m) => ({ role: m.role, content: m.content })),
+          history: messages.slice(-20).map((m) => ({ role: m.role, content: m.content })),
           projectId,
         }),
       });
@@ -351,15 +351,11 @@ export function ChatPanel({ style }: ChatPanelProps) {
         throw new Error('No project or code to save.');
       }
       const created = await saveAsModule({ name, code: pendingCode, projectId });
-      // Sync into both stores
-      upsertModule(created);
-      projectUpsert(created);
-      // Switch viewport and editor to the new module
       setActiveModuleId(created.id);
       setViewportModule(created.id);
       setPendingCode(null);
     },
-    [pendingCode, projectId, saveAsModule, upsertModule, projectUpsert, setActiveModuleId, setViewportModule],
+    [pendingCode, projectId, saveAsModule, setActiveModuleId, setViewportModule],
   );
 
   // -------------------------------------------------------------------------

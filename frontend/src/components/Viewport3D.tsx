@@ -12,7 +12,7 @@
  * VLAD status overlay: shows a coloured badge (PASS / FAIL / pending) in the
  * top-right corner of the canvas based on the active module's vladSummary.
  */
-import React, { Suspense, useEffect, useRef } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import { Canvas, useLoader, useThree } from '@react-three/fiber';
 import { OrbitControls, Center, Environment, Html } from '@react-three/drei';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
@@ -28,13 +28,10 @@ import { useModuleStore } from '../stores/moduleStore';
 interface GeometryMeshProps {
   url: string;
   onLoad: () => void;
-  onError: (err: string) => void;
 }
 
-function GeometryMesh({ url, onLoad, onError }: GeometryMeshProps) {
-  const gltf = useLoader(GLTFLoader, url, undefined, (err) => {
-    onError(err instanceof Error ? err.message : String(err));
-  });
+function GeometryMesh({ url, onLoad }: GeometryMeshProps) {
+  const gltf = useLoader(GLTFLoader, url);
 
   useEffect(() => {
     if (gltf) {
@@ -100,6 +97,38 @@ function VladOverlay({ verdict, failCount }: VladOverlayProps) {
 }
 
 // ---------------------------------------------------------------------------
+// ErrorBoundary — catches useLoader throws so the whole tree doesn't crash
+// ---------------------------------------------------------------------------
+
+interface ErrorBoundaryProps {
+  onError: (error: string) => void;
+  children: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+}
+
+class GeometryErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  state: ErrorBoundaryState = { hasError: false };
+
+  static getDerivedStateFromError(): ErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error) {
+    this.props.onError(error.message);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return null; // Viewport3D shows GeometryPlaceholder via geometryError state
+    }
+    return this.props.children;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Scene — wraps mesh + controls + VLAD overlay
 // ---------------------------------------------------------------------------
 
@@ -129,10 +158,12 @@ function Scene({ geometryUrl, vladVerdict, vladFailCount }: SceneProps) {
       <directionalLight position={[5, 10, 5]} intensity={1.2} castShadow />
       <directionalLight position={[-5, -5, -5]} intensity={0.3} />
 
-      <Suspense fallback={null}>
-        <GeometryMesh url={geometryUrl} onLoad={handleLoad} onError={handleError} />
-        <VladOverlay verdict={vladVerdict} failCount={vladFailCount} />
-      </Suspense>
+      <GeometryErrorBoundary onError={handleError}>
+        <Suspense fallback={null}>
+          <GeometryMesh url={geometryUrl} onLoad={handleLoad} />
+          <VladOverlay verdict={vladVerdict} failCount={vladFailCount} />
+        </Suspense>
+      </GeometryErrorBoundary>
 
       <OrbitControls
         makeDefault

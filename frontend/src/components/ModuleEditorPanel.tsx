@@ -102,8 +102,8 @@ function VladPanel({ moduleId }: { moduleId: string }) {
 
       {/* Check rows */}
       <div>
-        {summary.checks.map((c, i) => (
-          <VladCheckRow key={i} check={c} />
+        {summary.checks.map((c) => (
+          <VladCheckRow key={c.id} check={c} />
         ))}
       </div>
     </div>
@@ -192,20 +192,37 @@ export function ModuleEditorPanel({ style }: ModuleEditorPanelProps) {
 
   const handleExecute = useCallback(async () => {
     if (!activeModuleId) return;
-    setStatusMsg('Executing…');
+    // Auto-save if there are unsaved local edits
+    if (localCode !== activeModule?.code) {
+      setStatusMsg('Saving before execute...');
+      try {
+        const res = await fetch(`/api/modules/${activeModuleId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: localCode }),
+        });
+        if (!res.ok) throw new Error(`Save failed: HTTP ${res.status}`);
+        const updated = await res.json();
+        upsertModule(updated);
+      } catch (err) {
+        setStatusMsg(`Save error: ${(err as Error).message}`);
+        return;
+      }
+    }
+    setStatusMsg('Executing...');
     try {
       await executeModule(activeModuleId);
       const mod = useModuleStore.getState().modules.find((m) => m.id === activeModuleId);
       if (mod?.status === 'valid') {
         bumpGeometryVersion();
-        setStatusMsg('Execution succeeded — geometry updated.');
+        setStatusMsg('Execution succeeded \u2014 geometry updated.');
       } else {
         setStatusMsg(`Execution failed: ${mod?.status}`);
       }
     } catch (err) {
       setStatusMsg(`Error: ${(err as Error).message}`);
     }
-  }, [activeModuleId, executeModule, bumpGeometryVersion]);
+  }, [activeModuleId, activeModule?.code, localCode, executeModule, bumpGeometryVersion, upsertModule]);
 
   // -------------------------------------------------------------------------
   // Validate

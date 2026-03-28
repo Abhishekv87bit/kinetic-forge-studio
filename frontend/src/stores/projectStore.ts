@@ -1,16 +1,14 @@
 /**
  * SC-04 projectStore — Zustand store for KFS project-level state.
  *
- * Holds the active project ID and the ordered list of modules that belong
- * to it.  ModuleListPanel.tsx reads `modules` to render the sidebar;
- * ChatPanel.tsx reads `projectId` when saving a new module.
- *
- * The `modules` array here mirrors the moduleStore's list but is the
- * project-scoped source of truth — it is populated once on project load
- * and updated whenever the user saves or deletes a module.
+ * Holds the active project ID and metadata.  Module list is owned exclusively
+ * by moduleStore; fetchProject writes modules there to avoid dual-store desync
+ * (mutations via execute/validate only update moduleStore, so a second copy
+ * here would go stale immediately).
  */
 import { create } from 'zustand';
 import type { KFSModule } from './moduleStore';
+import { useModuleStore } from './moduleStore';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -31,20 +29,11 @@ export interface ProjectStore {
   /** Stable project ID shorthand (null when no project is open). */
   projectId: string | null;
 
-  /**
-   * Ordered list of modules that belong to the current project.
-   * Kept in sync with the backend via fetchProject.
-   */
-  modules: KFSModule[];
-
   isLoading: boolean;
   error: string | null;
 
   // Actions
   setProject: (project: KFSProject) => void;
-  setModules: (modules: KFSModule[]) => void;
-  upsertModule: (module: KFSModule) => void;
-  removeModule: (moduleId: string) => void;
 
   // Async
   fetchProject: (projectId: string) => Promise<void>;
@@ -54,10 +43,9 @@ export interface ProjectStore {
 // Store
 // ---------------------------------------------------------------------------
 
-export const useProjectStore = create<ProjectStore>((set, get) => ({
+export const useProjectStore = create<ProjectStore>((set) => ({
   project: null,
   projectId: null,
-  modules: [],
   isLoading: false,
   error: null,
 
@@ -66,24 +54,6 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   // ---------------------------------------------------------------------------
 
   setProject: (project) => set({ project, projectId: project.id }),
-
-  setModules: (modules) => set({ modules }),
-
-  upsertModule: (updated) =>
-    set((state) => {
-      const idx = state.modules.findIndex((m) => m.id === updated.id);
-      if (idx === -1) {
-        return { modules: [...state.modules, updated] };
-      }
-      const next = [...state.modules];
-      next[idx] = updated;
-      return { modules: next };
-    }),
-
-  removeModule: (moduleId) =>
-    set((state) => ({
-      modules: state.modules.filter((m) => m.id !== moduleId),
-    })),
 
   // ---------------------------------------------------------------------------
   // Async: load project + modules in one request
@@ -107,7 +77,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       const project: KFSProject = await projectRes.json();
       const modules: KFSModule[] = await modulesRes.json();
 
-      set({ project, projectId: project.id, modules, isLoading: false });
+      useModuleStore.getState().setModules(modules);
+      set({ project, projectId: project.id, isLoading: false });
     } catch (err) {
       set({ isLoading: false, error: (err as Error).message });
     }
