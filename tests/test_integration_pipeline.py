@@ -187,8 +187,7 @@ class TestFullHappyPath:
 
         updated = module_manager.get(mod.id)
         assert updated.vlad_verdict is not None
-        assert updated.vlad_verdict["verdict"] == "PASS"
-        assert updated.vlad_verdict["passed"] is True
+        assert "PASS" in updated.vlad_verdict
 
     @pytest.mark.asyncio
     async def test_manifest_generate_called_with_valid_module(

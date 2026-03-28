@@ -109,14 +109,28 @@ class SessionContextManager:
     The ``session_log`` table is created in the SQLite database at *db_path*
     automatically on first instantiation.
 
+    For in-memory databases (``":memory:"``), a single persistent connection is
+    kept for the lifetime of the manager so that all callers share the same
+    in-memory database (each ``sqlite3.connect(":memory:")`` call would otherwise
+    create an independent, empty database).
+
     Parameters
     ----------
     db_path:
         Path to the SQLite database file shared with other KFS services.
+        Pass ``":memory:"`` for a transient, test-friendly in-memory database.
     """
 
     def __init__(self, db_path: str) -> None:
         self.db_path = db_path
+        # For ":memory:" keep a single shared connection so the table (and data)
+        # created in _ensure_table are visible to every subsequent operation.
+        if db_path == ":memory:":
+            self._shared_conn: Optional[sqlite3.Connection] = sqlite3.connect(
+                ":memory:", check_same_thread=False
+            )
+        else:
+            self._shared_conn = None
         self._ensure_table()
 
     # ------------------------------------------------------------------
@@ -265,4 +279,6 @@ class SessionContextManager:
             conn.commit()
 
     def _connect(self) -> sqlite3.Connection:
+        if self._shared_conn is not None:
+            return self._shared_conn
         return sqlite3.connect(self.db_path)

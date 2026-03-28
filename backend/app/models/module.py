@@ -446,7 +446,7 @@ def _row_to_module(row: sqlite3.Row) -> Module:
         version=row["version"],
         status=row["status"],
         parameters=_json_loads(row["parameters"]),
-        vlad_verdict=_json_loads(row["vlad_verdict"]),
+        vlad_verdict=row["vlad_verdict"],
         created_at=row["created_at"],
         updated_at=row["updated_at"],
     )
